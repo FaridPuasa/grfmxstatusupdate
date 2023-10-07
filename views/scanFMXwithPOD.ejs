@@ -1,35 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan FMX with POD</title>
-    <link rel="stylesheet" href="/css/styles.css"> <!-- Include the same styles.css file -->
+    <!-- Include Bootstrap CSS just like in the first page -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <style>
+        /* Custom CSS for your page */
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        /* Make the navbar background transparent */
+        .navbar {
+            background-color: transparent;
+        }
+
+        /* Add background color to the container */
+        .container-bg {
+            background-color: #333; /* You can use your desired background color here */
+        }
+
+        /* Add margin to the navigation links */
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        /* Add margin to the submit button */
+        .btn-submit {
+            margin-top: 10px; /* Adjust the margin-top as needed */
+        }
+    </style>
+    <!-- Include Bootstrap JavaScript just like in the first page -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 </head>
-
 <body>
-    <header>
-        <!-- Navigation Bar -->
-        <nav>
-            <ul>
-                <li><a href="/scanFMX">Scan FMX</a></li>
-                <li><a href="/scanFMXwithPOD">Scan FMX with POD</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <form action="/scanFMXwithPOD" method="POST">
-            <div class="form-group">
-                <label for="consignmentID">Consignment ID:</label>
-                <textarea id="consignmentID" name="consignmentIDs" rows="2" cols="30" required></textarea>
+    <div class="container-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <nav class="navbar navbar-expand-lg navbar-dark">
+                        <h1 class="navbar-brand">Scan FMX with POD</h1>
+                        <ul class="navbar-nav mx-auto flex-row">
+                            <li class="nav-item"><a class="nav-link" href="/scanFMX">Scan FMX</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/scanFMXwithPOD">Scan FMX with POD</a></li>
+                        </ul>
+                    </nav>
+                </div>
             </div>
-            <div class="form-group">
-                <button type="submit">Submit</button>
-            </div>
-        </form>
+        </div>
+    </div>
+    <main class="container mt-4">
+        <div class="main-content">
+            <form action="/scanFMXwithPOD" method="POST">
+                <div class="form-group">
+                    <label for="consignmentID" class="form-label">Consignment ID:</label>
+                    <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2" required></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary btn-submit">Submit</button>
+                </div>
+            </form>
+        </div>
     </main>
 </body>
-
 </html>
