@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan FMX with POD</title>
+    <link rel="stylesheet" href="/css/styles.css"> <!-- Include the same styles.css file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <!-- Navigation Bar -->
+        <nav>
+            <ul>
+                <li><a href="/scanFMX">Scan FMX</a></li>
+                <li><a href="/scanFMXwithPOD">Scan FMX with POD</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <form action="/scanFMXwithPOD" method="POST">
+            <div class="form-group">
+                <label for="consignmentID">Consignment ID:</label>
+                <textarea id="consignmentID" name="consignmentIDs" rows="2" cols="30" required></textarea>
+            </div>
+            <div class="form-group">
+                <button type="submit">Submit</button>
+            </div>
+        </form>
+    </main>
+</body>
+
+</html>

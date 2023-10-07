@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan FMX</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+<body>
+  <header>
+    <!-- Navigation Bar -->
+    <nav>
+      <ul>
+        <li><a href="/scanFMX">Scan FMX</a></li>
+        <li><a href="/scanFMXwithPOD">Scan FMX with POD</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main>
+    <form action="/scanFMX" method="post">
+      <div class="form-group">
+        <label for="consignmentID">Consignment ID:</label>
+        <textarea id="consignmentID" name="consignmentIDs" rows="2" cols="30" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="statusCode">Status Code:</label>
+        <select id="statusCode" name="statusCode" required>
+          <option value="CP">Custom Clearance In Progress</option>
+          <option value="38">Custom Clearance Release</option>
+          <option value="12">Item In Warehouse</option>
+          <option value="35" selected>Out for Delivery</option>
+          <option value="NA">Customer cannot be contacted</option>
+          <option value="44">Return to warehouse</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <button type="submit">Submit</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

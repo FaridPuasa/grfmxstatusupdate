@@ -1,0 +1,111 @@
+/* styles.css */
+/* Reduce the font size for the entire page */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+    font-size: 14px; /* Adjust the font size as needed */
+  }
+  
+  header {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0;
+  }
+  
+  h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+  
+  button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  
+  main {
+    max-width: 800px; /* Increase the width as needed */
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  textarea, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    resize: none;
+  }
+  
+  button[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+    width: 100%; /* Button takes full width */
+  }
+  
+  button[type="submit"]:hover {
+    background-color: #45a049;
+  }
+  
+  @media (max-width: 768px) {
+    main {
+      margin: 10px;
+      padding: 10px;
+    }
+  
+    /* Adjust text area width for smaller screens */
+    textarea {
+      width: 100%; /* or a smaller percentage as needed */
+    }
+  }
+  
+/* Navigation bar styles with reduced padding */
+nav {
+    background-color: #333;
+    padding: 1px 0; /* Reduced top and bottom padding */
+    text-align: center;
+  }
+  
+  ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  li {
+    display: inline-block;
+    margin-right: 20px;
+  }
+  
+  a {
+    text-decoration: none;
+    color: #fff;
+    font-weight: bold;
+    font-size: 16px;
+    transition: color 0.3s;
+  }
+  
+  a:hover {
+    color: #007bff;
+  }
