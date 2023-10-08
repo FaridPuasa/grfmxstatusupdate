@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Delivery</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.0/css/theme.default.min.css">
+    <style>
+        /* Custom CSS for your page */
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        /* Make the navbar background transparent */
+        .navbar {
+            background-color: transparent;
+        }
+
+        /* Add background color to the container */
+        .container-bg {
+            background-color: #333;
+            /* You can use your desired background color here */
+        }
+
+        /* Add margin to the navigation links */
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        /* Add margin to the submit button */
+        .btn-submit {
+            margin-top: 10px;
+            /* Adjust the margin-top as needed */
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <div class="container-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <nav class="navbar navbar-expand-lg navbar-dark">
+                        <h1 class="navbar-brand mr-auto">Update Delivery</h1>
+                        <ul class="navbar-nav flex-row">
+                            <li class="nav-item"><a class="nav-link" href="/updateDelivery">Update Delivery</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="container mt-4">
+        <h1>Processing Results</h1>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-primary">
+                    <tr>
+                        <th class="header">Tracking Number</th>
+                        <th class="header">Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% processingResults.forEach(result=> { %>
+                    <tr>
+                        <td class="consignment-number">
+                            <%= result.consignmentID %>
+                        </td>
+                        <td class="no-select">
+                            <%= result.status %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.0/js/jquery.tablesorter.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("table").tablesorter();
+        });
+    </script>
+</body>
+
+</html>

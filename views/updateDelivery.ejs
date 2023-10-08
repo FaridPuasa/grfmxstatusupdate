@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Delivery</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <style>
+        /* Custom CSS for your page */
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        /* Make the navbar background transparent */
+        .navbar {
+            background-color: transparent;
+        }
+
+        /* Add background color to the container */
+        .container-bg {
+            background-color: #333;
+            /* You can use your desired background color here */
+        }
+
+        /* Add margin to the navigation links */
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        /* Add margin to the submit button */
+        .btn-submit {
+            margin-top: 10px;
+            /* Adjust the margin-top as needed */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <nav class="navbar navbar-expand-lg navbar-dark">
+                        <h1 class="navbar-brand mr-auto">Update Delivery</h1>
+                        <ul class="navbar-nav flex-row">
+                            <li class="nav-item"><a class="nav-link" href="/updateDelivery">Update Delivery</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <main class="container mt-4">
+        <form action="/updateDelivery" method="post">
+            <div class="mb-3">
+                <label for="consignmentID" class="form-label">Consignment ID:</label>
+                <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2" required></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="statusCode" class="form-label">Status Code:</label>
+                <select id="statusCode" name="statusCode" class="form-select" required>
+                    <option value="" selected>Please select status</option>
+                    <option value="CP">Custom Clearance In Progress (FMX)</option>
+                    <option value="38">Custom Clearance Release (FMX)</option>
+                    <option value="12">Item In Warehouse</option>
+                    <option value="35">Assign dispatchers for Delivery</option>
+                    <option value="NA">Customer cannot be contacted (FMX)</option>
+                    <option value="44">Return to warehouse</option>
+                    <option value="SC">Self Collect</option>
+                    <option value="50">Success (FMX)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="assignDate" class="form-label">Assign Date:</label>
+                <input type="date" id="assignDate" name="assignDate" class="form-control" min="{{todayDate}}" disabled>
+            </div>
+            <div class="mb-3">
+                <label for="dispatchers" class="form-label">Dispatchers:</label>
+                <select id="dispatchers" name="dispatchers" class="form-select" disabled>
+                    <option value="" selected>Please select dispatcher</option>
+                    <option value="Hasbul">Hasbul</option>
+                    <option value="Safwan">Safwan</option>
+                    <option value="Hazri">Hazri</option>
+                    <option value="Naizam">Naizam</option>
+                    <option value="CS SC">CS SC</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </main>
+
+    <script>
+        // Get references to the "Assign Date" and "Dispatchers" fields
+        const assignDateField = document.getElementById('assignDate');
+        const dispatchersField = document.getElementById('dispatchers');
+
+        // Get reference to the "Status Code" select element
+        const statusCodeSelect = document.getElementById('statusCode');
+
+        // Get the current date in YYYY-MM-DD format
+        const todayDate = new Date().toISOString().split('T')[0];
+
+        // Set the minimum date for the "Assign Date" field to today
+        assignDateField.min = todayDate;
+
+        // Function to enable/disable fields and set them as required based on the selected status code
+        function updateFieldStatus() {
+            const selectedStatusCode = statusCodeSelect.value;
+
+            // Reset the values of "Assign Date" and "Dispatchers"
+            assignDateField.value = '';
+            dispatchersField.value = '';
+
+            if (selectedStatusCode === '35') {
+                // Enable the fields for "Out for Delivery" or "Self Collect"
+                assignDateField.disabled = false;
+                dispatchersField.disabled = false;
+
+                // Set the fields as required
+                assignDateField.required = true;
+                dispatchersField.required = true;
+
+                // Disable all options in the Dispatchers dropdown except "CS SC" if selected
+                const dispatcherOptions = dispatchersField.options;
+                for (let i = 0; i < dispatcherOptions.length; i++) {
+                    const option = dispatcherOptions[i];
+                    if (option.value === 'CS SC' && dispatchersField.value !== 'CS SC') {
+                        option.disabled = true;
+                    } else {
+                        option.disabled = false;
+                    }
+                }
+            } else if (selectedStatusCode === 'SC') {
+                // Enable the fields for "Out for Delivery" or "Self Collect"
+                assignDateField.disabled = false;
+                dispatchersField.disabled = false;
+
+                // Set the fields as required
+                assignDateField.required = true;
+                dispatchersField.required = true;
+
+                // Select "CS SC" automatically when "Self Collect" is chosen
+                if (selectedStatusCode === 'SC') {
+                    dispatchersField.value = 'CS SC';
+                }
+
+                // Disable all options in the Dispatchers dropdown except "CS SC" if selected
+                const dispatcherOptions = dispatchersField.options;
+                for (let i = 0; i < dispatcherOptions.length; i++) {
+                    const option = dispatcherOptions[i];
+                    if (option.value === 'CS SC' && dispatchersField.value !== 'CS SC') {
+                        option.disabled = false;
+                    } else {
+                        option.disabled = true;
+                    }
+                }
+            } else {
+                // Disable the fields for other status codes
+                assignDateField.disabled = true;
+                dispatchersField.disabled = true;
+
+                // Remove the "required" attribute from the fields
+                assignDateField.required = false;
+                dispatchersField.required = false;
+
+                // Enable all options in the Dispatchers dropdown
+                const dispatcherOptions = dispatchersField.options;
+                for (let i = 0; i < dispatcherOptions.length; i++) {
+                    dispatcherOptions[i].disabled = false;
+                }
+            }
+        }
+
+        // Attach the updateFieldStatus function to the "change" event of the status code select element
+        statusCodeSelect.addEventListener('change', updateFieldStatus);
+
+        // Initialize field status based on the initial selected status code
+        updateFieldStatus();
+    </script>
+</body>
+
+</html>
