@@ -55,7 +55,8 @@
                         </a>
                         <ul class="navbar-nav flex-row">
                             <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker
+                                    (FMX)</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -65,10 +66,11 @@
     <main class="container mt-4">
         <h1>Address Area Checker</h1>
         <form action="/addressAreaCheck" method="post" id="addressAreaForm">
-            <textarea name="customerAddresses" id="customerAddresses" rows="10" cols="50"></textarea>
+            <textarea name="customerAddresses" id="customerAddresses" rows="10" cols="100" class="col-12"></textarea>
             <br>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
         </form>
+
         <!-- Loading animation and message -->
         <div id="loading" class="text-center" style="display: none;">
             <div class="spinner-border" role="status">
@@ -83,23 +85,23 @@
         const addressAreaForm = document.getElementById('addressAreaForm');
         const submitButton = document.getElementById('submitButton');
         const loading = document.getElementById('loading');
-    
+
         // Function to disable the submit button when it's clicked and show the loading animation
         function disableSubmitButton(event) {
             submitButton.disabled = true;
             loading.style.display = 'block'; // Show the loading animation
             // You can add code here to submit the form data via AJAX if needed
-    
+
             // Allow the form to submit after a brief delay (e.g., 1 second)
             setTimeout(() => {
                 addressAreaForm.submit();
             }, 1000);
         }
-    
+
         // Attach the disableSubmitButton function to the "submit" event of the form
         addressAreaForm.addEventListener('submit', disableSubmitButton);
     </script>
-    
+
 </body>
 
 </html>
