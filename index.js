@@ -107,13 +107,13 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing')) {
+                if ((req.body.statusCode == 38) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse')) {
                     FMXAPIrun = 1;
 
                     fmxUpdate = "FMX milestone updated to Custom Clearance Release.";
                 }
 
-                if ((req.body.statusCode == 12) && (ccCheck == 1) && (data.data.status == 'custom_clearing')) {
+                if ((req.body.statusCode == 12) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -128,7 +128,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 35) && (ccCheck == 1) && (data.data.status == 'at_warehouse')) {
+                if ((req.body.statusCode == 35) && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -145,14 +145,14 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'NA') && (ccCheck == 1) && (data.data.status == 'dispatched')) {
+                if ((req.body.statusCode == 'NA') && /* (ccCheck == 1) && */ (data.data.status == 'dispatched')) {
                     FMXAPIrun = 1;
 
                     fmxUpdate = "FMX milestone updated to Failed delivery, Customer cannot be contacted.";
 
                 }
 
-                if ((req.body.statusCode == 44) && (ccCheck == 1) && (data.data.status != 'at_warehouse')) {
+                if ((req.body.statusCode == 44) && /* (ccCheck == 1) && */ (data.data.status != 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -167,7 +167,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'SC') && (ccCheck == 1) && (data.data.status == 'at_warehouse')) {
+                if ((req.body.statusCode == 'SC') && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -182,7 +182,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 50) && (ccCheck == 1) && (data.data.status == 'completed')) {
+                if ((req.body.statusCode == 50) && /* (ccCheck == 1) && */ (data.data.status == 'completed')) {
                     FMXAPIrun = 2;
 
                     fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
