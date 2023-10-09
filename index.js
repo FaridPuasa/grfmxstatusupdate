@@ -8,7 +8,7 @@ const path = require('path');
 const moment = require('moment');
 
 const app = express();
-const port = 3000; // Change this to your desired port number
+const port = process.env.PORT || 3000;
 
 // Serve static files from the "public" directory
 app.use(express.static('public'));
