@@ -87,6 +87,9 @@ app.post('/updateDelivery', async (req, res) => {
                 if (data.data.milestones[i].status == 'custom_clearing') {
                     ccCheck = 1;
                 }
+                if (data.data.milestones[i].status == 'completed') {
+                    latestPODDate = data.data.milestones[i].pod_at;
+                }
             }
 
             product = data.data.group_name;
@@ -277,7 +280,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
             }
 
-            if ((data.data.status == 'completed') || ((DetrackAPIrun == 0) && (FMXAPIrun == 0))) {
+            if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || ((DetrackAPIrun == 0) && (FMXAPIrun == 0))) {
                 ceCheck = 1;
             }
 
