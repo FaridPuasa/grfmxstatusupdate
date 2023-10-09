@@ -30,7 +30,7 @@ const password = process.env.PASSWORD;
 const processingResults = [];
 
 // Render the scanFMX page
-app.get('/updateDelivery', (req, res) => {
+app.get('/', (req, res) => {
     processingResults.length = 0;
     res.render('updateDelivery');
 });
@@ -63,6 +63,8 @@ app.post('/updateDelivery', async (req, res) => {
             var ceCheck = 0;
             var product = '';
             var latestPODDate = "";
+            var detrackUpdate = "";
+            var fmxUpdate = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -98,12 +100,17 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    detrackUpdate = "Detrack status updated to Custom Clearing. ";
+                    fmxUpdate = "FMX milestone updated to Custom Clearance In Progress.";
+
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
                 }
 
                 if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing')) {
                     FMXAPIrun = 1;
+
+                    fmxUpdate = "FMX milestone updated to Custom Clearance Release.";
                 }
 
                 if ((req.body.statusCode == 12) && (ccCheck == 1) && (data.data.status == 'custom_clearing')) {
@@ -113,6 +120,9 @@ app.post('/updateDelivery', async (req, res) => {
                             status: "at_warehouse" // Use the calculated dStatus
                         }
                     };
+
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+                    fmxUpdate = "FMX milestone updated to At Warehouse.";
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
@@ -128,12 +138,18 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                    fmxUpdate = "FMX milestone updated to Out for Delivery.";
+
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
                 }
 
                 if ((req.body.statusCode == 'NA') && (ccCheck == 1) && (data.data.status == 'dispatched')) {
                     FMXAPIrun = 1;
+
+                    fmxUpdate = "FMX milestone updated to Failed delivery, Customer cannot be contacted.";
+
                 }
 
                 if ((req.body.statusCode == 44) && (ccCheck == 1) && (data.data.status != 'at_warehouse')) {
@@ -143,6 +159,9 @@ app.post('/updateDelivery', async (req, res) => {
                             status: "at_warehouse" // Use the calculated dStatus
                         }
                     };
+
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse.";
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
@@ -158,16 +177,20 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    detrackUpdate = "Detrack status updated for Self Collect. ";
+
                     DetrackAPIrun = 1;
                 }
 
                 if ((req.body.statusCode == 50) && (ccCheck == 1) && (data.data.status == 'completed')) {
                     FMXAPIrun = 2;
+
+                    fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
                 }
             }
 
             if (product != 'FMX') {
-                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'GRP')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -177,10 +200,12 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'RS')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'RS')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -190,16 +215,20 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'RS')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product != 'GRP') && (product != 'RS')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse" // Use the calculated dStatus
                         }
                     };
+
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
                 }
@@ -214,6 +243,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+
                     DetrackAPIrun = 1;
                 }
 
@@ -224,6 +255,8 @@ app.post('/updateDelivery', async (req, res) => {
                             status: "at_warehouse" // Use the calculated dStatus
                         }
                     };
+
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
                 }
@@ -237,6 +270,8 @@ app.post('/updateDelivery', async (req, res) => {
                             status: "dispatched" // Use the calculated dStatus
                         }
                     };
+
+                    detrackUpdate = "Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
                 }
@@ -339,14 +374,13 @@ app.post('/updateDelivery', async (req, res) => {
                 // If processing is successful, add a success message to the results array
                 processingResults.push({
                     consignmentID,
-                    status: 'Success',
+                    status: detrackUpdate + fmxUpdate,
                 });
             } else {
                 processingResults.push({
                     consignmentID,
                     status: 'Error: Tracking Number is either not updated properly to flow or already completed',
                 });
-
             }
 
         } catch (error) {
@@ -354,7 +388,7 @@ app.post('/updateDelivery', async (req, res) => {
             if (error.message.includes(500)) {
                 processingResults.push({
                     consignmentID,
-                    status: 'Error: FMX Consignment Number does not exist or completed',
+                    status: 'Error: FMX Consignment Number does not exist or already completed',
                 });
             }
             if (error.message.includes(404)) {

@@ -33,6 +33,12 @@
             margin-top: 10px;
             /* Adjust the margin-top as needed */
         }
+
+        /* Increase the margin-bottom for the h1 element */
+        h1 {
+            margin-bottom: 20px;
+            /* Adjust the value as needed */
+        }
     </style>
 </head>
 
@@ -42,9 +48,11 @@
             <div class="row">
                 <div class="col-12">
                     <nav class="navbar navbar-expand-lg navbar-dark">
-                        <h1 class="navbar-brand mr-auto">Update Delivery</h1>
+                        <a class="navbar-brand mr-auto" href="/">
+                            <img src="/images/logo.png" alt="Go Rush Logo">
+                        </a>
                         <ul class="navbar-nav flex-row">
-                            <li class="nav-item"><a class="nav-link" href="/updateDelivery">Update Delivery</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -52,10 +60,13 @@
         </div>
     </div>
     <main class="container mt-4">
+        <h1>Update Delivery</h1>
         <form action="/updateDelivery" method="post">
             <div class="mb-3">
-                <label for="consignmentID" class="form-label">Consignment ID:</label>
+                <label for="consignmentID" class="form-label">Tracking Number(s):</label>
                 <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2" required></textarea>
+                <small>For old GRP orders, use Go Rush tracking number. For new GRP orders from 9.10.23 onwards, use
+                    original tracking number</small>
             </div>
             <div class="mb-3">
                 <label for="statusCode" class="form-label">Status Code:</label>
@@ -64,9 +75,9 @@
                     <option value="CP">Custom Clearance In Progress (FMX)</option>
                     <option value="38">Custom Clearance Release (FMX)</option>
                     <option value="12">Item In Warehouse</option>
-                    <option value="35">Assign dispatchers for Delivery</option>
-                    <option value="NA">Customer cannot be contacted (FMX)</option>
-                    <option value="44">Return to warehouse</option>
+                    <option value="35">Out for Delivery</option>
+                    <option value="NA">Fail Delivery due to customer cannot be contacted (FMX)</option>
+                    <option value="44">Return To Warehouse</option>
                     <option value="SC">Self Collect</option>
                     <option value="50">Success (FMX)</option>
                 </select>
