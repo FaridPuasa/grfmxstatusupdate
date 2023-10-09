@@ -4,10 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Success</title>
+    <title>Check Success</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.0/css/theme.default.min.css">
     <style>
         /* Custom CSS for your page */
         .navbar-nav.flex-row {
@@ -36,13 +34,15 @@
             /* Adjust the margin-top as needed */
         }
 
-        th {
-            background-color: #f2f2f2;
+        /* Increase the margin-bottom for the h1 element */
+        h1 {
+            margin-bottom: 20px;
+            /* Adjust the value as needed */
         }
     </style>
 </head>
 
-<body class="bg-light">
+<body>
     <div class="container-bg">
         <div class="container">
             <div class="row">
@@ -53,48 +53,72 @@
                         </a>
                         <ul class="navbar-nav flex-row">
                             <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker
+                                    (FMX)</a></li>
                         </ul>
                     </nav>
                 </div>
             </div>
         </div>
     </div>
-
     <main class="container mt-4">
-        <h1>Status Update Results</h1>
+        <h1>Check Result</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Tracking Number</th>
-                        <th class="header">Result</th>
+                        <th>Customer Address</th>
+                        <th data-excel-ignore>Area</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <% processingResults.forEach(result=> { %>
+                    <% for (const entry of entries) { %>
                         <tr>
-                            <td class="consignment-number">
-                                <%= result.consignmentID %>
+                            <td>
+                                <%= entry.customerAddress %>
                             </td>
-                            <td class="no-select">
-                                <%= result.status %>
+                            <td>
+                                <%= entry.area %>
                             </td>
                         </tr>
-                        <% }); %>
+                        <% } %>
                 </tbody>
             </table>
         </div>
-
-        <button class="btn btn-primary" onclick="window.location.href = '/'">Back to Update Delivery</button>
+        <button id="copyToExcelBtn" class="btn btn-success">Copy Area to Excel</button>
+        <button class="btn btn-primary" onclick="window.location.href = '/addressAreaCheck'">Back to Address Area Checker</button>
     </main>
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script
         src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.0/js/jquery.tablesorter.min.js"></script>
     <script>
-        $(document).ready(function () {
-            $("table").tablesorter();
+        document.getElementById("copyToExcelBtn").addEventListener("click", function () {
+            // Get the "Area" column data (data-excel-ignore attribute is used to ignore this column)
+            var areaColumn = document.querySelectorAll("td:nth-child(2)");
+
+            // Generate a newline-separated string with leading/trailing whitespace trimmed
+            var newlineSeparatedData = Array.from(areaColumn).map(function (cell) {
+                return cell.dataset.excelIgnore ? "" : cell.textContent.trim();
+            }).join("\n");
+
+            // Create a text area element to hold the data
+            var textArea = document.createElement("textarea");
+            textArea.value = newlineSeparatedData;
+
+            // Append the text area to the document
+            document.body.appendChild(textArea);
+
+            // Select the text area content
+            textArea.select();
+
+            // Copy the selected text to the clipboard
+            document.execCommand("copy");
+
+            // Remove the text area from the document
+            document.body.removeChild(textArea);
+
+            // Provide a user feedback (you can customize this)
+            alert("Area data copied to clipboard. You can now paste it into Excel vertically.");
         });
     </script>
 </body>
