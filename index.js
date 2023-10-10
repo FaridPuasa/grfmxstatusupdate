@@ -870,7 +870,7 @@ app.post('/updateDelivery', async (req, res) => {
                     StatusCode: req.body.statusCode,
                     CityName: 'BN',
                     ConsigneeName: '',
-                    Remarks: fmxReason
+                    Remark: fmxReason
                 };
 
                 // Step 4: Make the second API request with bearer token
