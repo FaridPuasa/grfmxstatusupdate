@@ -39,6 +39,12 @@
             margin-bottom: 20px;
             /* Adjust the value as needed */
         }
+
+        /* Custom CSS for reducing line height */
+        .delivery-flow-box p {
+            margin: 5px 0;
+            /* Adjust the margin to control line spacing */
+        }
     </style>
 </head>
 
@@ -53,14 +59,15 @@
                         </a>
                         <ul class="navbar-nav flex-row">
                             <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker
+                                    (FMX)</a></li>
                         </ul>
                     </nav>
                 </div>
             </div>
         </div>
     </div>
-    <main class="container mt-4">
+    <main class="container mt-4 mb-4">
         <h1>Update Delivery</h1>
         <form action="/updateDelivery" method="post">
             <div class="mb-3">
@@ -106,6 +113,25 @@
                 <span class="sr-only">Loading...</span>
             </div>
             <p>Loading...</p>
+        </div>
+
+        <div class="mt-4 p-3 delivery-flow-box"
+            style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
+            <h5>Standard Delivery Flow:</h5>
+            <p><strong>Success:</strong> At Warehouse &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App)</p>
+            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Return To Warehouse</p>
+            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on Agent App)
+            </p>
+        </div>
+        <div class="mt-4 p-3 delivery-flow-box"
+            style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
+            <h5>FMX Delivery Flow:</h5>
+            <p><strong>Success:</strong> Custom Clearing in Progress &rarr; Custom Clearing Release &rarr; At Warehouse
+                &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App and CS Team on Update Delivery Page)</p>
+            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Failed due to customer
+                cannot be contacted (Optional) &rarr; Return To Warehouse</p>
+            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on Agent App & Update Delivery Page)
+            </p>
         </div>
     </main>
 
