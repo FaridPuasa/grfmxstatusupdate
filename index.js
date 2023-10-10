@@ -22,6 +22,9 @@ app.use(express.urlencoded({ extended: true }));
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Serve static files from the 'images' directory
+app.use('/images', express.static('images'));
+
 const apiKey = process.env.API_KEY;
 const username = process.env.USRNME;
 const password = process.env.PASSWORD;
@@ -35,12 +38,88 @@ app.get('/', (req, res) => {
     res.render('updateDelivery');
 });
 
+app.get('/runsheetGenerator', (req, res) => {
+    // Render the form page with EJS
+    res.render('runsheetGenerator');
+});
+
 app.get('/addressAreaCheck', (req, res) => {
     res.render('addressAreaCheck');
 });
 
 app.get('/successUpdate', (req, res) => {
     res.render('successUpdate', { processingResults });
+});
+
+app.post('/generateRunsheet', async (req, res) => {
+    try {
+        // Parse input data from the form
+        const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, podCreatedDate } = req.body;
+
+        // Extract the year (YY) from the last two digits of the full year (YYYY)
+        const deliveryYear = deliveryDate.substring(2, 4);
+
+        // Split the delivery date into an array [YYYY, MM, DD]
+        const deliveryDateArray = deliveryDate.split('-');
+
+        // Format the delivery date as DD.MM.YY
+        const formattedDeliveryDate = deliveryDateArray[2] + '.' + deliveryDateArray[1] + '.' + deliveryYear;
+
+        // Check if areas is a string or an array
+        let areasArray = [];
+        if (typeof areas === 'string') {
+            areasArray = areas.split(',').map((area) => area.trim());
+        } else if (Array.isArray(areas)) {
+            areasArray = areas.map((area) => area.trim());
+        }
+
+        // Then, you can join the elements of the areasArray into a comma-separated string
+        const areasJoined = areasArray.join(', ');
+
+        // Split tracking numbers into an array
+        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim());
+
+        // Fetch data for each tracking number
+        const runSheetData = [];
+        for (const trackingNumber of trackingNumbersArray) {
+            if (!trackingNumber) continue;
+
+            const response = await axios.get(
+                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey,
+                    },
+                }
+            );
+
+            const data = response.data.data;
+            runSheetData.push({
+                trackingNumber,
+                deliverToCollectFrom: data.deliver_to_collect_from,
+                address: data.address,
+                phoneNumber: data.phone_number,
+                jobType: data.job_type || '',
+                totalPrice: data.total_price || '',
+                paymentMode: data.payment_mode || '',
+            });
+        }
+
+        // Render the runsheet EJS template with data
+        res.render('runsheet', {
+            podCreatedBy,
+            product,
+            deliveryDate: formattedDeliveryDate, // Use the formatted date
+            areas: areasJoined, // Use the joined string instead of the original variable
+            dispatchers,
+            trackingNumbers: runSheetData,
+            podCreatedDate,
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 app.post('/addressAreaCheck', (req, res) => {
