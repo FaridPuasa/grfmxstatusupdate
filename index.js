@@ -445,6 +445,7 @@ app.post('/updateDelivery', async (req, res) => {
             var latestPODDate = "";
             var detrackUpdate = "";
             var fmxUpdate = "";
+            var currentDetrackStatus = ""
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -473,6 +474,78 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             product = data.data.group_name;
+
+            if (data.data.status == 'info_recv') {
+                currentDetrackStatus = "Info Received"
+            }
+
+            if (data.data.status == 'on_hold') {
+                currentDetrackStatus = "On Hold"
+            }
+
+            if (data.data.status == 'shipment_delay') {
+                currentDetrackStatus = "Shipment delay"
+            }
+
+            if (data.data.status == 'custom_clearing') {
+                currentDetrackStatus = "Custom Clearing"
+            }
+
+            if (data.data.status == 'at_warehouse') {
+                currentDetrackStatus = "At Warehouse"
+            }
+
+            if (data.data.status == 'dispatched') {
+                currentDetrackStatus = "In Progress/Out for Delivery"
+            }
+
+            if (data.data.status == 'completed') {
+                currentDetrackStatus = "Completed"
+            }
+
+            if (data.data.status == 'failed') {
+                currentDetrackStatus = "Failed"
+            }
+
+            if (data.data.status == 'cancelled') {
+                currentDetrackStatus = "Cancelled"
+            }
+
+            if (data.data.status == 'missing_parcel') {
+                currentDetrackStatus = "Missing Parcel"
+            }
+
+            if (req.body.statusCode == 'CP') {
+                appliedStatus = "Custom Clearance in Progress"
+            }
+
+            if (req.body.statusCode == 38) {
+                appliedStatus = "Custom Clearance Release"
+            }
+
+            if (req.body.statusCode == 12) {
+                appliedStatus = "Item in Warehouse"
+            }
+
+            if (req.body.statusCode == 35) {
+                appliedStatus = "Out for Delivery"
+            }
+
+            if (req.body.statusCode == 'NA') {
+                appliedStatus = "Fail Delivery due to customer cannot be contacted"
+            }
+
+            if (req.body.statusCode == 44) {
+                appliedStatus = "Return To Warehouse"
+            }
+
+            if (req.body.statusCode == 'SC') {
+                appliedStatus = "Self Collect"
+            }
+
+            if (req.body.statusCode == 50) {
+                appliedStatus = "Success/Completed"
+            }
 
             if (product == 'FMX') {
                 if ((req.body.statusCode == 'CP') && (ccCheck == 0)) {
@@ -762,7 +835,7 @@ app.post('/updateDelivery', async (req, res) => {
             } else {
                 processingResults.push({
                     consignmentID,
-                    status: 'Error: Tracking Number is either not updated properly to flow or already completed',
+                    status: `Error: Tracking Number is not updated properly according to flow. The current Detrack status is ${currentDetrackStatus} and the status code applied is ${appliedStatus}`,
                 });
             }
 
