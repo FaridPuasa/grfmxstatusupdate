@@ -445,7 +445,8 @@ app.post('/updateDelivery', async (req, res) => {
             var latestPODDate = "";
             var detrackUpdate = "";
             var fmxUpdate = "";
-            var currentDetrackStatus = ""
+            var currentDetrackStatus = "";
+            var fmxReason = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -470,6 +471,9 @@ app.post('/updateDelivery', async (req, res) => {
                 }
                 if (data.data.milestones[i].status == 'completed') {
                     latestPODDate = data.data.milestones[i].pod_at;
+                }
+                if (data.data.milestones[i].status == 'failed') {
+                    fmxReason = data.data.milestones[i].reason;
                 }
             }
 
@@ -529,10 +533,6 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (req.body.statusCode == 35) {
                 appliedStatus = "Out for Delivery"
-            }
-
-            if (req.body.statusCode == 'NA') {
-                appliedStatus = "Fail Delivery due to customer cannot be contacted"
             }
 
             if (req.body.statusCode == 44) {
@@ -601,14 +601,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'NA') && /* (ccCheck == 1) && */ (data.data.status == 'dispatched')) {
-                    FMXAPIrun = 1;
-
-                    fmxUpdate = "FMX milestone updated to Failed delivery, Customer cannot be contacted.";
-
-                }
-
-                if ((req.body.statusCode == 44) && /* (ccCheck == 1) && */ (data.data.status != 'at_warehouse')) {
+                if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status != 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -617,10 +610,10 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
-                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse.";
+                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse. Reason: " + fmxReason;
 
                     DetrackAPIrun = 1;
-                    FMXAPIrun = 1;
+                    FMXAPIrun = 2;
                 }
 
                 if ((req.body.statusCode == 'SC') && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
@@ -639,14 +632,14 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 50) && /* (ccCheck == 1) && */ (data.data.status == 'completed')) {
-                    FMXAPIrun = 2;
+                    FMXAPIrun = 3;
 
                     fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
                 }
             }
 
             if (product != 'FMX') {
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'GRP') && (data.data.status != 'dispatched')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'GRP')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -661,7 +654,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'RS') && (data.data.status != 'dispatched')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'RS')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -676,7 +669,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product != 'GRP') && (product != 'RS') && (data.data.status != 'dispatched')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product != 'GRP') && (product != 'RS')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -785,6 +778,35 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (FMXAPIrun == 2) {
+                // Step 3: Create data for the second API request
+                const currentTime = moment().format('YYYY-MM-DD HH:mm:ss');
+
+                const requestData = {
+                    UploadType: '',
+                    FileName: '',
+                    FileFormat: '',
+                    FileData: '',
+                    DateEvent: currentTime,
+                    ConsignmentId: consignmentID,
+                    StatusCode: req.body.statusCode,
+                    CityName: 'BN',
+                    ConsigneeName: '',
+                    Remarks: fmxReason
+                };
+
+                // Step 4: Make the second API request with bearer token
+                const response4 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                });
+
+                // Handle success response
+                // You can customize this part with appropriate notifications and redirections
+                console.log('API response:', response4.data);
+            }
+
+            if (FMXAPIrun == 3) {
                 // Step 3: Make the third API POST request with accessToken
                 const currentDate = moment(latestPODDate).format('YYYY-MM-DD HH:mm:ss');
                 const fileName = `${consignmentID}_POD`;
