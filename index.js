@@ -6,7 +6,6 @@ const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const moment = require('moment');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -15,8 +14,29 @@ app.use(express.static('public'));
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: false }));
+// Middleware to parse JSON data
+app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
+
+const mongoose = require('mongoose');
+const db = require('./config/keys').MongoURI;
+mongoose.set('strictQuery', true)
+mongoose.connect(db, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+    .then(console.log('Database Connected'))
+    .catch(err => console.log(err))
+
+// Import the shared schema
+const podSchema = require('./schemas/podSchema');
+
+// Import your models
+const PharmacyPOD = require('./models/PharmacyPOD');
+const LDPOD = require('./models/LDPOD');
+const GRPPOD = require('./models/GRPPOD');
+const FMXPOD = require('./models/FMXPOD');
 
 // Define storage for uploaded images
 const storage = multer.memoryStorage();
@@ -38,9 +58,9 @@ app.get('/', (req, res) => {
     res.render('updateDelivery');
 });
 
-app.get('/runsheetGenerator', (req, res) => {
+app.get('/podGenerator', (req, res) => {
     // Render the form page with EJS
-    res.render('runsheetGenerator');
+    res.render('podGenerator');
 });
 
 app.get('/addressAreaCheck', (req, res) => {
@@ -51,19 +71,263 @@ app.get('/successUpdate', (req, res) => {
     res.render('successUpdate', { processingResults });
 });
 
-app.post('/generateRunsheet', async (req, res) => {
+app.get('/listofpharmacyPOD', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofpharmacyPOD', { pods });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch Pharmacy POD data');
+    }
+});
+
+app.get('/listofldPod', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await LDPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofldPod', { pods });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch Local Delivery POD data');
+    }
+});
+
+app.get('/listofgrpPod', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await GRPPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofgrpPod', { pods });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch GRP POD data');
+    }
+});
+
+app.get('/listoffmxPod', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await FMXPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listoffmxPod', { pods });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch FMX POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podpharmacyDetail/:podId', async (req, res) => {
+    try {
+        const pod = await PharmacyPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podpharmacyDetail', { htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podldDetail/:podId', async (req, res) => {
+    try {
+        const pod = await LDPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podldDetail', { htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podgrpDetail/:podId', async (req, res) => {
+    try {
+        const pod = await GRPPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podgrpDetail', { htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podfmxDetail/:podId', async (req, res) => {
+    try {
+        const pod = await FMXPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podFMXDetail', { htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+app.get('/deletePharmacyPod/:podId', async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await PharmacyPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofpharmacyPOD'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('Pharmacy POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete Pharmacy POD');
+    }
+});
+
+app.get('/deleteLDPod/:podId', async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await LDPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofldPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('Local Delivery POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete Local Delivery POD');
+    }
+});
+
+app.get('/deleteGRPPod/:podId', async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await GRPPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofgrpPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('GRP POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete GRP POD');
+    }
+});
+
+app.get('/deleteFMXPod/:podId', async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await FMXPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listoffmxPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('FMX POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete FMX POD');
+    }
+});
+
+
+// Route to save POD data
+app.post('/save-pod', (req, res) => {
+    const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent } = req.body;
+
+    // Choose the appropriate model based on the collection
+    let PodModel;
+    switch (product) {
+        case 'Pharmacy POD':
+            PodModel = PharmacyPOD;
+            break;
+        case 'LD POD':
+            PodModel = LDPOD;
+            break;
+        case 'GRP POD':
+            PodModel = GRPPOD;
+            break;
+        case 'FMX POD':
+            PodModel = FMXPOD;
+            break;
+        default:
+            return res.status(400).send('Invalid collection');
+    }
+
+    console.log(PodModel)
+
+    // Create a new document and save it to the MongoDB collection
+    const newPod = new PodModel({
+        podName: podName,
+        product: product,
+        podDate: podDate,
+        podCreator: podCreator,
+        deliveryDate: deliveryDate,
+        area: area,
+        dispatcher: dispatcher,
+        htmlContent: htmlContent
+    });
+
+    console.log(newPod)
+
+    newPod.save()
+        .then(() => {
+            res.status(200).send('POD data saved successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to save POD data');
+        });
+
+});
+
+app.post('/generatePOD', async (req, res) => {
     try {
         // Parse input data from the form
         const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, podCreatedDate } = req.body;
 
-        // Extract the year (YY) from the last two digits of the full year (YYYY)
-        const deliveryYear = deliveryDate.substring(2, 4);
-
-        // Split the delivery date into an array [YYYY, MM, DD]
-        const deliveryDateArray = deliveryDate.split('-');
-
-        // Format the delivery date as DD.MM.YY
-        const formattedDeliveryDate = deliveryDateArray[2] + '.' + deliveryDateArray[1] + '.' + deliveryYear;
+        const dispatchersCaps = dispatchers.toUpperCase()
 
         // Check if areas is a string or an array
         let areasArray = [];
@@ -79,42 +343,54 @@ app.post('/generateRunsheet', async (req, res) => {
         // Split tracking numbers into an array
         const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim());
 
-        // Fetch data for each tracking number
         const runSheetData = [];
+        const uniqueTrackingNumbers = new Set(); // Use a Set to automatically remove duplicates
+
         for (const trackingNumber of trackingNumbersArray) {
             if (!trackingNumber) continue;
-
-            const response = await axios.get(
-                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey,
-                    },
-                }
-            );
-
-            const data = response.data.data;
-            runSheetData.push({
-                trackingNumber,
-                deliverToCollectFrom: data.deliver_to_collect_from,
-                address: data.address,
-                phoneNumber: data.phone_number,
-                jobType: data.job_type || '',
-                totalPrice: data.total_price || '',
-                paymentMode: data.payment_mode || '',
-            });
+            uniqueTrackingNumbers.add(trackingNumber);
         }
 
+        // Convert the Set back to an array (if needed)
+        const uniqueTrackingNumbersArray = Array.from(uniqueTrackingNumbers);
+
+        for (const trackingNumber of uniqueTrackingNumbersArray) {
+            try {
+                const response = await axios.get(
+                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey,
+                        },
+                    }
+                );
+
+                const data = response.data.data;
+                runSheetData.push({
+                    trackingNumber,
+                    deliverToCollectFrom: data.deliver_to_collect_from,
+                    address: data.address,
+                    phoneNumber: data.phone_number,
+                    jobType: data.job_type || '',
+                    totalPrice: data.total_price || '',
+                    paymentMode: data.payment_mode || '',
+                });
+            } catch (error) {
+                console.error(`Error for tracking number ${trackingNumber}:`, error);
+                // You can handle the error for this specific tracking number here if needed.
+                // It will continue processing other tracking numbers.
+            }
+        }
         // Render the runsheet EJS template with data
-        res.render('runsheet', {
+        res.render('podGeneratorSuccess', {
             podCreatedBy,
             product,
-            deliveryDate: formattedDeliveryDate, // Use the formatted date
+            deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
             areas: areasJoined, // Use the joined string instead of the original variable
-            dispatchers,
+            dispatchers: dispatchersCaps,
             trackingNumbers: runSheetData,
-            podCreatedDate,
+            podCreatedDate: moment().format('DD.MM.YY')
         });
     } catch (error) {
         console.error('Error:', error);

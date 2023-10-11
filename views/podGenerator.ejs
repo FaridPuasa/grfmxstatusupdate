@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POD Generator</title>
+  <!-- Add Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+  <!-- Add your custom CSS here -->
+  <style>
+    /* Custom CSS for your page */
+    .navbar-nav.flex-row {
+      flex-direction: row !important;
+    }
+
+    /* Make the navbar background transparent */
+    .navbar {
+      background-color: transparent;
+    }
+
+    /* Add background color to the container */
+    .container-bg {
+      background-color: #333;
+      /* You can use your desired background color here */
+    }
+
+    /* Add margin to the navigation links */
+    .navbar-nav.flex-row .nav-item {
+      margin-right: 10px;
+    }
+
+    /* Add any custom styles specific to your form here */
+    .container-bg {
+      background-color: #333;
+      /* You can use your desired background color here */
+    }
+  </style>
+
+  <script>
+    function validateForm() {
+      const checkboxes = document.querySelectorAll('input[name="areas"]');
+      let atLeastOneSelected = false;
+      checkboxes.forEach((checkbox) => {
+        if (checkbox.checked) {
+          atLeastOneSelected = true;
+        }
+      });
+
+      if (!atLeastOneSelected) {
+        alert('Please select at least one area.');
+        return false;
+      }
+
+      // Continue with the form submission if at least one area is selected
+      return true;
+    }
+  </script>
+</head>
+
+<body>
+  <div class="container-bg">
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <nav class="navbar navbar-expand-lg navbar-dark">
+            <a class="navbar-brand mr-auto" href="/">
+                <h2>Go Rush</h2>
+            </a>
+            <ul class="navbar-nav flex-row">
+                <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
+                <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        POD LIST
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="podListDropdown">
+                        <a class="dropdown-item" href="/listofpharmacyPOD">Pharmacy</a>
+                        <a class="dropdown-item" href="/listofldpod">LD</a>
+                        <a class="dropdown-item" href="/listofgrppod">GRP</a>
+                        <a class="dropdown-item" href="/listoffmxpod">FMX</a>
+                    </div>
+                </li>
+                <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+            </ul>
+        </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="container mt-4">
+    <h1>POD Generator</h1>
+    <form action="/generatePOD" method="post" onsubmit="return validateForm()">
+      <div class="mb-3">
+        <label for="podCreatedBy" class="form-label">POD created by:</label>
+        <select class="form-select" name="podCreatedBy" id="podCreatedBy" required>
+          <option value="Nisah">Nisah</option>
+          <option value="Nasuha">Nasuha</option>
+          <option value="Hasbul">Hasbul</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="product" class="form-label">Product:</label>
+        <select class="form-select" name="product" id="product" required>
+          <option value="MOH/JPMC/PHC Pharmacy">MOH/JPMC/PHC Pharmacy</option>
+          <option value="Local Delivery">Local Delivery</option>
+          <option value="GRP Delivery">GRP Delivery</option>
+          <option value="FMX Delivery">FMX Delivery</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="deliveryDate" class="form-label">Delivery Date (DD.MM.YY):</label>
+        <input type="date" class="form-control" name="deliveryDate" id="deliveryDate" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Area (Select at least one):</label>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="areas" id="areaB" value="B">
+          <label class="form-check-label" for="areaB">B</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="areas" id="areaG" value="G">
+          <label class="form-check-label" for="areaG">G</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="areas" id="areaJT" value="JT">
+          <label class="form-check-label" for="areaJT">JT</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="areas" id="areaTTG" value="TTG">
+          <label class="form-check-label" for="areaTTG">TTG</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="areas" id="areaKB" value="KB">
+          <label class="form-check-label" for="areaKB">KB</label>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="dispatchers" class="form-label">Dispatchers:</label>
+        <select class="form-select" name="dispatchers" id="dispatchers" required>
+          <option value="Hasbul">Hasbul</option>
+          <option value="Safwan">Safwan</option>
+          <option value="Hazri">Hazri</option>
+          <option value="Naizam">Naizam</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="trackingNumbers" class="form-label">Tracking Number(s) (One per line):</label>
+        <textarea class="form-control" name="trackingNumbers" id="trackingNumbers" rows="5" required></textarea>
+      </div>
+      <input type="hidden" name="podCreatedDate" id="podCreatedDate" value="">
+      <input type="hidden" name="dispatcherAndDate" id="dispatcherAndDate" value="">
+      <button type="submit" class="btn btn-primary">Generate Runsheet</button>
+    </form>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
