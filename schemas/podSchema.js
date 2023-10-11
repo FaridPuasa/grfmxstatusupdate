@@ -8,7 +8,8 @@ const podSchema = new mongoose.Schema({
     deliveryDate: String,
     area: String,
     dispatcher: String,
-    htmlContent: String
+    htmlContent: String,
+    creationDate: String
 });
 
 module.exports = podSchema;

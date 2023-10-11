@@ -71,13 +71,13 @@ app.get('/successUpdate', (req, res) => {
     res.render('successUpdate', { processingResults });
 });
 
-app.get('/listofpharmacyPOD', async (req, res) => {
+app.get('/listofpharmacyPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+        const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofpharmacyPOD', { pods });
+        res.render('listofpharmacyPod', { pods });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -88,7 +88,7 @@ app.get('/listofpharmacyPOD', async (req, res) => {
 app.get('/listofldPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await LDPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+        const pods = await LDPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listofldPod', { pods });
@@ -102,7 +102,7 @@ app.get('/listofldPod', async (req, res) => {
 app.get('/listofgrpPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await GRPPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+        const pods = await GRPPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listofgrpPod', { pods });
@@ -116,7 +116,7 @@ app.get('/listofgrpPod', async (req, res) => {
 app.get('/listoffmxPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await FMXPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher');
+        const pods = await FMXPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listoffmxPod', { pods });
@@ -191,7 +191,7 @@ app.get('/podfmxDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podFMXDetail', { htmlContent: pod.htmlContent });
+        res.render('podfmxDetail', { htmlContent: pod.htmlContent });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -306,7 +306,8 @@ app.post('/save-pod', (req, res) => {
         deliveryDate: deliveryDate,
         area: area,
         dispatcher: dispatcher,
-        htmlContent: htmlContent
+        htmlContent: htmlContent,
+        creationDate: moment().format()
     });
 
     console.log(newPod)
