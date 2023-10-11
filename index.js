@@ -74,7 +74,7 @@ app.get('/successUpdate', (req, res) => {
 app.get('/listofpharmacyPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate');
+        const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listofpharmacyPod', { pods });
