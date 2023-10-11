@@ -71,13 +71,13 @@ app.get('/successUpdate', (req, res) => {
     res.render('successUpdate', { processingResults });
 });
 
-app.get('/listofpharmacyPod', async (req, res) => {
+app.get('/listofpharmacypod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofpharmacyPod', { pods });
+        res.render('listofpharmacypod', { pods });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
