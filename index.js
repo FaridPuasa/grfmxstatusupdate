@@ -77,7 +77,7 @@ app.get('/listofpharmacyPod', async (req, res) => {
         const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('/app/views/listofpharmacyPod', { pods });
+        res.render('listofpharmacyPod', { pods });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
