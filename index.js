@@ -1107,7 +1107,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
-                const currentTime = moment().format('YYYY-MM-DD HH:mm:ss');
+                const currentTime = moment().format();
 
                 const requestData = {
                     UploadType: '',
@@ -1135,7 +1135,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (FMXAPIrun == 2) {
                 // Step 3: Create data for the second API request
-                const currentTime = moment().format('YYYY-MM-DD HH:mm:ss');
+                const currentTime = moment().format();
 
                 const requestData = {
                     UploadType: '',
@@ -1164,7 +1164,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (FMXAPIrun == 3) {
                 // Step 3: Make the third API POST request with accessToken
-                const currentDate = moment(latestPODDate).format('YYYY-MM-DD HH:mm:ss');
+                const currentDate = moment(latestPODDate).format();
                 const fileName = `${consignmentID}_POD`;
 
                 const photo1FileUrl = data.data.photo_1_file_url;
