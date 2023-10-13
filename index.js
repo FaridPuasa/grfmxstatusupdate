@@ -330,6 +330,8 @@ app.post('/generatePOD', async (req, res) => {
 
         const dispatchersCaps = dispatchers.toUpperCase()
 
+        const podCreatedByCaps = podCreatedBy.toUpperCase()
+
         // Check if areas is a string or an array
         let areasArray = [];
         if (typeof areas === 'string') {
@@ -385,7 +387,7 @@ app.post('/generatePOD', async (req, res) => {
         }
         // Render the runsheet EJS template with data
         res.render('podGeneratorSuccess', {
-            podCreatedBy,
+            podCreatedBy: podCreatedByCaps,
             product,
             deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
             areas: areasJoined, // Use the joined string instead of the original variable
