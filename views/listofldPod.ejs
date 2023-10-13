@@ -133,7 +133,7 @@
                                 <%= pod.podDate %>
                             </td>
                             <td>
-                                <!-- Add a Delete button with a confirmation dialog -->
+                                <a href="/editLdPod/<%= pod._id %>" class="btn btn-primary btn-sm">Edit</a>
                                 <button class="btn btn-danger btn-sm"
                                     onclick="confirmDelete('<%= pod._id %>')">Delete</button>
                             </td>
@@ -148,9 +148,12 @@
 
     <script>
         $(document).ready(function () {
-            // Initialize DataTable with search and pagination
-            $('#podTable').DataTable();
+            // Initialize DataTable with search, pagination, and sorting by 'creationDate' in descending order
+            $('#podTable').DataTable({
+                order: [[5, 'desc']] // Sort by the 6th (0-based index) column, which is 'creationDate'
+            });
         });
+
     </script>
 
     <!-- Script for delete confirmation -->

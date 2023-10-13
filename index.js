@@ -199,6 +199,170 @@ app.get('/podfmxDetail/:podId', async (req, res) => {
     }
 });
 
+// Route to render the edit page for a specific POD
+app.get('/editPharmacyPod/:id', (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    PharmacyPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editPharmacyPod.ejs', { pod });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updatePharmacyPod/:id', (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    PharmacyPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
+app.get('/editLdPod/:id', (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    LDPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editLdPod.ejs', { pod });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateLdPod/:id', (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    LDPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
+app.get('/editGrpPod/:id', (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    GRPPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editGrpPod.ejs', { pod });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateGrpPod/:id', (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    GRPPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
+app.get('/editFmxPod/:id', (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    FMXPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editFmxPod.ejs', { pod });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateFmxPod/:id', (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    FMXPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
 app.get('/deletePharmacyPod/:podId', async (req, res) => {
     try {
         const podId = req.params.podId;
