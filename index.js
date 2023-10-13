@@ -791,7 +791,17 @@ app.post('/updateDelivery', async (req, res) => {
     // Split the tracking numbers by newlines
     const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim());
 
+    const uniqueConsignmentIDs = new Set(); // Use a Set to automatically remove duplicates
+
     for (const consignmentID of consignmentIDs) {
+        if (!consignmentID) continue;
+        uniqueConsignmentIDs.add(consignmentID);
+    }
+
+    // Convert the Set back to an array (if needed)
+    const uniqueConsignmentIDsArray = Array.from(uniqueConsignmentIDs);
+
+    for (const consignmentID of uniqueConsignmentIDsArray) {
         try {
             var DetrackAPIrun = 0;
             var FMXAPIrun = 0;
@@ -904,7 +914,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (product == 'FMX') {
-                if ((req.body.statusCode == 'CP') && /* (ccCheck == 0) && */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched')) {
+                if ((req.body.statusCode == 'CP') && /* (ccCheck == 0) && */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched') && (data.data.status != 'completed')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -919,13 +929,13 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 38) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched')) {
+                if ((req.body.statusCode == 38) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched') && (data.data.status != 'completed')) {
                     FMXAPIrun = 1;
 
                     fmxUpdate = "FMX milestone updated to Custom Clearance Release.";
                 }
 
-                if ((req.body.statusCode == 12) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched')) {
+                if ((req.body.statusCode == 12) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched') && (data.data.status != 'completed')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -957,7 +967,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status != 'at_warehouse')) {
+                if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status != 'at_warehouse') && (data.data.status != 'completed')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -995,7 +1005,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (product != 'FMX') {
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'GRP')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product == 'GRP')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1010,7 +1020,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product == 'RS')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product == 'RS')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1025,7 +1035,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (product != 'GRP') && (product != 'RS')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product != 'GRP') && (product != 'RS')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
