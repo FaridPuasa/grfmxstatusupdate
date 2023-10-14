@@ -98,24 +98,24 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <option value="CP">Custom Clearance In Progress (FMX)</option>
-                        <option value="38">Custom Clearance Release (FMX)</option>
-                        <option value="12">Item In Warehouse</option>
-                        <option value="35">Out for Delivery</option>
-                        <option value="SD">Swap Dispatchers</option>
-                        <option value="MD">Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)
+                        <option value="CP">Custom Clearance In Progress (FMX only)</option>
+                        <option value="38">Custom Clearance Release (FMX only)</option>
+                        <option value="12">Item In Warehouse (All)</option>
+                        <option value="35">Out for Delivery (All)</option>
+                        <option value="SD">Swap Dispatchers (All)</option>
+                        <option value="CSSC">Self Collect (All)</option>
+                        <option value="50">Success/Completed (FMX)</option>
+                        <option value="44">Failed Delivery. Return To Warehouse (with optional additional remarks for FMX)(All)
                         </option>
-                        <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX)
+                        <option value="MD">Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX only)
+                        </option>
+                        <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX only)
                         </option>
                         <option value="FD">Failed Delivery due to Reschedule Delivery Requested By Customer. Return to
-                            Warehouse (FMX)</option>
+                            Warehouse (FMX only)</option>
                         <option value="SC">Failed Delivery due to Reschedule to Self Collect Requested By Customer.
                             Return
-                            to Warehouse (FMX)</option>
-                        <option value="44">Failed Delivery (optional additional remarks for FMX). Return To Warehouse
-                        </option>
-                        <option value="CSSC">Self Collect</option>
-                        <option value="50">Success/Completed (FMX)</option>
+                            to Warehouse (FMX only)</option>
                     </select>
                 </div>
             </div>
@@ -140,7 +140,7 @@
             </div>
             <div class="mb-3">
                 <div class="field-wrapper" id="additionalReasonWrapper">
-                    <label for="additionalReason" class="form-label">Additional Reason:</label>
+                    <label for="additionalReason" class="form-label">Additional Reason (FMX Only):</label>
                     <input type="text" id="additionalReason" name="additionalReason" class="form-control" disabled>
                     <small>*For FMX Orders. This field will replace the reason chosen by the dispatcher in the agent app
                         to
