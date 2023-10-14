@@ -1068,22 +1068,26 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (req.body.statusCode == 'MD') {
-                appliedStatus = "Failed Delivery: Unattempted Delivery (FMX)"
+                appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse(FMX)"
             }
 
             if (req.body.statusCode == 'RF') {
-                appliedStatus = "Failed Delivery: Customer Declined Delivery (FMX)"
+                appliedStatus = "Failed Delivery due to Customer Declined Delivery. Return to Warehouse(FMX)"
             }
 
             if (req.body.statusCode == 'FD') {
-                appliedStatus = "Failed Delivery: Reschedule Delivery Requested By Customer (FMX)"
-            }
-
-            if (req.body.statusCode == 44) {
-                appliedStatus = "Return To Warehouse"
+                appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
             }
 
             if (req.body.statusCode == 'SC') {
+                appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
+            }
+
+            if (req.body.statusCode == 44) {
+                appliedStatus = "Failed Delivery (optional additional remarks for FMX). Return To Warehouse"
+            }
+
+            if (req.body.statusCode == 'CSSC') {
                 appliedStatus = "Self Collect"
             }
 
@@ -1145,24 +1149,81 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')){
-                    fmxUpdate = "FMX milestone updated to Failed Delivery: Unattempted Delivery (FMX).";
-                    FMXAPIrun = 1;
+                if ((req.body.statusCode == 'SD') && /* (ccCheck == 1) && */ (data.data.status == 'dispatched')) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            date: req.body.assignDate, // Get the Assign Date from the form
+                            assign_to: req.body.dispatchers // Get the selected dispatcher from the form
+                        }
+                    };
+
+                    detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+
+                    DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')){
-                    fmxUpdate = "Failed Delivery: Customer Declined Delivery (FMX)";
-                    FMXAPIrun = 1;
+                if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse" // Use the calculated dStatus
+                        }
+                    };
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery. Return to Warehouse.";
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 3;
                 }
 
-                if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')){
-                    fmxUpdate = "Failed Delivery: Reschedule Delivery Requested By Customer (FMX)";
-                    FMXAPIrun = 1;
+                if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse" // Use the calculated dStatus
+                        }
+                    };
+
+                    fmxReason = req.body.additionalReason;
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery due to " + fmxReason + ". Return to Warehouse";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 3;
                 }
 
-                if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')){
-                    fmxUpdate = "Failed Delivery: Reschedule to Self Collect Requested By Customer (FMX)";
-                    FMXAPIrun = 1;
+                if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse" // Use the calculated dStatus
+                        }
+                    };
+
+                    fmxReason = req.body.additionalReason;
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer to " + fmxReason + ". Return to Warehouse";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 3;
+                }
+
+                if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse" // Use the calculated dStatus
+                        }
+                    };
+
+                    fmxReason = req.body.additionalReason;
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer to " + fmxReason + ". Return to Warehouse";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 3;
                 }
 
                 if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status == 'failed')) {
@@ -1173,7 +1234,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    if (req.body.additionalReason.length != 0){
+                    if (req.body.additionalReason.length != 0) {
                         fmxReason = req.body.additionalReason;
                     }
 
@@ -1189,7 +1250,7 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                            assign_to: "Selfcollect", // Get the selected dispatcher from the form
                             status: "dispatched" // Use the calculated dStatus
                         }
                     };
@@ -1200,7 +1261,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 50) && /* (ccCheck == 1) && */ (data.data.status == 'completed')) {
-                    FMXAPIrun = 3;
+                    FMXAPIrun = 5;
 
                     fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
                 }
@@ -1376,14 +1437,14 @@ app.post('/updateDelivery', async (req, res) => {
                 console.log('API response:', response4.data);
             }
 
-            if (FMXAPIrun === 1) {
+            if (FMXAPIrun == 3) {
                 // Define an array of status codes to use in the two runs
                 const statusCodesToRun = [req.body.statusCode, '44']; // Replace with actual status codes
-            
+
                 for (let i = 0; i < statusCodesToRun.length; i++) {
                     // Step 3: Create data for the API request
                     const currentTime = moment().format();
-            
+
                     const requestData = {
                         UploadType: '',
                         FileName: '',
@@ -1393,26 +1454,30 @@ app.post('/updateDelivery', async (req, res) => {
                         ConsignmentId: consignmentID,
                         StatusCode: statusCodesToRun[i], // Use the current status code from the array
                         CityName: 'BN',
-                        ConsigneeName: '',
-                        Remark: fmxReason
+                        ConsigneeName: ''
                     };
-            
+
+                    if (req.body.statusCode != 'MD') {
+                        // Conditionally set the Remark field in the first run
+                        if (i == 0) {
+                            requestData.Remark = fmxReason;
+                        }
+                    }
+
                     // Step 4: Make the API request with the bearer token
                     const response = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
                         headers: {
                             Authorization: `Bearer ${accessToken}`
                         }
                     });
-            
+
                     // Handle success response
                     // You can customize this part with appropriate notifications and redirections
                     console.log(`API response for status code ${statusCodesToRun[i]}:`, response.data);
                 }
             }
 
-
-
-            if (FMXAPIrun == 3) {
+            if (FMXAPIrun == 5) {
                 // Step 3: Make the third API POST request with accessToken
                 const currentDate = moment(latestPODDate).format();
                 const fileName = `${consignmentID}_POD`;

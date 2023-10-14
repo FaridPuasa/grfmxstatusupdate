@@ -104,6 +104,7 @@
                         <option value="38">Custom Clearance Release (FMX)</option>
                         <option value="12">Item In Warehouse</option>
                         <option value="35">Out for Delivery</option>
+                        <option value="SD">Swap Dispatchers</option>
                         <option value="MD">Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)
                         </option>
                         <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX)
@@ -136,7 +137,6 @@
                         <option value="Safwan">Safwan</option>
                         <option value="Hazri">Hazri</option>
                         <option value="Naizam">Naizam</option>
-                        <option value="Selfcollect">Self Collect</option>
                     </select>
                 </div>
             </div>
@@ -235,7 +235,7 @@
                 $("#dispatchersWrapper").fadeIn();
                 $("#additionalReasonWrapper").fadeIn();
 
-                if (selectedStatusCode === '35') {
+                if ((selectedStatusCode === '35')||(selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
                     dispatchersField.disabled = false;
@@ -249,47 +249,21 @@
                     assignDateField.required = true;
                     dispatchersField.required = true;
                     additionalReasonField.required = false;
-
-                    // Disable all options in the Dispatchers dropdown except "CS SC" if selected
-                    const dispatcherOptions = dispatchersField.options;
-                    for (let i = 0; i < dispatcherOptions.length; i++) {
-                        const option = dispatcherOptions[i];
-                        if (option.value === 'Selfcollect' && dispatchersField.value !== 'Selfcollect') {
-                            option.disabled = true;
-                        } else {
-                            option.disabled = false;
-                        }
-                    }
                 } else if (selectedStatusCode === 'CSSC') {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
-                    dispatchersField.disabled = false;
+                    dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
 
                     $("#assignDateWrapper").fadeIn();
-                    $("#dispatchersWrapper").fadeIn();
+                    $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
-                    dispatchersField.required = true;
+                    dispatchersField.required = false;
                     additionalReasonField.required = false;
 
-                    // Select "CS SC" automatically when "Self Collect" is chosen
-                    if (selectedStatusCode === 'CSSC') {
-                        dispatchersField.value = 'Selfcollect';
-                    }
-
-                    // Disable all options in the Dispatchers dropdown except "CS SC" if selected
-                    const dispatcherOptions = dispatchersField.options;
-                    for (let i = 0; i < dispatcherOptions.length; i++) {
-                        const option = dispatcherOptions[i];
-                        if (option.value === 'Selfcollect' && dispatchersField.value !== 'Selfcollect') {
-                            option.disabled = false;
-                        } else {
-                            option.disabled = true;
-                        }
-                    }
                 } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC')) {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
