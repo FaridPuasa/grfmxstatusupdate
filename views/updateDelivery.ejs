@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Update Delivery</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
     <style>
         /* Custom CSS for your page */
         .navbar-nav.flex-row {
@@ -61,7 +64,8 @@
                             <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
                             <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     POD List
                                 </a>
                                 <div class="dropdown-menu" aria-labelledby="podListDropdown">
@@ -71,7 +75,8 @@
                                     <a class="dropdown-item" href="/listoffmxPod">FMX</a>
                                 </div>
                             </li>
-                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker
+                                    (FMX)</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -82,38 +87,67 @@
         <h1>Update Delivery</h1>
         <form action="/updateDelivery" method="post">
             <div class="mb-3">
-                <label for="consignmentID" class="form-label">Tracking Number(s):</label>
-                <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2" required></textarea>
-                <small>For old GRP orders, use Go Rush tracking number. For new GRP orders from 9.10.23 onwards, use
-                    original tracking number</small>
+                <div class="field-wrapper" id="consignmentIDWrapper">
+                    <label for="consignmentID" class="form-label">Tracking Number(s):</label>
+                    <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2"
+                        required></textarea>
+                    <small>For old GRP orders, use Go Rush tracking number. For new GRP orders from 9.10.23 onwards, use
+                        original tracking number</small>
+                </div>
             </div>
             <div class="mb-3">
-                <label for="statusCode" class="form-label">Status Code:</label>
-                <select id="statusCode" name="statusCode" class="form-select" required>
-                    <option value="" selected>Please select status</option>
-                    <option value="CP">Custom Clearance In Progress (FMX)</option>
-                    <option value="38">Custom Clearance Release (FMX)</option>
-                    <option value="12">Item In Warehouse</option>
-                    <option value="35">Out for Delivery</option>
-                    <option value="44">Return To Warehouse</option>
-                    <option value="SC">Self Collect</option>
-                    <option value="50">Success/Completed (FMX)</option>
-                </select>
+                <div class="field-wrapper" id="statusCodeWrapper">
+                    <label for="statusCode" class="form-label">Status Code:</label>
+                    <select id="statusCode" name="statusCode" class="form-select" required>
+                        <option value="" selected>Please select status</option>
+                        <option value="CP">Custom Clearance In Progress (FMX)</option>
+                        <option value="38">Custom Clearance Release (FMX)</option>
+                        <option value="12">Item In Warehouse</option>
+                        <option value="35">Out for Delivery</option>
+                        <option value="MD">Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)
+                        </option>
+                        <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX)
+                        </option>
+                        <option value="FD">Failed Delivery due to Reschedule Delivery Requested By Customer. Return to
+                            Warehouse (FMX)</option>
+                        <option value="SC">Failed Delivery due to Reschedule to Self Collect Requested By Customer.
+                            Return
+                            to Warehouse (FMX)</option>
+                        <option value="44">Failed Delivery (optional additional remarks for FMX). Return To Warehouse
+                        </option>
+                        <option value="CSSC">Self Collect</option>
+                        <option value="50">Success/Completed (FMX)</option>
+                    </select>
+                </div>
             </div>
             <div class="mb-3">
-                <label for="assignDate" class="form-label">Assign Date:</label>
-                <input type="date" id="assignDate" name="assignDate" class="form-control" min="{{todayDate}}" disabled>
+                <div class="field-wrapper" id="assignDateWrapper">
+                    <label for="assignDate" class="form-label">Assign Date:</label>
+                    <input type="date" id="assignDate" name="assignDate" class="form-control" min="{{todayDate}}"
+                        disabled>
+                </div>
             </div>
             <div class="mb-3">
-                <label for="dispatchers" class="form-label">Dispatchers:</label>
-                <select id="dispatchers" name="dispatchers" class="form-select" disabled>
-                    <option value="" selected>Please select dispatcher</option>
-                    <option value="Hasbul">Hasbul</option>
-                    <option value="Safwan">Safwan</option>
-                    <option value="Hazri">Hazri</option>
-                    <option value="Naizam">Naizam</option>
-                    <option value="CS SC">CS SC</option>
-                </select>
+                <div class="field-wrapper" id="dispatchersWrapper">
+                    <label for="dispatchers" class="form-label">Dispatchers:</label>
+                    <select id="dispatchers" name="dispatchers" class="form-select" disabled>
+                        <option value="" selected>Please select dispatcher</option>
+                        <option value="Hasbul">Hasbul</option>
+                        <option value="Safwan">Safwan</option>
+                        <option value="Hazri">Hazri</option>
+                        <option value="Naizam">Naizam</option>
+                        <option value="Selfcollect">Self Collect</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="additionalReasonWrapper">
+                    <label for="additionalReason" class="form-label">Additional Reason:</label>
+                    <input type="text" id="additionalReason" name="additionalReason" class="form-control" disabled>
+                    <small>For FMX Orders. This field will replace the reason chosen by the dispatcher in the agent app
+                        to
+                        be updated to FMX only.</small>
+                </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
         </form>
@@ -128,124 +162,192 @@
         <div class="mt-4 p-3 delivery-flow-box"
             style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
             <h5>Standard Delivery Flow:</h5>
-            <p><strong>Success:</strong> At Warehouse &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App)</p>
-            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Return To Warehouse</p>
-            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on Agent App)
+            <p><strong>Success:</strong> At Warehouse &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent
+                App)</p>
+            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Return To
+                Warehouse</p>
+            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on
+                Agent App)
             </p>
         </div>
         <div class="mt-4 p-3 delivery-flow-box"
             style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
             <h5>FMX Delivery Flow:</h5>
             <p><strong>Success:</strong> Custom Clearing in Progress &rarr; Custom Clearing Release &rarr; At Warehouse
-                &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App and CS Team on Update Delivery Page)</p>
-            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Return To Warehouse</p>
-            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on Agent App & Update Delivery Page)
+                &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App and CS Team on Update Delivery
+                Page)</p>
+            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Failed Delivery. Return to Warehouse</p>
+            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on
+                Agent App & Update Delivery Page)
             </p>
         </div>
     </main>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        // Get references to the "Assign Date" and "Dispatchers" fields
-        const assignDateField = document.getElementById('assignDate');
-        const dispatchersField = document.getElementById('dispatchers');
+        document.addEventListener("DOMContentLoaded", function () {
+            $("#assignDateWrapper").hide();
+            $("#dispatchersWrapper").hide();
+            $("#additionalReasonWrapper").hide();
+            // Get references to the "Assign Date" and "Dispatchers" fields
+            const assignDateField = document.getElementById('assignDate');
+            const dispatchersField = document.getElementById('dispatchers');
+            const additionalReasonField = document.getElementById('additionalReason');
 
-        // Get reference to the "Status Code" select element
-        const statusCodeSelect = document.getElementById('statusCode');
+            // Get reference to the "Status Code" select element
+            const statusCodeSelect = document.getElementById('statusCode');
 
-        // Get reference to the submit button
-        const submitButton = document.getElementById('submitButton');
+            // Get reference to the submit button
+            const submitButton = document.getElementById('submitButton');
 
-        // Get the current date in YYYY-MM-DD format
-        const todayDate = new Date().toISOString().split('T')[0];
+            // Get the current date in YYYY-MM-DD format
+            const todayDate = new Date().toISOString().split('T')[0];
 
-        // Set the minimum date for the "Assign Date" field to today
-        assignDateField.min = todayDate;
+            // Set the minimum date for the "Assign Date" field to today
+            assignDateField.min = todayDate;
 
-        // Function to disable the submit button when it's clicked and show the loading animation
-        function disableSubmitButton(event) {
-            submitButton.disabled = true;
-            document.getElementById('loading').style.display = 'block'; // Show the loading animation
-        }
+            // Function to disable the submit button when it's clicked and show the loading animation
+            function disableSubmitButton(event) {
+                submitButton.disabled = true;
+                document.getElementById('loading').style.display = 'block'; // Show the loading animation
+            }
 
-        // Attach the disableSubmitButton function to the "submit" event of the form
-        document.querySelector('form').addEventListener('submit', disableSubmitButton);
+            // Attach the disableSubmitButton function to the "submit" event of the form
+            document.querySelector('form').addEventListener('submit', disableSubmitButton);
 
-        // Function to enable/disable fields and set them as required based on the selected status code
-        function updateFieldStatus() {
-            const selectedStatusCode = statusCodeSelect.value;
+            // Function to enable/disable fields and set them as required based on the selected status code
+            function updateFieldStatus() {
+                const selectedStatusCode = statusCodeSelect.value;
 
-            // Reset the values of "Assign Date" and "Dispatchers"
-            assignDateField.value = '';
-            dispatchersField.value = '';
+                // Reset the values of "Assign Date" and "Dispatchers"
+                assignDateField.value = '';
+                dispatchersField.value = '';
+                additionalReasonField.value = '';
 
-            if (selectedStatusCode === '35') {
-                // Enable the fields for "Out for Delivery" or "Self Collect"
-                assignDateField.disabled = false;
-                dispatchersField.disabled = false;
+                $("#bruHIMSNumberTemp").fadeIn();
 
-                // Set the fields as required
-                assignDateField.required = true;
-                dispatchersField.required = true;
+                $("#assignDateWrapper").hide();
+                $("#dispatchersWrapper").hide();
+                $("#additionalReasonWrapper").hide();
 
-                // Disable all options in the Dispatchers dropdown except "CS SC" if selected
-                const dispatcherOptions = dispatchersField.options;
-                for (let i = 0; i < dispatcherOptions.length; i++) {
-                    const option = dispatcherOptions[i];
-                    if (option.value === 'CS SC' && dispatchersField.value !== 'CS SC') {
-                        option.disabled = true;
-                    } else {
-                        option.disabled = false;
+                $("#assignDateWrapper").fadeIn();
+                $("#dispatchersWrapper").fadeIn();
+                $("#additionalReasonWrapper").fadeIn();
+
+                if (selectedStatusCode === '35') {
+                    // Enable the fields for "Out for Delivery" or "Self Collect"
+                    assignDateField.disabled = false;
+                    dispatchersField.disabled = false;
+                    additionalReasonField.disabled = true;
+
+                    $("#assignDateWrapper").fadeIn();
+                    $("#dispatchersWrapper").fadeIn();
+                    $("#additionalReasonWrapper").hide();
+
+                    // Set the fields as required
+                    assignDateField.required = true;
+                    dispatchersField.required = true;
+                    additionalReasonField.required = false;
+
+                    // Disable all options in the Dispatchers dropdown except "CS SC" if selected
+                    const dispatcherOptions = dispatchersField.options;
+                    for (let i = 0; i < dispatcherOptions.length; i++) {
+                        const option = dispatcherOptions[i];
+                        if (option.value === 'Selfcollect' && dispatchersField.value !== 'Selfcollect') {
+                            option.disabled = true;
+                        } else {
+                            option.disabled = false;
+                        }
                     }
-                }
-            } else if (selectedStatusCode === 'SC') {
-                // Enable the fields for "Out for Delivery" or "Self Collect"
-                assignDateField.disabled = false;
-                dispatchersField.disabled = false;
+                } else if (selectedStatusCode === 'CSSC') {
+                    // Enable the fields for "Out for Delivery" or "Self Collect"
+                    assignDateField.disabled = false;
+                    dispatchersField.disabled = false;
+                    additionalReasonField.disabled = true;
 
-                // Set the fields as required
-                assignDateField.required = true;
-                dispatchersField.required = true;
+                    $("#assignDateWrapper").fadeIn();
+                    $("#dispatchersWrapper").fadeIn();
+                    $("#additionalReasonWrapper").hide();
 
-                // Select "CS SC" automatically when "Self Collect" is chosen
-                if (selectedStatusCode === 'SC') {
-                    dispatchersField.value = 'CS SC';
-                }
+                    // Set the fields as required
+                    assignDateField.required = true;
+                    dispatchersField.required = true;
+                    additionalReasonField.required = false;
 
-                // Disable all options in the Dispatchers dropdown except "CS SC" if selected
-                const dispatcherOptions = dispatchersField.options;
-                for (let i = 0; i < dispatcherOptions.length; i++) {
-                    const option = dispatcherOptions[i];
-                    if (option.value === 'CS SC' && dispatchersField.value !== 'CS SC') {
-                        option.disabled = false;
-                    } else {
-                        option.disabled = true;
+                    // Select "CS SC" automatically when "Self Collect" is chosen
+                    if (selectedStatusCode === 'CSSC') {
+                        dispatchersField.value = 'Selfcollect';
                     }
-                }
-            } else {
-                // Disable the fields for other status codes
-                assignDateField.disabled = true;
-                dispatchersField.disabled = true;
 
-                // Remove the "required" attribute from the fields
-                assignDateField.required = false;
-                dispatchersField.required = false;
+                    // Disable all options in the Dispatchers dropdown except "CS SC" if selected
+                    const dispatcherOptions = dispatchersField.options;
+                    for (let i = 0; i < dispatcherOptions.length; i++) {
+                        const option = dispatcherOptions[i];
+                        if (option.value === 'Selfcollect' && dispatchersField.value !== 'Selfcollect') {
+                            option.disabled = false;
+                        } else {
+                            option.disabled = true;
+                        }
+                    }
+                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC')) {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = false;
+                    additionalReasonField.required = true;
 
-                // Enable all options in the Dispatchers dropdown
-                const dispatcherOptions = dispatchersField.options;
-                for (let i = 0; i < dispatcherOptions.length; i++) {
-                    dispatcherOptions[i].disabled = false;
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").fadeIn();
+                } else if (selectedStatusCode === '44') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = false;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").fadeIn();
+                } else {
+                    // Disable the fields for other status codes
+                    assignDateField.disabled = true;
+                    dispatchersField.disabled = true;
+                    additionalReasonField.disabled = true;
+
+                    // Remove the "required" attribute from the fields
+                    assignDateField.required = false;
+                    dispatchersField.required = false;
+                    additionalReasonField.required = false;
+
+                    // Hide all wrappers
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+
+                    // Enable all options in the Dispatchers dropdown
+                    const dispatcherOptions = dispatchersField.options;
+                    for (let i = 0; i < dispatcherOptions.length; i++) {
+                        dispatcherOptions[i].disabled = false;
+                    }
                 }
             }
-        }
 
-        // Attach the updateFieldStatus function to the "change" event of the status code select element
-        statusCodeSelect.addEventListener('change', updateFieldStatus);
+            // Attach the updateFieldStatus function to the "change" event of the status code select element
+            statusCodeSelect.addEventListener('change', updateFieldStatus);
 
-        // Initialize field status based on the initial selected status code
-        updateFieldStatus();
+            // Initialize field status based on the initial selected status code
+            updateFieldStatus();
+        });
     </script>
 </body>
 

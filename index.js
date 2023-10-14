@@ -1067,6 +1067,18 @@ app.post('/updateDelivery', async (req, res) => {
                 appliedStatus = "Out for Delivery"
             }
 
+            if (req.body.statusCode == 'MD') {
+                appliedStatus = "Failed Delivery: Unattempted Delivery (FMX)"
+            }
+
+            if (req.body.statusCode == 'RF') {
+                appliedStatus = "Failed Delivery: Customer Declined Delivery (FMX)"
+            }
+
+            if (req.body.statusCode == 'FD') {
+                appliedStatus = "Failed Delivery: Reschedule Delivery Requested By Customer (FMX)"
+            }
+
             if (req.body.statusCode == 44) {
                 appliedStatus = "Return To Warehouse"
             }
@@ -1133,13 +1145,37 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status != 'at_warehouse') && (data.data.status != 'completed')) {
+                if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')){
+                    fmxUpdate = "FMX milestone updated to Failed Delivery: Unattempted Delivery (FMX).";
+                    FMXAPIrun = 1;
+                }
+
+                if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')){
+                    fmxUpdate = "Failed Delivery: Customer Declined Delivery (FMX)";
+                    FMXAPIrun = 1;
+                }
+
+                if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')){
+                    fmxUpdate = "Failed Delivery: Reschedule Delivery Requested By Customer (FMX)";
+                    FMXAPIrun = 1;
+                }
+
+                if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')){
+                    fmxUpdate = "Failed Delivery: Reschedule to Self Collect Requested By Customer (FMX)";
+                    FMXAPIrun = 1;
+                }
+
+                if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status == 'failed')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse" // Use the calculated dStatus
                         }
                     };
+
+                    if (req.body.additionalReason.length != 0){
+                        fmxReason = req.body.additionalReason;
+                    }
 
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
                     fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse. Reason: " + fmxReason;
@@ -1148,7 +1184,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 2;
                 }
 
-                if ((req.body.statusCode == 'SC') && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
+                if ((req.body.statusCode == 'CSSC') && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1242,7 +1278,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'SC') && (data.data.status == 'at_warehouse')) {
+                if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1281,6 +1317,7 @@ app.post('/updateDelivery', async (req, res) => {
                 });
             }
 
+            //normal run
             if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
@@ -1309,6 +1346,7 @@ app.post('/updateDelivery', async (req, res) => {
                 console.log('API response:', response2.data);
             }
 
+            //for 44 only
             if (FMXAPIrun == 2) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
@@ -1337,6 +1375,42 @@ app.post('/updateDelivery', async (req, res) => {
                 // You can customize this part with appropriate notifications and redirections
                 console.log('API response:', response4.data);
             }
+
+            if (FMXAPIrun === 1) {
+                // Define an array of status codes to use in the two runs
+                const statusCodesToRun = [req.body.statusCode, '44']; // Replace with actual status codes
+            
+                for (let i = 0; i < statusCodesToRun.length; i++) {
+                    // Step 3: Create data for the API request
+                    const currentTime = moment().format();
+            
+                    const requestData = {
+                        UploadType: '',
+                        FileName: '',
+                        FileFormat: '',
+                        FileData: '',
+                        DateEvent: currentTime,
+                        ConsignmentId: consignmentID,
+                        StatusCode: statusCodesToRun[i], // Use the current status code from the array
+                        CityName: 'BN',
+                        ConsigneeName: '',
+                        Remark: fmxReason
+                    };
+            
+                    // Step 4: Make the API request with the bearer token
+                    const response = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`
+                        }
+                    });
+            
+                    // Handle success response
+                    // You can customize this part with appropriate notifications and redirections
+                    console.log(`API response for status code ${statusCodesToRun[i]}:`, response.data);
+                }
+            }
+
+
 
             if (FMXAPIrun == 3) {
                 // Step 3: Make the third API POST request with accessToken
