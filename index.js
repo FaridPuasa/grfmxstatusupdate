@@ -508,7 +508,7 @@ app.post('/generatePOD', async (req, res) => {
         const areasJoined = areasArray.join(', ');
 
         // Split tracking numbers into an array
-        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim());
+        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim().toUpperCase());
 
         const runSheetData = [];
         const uniqueTrackingNumbers = new Set(); // Use a Set to automatically remove duplicates
@@ -955,7 +955,7 @@ app.post('/updateDelivery', async (req, res) => {
     const accessToken = authResponse.data.result.accessToken;
 
     // Split the tracking numbers by newlines
-    const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim());
+    const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
 
     const uniqueConsignmentIDs = new Set(); // Use a Set to automatically remove duplicates
 
