@@ -105,11 +105,13 @@
                         <option value="SD">Swap Dispatchers (All)</option>
                         <option value="CSSC">Self Collect (All)</option>
                         <option value="50">Success/Completed (FMX only)</option>
-                        <option value="44">Failed Delivery. Return To Warehouse (with optional additional remarks for FMX)(All)
+                        <option value="44">Failed Delivery. Return To Warehouse (with optional additional remarks for
+                            FMX)(All)
                         </option>
                         <option value="MD">Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX only)
                         </option>
-                        <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX only)
+                        <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX
+                            only)
                         </option>
                         <option value="FD">Failed Delivery due to Reschedule Delivery Requested By Customer. Return to
                             Warehouse (FMX only)</option>
@@ -122,8 +124,7 @@
             <div class="mb-3">
                 <div class="field-wrapper" id="assignDateWrapper">
                     <label for="assignDate" class="form-label">Assign Date:</label>
-                    <input type="date" id="assignDate" name="assignDate" class="form-control" min="{{todayDate}}"
-                        disabled>
+                    <input type="date" id="assignDate" name="assignDate" class="form-control" disabled>
                 </div>
             </div>
             <div class="mb-3">
@@ -145,8 +146,9 @@
                     <small>*For FMX Orders. This field will replace the reason chosen by the dispatcher in the agent app
                         to
                         be updated to FMX only.</small><br>
-                        <small>**For Customer Declined Delivery, fill in the reason why the customer declined.</small><br>
-                        <small>***For Reschedule Delivery or Reschedule to Self Pick up, fill in the date of reschedule.</small>
+                    <small>**For Customer Declined Delivery, fill in the reason why the customer declined.</small><br>
+                    <small>***For Reschedule Delivery or Reschedule to Self Pick up, fill in the date of
+                        reschedule.</small>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -176,7 +178,8 @@
             <p><strong>Success:</strong> Custom Clearing in Progress &rarr; Custom Clearing Release &rarr; At Warehouse
                 &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App and CS Team on Update Delivery
                 Page)</p>
-            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Failed Delivery. Return to Warehouse</p>
+            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Failed
+                Delivery. Return to Warehouse</p>
             <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on
                 Agent App & Update Delivery Page)
             </p>
@@ -201,12 +204,6 @@
 
             // Get reference to the submit button
             const submitButton = document.getElementById('submitButton');
-
-            // Get the current date in YYYY-MM-DD format
-            const todayDate = new Date().toISOString().split('T')[0];
-
-            // Set the minimum date for the "Assign Date" field to today
-            assignDateField.min = todayDate;
 
             // Function to disable the submit button when it's clicked and show the loading animation
             function disableSubmitButton(event) {
@@ -236,7 +233,7 @@
                 $("#dispatchersWrapper").fadeIn();
                 $("#additionalReasonWrapper").fadeIn();
 
-                if ((selectedStatusCode === '35')||(selectedStatusCode === 'SD')) {
+                if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
                     dispatchersField.disabled = false;
