@@ -37,6 +37,7 @@ const PharmacyPOD = require('./models/PharmacyPOD');
 const LDPOD = require('./models/LDPOD');
 const GRPPOD = require('./models/GRPPOD');
 const FMXPOD = require('./models/FMXPOD');
+const ORDERS = require('./models/ORDERS');
 
 // Define storage for uploaded images
 const storage = multer.memoryStorage();
@@ -69,6 +70,36 @@ app.get('/addressAreaCheck', (req, res) => {
 
 app.get('/successUpdate', (req, res) => {
     res.render('successUpdate', { processingResults });
+});
+
+app.get('/listofpharmacyOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
+        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "EXP" })
+            .select([
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership'
+            ])
+            .sort({ _id: -1 }); // Sort based on the default ObjectId in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
 });
 
 app.get('/listofpharmacyPod', async (req, res) => {
@@ -1350,6 +1381,20 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     detrackUpdate = "Detrack status updated for Self Collect. ";
+
+                    DetrackAPIrun = 1;
+                }
+
+                if (req.body.statusCode == 'CD') {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "cancelled",
+                            note: req.body.additionalReason
+                        }
+                    };
+
+                    detrackUpdate = "Detrack status updated to Cancelled. ";
 
                     DetrackAPIrun = 1;
                 }

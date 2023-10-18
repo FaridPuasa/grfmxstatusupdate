@@ -118,6 +118,7 @@
                         <option value="SC">Failed Delivery due to Reschedule to Self Collect Requested By Customer.
                             Return
                             to Warehouse (FMX only)</option>
+                            <option value="CD">Cancelled Delivery (All)</option>
                     </select>
                 </div>
             </div>
@@ -141,14 +142,15 @@
             </div>
             <div class="mb-3">
                 <div class="field-wrapper" id="additionalReasonWrapper">
-                    <label for="additionalReason" class="form-label">Additional Reason (FMX Only):</label>
+                    <label for="additionalReason" class="form-label">Additional Reason:</label>
                     <input type="text" id="additionalReason" name="additionalReason" class="form-control" disabled>
                     <small>*For FMX Orders. This field will replace the reason chosen by the dispatcher in the agent app
                         to
                         be updated to FMX only.</small><br>
                     <small>**For Customer Declined Delivery, fill in the reason why the customer declined.</small><br>
                     <small>***For Reschedule Delivery or Reschedule to Self Pick up, fill in the date of
-                        reschedule.</small>
+                        reschedule.</small><br>
+                        <small>****For Cancelled Delivery, fill in the reason why the delivery is cancelled.</small>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -262,7 +264,7 @@
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
 
-                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC')) {
+                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC') || (selectedStatusCode === 'CD')) {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
                     additionalReasonField.required = true;
