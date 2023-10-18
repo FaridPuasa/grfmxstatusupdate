@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 // Define the schema for the "orders" collection
 const orderSchema = new mongoose.Schema({
+    product: String,
     doTrackingNumber: String,
     receiverName: String,
     receiverAddress: String,
