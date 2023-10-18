@@ -91,7 +91,7 @@
         </div>
     </div>
 
-    <main class="container mt-4" style="width: 100%;">
+    <main class="mt-4" style="width: 100%;">
         <h1>List of MOH Orders (STD)</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
@@ -175,11 +175,9 @@
         $(document).ready(function () {
             // Initialize DataTable for the order table
             const table = $('#orderTable').DataTable({
+                "ordering": false,  // Disable client-side sorting
                 "iDisplayLength": 100  // Set the default number of entries to 100
             });
-    
-            // Set the page to the last page
-            table.page('last').draw('page');
         });
     </script>
     
