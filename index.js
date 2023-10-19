@@ -39,6 +39,8 @@ const GRPPOD = require('./models/GRPPOD');
 const FMXPOD = require('./models/FMXPOD');
 const ORDERS = require('./models/ORDERS');
 
+const orderWatch = ORDERS.watch()
+
 // Define storage for uploaded images
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -1793,6 +1795,271 @@ app.post('/updateDelivery', async (req, res) => {
     }
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
+
+orderWatch.on('change', change => {
+    console.log(change.operationType)
+    if (change.operationType == "insert") {
+        ORDERS.find().sort({ $natural: -1 }).then(
+            (result) => {
+                let filter = new mongoose.Types.ObjectId(result[0]._id);
+
+                if (result[0].product != null) {
+                    let products = result[0].product
+
+                    if (products.includes("pharmacy") == true) {
+                        products = "pharmacy"
+                    }
+
+                    let tracker
+                    let sequence
+                    let sequenceToAdd = 0;
+                    let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim();
+
+                    console.log(sequence)
+
+                    let checkProduct = 0;
+
+                    if ((result.length >= 2) && (checkProduct == 0)) {
+                        console.log("done check length and product")
+                        for (let i = 1; i < result.length; i++) {
+                            if (result[i].product.includes(products)) {
+                                if (result[i].sequence == "N/A") {
+                                    sequenceToAdd = parseInt(sequenceToAdd) + 1;
+                                }
+                                else {
+                                    sequence = parseInt(result[i].sequence) + 1 + parseInt(sequenceToAdd)
+                                    checkProduct = 1
+                                    i = result.length
+                                }
+                            }
+                        }
+                        if (checkProduct == 0) {
+                            sequence = 1
+                            checkProduct = 1
+                        }
+                    }
+
+                    if (((result.length == 1) || (result.length == undefined)) && checkProduct == 0) {
+                        sequence = 1
+                        checkProduct = 1
+                    }
+
+                    if (result[0].product == "pharmacymoh") {
+                        let suffix = "GR2"
+                        let prefix = "MH"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
+                    if (result[0].product == "pharmacyjpmc") {
+                        let suffix = "GR2"
+                        let prefix = "JP"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
+                    if (result[0].product == "pharmacyphc") {
+                        let suffix = "GR2"
+                        let prefix = "PN"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
+                    if (result[0].product == "grp") {
+                        let suffix = "GR4"
+                        let prefix = "GP"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
+                    if (result[0].product == "localdelivery") {
+                        let suffix = "GR3"
+                        let prefix = "LD"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
+                    if (result[0].product == "runnerservice") {
+                        let suffix = "GR5"
+                        let prefix = "RS"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
+                    console.log(tracker + " " + sequence)
+                    let update = { ['doTrackingNumber']: tracker, ['sequence']: sequence }
+                    console.log(update)
+                    let option = { upsert: false, new: false }
+                    ORDERS.findByIdAndUpdate(filter, update, option, (err, result) => {
+                        if (err) {
+                            console.log(err)
+                        }
+                        else {
+                            console.log(result['doTrackingNumber'])
+                            console.log(result)
+
+                            /* let optInNumber = "00" + phoneNumber
+                            let gid = "2000215252"
+                            let pas = "6@SemFzr"
+                            let format = "json"
+                            let auth_scheme = "plain"
+
+                            let b = tracker
+
+                            let msg = `Hello%2C%0A%0AWe+have+received+your+order.+Please+refer+to+the+following+for+your+reference.%0A%0ATracking+Number%3A+${b}%0A%0AOur+team+will+process+your+order.+Thank+you`
+
+                            const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
+
+                            let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
+                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) }) */
+                        }
+                    })
+                }
+            },
+            (err) => {
+                console.log(err)
+            }
+        )
+    }
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

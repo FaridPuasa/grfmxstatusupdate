@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Define the schema for the "orders" collection
 const orderSchema = new mongoose.Schema({
     product: String,
     doTrackingNumber: String,
@@ -17,10 +16,66 @@ const orderSchema = new mongoose.Schema({
     paymentMethod: String,
     dateTimeSubmission: String,
     membership: String,
-    // Add more fields as needed
-});
+    icNum: String, // Include fields from the second schema
+    items: [{
+        quantity: String,
+        expiryDate: String,
+        description: String,
+        totalItemPrice: String
+    }],
+    ldCOD: String,
+    billTo: String,
+    currency: String,
+    passport: String,
+    sequence: String,
+    buyerName: String,
+    startDate: String,
+    addressLat: String,
+    cargoPrice: String,
+    pickupDate: String,
+    senderName: String,
+    totalPrice: String,
+    addressLong: String,
+    cubicMeters: String,
+    dateOfBirth: String,
+    ldCODAmount: String,
+    parcelWidth: String,
+    senderEmail: String,
+    creationDate: String,
+    deliveryType: String,
+    instructions: String,
+    itemContains: String,
+    parcelHeight: String,
+    parcelLength: String,
+    parcelWeight: String,
+    qbExpiryDate: String,
+    receiverName: String,
+    supplierName: String,
+    trackingLink: String,
+    payingPatient: String,
+    paymentAmount: String,
+    pickupAddress: String,
+    qbServiceDate: String,
+    receiverEmail: String,
+    senderAddress: String,
+    qbCreationDate: String,
+    shipmentMethod: String,
+    ldProductWeight: String,
+    receiverAddress: String,
+    appointmentPlace: String,
+    deliveryTypeCode: String,
+    parcelTrackingNum: String,
+    permitApplication: String,
+    senderPhoneNumber: String,
+    ldPickupOrDelivery: String,
+    warehouseReference: String,
+    appointmentDistrict: String,
+    goRushReceivingCountry: String,
+    subscription: String,
+    loyaltyPoints: String,
+    pharmacyFormCreated: String,
+    sendOrderTo: String,
+}, { collection: 'orders' });
 
 // Create a model for the "orders" collection
-const Order = mongoose.model('ORDERS', orderSchema);
-
-module.exports = Order;
+module.exports = mongoose.model('ORDERS', orderSchema);
