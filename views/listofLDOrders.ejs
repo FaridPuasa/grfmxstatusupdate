@@ -92,7 +92,7 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>List of MOH Orders (IMM)</h1>
+        <h1>List of Local Delivery Orders</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
@@ -101,9 +101,6 @@
                         <th class="header">Customer Name</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Patient Number</th>
-                        <th class="header">IC/Passport Number</th>
-                        <th class="header">Appointment Place</th>
                         <th class="header">Phone Number</th>
                         <th class="header">Additional Phone Number</th>
                         <th class="header">Delivery Type</th>
@@ -111,8 +108,6 @@
                         <th class="header">Payment Method</th>
                         <th class="header">Date Time Submitted</th>
                         <th class="header">Membership</th>
-                        <th class="header">Send Order To</th>
-                        <th class="header">Pharmacy Form Created</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,15 +125,6 @@
                             </td>
                             <td>
                                 <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.patientNumber %>
-                            </td>
-                            <td>
-                                <%= order.icPassNum %>
-                            </td>
-                            <td>
-                                <%= order.appointmentPlace %>
                             </td>
                             <td>
                                 <%= order.receiverPhoneNumber %>
@@ -160,12 +146,6 @@
                             </td>
                             <td>
                                 <%= order.membership %>
-                            </td>
-                            <td>
-                                <%= order.sendOrderTo %>
-                            </td>
-                            <td>
-                                <%= order.pharmacyFormCreated %>
                             </td>
                         </tr>
                         <% }); %>

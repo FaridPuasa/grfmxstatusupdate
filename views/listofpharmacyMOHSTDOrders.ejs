@@ -111,6 +111,8 @@
                         <th class="header">Payment Method</th>
                         <th class="header">Date Time Submitted</th>
                         <th class="header">Membership</th>
+                        <th class="header">Send Order To</th>
+                        <th class="header">Pharmacy Form Created</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -158,6 +160,12 @@
                             </td>
                             <td>
                                 <%= order.membership %>
+                            </td>
+                            <td>
+                                <%= order.sendOrderTo %>
+                            </td>
+                            <td>
+                                <%= order.pharmacyFormCreated %>
                             </td>
                         </tr>
                         <% }); %>

@@ -94,7 +94,9 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
                 'remarks',
                 'paymentMethod',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo'
             ])
             .sort({ _id: -1 });
 
@@ -126,7 +128,9 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
                 'remarks',
                 'paymentMethod',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo'
             ])
             .sort({ _id: -1 });
 
@@ -158,7 +162,9 @@ app.get('/listofpharmacyMOHIMMOrders', async (req, res) => {
                 'remarks',
                 'paymentMethod',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo'
             ])
             .sort({ _id: -1 });
 
@@ -196,6 +202,67 @@ app.get('/listofpharmacyJPMCOrders', async (req, res) => {
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyJPMCOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyPHCOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
+        const orders = await ORDERS.find({ product: "pharmacyphc" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyPHCOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofLDOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
+        const orders = await ORDERS.find({ product: "localdelivery" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofLDOrders', { orders });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
