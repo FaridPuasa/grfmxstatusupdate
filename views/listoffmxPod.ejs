@@ -148,12 +148,11 @@
 
     <script>
         $(document).ready(function () {
-            // Initialize DataTable with search, pagination, and sorting by 'creationDate' in descending order
-            $('#podTable').DataTable({
-                order: [[5, 'desc']] // Sort by the 6th (0-based index) column, which is 'creationDate'
+            const table = $('#podTable').DataTable({
+                "ordering": false,  // Disable client-side sorting
+                "iDisplayLength": 10  // Set the default number of entries to 100
             });
         });
-
     </script>
 
     <!-- Script for delete confirmation -->

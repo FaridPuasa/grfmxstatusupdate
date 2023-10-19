@@ -72,7 +72,7 @@ app.get('/successUpdate', (req, res) => {
     res.render('successUpdate', { processingResults });
 });
 
-app.get('/listofpharmacyEXPOrders', async (req, res) => {
+app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "EXP" })
@@ -97,14 +97,14 @@ app.get('/listofpharmacyEXPOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyEXPOrders', { orders });
+        res.render('listofpharmacyMOHEXPOrders', { orders });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacySTDOrders', async (req, res) => {
+app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD" })
@@ -129,14 +129,14 @@ app.get('/listofpharmacySTDOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacySTDOrders', { orders });
+        res.render('listofpharmacyMOHSTDOrders', { orders });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyIMMOrders', async (req, res) => {
+app.get('/listofpharmacyMOHIMMOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "IMM" })
@@ -161,7 +161,7 @@ app.get('/listofpharmacyIMMOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyIMMOrders', { orders });
+        res.render('listofpharmacyMOHIMMOrders', { orders });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -203,7 +203,18 @@ app.get('/listofpharmacyJPMCOrders', async (req, res) => {
 app.get('/listofpharmacyPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await PharmacyPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
+        const pods = await PharmacyPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate'
+            ])
+            .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listofpharmacyPod', { pods });
@@ -217,7 +228,18 @@ app.get('/listofpharmacyPod', async (req, res) => {
 app.get('/listofldPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await LDPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
+        const pods = await LDPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate'
+            ])
+            .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listofldPod', { pods });
@@ -231,7 +253,18 @@ app.get('/listofldPod', async (req, res) => {
 app.get('/listofgrpPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await GRPPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
+        const pods = await GRPPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate'
+            ])
+            .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listofgrpPod', { pods });
@@ -245,7 +278,18 @@ app.get('/listofgrpPod', async (req, res) => {
 app.get('/listoffmxPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await FMXPOD.find({}, 'podName podDate podCreator deliveryDate area dispatcher creationDate').sort({ creationDate: -1 });
+        const pods = await FMXPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate'
+            ])
+            .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listoffmxPod', { pods });
@@ -1293,82 +1337,87 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')) {
+                    fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery (MD). Return to Warehouse (44).";
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse" // Use the calculated dStatus
+                            status: "at_warehouse", // Use the calculated dStatus
+                            note: fmxUpdate
                         }
                     };
-
-                    fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery. Return to Warehouse.";
-                    detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
                 }
 
                 if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')) {
+                    fmxReason = req.body.additionalReason;
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery (RF) due to " + fmxReason + ". Return to Warehouse (44).";
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse" // Use the calculated dStatus
+                            status: "at_warehouse", // Use the calculated dStatus
+                            note: fmxUpdate
                         }
                     };
-
-                    fmxReason = req.body.additionalReason;
-
-                    fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery due to " + fmxReason + ". Return to Warehouse";
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
                 }
 
                 if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')) {
+                    fmxReason = req.body.additionalReason;
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + fmxReason + ". Return to Warehouse (44).";
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse" // Use the calculated dStatus
+                            status: "at_warehouse", // Use the calculated dStatus
+                            note: fmxUpdate
                         }
                     };
-
-                    fmxReason = req.body.additionalReason;
-
-                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer to " + fmxReason + ". Return to Warehouse";
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
                 }
 
                 if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')) {
+                    fmxReason = req.body.additionalReason;
+
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + fmxReason + ". Return to Warehouse (44).";
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse" // Use the calculated dStatus
+                            status: "at_warehouse", // Use the calculated dStatus
+                            note: fmxUpdate
                         }
                     };
-
-                    fmxReason = req.body.additionalReason;
-
-                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer to " + fmxReason + ". Return to Warehouse";
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
                 }
 
                 if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status == 'failed')) {
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "at_warehouse" // Use the calculated dStatus
-                        }
-                    };
-
                     if (req.body.additionalReason.length != 0) {
                         fmxReason = req.body.additionalReason;
                     }
 
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
-                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse. Reason: " + fmxReason;
+                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse (44). Reason: " + fmxReason;
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse", // Use the calculated dStatus
+                            note: fmxUpdate
+                        }
+                    };
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
@@ -1393,6 +1442,26 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 5;
 
                     fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
+                }
+
+                if (req.body.statusCode == 'CD') {
+                    if (req.body.additionalReason.length != 0) {
+                        fmxReason = req.body.additionalReason;
+                    }
+
+                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+                    fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + fmxReason;
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse",
+                            note: fmxUpdate
+                        }
+                    };
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 2;
                 }
             }
 
@@ -1562,11 +1631,16 @@ app.post('/updateDelivery', async (req, res) => {
                     FileData: '',
                     DateEvent: currentTime,
                     ConsignmentId: consignmentID,
-                    StatusCode: req.body.statusCode,
                     CityName: 'BN',
                     ConsigneeName: '',
                     Remark: fmxReason
                 };
+
+                if (req.body.statusCode == 'CD') {
+                    requestData.StatusCode = 'RF';
+                } else {
+                    requestData.StatusCode = req.body.statusCode;
+                }
 
                 // Step 4: Make the second API request with bearer token
                 const response4 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {

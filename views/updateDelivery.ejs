@@ -118,7 +118,7 @@
                         <option value="SC">Failed Delivery due to Reschedule to Self Collect Requested By Customer.
                             Return
                             to Warehouse (FMX only)</option>
-                            <option value="CD">Cancelled Delivery (All)</option>
+                        <option value="CD">Cancelled Delivery (All)</option>
                     </select>
                 </div>
             </div>
@@ -147,10 +147,14 @@
                     <small>*For FMX Orders. This field will replace the reason chosen by the dispatcher in the agent app
                         to
                         be updated. (FMX only)</small><br>
-                    <small>**For Customer Declined Delivery, fill in the reason why the customer declined. (FMX only)</small><br>
+                    <small>**For Customer Declined Delivery, fill in the reason why the customer declined. (FMX
+                        only)</small><br>
                     <small>***For Reschedule Delivery or Reschedule to Self Pick up, fill in the date of
                         reschedule. (FMX only)</small><br>
-                        <small>****For Cancelled Delivery, fill in the reason why the delivery is cancelled. (All)</small>
+                    <small>****For Cancelled Delivery, fill in the reason why the delivery is cancelled. (All except
+                        FMX)</small><br>
+                    <small>*****For FMX Cancelled Delivery, fill in the reason "Customer cancel order" (required) with
+                        the reason (optional) why the delivery is cancelled. (FMX only)</small>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
