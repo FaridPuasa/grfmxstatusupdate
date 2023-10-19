@@ -1269,11 +1269,12 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (product == 'FMX') {
-                if ((req.body.statusCode == 'CP') && /* (ccCheck == 0) && */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched') && (data.data.status != 'completed')) {
+                if ((req.body.statusCode == 'CP') && (ccCheck == 0)) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "custom_clearing" // Use the calculated dStatus
+                            status: "custom_clearing",
+                            instructions: "CP"
                         }
                     };
 
@@ -1284,17 +1285,26 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 38) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched') && (data.data.status != 'completed')) {
-                    FMXAPIrun = 1;
-
-                    fmxUpdate = "FMX milestone updated to Custom Clearance Release.";
-                }
-
-                if ((req.body.statusCode == 12) && /* (ccCheck == 1) && (data.data.status == 'custom_clearing') */ (data.data.status != 'at_warehouse') && (data.data.status != 'dispatched') && (data.data.status != 'completed')) {
+                if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing') /* && (data.data.instructions == 'CP') */) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse" // Use the calculated dStatus
+                            instructions: "38"
+                        }
+                    };
+
+                    fmxUpdate = "FMX milestone updated to Custom Clearance Release.";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 1;
+                }
+
+                if ((req.body.statusCode == 12) && (ccCheck == 1) && (data.data.status == 'custom_clearing') /* && (data.data.instructions == '38') */) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse",
+                            instructions: "12"
                         }
                     };
 
@@ -1305,13 +1315,14 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 35) && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
+                if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             date: req.body.assignDate, // Get the Assign Date from the form
                             assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                            status: "dispatched" // Use the calculated dStatus
+                            status: "dispatched", // Use the calculated dStatus
+                            instructions: "12"
                         }
                     };
 
@@ -1322,7 +1333,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 'SD') && /* (ccCheck == 1) && */ (data.data.status == 'dispatched')) {
+                if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1344,7 +1355,8 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
-                            note: fmxUpdate
+                            note: fmxUpdate,
+                            instructions: "MD 44"
                         }
                     };
 
@@ -1361,7 +1373,8 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
-                            note: fmxUpdate
+                            note: fmxUpdate,
+                            instructions: "RF 44"
                         }
                     };
 
@@ -1378,7 +1391,8 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
-                            note: fmxUpdate
+                            note: fmxUpdate,
+                            instructions: "FD 44"
                         }
                     };
 
@@ -1395,7 +1409,8 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
-                            note: fmxUpdate
+                            note: fmxUpdate,
+                            instructions: "SC 44"
                         }
                     };
 
@@ -1403,7 +1418,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 3;
                 }
 
-                if ((req.body.statusCode == 44) /* && (ccCheck == 1) */ && (data.data.status == 'failed')) {
+                if ((req.body.statusCode == 44) && (data.data.status == 'failed')) {
                     if (req.body.additionalReason.length != 0) {
                         fmxReason = req.body.additionalReason;
                     }
@@ -1415,7 +1430,8 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
-                            note: fmxUpdate
+                            note: fmxUpdate,
+                            instructions: "44"
                         }
                     };
 
@@ -1423,7 +1439,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 2;
                 }
 
-                if ((req.body.statusCode == 'CSSC') && /* (ccCheck == 1) && */ (data.data.status == 'at_warehouse')) {
+                if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1438,10 +1454,18 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 50) && /* (ccCheck == 1) && */ (data.data.status == 'completed')) {
-                    FMXAPIrun = 5;
+                if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            instructions: "50"
+                        }
+                    };
 
                     fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 5;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -1456,7 +1480,8 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse",
-                            note: fmxUpdate
+                            note: fmxUpdate,
+                            instructions: "RF"
                         }
                     };
 
