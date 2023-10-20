@@ -192,9 +192,10 @@ app.get('/listofpharmacyJPMCOrders', async (req, res) => {
                 'appointmentPlace',
                 'receiverPhoneNumber',
                 'additionalPhoneNumber',
-                'deliveryTypeCode',
+                'deliveryType',
                 'remarks',
                 'paymentMethod',
+                'paymentAmount',
                 'dateTimeSubmission',
                 'membership'
             ])
@@ -224,7 +225,7 @@ app.get('/listofpharmacyPHCOrders', async (req, res) => {
                 'appointmentPlace',
                 'receiverPhoneNumber',
                 'additionalPhoneNumber',
-                'deliveryTypeCode',
+                'deliveryType',
                 'remarks',
                 'paymentMethod',
                 'dateTimeSubmission',
@@ -242,20 +243,29 @@ app.get('/listofpharmacyPHCOrders', async (req, res) => {
 
 app.get('/listofLDOrders', async (req, res) => {
     try {
-        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
+        // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "localdelivery" })
             .select([
                 '_id',
                 'product',
                 'doTrackingNumber',
+                'senderName',
+                'senderPhoneNumber',
                 'receiverName',
+                'receiverPhoneNumber',
                 'receiverAddress',
                 'area',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
+                'deliveryType',
+                'ldPickupOrDelivery',
+                'items',
+                'ldProductType',
+                'ldProductWeight',
+                'pickupAddress',
+                'pickupDate',
                 'remarks',
                 'paymentMethod',
+                'paymentAmount',
+                'billTo',
                 'dateTimeSubmission',
                 'membership'
             ])
@@ -1863,7 +1873,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     console.log(change.operationType)
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
@@ -2117,7 +2127,7 @@ orderWatch.on('change', change => {
                         console.log(updatedOrder.doTrackingNumber);
                         console.log(updatedOrder);
                   
-                        /* let optInNumber = "00" + phoneNumber
+                        let optInNumber = "00" + phoneNumber
                             let gid = "2000215252"
                             let pas = "6@SemFzr"
                             let format = "json"
@@ -2130,7 +2140,7 @@ orderWatch.on('change', change => {
                             const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
 
                             let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
-                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) }) */
+                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
                       }
                     })
                     .catch((err) => {
@@ -2143,7 +2153,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

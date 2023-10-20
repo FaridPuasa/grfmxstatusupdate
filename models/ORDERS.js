@@ -38,6 +38,7 @@ const orderSchema = new mongoose.Schema({
     addressLong: String,
     cubicMeters: String,
     dateOfBirth: String,
+    ldProductType: String,
     ldCODAmount: String,
     parcelWidth: String,
     senderEmail: String,
