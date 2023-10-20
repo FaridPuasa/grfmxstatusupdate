@@ -1,19 +1,8 @@
 19.10.23
 
 Orders List (Filtered Using Product field)
-- MOH
-  - Standard
-  - Express
-  - Immediate
-- JPMC
-- PHC
-- LD
-- GRP
 - FMX
 - RS
-
-- For all orders, add column Detrack Status, Age in Warehouse, color rows when order in warehouse
-- For FMX orders, add FMX Milstone codes to detrack instructions. in forms, add column Detrack Status, FMX Status
 
 MOH Form Set up
 - Choose from MOH List (consists of pharmacyformcreated value "no")
