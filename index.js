@@ -1873,7 +1873,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     console.log(change.operationType)
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
@@ -2127,7 +2127,7 @@ app.post('/updateDelivery', async (req, res) => {
                         console.log(updatedOrder.doTrackingNumber);
                         console.log(updatedOrder);
                   
-                        let optInNumber = "00" + phoneNumber
+                        /* let optInNumber = "00" + phoneNumber
                             let gid = "2000215252"
                             let pas = "6@SemFzr"
                             let format = "json"
@@ -2140,7 +2140,7 @@ app.post('/updateDelivery', async (req, res) => {
                             const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
 
                             let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
-                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
+                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) }) */
                       }
                     })
                     .catch((err) => {
@@ -2153,7 +2153,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
