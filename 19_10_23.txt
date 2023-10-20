@@ -12,9 +12,6 @@ Orders List (Filtered Using Product field)
 - FMX
 - RS
 
-- 
-
-- For MOH orders, (add fields "Pharmacy Form Created") (on make, in mongodb add sendorderto and pharmacyformcreated with value "No")
 - For all orders, add column Detrack Status, Age in Warehouse, color rows when order in warehouse
 - For FMX orders, add FMX Milstone codes to detrack instructions. in forms, add column Detrack Status, FMX Status
 

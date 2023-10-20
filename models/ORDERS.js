@@ -76,6 +76,7 @@ const orderSchema = new mongoose.Schema({
     loyaltyPoints: String,
     pharmacyFormCreated: String,
     sendOrderTo: String,
+    itemCommodityType: String,
 }, { collection: 'orders' });
 
 // Create a model for the "orders" collection

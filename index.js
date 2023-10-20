@@ -222,7 +222,6 @@ app.get('/listofpharmacyPHCOrders', async (req, res) => {
                 'area',
                 'patientNumber',
                 'icPassNum',
-                'appointmentPlace',
                 'receiverPhoneNumber',
                 'additionalPhoneNumber',
                 'deliveryType',
@@ -273,6 +272,41 @@ app.get('/listofLDOrders', async (req, res) => {
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofLDOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofGRPOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "localdelivery"
+        const orders = await ORDERS.find({ product: "grp" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'parcelTrackingNum',
+                'goRushReceivingCountry',
+                'warehouseReference',
+                'supplierName',
+                'buyerName',
+                'receiverPhoneNumber',
+                'receiverAddress',
+                'area',
+                'itemCommodityType',
+                'itemContains',
+                'currency',
+                'items',
+                'parcelWeight',
+                'remarks',
+                'dateTimeSubmission',
+                'membership'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofGRPOrders', { orders });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2127,7 +2161,7 @@ orderWatch.on('change', change => {
                         console.log(updatedOrder.doTrackingNumber);
                         console.log(updatedOrder);
                   
-                        /* let optInNumber = "00" + phoneNumber
+                        let optInNumber = "00" + phoneNumber
                             let gid = "2000215252"
                             let pas = "6@SemFzr"
                             let format = "json"
@@ -2140,7 +2174,7 @@ orderWatch.on('change', change => {
                             const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
 
                             let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
-                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) }) */
+                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
                       }
                     })
                     .catch((err) => {
