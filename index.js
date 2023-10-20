@@ -1863,15 +1863,19 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     console.log(change.operationType)
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
                 let filter = new mongoose.Types.ObjectId(result[0]._id);
 
+                console.log(filter)
+
                 if (result[0].product != null) {
                     let products = result[0].product
+
+                    console.log(products)
 
                     if (products.includes("pharmacy") == true) {
                         products = "pharmacy"
@@ -2095,15 +2099,25 @@ app.post('/updateDelivery', async (req, res) => {
                     let update = { ['doTrackingNumber']: tracker, ['sequence']: sequence }
                     console.log(update)
                     let option = { upsert: false, new: false }
-                    ORDERS.findByIdAndUpdate(filter, update, option, (err, result) => {
-                        if (err) {
-                            console.log(err)
-                        }
-                        else {
-                            console.log(result['doTrackingNumber'])
-                            console.log(result)
 
-                            let optInNumber = "00" + phoneNumber
+                    ORDERS.findById(filter)
+                    .then((foundOrder) => {
+                      if (!foundOrder) {
+                        console.log("Order not found.");
+                        return;
+                      }
+                  
+                      foundOrder.doTrackingNumber = tracker;
+                      foundOrder.sequence = sequence;
+                  
+                      return foundOrder.save();
+                    })
+                    .then((updatedOrder) => {
+                      if (updatedOrder) {
+                        console.log(updatedOrder.doTrackingNumber);
+                        console.log(updatedOrder);
+                  
+                        /* let optInNumber = "00" + phoneNumber
                             let gid = "2000215252"
                             let pas = "6@SemFzr"
                             let format = "json"
@@ -2116,9 +2130,12 @@ app.post('/updateDelivery', async (req, res) => {
                             const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
 
                             let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
-                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
-                        }
+                            axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) }) */
+                      }
                     })
+                    .catch((err) => {
+                      console.log(err);
+                    });
                 }
             },
             (err) => {
@@ -2126,7 +2143,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
