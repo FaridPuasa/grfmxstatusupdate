@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Pharmacy Form</title>
+    <!-- Add your CSS styles or include external CSS files here if needed -->
+</head>
+
+<body>
+    <div>
+        <h1 class="text-center mt-4">Edit Pharmacy Form</h1>
+
+        <!-- Create a div with an ID to capture the edited content -->
+        <div id="editableContent"><%- form.htmlContent %></div>
+
+        <div class="button-container text-center">
+            <button id="saveChangesButton" class="btn btn-primary mt-3">Save Changes</button>
+            <a href="/listofpharmacyMOHForms" class="btn btn-secondary mt-3">Back to List of Pharmacy Forms</a>
+        </div>
+    </div>
+
+    <!-- Include jQuery for capturing and sending the edited content -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Add a click event handler for the "Save Changes" button
+            $('#saveChangesButton').click(function () {
+                // Capture the edited content inside the div
+                var editedContent = $('#editableContent').html();
+
+                // Send the edited content to the server using an AJAX POST request
+                $.post("/updatePharmacyForm/<%= form._id %>", { htmlContent: editedContent }, function (data) {
+                    // Handle the response from the server, e.g., show a success message
+                    alert(data);
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

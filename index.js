@@ -38,6 +38,7 @@ const LDPOD = require('./models/LDPOD');
 const GRPPOD = require('./models/GRPPOD');
 const FMXPOD = require('./models/FMXPOD');
 const ORDERS = require('./models/ORDERS');
+const PharmacyFORM = require('./models/PharmacyFORM');
 
 const orderWatch = ORDERS.watch()
 
@@ -111,7 +112,7 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
 app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
-        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD" })
+        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "OPD" })
             .select([
                 '_id',
                 'product',
@@ -136,6 +137,142 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHSTDOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.post('/createPharmacyFormSuccess', async (req, res) => {
+    try {
+        // Extract data from the form submission
+        const { dateOfForm, batchChoice, b2Start, mohForm } = req.body;
+
+        let sendOrderToQuery;
+        let deliveryTypeCodeQuery;
+
+        switch (mohForm) {
+            case 'STD':
+                sendOrderToQuery = 'OPD';
+                deliveryTypeCodeQuery = 'STD';
+                break;
+            case 'EXP':
+                sendOrderToQuery = 'OPD';
+                deliveryTypeCodeQuery = 'EXP';
+                break;
+            case 'IMM':
+                sendOrderToQuery = 'OPD';
+                deliveryTypeCodeQuery = 'IMM';
+                break;
+            case 'TTG':
+                sendOrderToQuery = 'PMMH';
+                deliveryTypeCodeQuery = 'STD';
+                break;
+            case 'KB':
+                sendOrderToQuery = 'SBBH';
+                deliveryTypeCodeQuery = 'STD';
+                break;
+            default:
+                sendOrderToQuery = null;
+                deliveryTypeCodeQuery = null;
+                break;
+        }
+
+        // Query the database to find orders with pharmacyFormCreated set to "No" and matching sendOrderTo and deliveryTypeCode
+        const orders = await ORDERS.find({ pharmacyFormCreated: "No", sendOrderTo: sendOrderToQuery, deliveryTypeCode: deliveryTypeCodeQuery })
+            .select([
+                '_id',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+            ])
+            .sort({ _id: -1 });
+
+        // Render the "createPharmacyFormMOHSTDsuccess" page with the filtered data
+        res.render('createPharmacyFormSuccess', {
+            orders,
+            dateOfForm: moment(dateOfForm).format('DD.MM.YY'),
+            batchChoice,
+            b2Start,
+            mohForm: mohForm,
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to create Pharmacy Form');
+    }
+});
+
+app.get('/listofpharmacyMOHTTGOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
+        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "PMMH" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHTTGOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHKBOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
+        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "SSBH" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHKBOrders', { orders });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -310,6 +447,109 @@ app.get('/listofGRPOrders', async (req, res) => {
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHForms', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const forms = await PharmacyFORM.find({})
+            .select([
+                '_id',
+                'formName',
+                'formDate',
+                'batchNo',
+                'startNo',
+                'endNo',
+                'creationDate',
+                'mohForm',
+                'numberOfForms'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofpharmacyMOHForms', { forms });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch Pharmacy Form data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/formpharmacyDetail/:formId', async (req, res) => {
+    try {
+        const form = await PharmacyFORM.findById(req.params.formId);
+
+        if (!form) {
+            return res.status(404).send('Form not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('formpharmacyDetail', { htmlContent: form.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch form data');
+    }
+});
+
+// Route to render the edit page for a specific POD
+app.get('/editPharmacyForm/:id', (req, res) => {
+    const formId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    PharmacyFORM.findById(formId)
+        .then((form) => {
+            if (!form) {
+                return res.status(404).send('Form not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editPharmacyForm.ejs', { form });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updatePharmacyForm/:id', (req, res) => {
+    const formId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    PharmacyFORM.findByIdAndUpdate(formId, { htmlContent: newHtmlContent })
+        .then((form) => {
+            if (!form) {
+                return res.status(404).send('Form not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('Form data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update Form data');
+        });
+});
+
+app.get('/deletePharmacyForm/:formId', async (req, res) => {
+    try {
+        const formId = req.params.formId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedForm = await PharmacyFORM.findByIdAndRemove(formId);
+
+        if (deletedForm) {
+            res.redirect('/listofpharmacyMOHForms'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('Pharmacy Form not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete Pharmacy Form');
     }
 });
 
@@ -721,6 +961,61 @@ app.get('/deleteFMXPod/:podId', async (req, res) => {
     }
 });
 
+// ...
+
+// Add this route to handle the saving of the PharmacyFORM and updating ORDERS collection
+app.post('/save-form', (req, res) => {
+    const { formName, formDate, batchNo, startNo, endNo, htmlContent, mohForm, numberOfForms} = req.body;
+
+    // Create a new document and save it to the MongoDB collection
+    const newForm = new PharmacyFORM({
+        formName: formName,
+        formDate: formDate,
+        batchNo: batchNo,
+        startNo: startNo,
+        endNo: endNo,
+        htmlContent: htmlContent,
+        creationDate: moment().format(),
+        mohForm: mohForm,
+        numberOfForms: numberOfForms
+    });
+
+    newForm.save()
+        .then(() => {
+            // Use the trackingNumbers array here
+            const trackingNumbers = req.body.trackingNumbers;
+
+            // Update the ORDERS collection for each tracking number
+            updateOrdersCollection(trackingNumbers)
+                .then(() => {
+                    res.status(200).send('Form data saved successfully');
+                })
+                .catch((err) => {
+                    console.error('Error:', err);
+                    res.status(500).send('Failed to save Form data');
+                });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to save Form data');
+        });
+});
+
+function updateOrdersCollection(trackingNumbers) {
+    // Implement the logic to update the ORDERS collection for each tracking number
+    // You can use Mongoose or your MongoDB driver to update the documents.
+    // Iterate through the trackingNumbers array and update the matching documents.
+    // Here's a simplified example using Mongoose:
+
+    const promises = trackingNumbers.map((trackingNumber) => {
+        return ORDERS.updateOne({ doTrackingNumber: trackingNumber }, { $set: { pharmacyFormCreated: 'Yes' } });
+    });
+
+    // Return a Promise that resolves when all updates are complete.
+    return Promise.all(promises);
+}
+
+
 
 // Route to save POD data
 app.post('/save-pod', (req, res) => {
@@ -770,7 +1065,6 @@ app.post('/save-pod', (req, res) => {
             console.error('Error:', err);
             res.status(500).send('Failed to save POD data');
         });
-
 });
 
 app.post('/generatePOD', async (req, res) => {

@@ -37,6 +37,13 @@
             /* Adjust the margin-top as needed */
         }
 
+        /* Style the form */
+        .custom-form {
+            background-color: #ffffe0; /* Light yellow background */
+            border: 1px solid #000; /* Small black border */
+            padding: 20px; /* Add some padding for spacing */
+        }
+
         th {
             background-color: #f2f2f2;
             font-size: 15px;
@@ -79,6 +86,8 @@
                             <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
                             <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
                             <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
+                            <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
+                            <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
                             <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
                             <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                             <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
@@ -109,84 +118,124 @@
     <main class="mt-4" style="width: 100%;">
         <h1>List of MOH Orders (IMM)</h1>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="orderTable">
-                <thead class="table-primary">
-                    <tr>
-                        <th class="header">Tracking Number</th>
-                        <th class="header">Customer Name</th>
-                        <th class="header">Address</th>
-                        <th class="header">Area</th>
-                        <th class="header">Patient Number</th>
-                        <th class="header">IC/Passport Number</th>
-                        <th class="header">Appointment Place</th>
-                        <th class="header">Phone Number</th>
-                        <th class="header">Additional Phone Number</th>
-                        <th class="header">Delivery Type</th>
-                        <th class="header">Remarks</th>
-                        <th class="header">Payment Method</th>
-                        <th class="header">Date Time Submitted</th>
-                        <th class="header">Send Order To</th>
-                        <th class="header">Membership</th>
-                        <th class="header">Pharmacy Form Created</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Iterate through the orders and display the data -->
-                    <% orders.forEach(function(order) { %>
+            <div class="container">
+                <form action="/createPharmacyFormSuccess" method="post" class="custom-form">
+                    <input type="hidden" name="mohForm" id="mohForm" value="IMM">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="dateOfForm">Date of Form:</label>
+                                <input type="date" class="form-control" id="dateOfForm" name="dateOfForm" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="batchChoice">Batch 1 or 2:</label>
+                                <select class="form-control" id="batchChoice" name="batchChoice" required>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3" id="b2StartField" style="display: none;">
+                            <div class="form-group">
+                                <label for="b2Start">B2 Start:</label>
+                                <input type="number" class="form-control" id="b2Start" name="b2Start"
+                                    placeholder="Enter B2 Start">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary mt-4">Create Pharmacy Form</button>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="form-group">
+                                <a href="https://docs.google.com/document/d/17zCHpht8eZ-Y7P8giGUNmg6vxQk8kZes/edit?usp=sharing&ouid=111753871965049759883&rtpof=true&sd=true" class="btn btn-secondary mt-4" target="_blank" download>Download</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped" id="orderTable">
+                    <thead class="table-primary">
                         <tr>
-                            <td>
-                                <%= order.doTrackingNumber %>
-                            </td>
-                            <td>
-                                <%= order.receiverName %>
-                            </td>
-                            <td>
-                                <%= order.receiverAddress %>
-                            </td>
-                            <td>
-                                <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.patientNumber %>
-                            </td>
-                            <td>
-                                <%= order.icPassNum %>
-                            </td>
-                            <td>
-                                <%= order.appointmentPlace %>
-                            </td>
-                            <td>
-                                <%= order.receiverPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.additionalPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.deliveryTypeCode %>
-                            </td>
-                            <td>
-                                <%= order.remarks %>
-                            </td>
-                            <td>
-                                <%= order.paymentMethod %>
-                            </td>
-                            <td>
-                                <%= order.dateTimeSubmission %>
-                            </td>
-                            <td>
-                                <%= order.sendOrderTo %>
-                            </td>
-                            <td>
-                                <%= order.membership %>
-                            </td>
-                            <td>
-                                <%= order.pharmacyFormCreated %>
-                            </td>
+                            <th class="header">Tracking Number</th>
+                            <th class="header">Customer Name</th>
+                            <th class="header">Address</th>
+                            <th class="header">Area</th>
+                            <th class="header">Patient Number</th>
+                            <th class="header">IC/Passport Number</th>
+                            <th class="header">Appointment Place</th>
+                            <th class="header">Phone Number</th>
+                            <th class="header">Additional Phone Number</th>
+                            <th class="header">Delivery Type</th>
+                            <th class="header">Remarks</th>
+                            <th class="header">Payment Method</th>
+                            <th class="header">Date Time Submitted</th>
+                            <th class="header">Send Order To</th>
+                            <th class="header">Membership</th>
+                            <th class="header">Pharmacy Form Created</th>
                         </tr>
-                        <% }); %>
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        <!-- Iterate through the orders and display the data -->
+                        <% orders.forEach(function(order) { %>
+                            <tr>
+                                <td>
+                                    <%= order.doTrackingNumber %>
+                                </td>
+                                <td>
+                                    <%= order.receiverName %>
+                                </td>
+                                <td>
+                                    <%= order.receiverAddress %>
+                                </td>
+                                <td>
+                                    <%= order.area %>
+                                </td>
+                                <td>
+                                    <%= order.patientNumber %>
+                                </td>
+                                <td>
+                                    <%= order.icPassNum %>
+                                </td>
+                                <td>
+                                    <%= order.appointmentPlace %>
+                                </td>
+                                <td>
+                                    <%= order.receiverPhoneNumber %>
+                                </td>
+                                <td>
+                                    <%= order.additionalPhoneNumber %>
+                                </td>
+                                <td>
+                                    <%= order.deliveryTypeCode %>
+                                </td>
+                                <td>
+                                    <%= order.remarks %>
+                                </td>
+                                <td>
+                                    <%= order.paymentMethod %>
+                                </td>
+                                <td>
+                                    <%= order.dateTimeSubmission %>
+                                </td>
+                                <td>
+                                    <%= order.sendOrderTo %>
+                                </td>
+                                <td>
+                                    <%= order.membership %>
+                                </td>
+                                <td>
+                                    <%= order.pharmacyFormCreated %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+            </div>
     </main>
 
     <!-- Include the necessary JavaScript libraries for DataTables and other custom scripts if needed -->
@@ -203,7 +252,7 @@
             });
         });
     </script>
-    
+
 </body>
 
 </html>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List of JPMC Orders</title>
+    <title>List of MOH KB Orders (STD)</title>
     <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
     <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
@@ -35,6 +35,13 @@
         .btn-submit {
             margin-top: 10px;
             /* Adjust the margin-top as needed */
+        }
+
+        /* Style the form */
+        .custom-form {
+            background-color: #ffffe0; /* Light yellow background */
+            border: 1px solid #000; /* Small black border */
+            padding: 20px; /* Add some padding for spacing */
         }
 
         th {
@@ -109,7 +116,46 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>List of JPMC Orders</h1>
+        <h1>List of MOH KB Orders (STD)</h1>
+        <div class="container">
+            <form action="/createPharmacyFormSuccess" method="post" class="custom-form">
+                <input type="hidden" name="mohForm" id="mohForm" value="KB">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="dateOfForm">Date of Form:</label>
+                            <input type="date" class="form-control" id="dateOfForm" name="dateOfForm" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="batchChoice">Batch 1 or 2:</label>
+                            <select class="form-control" id="batchChoice" name="batchChoice" required>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3" id="b2StartField" style="display: none;">
+                        <div class="form-group">
+                            <label for="b2Start">B2 Start:</label>
+                            <input type="number" class="form-control" id="b2Start" name="b2Start"
+                                placeholder="Enter B2 Start">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary mt-4">Create Pharmacy Form</button>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <div class="form-group">
+                            <a href="https://docs.google.com/document/d/17zCHpht8eZ-Y7P8giGUNmg6vxQk8kZes/edit?usp=sharing&ouid=111753871965049759883&rtpof=true&sd=true" class="btn btn-secondary mt-4" target="_blank" download>Download</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
@@ -126,9 +172,9 @@
                         <th class="header">Delivery Type</th>
                         <th class="header">Remarks</th>
                         <th class="header">Payment Method</th>
-                        <th class="header">Price</th>
                         <th class="header">Date Time Submitted</th>
                         <th class="header">Membership</th>
+                        <th class="header">Pharmacy Form Created</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -163,7 +209,7 @@
                                 <%= order.additionalPhoneNumber %>
                             </td>
                             <td>
-                                <%= order.deliveryType %>
+                                <%= order.deliveryTypeCode %>
                             </td>
                             <td>
                                 <%= order.remarks %>
@@ -172,13 +218,13 @@
                                 <%= order.paymentMethod %>
                             </td>
                             <td>
-                                <%= order.paymentAmount %>
-                            </td>
-                            <td>
                                 <%= order.dateTimeSubmission %>
                             </td>
                             <td>
                                 <%= order.membership %>
+                            </td>
+                            <td>
+                                <%= order.pharmacyFormCreated %>
                             </td>
                         </tr>
                         <% }); %>
