@@ -169,7 +169,7 @@ app.post('/createPharmacyFormSuccess', async (req, res) => {
                 deliveryTypeCodeQuery = 'STD';
                 break;
             case 'KB':
-                sendOrderToQuery = 'SBBH';
+                sendOrderToQuery = 'SSBH';
                 deliveryTypeCodeQuery = 'STD';
                 break;
             default:
