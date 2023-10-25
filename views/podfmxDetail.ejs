@@ -17,6 +17,13 @@
         <button id="backButton" class="btn btn-primary" onclick="history.back()">Back to POD
             List</button>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('exportExcelButton').disabled = false;
+            document.getElementById('printButton').disabled = false;
+        })
+    </script>
 </body>
 
 </html>
