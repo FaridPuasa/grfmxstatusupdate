@@ -15,9 +15,9 @@ app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: false }));
 // Middleware to parse JSON data
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: '50mb'}));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({limit: '50mb', extended: true, parameterLimit:50000}));
 
 const mongoose = require('mongoose');
 const db = require('./config/keys').MongoURI;
