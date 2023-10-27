@@ -206,7 +206,6 @@
             <thead>
                 <tr>
                     <th>Date of Form</th>
-                    <th>Barcode</th>
                     <th>No.</th>
                     <th>Go Rush Status</th>
                     <th>Tracking Number</th>
@@ -246,11 +245,6 @@
                                                                                     <tr>
                                                                                         <td>
                                                                                             <%= dateOfForm %>
-                                                                                        </td>
-                                                                                        <td
-                                                                                            style="font-family: 'IDAutomationHC39M Free Version';">
-                                                                                            <%= order.doTrackingNumber
-                                                                                                %>
                                                                                         </td>
                                                                                         <td>
                                                                                             <%= prefix +
@@ -318,7 +312,7 @@
             document.getElementById('exportExcelButton').disabled = true;
 
             // Retrieve the first and last values from the No. column
-            const noColumn = document.querySelectorAll('table tbody tr td:nth-child(3)'); // 3 is the column index (0-based)
+            const noColumn = document.querySelectorAll('table tbody tr td:nth-child(2)'); // 3 is the column index (0-based)
             let firstNo = ''; // Initialize to an empty string
             let lastNo = '';
 
