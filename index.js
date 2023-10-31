@@ -2545,7 +2545,7 @@ orderWatch.on('change', change => {
                         }
                     }
 
-                    if (result[0].product == "runnerservice") {
+                    if (result[0].product == "cbsl") {
                         let suffix = "GR5"
                         let prefix = "CB"
 
