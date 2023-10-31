@@ -15,9 +15,9 @@ app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: false }));
 // Middleware to parse JSON data
-app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({limit: '50mb', extended: true, parameterLimit:50000}));
+app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit: 50000 }));
 
 const mongoose = require('mongoose');
 const db = require('./config/keys').MongoURI;
@@ -37,6 +37,7 @@ const PharmacyPOD = require('./models/PharmacyPOD');
 const LDPOD = require('./models/LDPOD');
 const GRPPOD = require('./models/GRPPOD');
 const FMXPOD = require('./models/FMXPOD');
+const CBSLPOD = require('./models/CBSLPOD');
 const ORDERS = require('./models/ORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 
@@ -450,6 +451,37 @@ app.get('/listofGRPOrders', async (req, res) => {
     }
 });
 
+app.get('/listofCBSLOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "localdelivery"
+        const orders = await ORDERS.find({ product: "cbsl" })
+            .select([
+                '_id',
+                'product',
+                'parcelTrackingNum',
+                'doTrackingNumber',
+                'buyerName',
+                'receiverPhoneNumber',
+                'receiverAddress',
+                'area',
+                'supplierName',
+                'items',
+                'cargoPrice',
+                'screenshotInvoice',
+                'remarks',
+                'dateTimeSubmission',
+                'membership'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofCBSLOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofpharmacyMOHForms', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -565,7 +597,8 @@ app.get('/listofpharmacyPod', async (req, res) => {
                 'deliveryDate',
                 'area',
                 'dispatcher',
-                'creationDate'
+                'creationDate',
+                'rowCount'
             ])
             .sort({ _id: -1 });
 
@@ -590,7 +623,8 @@ app.get('/listofldPod', async (req, res) => {
                 'deliveryDate',
                 'area',
                 'dispatcher',
-                'creationDate'
+                'creationDate',
+                'rowCount'
             ])
             .sort({ _id: -1 });
 
@@ -615,7 +649,8 @@ app.get('/listofgrpPod', async (req, res) => {
                 'deliveryDate',
                 'area',
                 'dispatcher',
-                'creationDate'
+                'creationDate',
+                'rowCount'
             ])
             .sort({ _id: -1 });
 
@@ -640,12 +675,39 @@ app.get('/listoffmxPod', async (req, res) => {
                 'deliveryDate',
                 'area',
                 'dispatcher',
-                'creationDate'
+                'creationDate',
+                'rowCount'
             ])
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
         res.render('listoffmxPod', { pods });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch FMX POD data');
+    }
+});
+
+app.get('/listofcbslPod', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await CBSLPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofcbslPod', { pods });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -718,6 +780,24 @@ app.get('/podfmxDetail/:podId', async (req, res) => {
 
         // Render the podDetail.ejs template with the HTML content
         res.render('podfmxDetail', { htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podcbslDetail/:podId', async (req, res) => {
+    try {
+        const pod = await CBSLPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podcbslDetail', { htmlContent: pod.htmlContent });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -868,6 +948,26 @@ app.get('/editFmxPod/:id', (req, res) => {
         });
 });
 
+// Route to render the edit page for a specific POD
+app.get('/editCbslPod/:id', (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    CBSLPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editCbslPod.ejs', { pod });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
 // Route to update the HTML content of a specific POD
 app.post('/updateFmxPod/:id', (req, res) => {
     const podId = req.params.id;
@@ -875,6 +975,27 @@ app.post('/updateFmxPod/:id', (req, res) => {
 
     // Find the specific POD by ID
     FMXPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateCbslPod/:id', (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    CBSLPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
         .then((pod) => {
             if (!pod) {
                 return res.status(404).send('POD not found');
@@ -961,11 +1082,28 @@ app.get('/deleteFMXPod/:podId', async (req, res) => {
     }
 });
 
+app.get('/deleteCBSLPod/:podId', async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await CBSLPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofcbslPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('FMX POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete FMX POD');
+    }
+});
 // ...
 
 // Add this route to handle the saving of the PharmacyFORM and updating ORDERS collection
 app.post('/save-form', (req, res) => {
-    const { formName, formDate, batchNo, startNo, endNo, htmlContent, mohForm, numberOfForms} = req.body;
+    const { formName, formDate, batchNo, startNo, endNo, htmlContent, mohForm, numberOfForms } = req.body;
 
     // Create a new document and save it to the MongoDB collection
     const newForm = new PharmacyFORM({
@@ -1019,7 +1157,7 @@ function updateOrdersCollection(trackingNumbers) {
 
 // Route to save POD data
 app.post('/save-pod', (req, res) => {
-    const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent } = req.body;
+    const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
 
     // Choose the appropriate model based on the collection
     let PodModel;
@@ -1036,6 +1174,9 @@ app.post('/save-pod', (req, res) => {
         case 'FMX POD':
             PodModel = FMXPOD;
             break;
+        case 'CBSL POD':
+            PodModel = CBSLPOD;
+            break;
         default:
             return res.status(400).send('Invalid collection');
     }
@@ -1051,6 +1192,7 @@ app.post('/save-pod', (req, res) => {
         deliveryDate: deliveryDate,
         area: area,
         dispatcher: dispatcher,
+        rowCount: rowCount, // Add the rowCount here
         htmlContent: htmlContent,
         creationDate: moment().format()
     });
@@ -2405,7 +2547,7 @@ orderWatch.on('change', change => {
 
                     if (result[0].product == "runnerservice") {
                         let suffix = "GR5"
-                        let prefix = "RS"
+                        let prefix = "CB"
 
                         if (sequence >= 0 && sequence <= 9) {
                             tracker = suffix + "0000000" + sequence + prefix

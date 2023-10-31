@@ -9,6 +9,7 @@ const podSchema = new mongoose.Schema({
     area: String,
     dispatcher: String,
     htmlContent: String,
+    rowCount: String, // Add the rowCount here
     creationDate: String
 });
 

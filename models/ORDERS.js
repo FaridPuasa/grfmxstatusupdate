@@ -77,6 +77,7 @@ const orderSchema = new mongoose.Schema({
     pharmacyFormCreated: String,
     sendOrderTo: String,
     itemCommodityType: String,
+    screenshotInvoice: String,
 }, { collection: 'orders' });
 
 // Create a model for the "orders" collection
