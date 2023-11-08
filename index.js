@@ -1214,11 +1214,13 @@ app.post('/generatePOD', async (req, res) => {
         // Parse input data from the form
         const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
 
-        const dispatchersCaps = dispatchers.toUpperCase()
+        if ((dispatchers == "FL1")||(dispatchers == "FL2")||(dispatchers == "FL3")){
+            var finalDispatcherName = dispatchers.toUpperCase() + " " + freelancerName.toUpperCase()
+        }else{
+            var finalDispatcherName = dispatchers.toUpperCase()
+        }
 
         const podCreatedByCaps = podCreatedBy.toUpperCase()
-
-        const freelancerNameCaps = freelancerName.toUpperCase()
 
         // Check if areas is a string or an array
         let areasArray = [];
@@ -1279,7 +1281,7 @@ app.post('/generatePOD', async (req, res) => {
             product,
             deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
             areas: areasJoined, // Use the joined string instead of the original variable
-            dispatchers: dispatchersCaps + " " + freelancerNameCaps,
+            dispatchers: finalDispatcherName,
             trackingNumbers: runSheetData,
             podCreatedDate: moment().format('DD.MM.YY')
         });
