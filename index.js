@@ -1212,11 +1212,13 @@ app.post('/save-pod', (req, res) => {
 app.post('/generatePOD', async (req, res) => {
     try {
         // Parse input data from the form
-        const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, podCreatedDate } = req.body;
+        const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
 
         const dispatchersCaps = dispatchers.toUpperCase()
 
         const podCreatedByCaps = podCreatedBy.toUpperCase()
+
+        const freelancerNameCaps = freelancerName.toUpperCase()
 
         // Check if areas is a string or an array
         let areasArray = [];
@@ -1277,7 +1279,7 @@ app.post('/generatePOD', async (req, res) => {
             product,
             deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
             areas: areasJoined, // Use the joined string instead of the original variable
-            dispatchers: dispatchersCaps,
+            dispatchers: dispatchersCaps + " " + freelancerNameCaps,
             trackingNumbers: runSheetData,
             podCreatedDate: moment().format('DD.MM.YY')
         });
@@ -1789,6 +1791,10 @@ app.post('/updateDelivery', async (req, res) => {
                 appliedStatus = "Out for Delivery"
             }
 
+            if (req.body.statusCode == 'SD') {
+                appliedStatus = "Swap Dispatchers"
+            }
+
             if (req.body.statusCode == 'MD') {
                 appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse(FMX)"
             }
@@ -1823,7 +1829,7 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "custom_clearing",
-                            instructions: "CP"
+                            instructions: "FMX Milestone ID CP"
                         }
                     };
 
@@ -1838,7 +1844,7 @@ app.post('/updateDelivery', async (req, res) => {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            instructions: "38"
+                            instructions: "FMX Milestone ID 38"
                         }
                     };
 
@@ -1853,7 +1859,7 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse",
-                            instructions: "12"
+                            instructions: "FMX Milestone ID 12"
                         }
                     };
 
@@ -1865,17 +1871,33 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                            status: "dispatched", // Use the calculated dStatus
-                            instructions: "12"
-                        }
-                    };
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")) {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                status: "dispatched", // Use the calculated dStatus
+                                instructions: "FMX Milestone ID 12. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
+                            }
+                        };
 
-                    detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                        detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                    } else {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                status: "dispatched", // Use the calculated dStatus
+                                instructions: "FMX Milestone ID 12. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + "."
+                            }
+                        };
+
+                        detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                    }
+
                     fmxUpdate = "FMX milestone updated to Out for Delivery.";
 
                     DetrackAPIrun = 1;
@@ -1883,15 +1905,30 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: req.body.dispatchers // Get the selected dispatcher from the form
-                        }
-                    };
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")) {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                instructions: "FMX Milestone ID 12. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
+                            }
+                        };
 
-                    detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                        detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                    } else {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                instructions: "FMX Milestone ID 12. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + "."
+                            }
+                        };
+
+                        detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                    }
 
                     DetrackAPIrun = 1;
                 }
@@ -1905,7 +1942,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "MD 44"
+                            instructions: "FMX Milestone ID MD 44"
                         }
                     };
 
@@ -1923,7 +1960,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "RF 44"
+                            instructions: "FMX Milestone ID RF 44"
                         }
                     };
 
@@ -1941,7 +1978,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "FD 44"
+                            instructions: "FMX Milestone ID FD 44"
                         }
                     };
 
@@ -1959,7 +1996,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "SC 44"
+                            instructions: "FMX Milestone ID SC 44"
                         }
                     };
 
@@ -1980,7 +2017,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "44"
+                            instructions: "FMX Milestone ID 44"
                         }
                     };
 
@@ -2007,7 +2044,7 @@ app.post('/updateDelivery', async (req, res) => {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            instructions: "50"
+                            instructions: "FMX Milestone ID 50"
                         }
                     };
 
@@ -2030,7 +2067,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse",
                             note: fmxUpdate,
-                            instructions: "RF"
+                            instructions: "FMX Milestone ID RF"
                         }
                     };
 
@@ -2084,16 +2121,61 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                            status: "dispatched" // Use the calculated dStatus
-                        }
-                    };
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")) {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                status: "dispatched", // Use the calculated dStatus
+                                instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
+                            }
+                        };
 
-                    detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                        detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                    } else {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                status: "dispatched", // Use the calculated dStatus
+                                instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + "."
+                            }
+                        };
+
+                        detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                    }
+
+                    DetrackAPIrun = 1;
+                }
+
+                if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")) {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
+                            }
+                        };
+
+                        detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                    } else {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + "."
+                            }
+                        };
+
+                        detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                    }
 
                     DetrackAPIrun = 1;
                 }

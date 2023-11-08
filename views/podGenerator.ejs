@@ -69,40 +69,41 @@
             </a>
             <ul class="navbar-nav flex-row">
               <li class="nav-item dropdown">
-                  <a class="nav-link dropdown-toggle" href="#" id="orderListDropdown" role="button"
-                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                      Orders List
-                  </a>
-                  <div class="dropdown-menu" aria-labelledby="orderListDropdown">
-                      <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
-                      <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
-                      <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
-                      <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
-                      <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
-                      <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
-                      <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
-                      <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
-                      <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
-                      <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service (Limbang)</a>
-                  </div>
+                <a class="nav-link dropdown-toggle" href="#" id="orderListDropdown" role="button" data-toggle="dropdown"
+                  aria-haspopup="true" aria-expanded="false">
+                  Orders List
+                </a>
+                <div class="dropdown-menu" aria-labelledby="orderListDropdown">
+                  <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
+                  <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
+                  <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
+                  <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
+                  <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
+                  <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                  <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
+                  <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
+                  <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
+                  <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service (Limbang)</a>
+                </div>
               </li>
               <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
               <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
               <li class="nav-item dropdown">
-                  <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                      POD List
-                  </a>
-                  <div class="dropdown-menu" aria-labelledby="podListDropdown">
-                      <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
-                      <a class="dropdown-item" href="/listofldPod">LD</a>
-                      <a class="dropdown-item" href="/listofgrpPod">GRP</a>
-                      <a class="dropdown-item" href="/listoffmxPod">FMX</a>
-                      <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
-                  </div>
+                <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown"
+                  aria-haspopup="true" aria-expanded="false">
+                  POD List
+                </a>
+                <div class="dropdown-menu" aria-labelledby="podListDropdown">
+                  <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
+                  <a class="dropdown-item" href="/listofldPod">LD</a>
+                  <a class="dropdown-item" href="/listofgrpPod">GRP</a>
+                  <a class="dropdown-item" href="/listoffmxPod">FMX</a>
+                  <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
+                </div>
               </li>
               <li class="nav-item"><a class="nav-link" href="/listofpharmacyMOHForms">Pharmacy Form List</a></li>
               <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
-          </ul>
+            </ul>
           </nav>
         </div>
       </div>
@@ -169,14 +170,17 @@
           <option value="Hasbul">Hasbul</option>
           <option value="Safwan">Safwan</option>
           <option value="Hazri">Hazri</option>
-          <option value="Naizam">Naizam</option>
           <option value="Self-Collect">Self-Collect</option>
-          <option value="Asma">Asma</option>
-          <option value="Rita">Rita</option>
-          <option value="Nisah">Nisah</option>
           <option value="FL1">FL1</option>
           <option value="FL2">FL2</option>
+          <option value="FL3">FL3</option>
         </select>
+      </div>
+      <div class="mb-3">
+        <div class="field-wrapper" id="freelancerNameWrapper">
+          <label for="freelancerName" class="form-label">Freelancer Name:</label>
+          <input type="text" id="freelancerName" name="freelancerName" class="form-control" disabled>
+        </div>
       </div>
       <div class="mb-3">
         <label for="trackingNumbers" class="form-label">Tracking Number(s) (One per line):</label>
@@ -196,6 +200,38 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Get references to the "Dispatchers" and "Freelancer Name" fields
+      const dispatchersField = document.getElementById('dispatchers');
+      const freelancerNameField = document.getElementById('freelancerName');
+
+      // Function to show/hide the "Freelancer Name" field based on the selected dispatcher
+      function updateFreelancerNameField() {
+        const selectedDispatcher = dispatchersField.value;
+
+        if (selectedDispatcher === 'FL1' || selectedDispatcher === 'FL2' || selectedDispatcher === 'FL3') {
+          // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
+          $("#freelancerNameWrapper").fadeIn();
+          freelancerNameField.disabled = false;
+          freelancerNameField.required = true;
+        } else {
+          // If other options are selected, hide and disable the "Freelancer Name" field
+          $("#freelancerNameWrapper").hide();
+          freelancerNameField.disabled = true;
+          freelancerNameField.required = false;
+          freelancerNameField.value = ''; // Clear the field's value
+        }
+      }
+
+      // Attach the updateFreelancerNameField function to the "change" event of the "Dispatchers" dropdown
+      dispatchersField.addEventListener('change', updateFreelancerNameField);
+
+      // Initialize the "Freelancer Name" field based on the initial selected dispatcher
+      updateFreelancerNameField();
+    });
+  </script>
 
   <script>
     // Get reference to the submit button

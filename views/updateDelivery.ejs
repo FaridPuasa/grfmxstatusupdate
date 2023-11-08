@@ -80,7 +80,8 @@
                             <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
                             <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     POD List
                                 </a>
                                 <div class="dropdown-menu" aria-labelledby="podListDropdown">
@@ -91,8 +92,10 @@
                                     <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
                                 </div>
                             </li>
-                            <li class="nav-item"><a class="nav-link" href="/listofpharmacyMOHForms">Pharmacy Form List</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/listofpharmacyMOHForms">Pharmacy Form
+                                    List</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker
+                                    (FMX)</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -107,8 +110,10 @@
                     <label for="consignmentID" class="form-label">Tracking Number(s):</label>
                     <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2"
                         required></textarea>
-                    <small>*For warehouse update, use Go Rush tracking number for old GRP orders that are before 9.10.23.</small><br>
-                        <small>**For warehouse update,  use original tracking number for new GRP and CBSL orders from 9.10.23 onwards. Next update after warehouse, can use Go Rush Tracking Numbers for update.</small>
+                    <small>*For warehouse update, use Go Rush tracking number for old GRP orders that are before
+                        9.10.23.</small><br>
+                    <small>**For warehouse update, use original tracking number for new GRP and CBSL orders from 9.10.23
+                        onwards. Next update after warehouse, can use Go Rush Tracking Numbers for update.</small>
                 </div>
             </div>
             <div class="mb-3">
@@ -154,13 +159,16 @@
                         <option value="Hasbul">Hasbul</option>
                         <option value="Safwan">Safwan</option>
                         <option value="Hazri">Hazri</option>
-                        <option value="Naizam">Naizam</option>
-                        <option value="Asma">Asma</option>
-                        <option value="Rita">Rita</option>
-                        <option value="Nisah">Nisah</option>
                         <option value="FL1">FL1</option>
                         <option value="FL2">FL2</option>
+                        <option value="FL3">FL3</option>
                     </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="freelancerNameWrapper">
+                    <label for="freelancerName" class="form-label">Freelancer Name:</label>
+                    <input type="text" id="freelancerName" name="freelancerName" class="form-control" disabled>
                 </div>
             </div>
             <div class="mb-3">
@@ -226,6 +234,7 @@
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
+            const freelancerNameField = document.getElementById('freelancerName');
             const additionalReasonField = document.getElementById('additionalReason');
 
             // Get reference to the "Status Code" select element
@@ -243,6 +252,24 @@
             // Attach the disableSubmitButton function to the "submit" event of the form
             document.querySelector('form').addEventListener('submit', disableSubmitButton);
 
+            // Function to show/hide the "Freelancer Name" field based on the selected dispatcher
+            function updateFreelancerNameField() {
+                const selectedDispatcher = dispatchersField.value;
+
+                if (selectedDispatcher === 'FL1' || selectedDispatcher === 'FL2' || selectedDispatcher === 'FL3') {
+                    // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
+                    $("#freelancerNameWrapper").fadeIn();
+                    freelancerNameField.disabled = false;
+                    freelancerNameField.required = true;
+                } else {
+                    // If other options are selected, hide and disable the "Freelancer Name" field
+                    $("#freelancerNameWrapper").hide();
+                    freelancerNameField.disabled = true;
+                    freelancerNameField.required = false;
+                    freelancerNameField.value = ''; // Clear the field's value
+                }
+            }
+
             // Function to enable/disable fields and set them as required based on the selected status code
             function updateFieldStatus() {
                 const selectedStatusCode = statusCodeSelect.value;
@@ -251,16 +278,12 @@
                 assignDateField.value = '';
                 dispatchersField.value = '';
                 additionalReasonField.value = '';
-
-                $("#bruHIMSNumberTemp").fadeIn();
+                freelancerNameField.value = ''; // Clear the field's value
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
                 $("#additionalReasonWrapper").hide();
-
-                $("#assignDateWrapper").fadeIn();
-                $("#dispatchersWrapper").fadeIn();
-                $("#additionalReasonWrapper").fadeIn();
+                $("#freelancerNameWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -271,6 +294,7 @@
                     $("#assignDateWrapper").fadeIn();
                     $("#dispatchersWrapper").fadeIn();
                     $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -285,6 +309,7 @@
                     $("#assignDateWrapper").fadeIn();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -306,6 +331,7 @@
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
+                    $("#freelancerNameWrapper").hide();
                 } else if (selectedStatusCode === '44') {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
@@ -321,6 +347,7 @@
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
+                    $("#freelancerNameWrapper").hide();
                 } else {
                     // Disable the fields for other status codes
                     assignDateField.disabled = true;
@@ -336,6 +363,7 @@
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;
@@ -350,6 +378,12 @@
 
             // Initialize field status based on the initial selected status code
             updateFieldStatus();
+
+            // Attach the updateFreelancerNameField function to the "change" event of the "Dispatchers" dropdown
+            dispatchersField.addEventListener('change', updateFreelancerNameField);
+
+            // Initialize the "Freelancer Name" field based on the initial selected dispatcher
+            updateFreelancerNameField();
         });
     </script>
 </body>
