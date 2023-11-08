@@ -1840,7 +1840,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions == 'CP')) {
+                if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -1854,7 +1854,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions == '38')) {
+                if ((req.body.statusCode == 12) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('38'))) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
