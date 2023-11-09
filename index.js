@@ -1873,7 +1873,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (dispatchers == "FL5")) {
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -1907,7 +1907,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")|| (req.body.dispatchers == "FL4") || (dispatchers == "FL5")) {
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")|| (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2123,7 +2123,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (dispatchers == "FL5")) {
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2154,7 +2154,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (dispatchers == "FL5")) {
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
