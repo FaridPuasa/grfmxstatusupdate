@@ -2681,7 +2681,14 @@ orderWatch.on('change', change => {
                                 console.log(updatedOrder.doTrackingNumber);
                                 console.log(updatedOrder);
 
-                                let optInNumber = "00" + phoneNumber
+                                if (phoneNumber.length <= 10){
+                                    var optInNumber = "00" + phoneNumber
+                                }
+
+                                if (phoneNumber.length > 10){
+                                    var optInNumber = phoneNumber
+                                }
+
                                 let gid = "2000215252"
                                 let pas = "6@SemFzr"
                                 let format = "json"
