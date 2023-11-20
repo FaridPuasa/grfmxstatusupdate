@@ -1677,10 +1677,15 @@ async function updateOrdersDocument(consignmentID, req) {
             },
         };
 
+        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+            var finalDispatcherName = req.body.dispatchers.toUpperCase() + " " + req.body.freelancerName.toUpperCase()
+        } else {
+            var finalDispatcherName = req.body.dispatchers.toUpperCase()
+        }
+
         // Update based on different status codes
-        if (req.body.statusCode === 'CP' || req.body.statusCode === '38') {
+        if (req.body.statusCode === 'CP') {
             update.$set.currentStatus = 'Custom Clearance in Progress';
-            update.$set.attempt = 0;
 
             // Add new entry to history array
             update.$push = {
@@ -1690,11 +1695,21 @@ async function updateOrdersDocument(consignmentID, req) {
                     updatedBy: 'User',
                 },
             };
+        } else if (req.body.statusCode === '38') {
+            update.$set.currentStatus = 'Custom Clearance Release';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Custom Clearance Release',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                },
+            };
         } else if (req.body.statusCode === '12') {
             update.$set.warehouseEntry = 'Yes';
             update.$set.warehouseEntryDateTime = moment().format();
             update.$set.currentStatus = 'Item in Warehouse';
-            update.$set.attempt = 0;
 
             // Add new entry to history array
             update.$push = {
@@ -1707,7 +1722,7 @@ async function updateOrdersDocument(consignmentID, req) {
         } else if (req.body.statusCode === 35) {
             update.$set.currentStatus = 'Out for Delivery';
             update.$inc = { attempt: 1 };
-            update.$set.assignedTo = req.body.finalDispatcherName;
+            update.$set.assignedTo = finalDispatcherName;
 
             // Add new entry to history array
             update.$push = {
@@ -1715,12 +1730,12 @@ async function updateOrdersDocument(consignmentID, req) {
                     statusHistory: 'Out for Delivery',
                     dateUpdated: moment().format(),
                     updatedBy: 'User',
-                    lastAssignedTo: req.body.finalDispatcherName,
+                    lastAssignedTo: finalDispatcherName,
                 },
             };
         } else if (req.body.statusCode === 'SD') {
             update.$set.lastUpdateDateTime = moment().format();
-            update.$set.assignedTo = req.body.finalDispatcherName;
+            update.$set.assignedTo = finalDispatcherName;
 
             // Add new entry to history array
             update.$push = {
@@ -1728,7 +1743,7 @@ async function updateOrdersDocument(consignmentID, req) {
                     statusHistory: 'Out for Delivery',
                     dateUpdated: moment().format(),
                     updatedBy: 'User',
-                    lastAssignedTo: req.body.finalDispatcherName,
+                    lastAssignedTo: finalDispatcherName,
                 },
             };
         } else if (
