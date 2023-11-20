@@ -1667,6 +1667,143 @@ app.post('/addressAreaCheck', (req, res) => {
     res.render('successAddressArea', { entries: result });
 });
 
+// Function to update the document in the ORDERS collection
+/* async function updateOrdersDocument(consignmentID, req) {
+    try {
+        const filter = { doTrackingNumber: consignmentID };
+        const update = {
+            $set: {
+                lastUpdateDateTime: moment().format(),
+            },
+        };
+
+        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+            var finalDispatcherName = req.body.dispatchers.toUpperCase() + " " + req.body.freelancerName.toUpperCase()
+        } else {
+            var finalDispatcherName = req.body.dispatchers.toUpperCase()
+        }
+
+        // Update based on different status codes
+        if (req.body.statusCode === 'CP') {
+            update.$set.currentStatus = 'Custom Clearance in Progress';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Custom Clearance in Progress',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                },
+            };
+        } else if (req.body.statusCode === '38') {
+            update.$set.currentStatus = 'Custom Clearance Release';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Custom Clearance Release',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                },
+            };
+        } else if (req.body.statusCode === '12') {
+            update.$set.warehouseEntry = 'Yes';
+            update.$set.warehouseEntryDateTime = moment().format();
+            update.$set.currentStatus = 'Item in Warehouse';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Item in Warehouse',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                },
+            };
+        } else if (req.body.statusCode === 35) {
+            update.$set.currentStatus = 'Out for Delivery';
+            update.$inc = { attempt: 1 };
+            update.$set.assignedTo = finalDispatcherName;
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Out for Delivery',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                    lastAssignedTo: finalDispatcherName,
+                },
+            };
+        } else if (req.body.statusCode === 'SD') {
+            update.$set.lastUpdateDateTime = moment().format();
+            update.$set.assignedTo = finalDispatcherName;
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Out for Delivery',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                    lastAssignedTo: finalDispatcherName,
+                },
+            };
+        } else if (
+            req.body.statusCode === 'MD' ||
+            req.body.statusCode === 'RF' ||
+            req.body.statusCode === 'FD' ||
+            req.body.statusCode === 'SC' ||
+            req.body.statusCode === 44
+        ) {
+            update.$set.currentStatus = 'Failed Delivery. Return to Warehouse';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Failed Delivery. Return to Warehouse',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                    lastFailedReason: req.body.additionalReason,
+                },
+            };
+        } else if (req.body.statusCode === 'CSSC') {
+            update.$set.currentStatus = 'Self Collect';
+            update.$inc = { attempt: 1 };
+            update.$set.assignedTo = 'Selfcollect';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Self Collect',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                    lastAssignedTo: 'Selfcollect',
+                },
+            };
+        } else if (req.body.statusCode === 50) {
+            update.$set.currentStatus = 'Success/Completed';
+
+            // Add new entry to history array
+            update.$push = {
+                history: {
+                    statusHistory: 'Success/Completed',
+                    dateUpdated: moment().format(),
+                    updatedBy: 'User',
+                },
+            };
+        }
+
+        // Update the document in the ORDERS collection
+        const result = await ORDERS.updateOne(filter, update);
+
+        if (result.modifiedCount === 1) {
+            console.log(`Document updated successfully for Consignment ID: ${consignmentID}`);
+        } else {
+            console.log(`No document found for Consignment ID: ${consignmentID}`);
+        }
+    } catch (error) {
+        console.error(`Error updating document for Consignment ID: ${consignmentID}`, error);
+    }
+} */
+
 // Handle form submission for /scanFMX route
 app.post('/updateDelivery', async (req, res) => {
 
@@ -1697,6 +1834,7 @@ app.post('/updateDelivery', async (req, res) => {
         try {
             var DetrackAPIrun = 0;
             var FMXAPIrun = 0;
+            var mongoDBrun = 0;
             var ccCheck = 0;
             var ceCheck = 0;
             var product = '';
@@ -1840,6 +1978,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
@@ -1854,6 +1993,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('38'))) {
@@ -1870,6 +2010,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
@@ -1904,10 +2045,11 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3")|| (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -1933,6 +2075,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')) {
@@ -1950,6 +2093,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')) {
@@ -1968,6 +2112,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')) {
@@ -1986,6 +2131,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')) {
@@ -2004,6 +2150,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 3;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status == 'failed')) {
@@ -2025,6 +2172,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
@@ -2040,6 +2188,7 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
@@ -2054,6 +2203,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 5;
+                    mongoDBrun = 1;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -2075,6 +2225,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
+                    mongoDBrun = 1;
                 }
             }
 
@@ -2092,9 +2243,10 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product == 'RS')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product == 'CBSL')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -2107,9 +2259,10 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product != 'GRP') && (product != 'RS')) {
+                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product != 'GRP') && (product != 'CBSL')) {
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -2120,6 +2273,7 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
@@ -2151,6 +2305,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -2180,6 +2335,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status != 'at_warehouse')) {
@@ -2193,6 +2349,7 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
@@ -2208,6 +2365,7 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -2222,12 +2380,18 @@ app.post('/updateDelivery', async (req, res) => {
                     detrackUpdate = "Detrack status updated to Cancelled. ";
 
                     DetrackAPIrun = 1;
+                    mongoDBrun = 1;
                 }
             }
 
             if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || ((DetrackAPIrun == 0) && (FMXAPIrun == 0))) {
                 ceCheck = 1;
             }
+
+            /* if (mongoDBrun == 1) {
+                // Call the function to update the ORDERS document
+                await updateOrdersDocument(consignmentID, req);
+            } */
 
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
@@ -2681,11 +2845,11 @@ orderWatch.on('change', change => {
                                 console.log(updatedOrder.doTrackingNumber);
                                 console.log(updatedOrder);
 
-                                if (phoneNumber.length <= 10){
+                                if (phoneNumber.length <= 10) {
                                     var optInNumber = "00" + phoneNumber
                                 }
 
-                                if (phoneNumber.length > 10){
+                                if (phoneNumber.length > 10) {
                                     var optInNumber = phoneNumber
                                 }
 
