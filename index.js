@@ -2521,10 +2521,37 @@ app.post('/updateDelivery', async (req, res) => {
                 const currentDate = moment(latestPODDate).format();
                 const fileName = `${consignmentID}_POD`;
 
-                const photo1FileUrl = data.data.photo_1_file_url;
+                const photoUrls = [
+                    data.data.photo_1_file_url,
+                    data.data.photo_2_file_url,
+                    data.data.photo_3_file_url,
+                    data.data.photo_4_file_url,
+                    data.data.photo_5_file_url,
+                    data.data.photo_6_file_url,
+                    data.data.photo_7_file_url,
+                    data.data.photo_8_file_url,
+                    data.data.photo_9_file_url,
+                    data.data.photo_10_file_url
+                ];
 
-                // Download the image from data.photo_1_file_url
-                const imageResponse = await axios.get(photo1FileUrl, { responseType: 'arraybuffer' });
+                let selectedPhotoUrl = null;
+
+                // Find the first non-null photo URL
+                for (const url of photoUrls) {
+                    if (url) {
+                        selectedPhotoUrl = url;
+                        break;
+                    }
+                }
+
+                if (!selectedPhotoUrl) {
+                    throw new Error('No valid photo URL found');
+                }
+
+                console.log(selectedPhotoUrl);
+
+                // Download the image from the selected photo URL
+                const imageResponse = await axios.get(selectedPhotoUrl, { responseType: 'arraybuffer' });
 
                 if (imageResponse.status !== 200) {
                     throw new Error('Error occurred during image download');
