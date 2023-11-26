@@ -174,12 +174,10 @@
           <option value="Hasbul">Hasbul</option>
           <option value="Safwan">Safwan</option>
           <option value="Hazri">Hazri</option>
+          <option value="Fadhil">Fadhil</option>
           <option value="Self-Collect">Self-Collect</option>
           <option value="FL1">FL1</option>
           <option value="FL2">FL2</option>
-          <option value="FL3">FL3</option>
-          <option value="FL4">FL4</option>
-          <option value="FL5">FL5</option>
         </select>
       </div>
       <div class="mb-3">
@@ -217,7 +215,7 @@
       function updateFreelancerNameField() {
         const selectedDispatcher = dispatchersField.value;
 
-        if (selectedDispatcher === 'FL1' || selectedDispatcher === 'FL2' || selectedDispatcher === 'FL3' || selectedDispatcher === 'FL4' || selectedDispatcher === 'FL5') {
+        if (selectedDispatcher === 'FL1' || selectedDispatcher === 'FL2') {
           // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
           $("#freelancerNameWrapper").fadeIn();
           freelancerNameField.disabled = false;
