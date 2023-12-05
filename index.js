@@ -1833,6 +1833,7 @@ app.post('/updateDelivery', async (req, res) => {
     for (const consignmentID of uniqueConsignmentIDsArray) {
         try {
             var DetrackAPIrun = 0;
+            var DetrackAPIAttemptrun = 0;
             var FMXAPIrun = 0;
             var mongoDBrun = 0;
             var ccCheck = 0;
@@ -2091,7 +2092,14 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    var detrackUpdateDataAttempt = {
+                        data: {
+                            do_number: consignmentID,
+                        }
+                    };
+
                     DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2110,7 +2118,14 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    var detrackUpdateDataAttempt = {
+                        data: {
+                            do_number: consignmentID,
+                        }
+                    };
+
                     DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2129,7 +2144,14 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    var detrackUpdateDataAttempt = {
+                        data: {
+                            do_number: consignmentID,
+                        }
+                    };
+
                     DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2148,7 +2170,14 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    var detrackUpdateDataAttempt = {
+                        data: {
+                            do_number: consignmentID,
+                        }
+                    };
+
                     DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2170,7 +2199,14 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    var detrackUpdateDataAttempt = {
+                        data: {
+                            do_number: consignmentID,
+                        }
+                    };
+
                     DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 2;
                     mongoDBrun = 1;
                 }
@@ -2346,9 +2382,16 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    var detrackUpdateDataAttempt = {
+                        data: {
+                            do_number: consignmentID,
+                        }
+                    };
+
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     mongoDBrun = 1;
                 }
 
@@ -2408,6 +2451,25 @@ app.post('/updateDelivery', async (req, res) => {
                         console.log(`Detrack Status Updated for Consignment ID: ${consignmentID}`);
                     } else {
                         console.error(`Error updating Detrack Status for Consignment ID: ${consignmentID}`);
+                    }
+                });
+            }
+
+            if (DetrackAPIAttemptrun == 1) {
+                // Make the API request to add attempt in Detrack
+                request({
+                    method: 'PUT',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(detrackUpdateDataAttempt)
+                }, function (error, response, body) {
+                    if (!error && response.statusCode === 200) {
+                        console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
+                    } else {
+                        console.error(`Error increase attempt by 1 for Consignment ID: ${consignmentID}`);
                     }
                 });
             }
