@@ -2436,25 +2436,6 @@ app.post('/updateDelivery', async (req, res) => {
                 await updateOrdersDocument(consignmentID, req);
             } */
 
-            if (DetrackAPIrun == 1) {
-                // Make the API request to update the status in Detrack
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateData)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Detrack Status Updated for Consignment ID: ${consignmentID}`);
-                    } else {
-                        console.error(`Error updating Detrack Status for Consignment ID: ${consignmentID}`);
-                    }
-                });
-            }
-
             if (DetrackAPIAttemptrun == 1) {
                 // Make the API request to add attempt in Detrack
                 request({
@@ -2470,6 +2451,25 @@ app.post('/updateDelivery', async (req, res) => {
                         console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
                     } else {
                         console.error(`Error increase attempt by 1 for Consignment ID: ${consignmentID}`);
+                    }
+                });
+            }
+
+            if (DetrackAPIrun == 1) {
+                // Make the API request to update the status in Detrack
+                request({
+                    method: 'PUT',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(detrackUpdateData)
+                }, function (error, response, body) {
+                    if (!error && response.statusCode === 200) {
+                        console.log(`Detrack Status Updated for Consignment ID: ${consignmentID}`);
+                    } else {
+                        console.error(`Error updating Detrack Status for Consignment ID: ${consignmentID}`);
                     }
                 });
             }
