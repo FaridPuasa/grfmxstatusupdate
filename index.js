@@ -2451,7 +2451,7 @@ app.post('/updateDelivery', async (req, res) => {
             if (DetrackAPIrun == 2) {
                 // Make the API request to add attempt in Detrack
                 request({
-                    method: 'PUT',
+                    method: 'POST',
                     url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
                     headers: {
                         'Content-Type': 'application/json',
