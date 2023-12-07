@@ -1833,6 +1833,7 @@ app.post('/updateDelivery', async (req, res) => {
     for (const consignmentID of uniqueConsignmentIDsArray) {
         try {
             var DetrackAPIrun = 0;
+            var DetrackAPIAttemptrun = 0;
             var FMXAPIrun = 0;
             var mongoDBrun = 0;
             var ccCheck = 0;
@@ -2097,7 +2098,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    DetrackAPIrun = 2;
+                    DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2122,7 +2124,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    DetrackAPIrun = 2;
+                    DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2147,7 +2150,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    DetrackAPIrun = 2;
+                    DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2172,7 +2176,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    DetrackAPIrun = 2;
+                    DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 3;
                     mongoDBrun = 1;
                 }
@@ -2200,7 +2205,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    DetrackAPIrun = 2;
+                    DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     FMXAPIrun = 2;
                     mongoDBrun = 1;
                 }
@@ -2384,7 +2390,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
 
-                    DetrackAPIrun = 2;
+                    DetrackAPIrun = 1;
+                    DetrackAPIAttemptrun = 1;
                     mongoDBrun = 1;
                 }
 
@@ -2429,6 +2436,25 @@ app.post('/updateDelivery', async (req, res) => {
                 await updateOrdersDocument(consignmentID, req);
             } */
 
+            if (DetrackAPIAttemptrun == 1) {
+                // Make the API request to add attempt in Detrack
+                request({
+                    method: 'PUT',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(detrackUpdateDataAttempt)
+                }, function (error, response, body) {
+                    if (!error && response.statusCode === 200) {
+                        console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
+                    } else {
+                        console.error(`Error increase attempt by 1 for Consignment ID: ${consignmentID}`);
+                    }
+                });
+            }
+
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
                 request({
@@ -2448,43 +2474,6 @@ app.post('/updateDelivery', async (req, res) => {
                 });
             }
 
-            if (DetrackAPIrun == 2) {
-                // Make the API request to add attempt in Detrack
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateDataAttempt)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
-            
-                        // Always make the second API request after the first one
-                        request({
-                            method: 'PUT',
-                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey
-                            },
-                            body: JSON.stringify(detrackUpdateData)
-                        }, function (error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                console.log(`Detrack Status Updated for Consignment ID: ${consignmentID}`);
-                            } else {
-                                console.error(`Error updating Detrack Status for Consignment ID: ${consignmentID}`);
-                            }
-                        });
-            
-                    } else {
-                        console.error(`Error increase attempt by 1 for Consignment ID: ${consignmentID}`);
-                    }
-                });
-            }
-            
             //normal run
             if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
