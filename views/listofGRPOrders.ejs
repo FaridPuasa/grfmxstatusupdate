@@ -126,11 +126,13 @@
                         <th class="header">Area</th>
                         <th class="header">Commodities</th>
                         <th class="header">Contains</th>
-                        <th class="header">Currency</th>
                         <th class="header">Item Description</th>
                         <th class="header">Quantity</th>
                         <th class="header">Total Price</th>
                         <th class="header">Weight</th>
+                        <th class="header">Delivery Type</th>
+                        <th class="header">Payment Method</th>
+                        <th class="header">Delivery Charge</th>
                         <th class="header">Remarks</th>
                         <th class="header">Date Time Submitted</th>
                         <th class="header">Membership</th>
@@ -175,19 +177,25 @@
                                 <%= order.itemContains %>
                             </td>
                             <td>
-                                <%= order.currency %>
-                            </td>
-                            <td>
                                 <%= order.items[0].description %>
                             </td>
                             <td>
                                 <%= order.items[0].quantity %>
                             </td>
                             <td>
-                                <%= order.items[0].totalItemPrice %>
+                                <%= order.currency %> <%= order.items[0].totalItemPrice %>
                             </td>
                             <td>
                                 <%= order.parcelWeight %>
+                            </td>
+                            <td>
+                                <%= order.deliveryType %>
+                            </td>
+                            <td>
+                                <%= order.paymentMethod %>
+                            </td>
+                            <td>
+                                <%= order.paymentAmount %>
                             </td>
                             <td>
                                 <%= order.remarks %>

@@ -126,6 +126,9 @@
                         <th class="header">Quantity</th>
                         <th class="header">Total Price (RM)</th>
                         <th class="header">Order Screenshot</th>
+                        <th class="header">Delivery Type</th>
+                        <th class="header">Payment Method</th>
+                        <th class="header">Delivery Charge</th>
                         <th class="header">Remarks</th>
                         <th class="header">Date Time Submitted</th>
                         <th class="header">Membership</th>
@@ -167,10 +170,19 @@
                                 <%= order.cargoPrice %>
                             </td>
                             <td>
-                                <%= order.remarks %>
+                                <%= order.screenshotInvoice %>
                             </td>
                             <td>
-                                <%= order.screenshotInvoice %>
+                                <%= order.deliveryType %>
+                            </td>
+                            <td>
+                                <%= order.paymentMethod %>
+                            </td>
+                            <td>
+                                <%= order.paymentAmount %>
+                            </td>
+                            <td>
+                                <%= order.remarks %>
                             </td>
                             <td>
                                 <%= order.dateTimeSubmission %>

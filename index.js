@@ -437,6 +437,9 @@ app.get('/listofGRPOrders', async (req, res) => {
                 'currency',
                 'items',
                 'parcelWeight',
+                'deliveryType',
+                'paymentMethod',
+                'paymentAmount',
                 'remarks',
                 'dateTimeSubmission',
                 'membership'
@@ -468,6 +471,9 @@ app.get('/listofCBSLOrders', async (req, res) => {
                 'items',
                 'cargoPrice',
                 'screenshotInvoice',
+                'deliveryType',
+                'paymentMethod',
+                'paymentAmount',
                 'remarks',
                 'dateTimeSubmission',
                 'membership'
@@ -2241,13 +2247,13 @@ app.post('/updateDelivery', async (req, res) => {
                         fmxReason = req.body.additionalReason;
                     }
 
-                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+                    detrackUpdate = "Detrack status updated to Cancelled. ";
                     fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + fmxReason;
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse",
+                            status: "cancelled",
                             note: fmxUpdate,
                             instructions: "FMX Milestone ID RF"
                         }
