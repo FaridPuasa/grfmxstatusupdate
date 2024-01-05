@@ -2698,6 +2698,7 @@ app.post('/updateDelivery', async (req, res) => {
 });
 
 orderWatch.on('change', change => {
+    console.log("test mongodb")
     console.log(change.operationType)
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
