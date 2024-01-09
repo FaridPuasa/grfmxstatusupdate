@@ -2399,7 +2399,7 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                            assign_to: 'Selfcollect', // Get the selected dispatcher from the form
                             status: "dispatched" // Use the calculated dStatus
                         }
                     };
