@@ -122,6 +122,7 @@
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
                         <option value="CP">Custom Clearance In Progress (FMX only)</option>
+                        <option value="DC">Detained by Customs (FMX only)</option>
                         <option value="38">Custom Clearance Release (FMX only)</option>
                         <option value="12">Item In Warehouse (All)</option>
                         <option value="35">Out for Delivery (All)</option>
@@ -162,7 +163,10 @@
                         <option value="Fadhil">Fadhil</option>
                         <option value="Fathur">Fathur</option>
                         <option value="Aziz">Aziz</option>
+                        <option value="Nazib">Nazib</option>
+                        <option value="Fendi">Fendi</option>
                         <option value="FL1">FL1</option>
+                        <option value="FL2">FL2</option>
                     </select>
                 </div>
             </div>
@@ -305,7 +309,7 @@
             function updateFreelancerNameField() {
                 const selectedDispatcher = dispatchersField.value;
 
-                if (selectedDispatcher === 'FL1') {
+                if ((selectedDispatcher === 'FL1')||(selectedDispatcher === 'FL2')) {
                     // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
                     $("#freelancerNameWrapper").fadeIn();
                     freelancerNameField.disabled = false;

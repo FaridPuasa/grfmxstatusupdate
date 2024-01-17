@@ -78,6 +78,20 @@ const orderSchema = new mongoose.Schema({
     sendOrderTo: String,
     itemCommodityType: String,
     screenshotInvoice: String,
+    currentStatus: String,
+    lastUpdateDateTime: String,
+    warehouseEntry: String,
+    warehouseEntryDateTime: String,
+    assignedTo: String,
+    attempt: String,
+    flightDate: String,
+    mawbNo: String,
+    history: [{
+        statusHistory: String,
+        dateUpdated: String,
+        updatedBy: String,
+        lastAssignedTo: String
+    }],
 }, { collection: 'orders' });
 
 // Create a model for the "orders" collection
