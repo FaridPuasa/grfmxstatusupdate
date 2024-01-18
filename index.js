@@ -1240,7 +1240,7 @@ app.post('/generatePOD', async (req, res) => {
         const areasJoined = areasArray.join(', ');
 
         // Split tracking numbers into an array
-        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim().toUpperCase());
+        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim());
 
         const runSheetData = [];
         const uniqueTrackingNumbers = new Set(); // Use a Set to automatically remove duplicates
