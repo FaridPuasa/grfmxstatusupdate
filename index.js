@@ -1824,7 +1824,7 @@ app.post('/updateDelivery', async (req, res) => {
     const accessToken = authResponse.data.result.accessToken;
 
     // Split the tracking numbers by newlines
-    const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
+    const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim());
 
     const uniqueConsignmentIDs = new Set(); // Use a Set to automatically remove duplicates
 
