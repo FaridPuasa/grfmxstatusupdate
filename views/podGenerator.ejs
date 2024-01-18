@@ -219,7 +219,7 @@
       function updateFreelancerNameField() {
         const selectedDispatcher = dispatchersField.value;
 
-        if (selectedDispatcher === 'FL1') {
+        if ((selectedDispatcher === 'FL1')||(selectedDispatcher === 'FL2')) {
           // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
           $("#freelancerNameWrapper").fadeIn();
           freelancerNameField.disabled = false;
