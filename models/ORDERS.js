@@ -86,6 +86,8 @@ const orderSchema = new mongoose.Schema({
     attempt: String,
     flightDate: String,
     mawbNo: String,
+    fmxMilestoneStatus: String,
+    fmxMilestoneStatusCode: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,

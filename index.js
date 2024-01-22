@@ -2028,6 +2028,34 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
                     /* var update = {
+                        currentStatus: "Detained by Customs",
+                        lastUpdateDateTime: moment().format(),
+                        $push: {
+                            history: {
+                                statusHistory: "Detained by Customs",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: "N/A",
+                            }
+                        }
+                    } */
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            instructions: "FMX Milestone ID DC"
+                        }
+                    };
+
+                    fmxUpdate = "FMX milestone updated to Detained by Customs.";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 1;
+                    mongoDBrun = 2;
+                }
+
+                if ((req.body.statusCode == 38) && (ccCheck == 1) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
+                    /* var update = {
                         currentStatus: "Custom Clearance Release",
                         lastUpdateDateTime: moment().format(),
                         $push: {

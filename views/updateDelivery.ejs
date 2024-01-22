@@ -122,6 +122,7 @@
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
                         <option value="CP">Custom Clearance In Progress (FMX only)</option>
+                        <option value="DC">Detained by Customs (FMX only)</option>
                         <option value="38">Custom Clearance Release (FMX only)</option>
                         <option value="12">Item In Warehouse (All)</option>
                         <option value="35">Out for Delivery (All)</option>
@@ -164,6 +165,7 @@
                         <option value="Aziz">Aziz</option>
                         <option value="Nazib">Nazib</option>
                         <option value="Fendi">Fendi</option>
+                        <option value="Adli">Adli</option>
                         <option value="FL1">FL1</option>
                     </select>
                 </div>
@@ -367,7 +369,7 @@
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
 
-                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC') || (selectedStatusCode === 'CD')) {
+                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC') || (selectedStatusCode === 'CD')|| (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
                     additionalReasonField.required = true;
