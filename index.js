@@ -2525,7 +2525,7 @@ app.post('/updateDelivery', async (req, res) => {
                 ceCheck = 1;
             }
 
-            if (mongoDBrun == 1) {
+            /* if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newFmxOrder.save()
                     .then(savedOrder => {
@@ -2540,7 +2540,7 @@ app.post('/updateDelivery', async (req, res) => {
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
                 console.log(result);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            }
+            } */
 
             if (DetrackAPIrun == 1) {
                 console.log("detrackrun")
