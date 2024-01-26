@@ -88,11 +88,13 @@ const orderSchema = new mongoose.Schema({
     mawbNo: String,
     fmxMilestoneStatus: String,
     fmxMilestoneStatusCode: String,
+    latestReason: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,
         updatedBy: String,
-        lastAssignedTo: String
+        lastAssignedTo: String,
+        reason: String,
     }],
 }, { collection: 'orders' });
 
