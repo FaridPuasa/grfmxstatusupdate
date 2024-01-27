@@ -1845,12 +1845,10 @@ app.post('/updateDelivery', async (req, res) => {
             var ceCheck = 0;
             var product = '';
             var latestPODDate = "";
-            var detrackUpdate = "";
             var fmxUpdate = "";
             var portalUpdate = "";
             var currentDetrackStatus = "";
             var detrackReason = "";
-            var chosenTrackingNumber = ""
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -1925,66 +1923,81 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'CP') {
                 appliedStatus = "Custom Clearance in Progress"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'DC') {
                 appliedStatus = "Detained by Customs"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 38) {
                 appliedStatus = "Custom Clearance Release"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 12) {
                 appliedStatus = "Item in Warehouse"
-                if ((product == 'CBSL')||(product == 'GRP')){
+                if ((product == 'CBSL')) {
                     chosenTrackingNumber = data.data.tracking_number
+                    var filter = { doTrackingNumber: data.data.tracking_number };
+                } else if ((product == 'GRP')) {
+                    var filter = { doTrackingNumber: data.data.tracking_number };
                 } else {
-                    chosenTrackingNumber = consignmentID
+                    var filter = { doTrackingNumber: consignmentID };
                 }
             }
 
             if (req.body.statusCode == 35) {
                 appliedStatus = "Out for Delivery"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'SD') {
                 appliedStatus = "Swap Dispatchers"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'MD') {
                 appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse(FMX)"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'RF') {
                 appliedStatus = "Failed Delivery due to Customer Declined Delivery. Return to Warehouse(FMX)"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'FD') {
                 appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'SC') {
                 appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 44) {
                 appliedStatus = "Failed Delivery (optional additional remarks for FMX). Return To Warehouse"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'CSSC') {
                 appliedStatus = "Self Collect"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 50) {
                 appliedStatus = "Success/Completed"
+                var filter = { doTrackingNumber: consignmentID };
             }
 
-            var filter = { doTrackingNumber: chosenTrackingNumber };
             var option = { upsert: false, new: false };
 
             if (product == 'FMX') {
@@ -2032,7 +2045,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     mongoDBrun = 1;
                 }
-                
+
                 if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
                     var update = {
                         currentStatus: "Custom Clearing",
@@ -2068,19 +2081,24 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == "DC") && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('CP')) */) {
+                    if (req.body.additionalReason.length != 0) {
+                        detrackReason = req.body.additionalReason;
+                    }
+
                     var update = {
                         currentStatus: "Detained by Customs",
                         lastUpdateDateTime: moment().format(),
                         fmxMilestoneStatus: "Detained by Customs",
                         fmxMilestoneStatusCode: "DC",
                         instructions: "FMX Milestone ID DC",
+                        latestReason: detrackReason,
                         $push: {
                             history: {
                                 statusHistory: "Detained by Customs",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
-                                reason: "N/A",
+                                reason: detrackReason,
                             }
                         }
                     }
@@ -2096,7 +2114,7 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Detained by Customs.";
 
                     DetrackAPIrun = 1;
-                    FMXAPIrun = 1;
+                    FMXAPIrun = 2;
                     mongoDBrun = 2;
                 }
 
@@ -2171,6 +2189,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                        console.log("FL1 here " + req.body.freelancerName)
                         var update = {
                             currentStatus: "Out for Delivery",
                             lastUpdateDateTime: moment().format(),
@@ -2178,7 +2197,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatusCode: "35",
                             instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            attempt: (update.attempt || 0) + 1,
+                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery",
@@ -2190,6 +2209,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
 
+                        console.log("update test" + update)
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2200,7 +2221,10 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
+                        console.log("Detrack update test" + detrackUpdateData)
+
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+                        console.log("Portal update test" + portalUpdate)
 
                     } else {
                         var update = {
@@ -3002,7 +3026,9 @@ app.post('/updateDelivery', async (req, res) => {
                 ceCheck = 1;
             }
 
-            /* if (mongoDBrun == 1) {
+            console.log(mongoDBrun)
+
+            if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newFmxOrder.save()
                     .then(savedOrder => {
@@ -3014,10 +3040,15 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (mongoDBrun == 2) {
+                console.log("mongoDBrun supposed to be here")
+                console.log(filter)
+                console.log(update)
+                console.log(option)
+
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
                 console.log(result);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            } */
+            }
 
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
@@ -3076,7 +3107,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             //normal run
-            if (FMXAPIrun == 1) {
+            /* if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
 
@@ -3246,7 +3277,7 @@ app.post('/updateDelivery', async (req, res) => {
                 // Show a success message
                 console.log(response3.data);
                 console.log('Success');
-            }
+            } */
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
@@ -3281,7 +3312,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     console.log("test mongodb")
     console.log(change.operationType)
     if (change.operationType == "insert") {
@@ -3569,7 +3600,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
