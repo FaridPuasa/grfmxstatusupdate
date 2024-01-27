@@ -1849,7 +1849,7 @@ app.post('/updateDelivery', async (req, res) => {
             var fmxUpdate = "";
             var portalUpdate = "";
             var currentDetrackStatus = "";
-            var fmxReason = "";
+            var detrackReason = "";
             var chosenTrackingNumber = ""
 
             // Skip empty lines
@@ -1877,7 +1877,7 @@ app.post('/updateDelivery', async (req, res) => {
                     latestPODDate = data.data.milestones[i].pod_at;
                 }
                 if (data.data.milestones[i].status == 'failed') {
-                    fmxReason = data.data.milestones[i].reason;
+                    detrackReason = data.data.milestones[i].reason;
                 }
             }
 
@@ -2067,7 +2067,7 @@ app.post('/updateDelivery', async (req, res) => {
                     mongoDBrun = 2;
                 }
 
-                if ((req.body.statusCode == "DC") && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
+                if ((req.body.statusCode == "DC") && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('CP')) */) {
                     var update = {
                         currentStatus: "Detained by Customs",
                         lastUpdateDateTime: moment().format(),
@@ -2100,7 +2100,7 @@ app.post('/updateDelivery', async (req, res) => {
                     mongoDBrun = 2;
                 }
 
-                if ((req.body.statusCode == 38) && (data.data.status == 'custom_clearing') && ((data.data.instructions.includes('CP'))||(data.data.instructions.includes('DC')))) {
+                if ((req.body.statusCode == 38) && (data.data.status == 'custom_clearing') /* && ((data.data.instructions.includes('CP'))||(data.data.instructions.includes('DC'))) */) {
                     var update = {
                         currentStatus: "Custom Clearance Release",
                         lastUpdateDateTime: moment().format(),
@@ -2133,7 +2133,7 @@ app.post('/updateDelivery', async (req, res) => {
                     mongoDBrun = 2;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') && (data.data.instructions.includes('38'))) {
+                if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('38')) */) {
                     var update = {
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
@@ -2200,7 +2200,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
 
                     } else {
                         var update = {
@@ -2232,7 +2232,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
                     }
 
                     fmxUpdate = "FMX milestone updated to Out for Delivery.";
@@ -2268,7 +2268,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
 
                     } else {
                         var update = {
@@ -2295,7 +2295,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
                     }
 
                     DetrackAPIrun = 1;
@@ -2336,7 +2336,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "FMX Milestone ID MD, 44"
+                            instructions: "FMX Milestone ID MD, 44. Unattempted Delivery."
                         }
                     };
 
@@ -2352,16 +2352,16 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')) {
-                    fmxReason = req.body.additionalReason;
-                    fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery (RF) due to " + fmxReason + ". Return to Warehouse (44).";
+                    detrackReason = req.body.additionalReason;
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery (RF) due to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     var update = {
                         lastUpdateDateTime: moment().format(),
                         instructions: "FMX Milestone ID RF, 44",
                         assignedTo: "N/A",
-                        latestReason: "Customer Declined Delivery due to " + fmxReason,
-                        fmxMilestoneStatus: "Failed Delivery. Customer Declined Delivery due to " + fmxReason + ". Return to Warehouse",
+                        latestReason: "Customer Declined Delivery due to " + detrackReason,
+                        fmxMilestoneStatus: "Failed Delivery. Customer Declined Delivery due to " + detrackReason + ". Return to Warehouse",
                         fmxMilestoneStatusCode: "RF, 44",
                         $push: {
                             history: {
@@ -2369,7 +2369,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: data.data.assign_to,
-                                reason: "Customer Declined Delivery due to " + fmxReason,
+                                reason: "Customer Declined Delivery due to " + detrackReason,
                             },
                             history: {
                                 statusHistory: "Return to Warehouse",
@@ -2386,7 +2386,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "FMX Milestone ID RF, 44"
+                            instructions: "FMX Milestone ID RF, 44. Customer Declined Delivery due to " + detrackReason + "."
                         }
                     };
 
@@ -2402,16 +2402,16 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')) {
-                    fmxReason = req.body.additionalReason;
-                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + fmxReason + ". Return to Warehouse (44).";
+                    detrackReason = req.body.additionalReason;
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     var update = {
                         lastUpdateDateTime: moment().format(),
                         instructions: "FMX Milestone ID FD, 44",
                         assignedTo: "N/A",
-                        latestReason: "Customer Declined Delivery due to " + fmxReason,
-                        fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + fmxReason + ". Return to Warehouse.",
+                        latestReason: "Customer Declined Delivery due to " + detrackReason,
+                        fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + detrackReason + ". Return to Warehouse.",
                         fmxMilestoneStatusCode: "FD, 44",
                         $push: {
                             history: {
@@ -2419,7 +2419,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: data.data.assign_to,
-                                reason: "Customer Declined Delivery due to " + fmxReason,
+                                reason: "Customer Declined Delivery due to " + detrackReason,
                             },
                             history: {
                                 statusHistory: "Return to Warehouse",
@@ -2436,7 +2436,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "FMX Milestone ID FD, 44"
+                            instructions: "FMX Milestone ID FD, 44. Customer Declined Delivery due to " + detrackReason
                         }
                     };
 
@@ -2452,16 +2452,16 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')) {
-                    fmxReason = req.body.additionalReason;
-                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + fmxReason + ". Return to Warehouse (44).";
+                    detrackReason = req.body.additionalReason;
+                    fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     var update = {
                         lastUpdateDateTime: moment().format(),
                         instructions: "FMX Milestone ID SC, 44",
                         assignedTo: "N/A",
-                        latestReason: "Reschedule to Self Collect Requested By Customer to " + fmxReason,
-                        fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + fmxReason + ". Return to Warehouse",
+                        latestReason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
+                        fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + detrackReason + ". Return to Warehouse",
                         fmxMilestoneStatusCode: "SC, 44",
                         $push: {
                             history: {
@@ -2469,7 +2469,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: data.data.assign_to,
-                                reason: "Reschedule to Self Collect Requested By Customer to " + fmxReason,
+                                reason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
                             },
                             history: {
                                 statusHistory: "Return to Warehouse",
@@ -2486,7 +2486,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "FMX Milestone ID SC, 44"
+                            instructions: "FMX Milestone ID SC, 44. Reschedule to Self Collect Requested By Customer to " + detrackReason
                         }
                     };
 
@@ -2503,18 +2503,18 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 44) && (data.data.status == 'failed')) {
                     if (req.body.additionalReason.length != 0) {
-                        fmxReason = req.body.additionalReason;
+                        detrackReason = req.body.additionalReason;
                     }
 
                     detrackUpdate = "Detrack status updated to At Warehouse. ";
-                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse (44). Reason: " + fmxReason;
+                    fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse (44). Reason: " + detrackReason;
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     var update = {
                         lastUpdateDateTime: moment().format(),
                         instructions: "FMX Milestone ID 44",
                         assignedTo: "N/A",
-                        latestReason: fmxReason,
+                        latestReason: detrackReason,
                         fmxMilestoneStatus: "Failed delivery, return to warehouse.",
                         fmxMilestoneStatusCode: "44",
                         $push: {
@@ -2523,7 +2523,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: data.data.assign_to,
-                                reason: fmxReason,
+                                reason: detrackReason,
                             },
                             history: {
                                 statusHistory: "Return to Warehouse",
@@ -2540,7 +2540,7 @@ app.post('/updateDelivery', async (req, res) => {
                         data: {
                             status: "at_warehouse", // Use the calculated dStatus
                             note: fmxUpdate,
-                            instructions: "FMX Milestone ID 44"
+                            instructions: "FMX Milestone ID 44. Failed delivery due to " + detrackReason
                         }
                     };
 
@@ -2623,16 +2623,16 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if (req.body.statusCode == 'CD') {
                     if (req.body.additionalReason.length != 0) {
-                        fmxReason = req.body.additionalReason;
+                        detrackReason = req.body.additionalReason;
                     }
 
                     detrackUpdate = "Detrack status updated to Cancelled. ";
-                    fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + fmxReason;
+                    fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + detrackReason;
 
                     var update = {
                         currentStatus: "Cancelled",
                         lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + fmxReason,
+                        fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + detrackReason,
                         fmxMilestoneStatusCode: "RF",
                         instructions: "FMX Milestone ID RF.",
                         $push: {
@@ -2662,7 +2662,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (product != 'FMX') {
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product == 'GRP')) {
+                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
                     var update = {
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
@@ -2694,7 +2694,7 @@ app.post('/updateDelivery', async (req, res) => {
                     mongoDBrun = 2;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product == 'CBSL')) {
+                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
                     var update = {
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
@@ -2726,7 +2726,7 @@ app.post('/updateDelivery', async (req, res) => {
                     mongoDBrun = 2;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status != 'at_warehouse') && (data.data.status != 'completed') && (product != 'GRP') && (product != 'CBSL')) {
+                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
                     var update = {
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
@@ -2761,7 +2761,7 @@ app.post('/updateDelivery', async (req, res) => {
                         var update = {
                             currentStatus: "Out for Delivery",
                             lastUpdateDateTime: moment().format(),
-                            instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                            instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                             attempt: (update.attempt || 0) + 1,
                             $push: {
@@ -2785,9 +2785,26 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
+                        var update = {
+                            currentStatus: "Out for Delivery",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                            assignedTo: req.body.dispatchers,
+                            attempt: (update.attempt || 0) + 1,
+                            $push: {
+                                history: {
+                                    statusHistory: "Out for Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: req.body.dispatchers,
+                                    reason: "N/A",
+                                }
+                            }
+                        }
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2798,7 +2815,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        detrackUpdate = "Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                     }
 
                     DetrackAPIrun = 1;
@@ -2807,28 +2824,58 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                        var update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                            $push: {
+                                history: {
+                                    statusHistory: "Out for Delivery (Switched Dispatchers)",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    reason: "N/A",
+                                }
+                            }
+                        }
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
+                                instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
                             }
                         };
 
-                        detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                        detrackportalUpdatepdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
+                        var update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                            assignedTo: req.body.dispatchers,
+                            $push: {
+                                history: {
+                                    statusHistory: "Out for Delivery (Switched Dispatchers)",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: req.body.dispatchers,
+                                    reason: "N/A",
+                                }
+                            }
+                        }
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + "."
+                                instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             }
                         };
 
-                        detrackUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
                     }
 
                     DetrackAPIrun = 1;
@@ -2836,6 +2883,33 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status != 'at_warehouse')) {
+                    if (req.body.additionalReason.length != 0) {
+                        detrackReason = req.body.additionalReason;
+                    }
+
+                    var update = {
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Failed delivery due to " + detrackReason,
+                        assignedTo: "N/A",
+                        latestReason: detrackReason,
+                        $push: {
+                            history: {
+                                statusHistory: "Failed Delivery",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: data.data.assign_to,
+                                reason: detrackReason,
+                            },
+                            history: {
+                                statusHistory: "Return to Warehouse",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: "N/A",
+                                reason: "N/A",
+                            }
+                        }
+                    }
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -2849,13 +2923,30 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    detrackUpdate = "Detrack status updated to At Warehouse. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 2;
                     mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
+                    var update = {
+                        currentStatus: "Self Collect",
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Assigned for Self Collect.",
+                        assignedTo: "Selfcollect",
+                        attempt: (update.attempt || 0) + 1,
+                        $push: {
+                            history: {
+                                statusHistory: "Self Collect",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: "Selfcollect",
+                                reason: "N/A",
+                            }
+                        }
+                    }
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -2865,33 +2956,53 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    detrackUpdate = "Detrack status updated for Self Collect. ";
+                    portalUpdate = "Portal and Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
                 }
 
                 if (req.body.statusCode == 'CD') {
+                    if (req.body.additionalReason.length != 0) {
+                        detrackReason = req.body.additionalReason;
+                    }
+
+                    var update = {
+                        currentStatus: "Cancelled",
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Customer Declined Delivery due to " + detrackReason,
+                        $push: {
+                            history: {
+                                statusHistory: "Cancelled",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: "N/A",
+                                reason: "N/A",
+                            }
+                        }
+                    }
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
-                            note: req.body.additionalReason
+                            note: req.body.additionalReason,
+                            instructions: "Customer Declined Delivery due to " + detrackReason
                         }
                     };
 
-                    detrackUpdate = "Detrack status updated to Cancelled. ";
+                    portalUpdate = "Portal and Detrack status updated to Cancelled. ";
 
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
                 }
             }
 
-            if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || ((DetrackAPIrun == 0) && (FMXAPIrun == 0))) {
+            if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || (mongoDBrun == 0)) {
                 ceCheck = 1;
             }
 
-            if (mongoDBrun == 1) {
+            /* if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newFmxOrder.save()
                     .then(savedOrder => {
@@ -2906,10 +3017,9 @@ app.post('/updateDelivery', async (req, res) => {
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
                 console.log(result);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            }
+            } */
 
             if (DetrackAPIrun == 1) {
-                console.log("detrackrun")
                 // Make the API request to update the status in Detrack
                 request({
                     method: 'PUT',
@@ -3008,7 +3118,7 @@ app.post('/updateDelivery', async (req, res) => {
                     ConsignmentId: consignmentID,
                     CityName: 'BN',
                     ConsigneeName: '',
-                    Remark: fmxReason
+                    Remark: detrackReason
                 };
 
                 if (req.body.statusCode == 'CD') {
@@ -3052,7 +3162,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (req.body.statusCode != 'MD') {
                         // Conditionally set the Remark field in the first run
                         if (i == 0) {
-                            requestData.Remark = fmxReason;
+                            requestData.Remark = detrackReason;
                         }
                     }
 
@@ -3142,7 +3252,7 @@ app.post('/updateDelivery', async (req, res) => {
                 // If processing is successful, add a success message to the results array
                 processingResults.push({
                     consignmentID,
-                    status: detrackUpdate + fmxUpdate,
+                    status: portalUpdate + fmxUpdate,
                 });
             } else {
                 processingResults.push({
@@ -3171,7 +3281,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     console.log("test mongodb")
     console.log(change.operationType)
     if (change.operationType == "insert") {
@@ -3459,7 +3569,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
