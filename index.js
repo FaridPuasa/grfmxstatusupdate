@@ -2533,7 +2533,6 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackReason = req.body.additionalReason;
                     }
 
-                    detrackUpdate = "Detrack status updated to At Warehouse. ";
                     fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse (44). Reason: " + detrackReason;
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
@@ -2653,7 +2652,7 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackReason = req.body.additionalReason;
                     }
 
-                    detrackUpdate = "Detrack status updated to Cancelled. ";
+                    portalUpdate = "Portal and Detrack status updated to Cancelled. ";
                     fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + detrackReason;
 
                     var update = {
