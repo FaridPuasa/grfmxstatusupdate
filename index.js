@@ -3028,7 +3028,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             console.log(mongoDBrun)
 
-            if (mongoDBrun == 1) {
+            /* if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newFmxOrder.save()
                     .then(savedOrder => {
@@ -3048,7 +3048,7 @@ app.post('/updateDelivery', async (req, res) => {
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
                 console.log(result);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            }
+            } */
 
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
@@ -3107,7 +3107,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             //normal run
-            /* if (FMXAPIrun == 1) {
+            if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
 
@@ -3277,7 +3277,7 @@ app.post('/updateDelivery', async (req, res) => {
                 // Show a success message
                 console.log(response3.data);
                 console.log('Success');
-            } */
+            }
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
@@ -3312,7 +3312,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     console.log("test mongodb")
     console.log(change.operationType)
     if (change.operationType == "insert") {
@@ -3600,7 +3600,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
