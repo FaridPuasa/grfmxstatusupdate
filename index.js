@@ -488,6 +488,47 @@ app.get('/listofCBSLOrders', async (req, res) => {
     }
 });
 
+app.get('/listofFMXOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "localdelivery"
+        const orders = await ORDERS.find({ product: "fmx" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofFMXOrders', { orders });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofpharmacyMOHForms', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -1850,11 +1891,17 @@ app.post('/updateDelivery', async (req, res) => {
             var currentDetrackStatus = "";
             var detrackReason = "";
             var filter = "";
+            var existingOrder = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
 
             console.log('Processing Consignment ID:', consignmentID);
+
+            const consignmentID = req.body.consignmentID; // Assuming consignmentID is sent in the request body
+
+            // Determine if there's an existing document in MongoDB
+            var existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
 
             // Step 2: Make the first API GET request to fetch data from Detrack
             const response1 = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
@@ -2001,7 +2048,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             var option = { upsert: false, new: false };
 
-            console.log (appliedStatus)
+            console.log(appliedStatus)
 
             if (product == 'FMX') {
                 if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
@@ -2033,6 +2080,7 @@ app.post('/updateDelivery', async (req, res) => {
                         warehouseEntry: "No",
                         warehouseEntryDateTime: "N/A",
                         receiverAddress: data.data.address,
+                        receiverPhoneNumber: data.data.phone_number,
                         doTrackingNumber: consignmentID,
                         remarks: data.data.remarks,
                         cargoPrice: data.data.insurance_price,
@@ -3030,7 +3078,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             console.log("Test if mongo have run" + mongoDBrun)
 
-            /* if (mongoDBrun == 1) {
+            if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newFmxOrder.save()
                     .then(savedOrder => {
@@ -3050,7 +3098,7 @@ app.post('/updateDelivery', async (req, res) => {
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
                 console.log(result);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            } */
+            }
 
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
@@ -3314,7 +3362,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     console.log("test mongodb")
     console.log(change.operationType)
     if (change.operationType == "insert") {
@@ -3602,7 +3650,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
