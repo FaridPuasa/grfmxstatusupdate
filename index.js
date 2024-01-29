@@ -1849,6 +1849,7 @@ app.post('/updateDelivery', async (req, res) => {
             var portalUpdate = "";
             var currentDetrackStatus = "";
             var detrackReason = "";
+            var filter = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -1923,82 +1924,84 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'CP') {
                 appliedStatus = "Custom Clearance in Progress"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'DC') {
                 appliedStatus = "Detained by Customs"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 38) {
                 appliedStatus = "Custom Clearance Release"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 12) {
                 appliedStatus = "Item in Warehouse"
                 if ((product == 'CBSL')) {
                     chosenTrackingNumber = data.data.tracking_number
-                    var filter = { doTrackingNumber: data.data.tracking_number };
+                    filter = { doTrackingNumber: data.data.tracking_number };
                 } else if ((product == 'GRP')) {
-                    var filter = { doTrackingNumber: data.data.tracking_number };
+                    filter = { doTrackingNumber: data.data.tracking_number };
                 } else {
-                    var filter = { doTrackingNumber: consignmentID };
+                    filter = { doTrackingNumber: consignmentID };
                 }
             }
 
             if (req.body.statusCode == 35) {
                 appliedStatus = "Out for Delivery"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'SD') {
                 appliedStatus = "Swap Dispatchers"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'MD') {
                 appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse(FMX)"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'RF') {
                 appliedStatus = "Failed Delivery due to Customer Declined Delivery. Return to Warehouse(FMX)"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'FD') {
                 appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'SC') {
                 appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 44) {
                 appliedStatus = "Failed Delivery (optional additional remarks for FMX). Return To Warehouse"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 'CSSC') {
                 appliedStatus = "Self Collect"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             if (req.body.statusCode == 50) {
                 appliedStatus = "Success/Completed"
-                var filter = { doTrackingNumber: consignmentID };
+                filter = { doTrackingNumber: consignmentID };
             }
 
             var option = { upsert: false, new: false };
+
+            console.log (appliedStatus)
 
             if (product == 'FMX') {
                 if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
@@ -2234,7 +2237,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatusCode: "35",
                             instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers,
-                            attempt: (update.attempt || 0) + 1,
+                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery",
@@ -2585,7 +2588,7 @@ app.post('/updateDelivery', async (req, res) => {
                         lastUpdateDateTime: moment().format(),
                         instructions: "Assigned for Self Collect.",
                         assignedTo: "Selfcollect",
-                        attempt: (update.attempt || 0) + 1,
+                        attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
                         $push: {
                             history: {
                                 statusHistory: "Self Collect",
@@ -2787,7 +2790,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            attempt: (update.attempt || 0) + 1,
+                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery",
@@ -2817,7 +2820,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers,
-                            attempt: (update.attempt || 0) + 1,
+                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery",
@@ -2959,7 +2962,7 @@ app.post('/updateDelivery', async (req, res) => {
                         lastUpdateDateTime: moment().format(),
                         instructions: "Assigned for Self Collect.",
                         assignedTo: "Selfcollect",
-                        attempt: (update.attempt || 0) + 1,
+                        attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
                         $push: {
                             history: {
                                 statusHistory: "Self Collect",
@@ -3026,7 +3029,7 @@ app.post('/updateDelivery', async (req, res) => {
                 ceCheck = 1;
             }
 
-            console.log(mongoDBrun)
+            console.log("Test if mongo have run" + mongoDBrun)
 
             /* if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
