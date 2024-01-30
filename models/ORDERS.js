@@ -87,6 +87,7 @@ const orderSchema = new mongoose.Schema({
     fmxMilestoneStatus: String,
     fmxMilestoneStatusCode: String,
     latestReason: String,
+    deliveryDate: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,

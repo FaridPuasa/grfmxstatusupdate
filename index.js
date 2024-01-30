@@ -1892,6 +1892,9 @@ app.post('/updateDelivery', async (req, res) => {
             var detrackReason = "";
             var filter = "";
             var existingOrder = "";
+            var newOrder = "";
+            var update = "";
+            var currentProduct = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -1899,9 +1902,6 @@ app.post('/updateDelivery', async (req, res) => {
             console.log('Processing Consignment ID:', consignmentID);
 
             const consignmentID = req.body.consignmentID; // Assuming consignmentID is sent in the request body
-
-            // Determine if there's an existing document in MongoDB
-            var existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
 
             // Step 2: Make the first API GET request to fetch data from Detrack
             const response1 = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
@@ -1972,87 +1972,158 @@ app.post('/updateDelivery', async (req, res) => {
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
                 filter = { doTrackingNumber: consignmentID };
+
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'CP') {
                 appliedStatus = "Custom Clearance in Progress"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'DC') {
                 appliedStatus = "Detained by Customs"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 38) {
                 appliedStatus = "Custom Clearance Release"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 12) {
                 appliedStatus = "Item in Warehouse"
                 if ((product == 'CBSL')) {
-                    chosenTrackingNumber = data.data.tracking_number
                     filter = { doTrackingNumber: data.data.tracking_number };
+                    // Determine if there's an existing document in MongoDB
+                    existingOrder = await ORDERS.findOne({ doTrackingNumber: data.data.tracking_number });
                 } else if ((product == 'GRP')) {
                     filter = { doTrackingNumber: data.data.tracking_number };
+                    // Determine if there's an existing document in MongoDB
+                    existingOrder = await ORDERS.findOne({ doTrackingNumber: data.data.tracking_number });
                 } else {
                     filter = { doTrackingNumber: consignmentID };
+                    // Determine if there's an existing document in MongoDB
+                    existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
                 }
             }
 
             if (req.body.statusCode == 35) {
                 appliedStatus = "Out for Delivery"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'SD') {
                 appliedStatus = "Swap Dispatchers"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'MD') {
                 appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse(FMX)"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'RF') {
                 appliedStatus = "Failed Delivery due to Customer Declined Delivery. Return to Warehouse(FMX)"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'FD') {
                 appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'SC') {
                 appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 44) {
                 appliedStatus = "Failed Delivery (optional additional remarks for FMX). Return To Warehouse"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'CSSC') {
                 appliedStatus = "Self Collect"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 50) {
                 appliedStatus = "Success/Completed"
                 filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
+
+            if (req.body.statusCode == 'CD') {
+                appliedStatus = "Cancelled"
+                filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+            }
+
+
 
             var option = { upsert: false, new: false };
 
-            console.log(appliedStatus)
+            if (product == 'BB') {
+                currentProduct = 'bb'
+            }
+
+            if (product == 'CBSL') {
+                currentProduct = 'cbsl'
+            }
+
+            if (product == 'FCAS') {
+                currentProduct = 'fcas'
+            }
+
+            if (product == 'GRP') {
+                currentProduct = 'grp'
+            }
+
+            if (product == 'JPMC') {
+                currentProduct = 'pharmacyjpmc'
+            }
+
+            if (product == 'LD') {
+                currentProduct = 'localdelivery'
+            }
+
+            if (product == 'MOH') {
+                currentProduct = 'pharmacymoh'
+            }
+
+            if (product == 'PHC') {
+                currentProduct = 'pharmacyphc'
+            }
 
             if (product == 'FMX') {
                 if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
-                    var newFmxOrder = new ORDERS({
+                    newOrder = new ORDERS({
                         area: data.data.zone,
                         items: [{
                             quantity: data.data.items[0].quantity,
@@ -2064,19 +2135,19 @@ app.post('/updateDelivery', async (req, res) => {
                             updatedBy: "User",
                             dateUpdated: moment().format(),
                             statusHistory: "Info Received",
-                            lastAssignedTo: "N/A"
+                            lastAssignedTo: "N/A",
+                            reason: "N/A"
                         }],
                         product: "fmx",
                         assignedTo: "N/A",
                         senderName: data.data.job_owner,
                         totalPrice: data.data.total_price,
-                        deliveryType: "Delivery",
+                        deliveryType: data.data.job_type,
                         parcelWeight: data.data.weight,
                         receiverName: data.data.deliver_to_collect_from,
                         trackingLink: data.data.tracking_link,
                         currentStatus: "Info Received",
-                        paymentAmount: data.data.total_price,
-                        paymentMethod: "COD",
+                        paymentMethod: data.data.payment_mode,
                         warehouseEntry: "No",
                         warehouseEntryDateTime: "N/A",
                         receiverAddress: data.data.address,
@@ -2089,30 +2160,81 @@ app.post('/updateDelivery', async (req, res) => {
                         mawbNo: data.data.run_number,
                         fmxMilestoneStatus: "N/A",
                         fmxMilestoneStatusCode: "N/A",
-                        latestReason: "N/A"
+                        latestReason: "N/A",
+                        lastUpdateDateTime: moment().format(),
+                        creationDate: data.data.created_at,
+                        jobDate: "N/A",
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
-
                     mongoDBrun = 1;
                 }
 
                 if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
-                    var update = {
-                        currentStatus: "Custom Clearing",
-                        lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "Customs Clearance in Progress",
-                        fmxMilestoneStatusCode: "CP",
-                        instructions: "FMX Milestone ID CP",
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "Custom Clearing",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: "N/A",
+                            }],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Custom Clearing",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "No",
+                            warehouseEntryDateTime: "N/A",
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID CP",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Customs Clearance in Progress",
+                            fmxMilestoneStatusCode: "CP",
+                            latestReason: "N/A",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Custom Clearing",
+                            lastUpdateDateTime: moment().format(),
+                            fmxMilestoneStatus: "Customs Clearance in Progress",
+                            fmxMilestoneStatusCode: "CP",
+                            instructions: "FMX Milestone ID CP",
+                            $push: {
+                                history: {
+                                    statusHistory: "Custom Clearing",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2128,7 +2250,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == "DC") && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('CP')) */) {
@@ -2136,22 +2257,71 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackReason = req.body.additionalReason;
                     }
 
-                    var update = {
-                        currentStatus: "Detained by Customs",
-                        lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "Detained by Customs",
-                        fmxMilestoneStatusCode: "DC",
-                        instructions: "FMX Milestone ID DC",
-                        latestReason: detrackReason,
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "Detained by Customs",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: detrackReason,
+                            }],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Detained by Customs",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "No",
+                            warehouseEntryDateTime: "N/A",
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID DC",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Detained by Customs",
+                            fmxMilestoneStatusCode: "DC",
+                            latestReason: detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Detained by Customs",
+                            lastUpdateDateTime: moment().format(),
+                            fmxMilestoneStatus: "Detained by Customs",
+                            fmxMilestoneStatusCode: "DC",
+                            instructions: "FMX Milestone ID DC",
+                            latestReason: detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Detained by Customs",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: detrackReason,
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2166,25 +2336,73 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 38) && (data.data.status == 'custom_clearing') /* && ((data.data.instructions.includes('CP'))||(data.data.instructions.includes('DC'))) */) {
-                    var update = {
-                        currentStatus: "Custom Clearance Release",
-                        lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "Custom Clearance Release",
-                        fmxMilestoneStatusCode: "38",
-                        instructions: "FMX Milestone ID 38",
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "Custom Clearance Release",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: "N/A",
+                            }],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Custom Clearance Release",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "No",
+                            warehouseEntryDateTime: "N/A",
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID 38",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Custom Clearance Release",
+                            fmxMilestoneStatusCode: "38",
+                            latestReason: "N/A",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Custom Clearance Release",
+                            lastUpdateDateTime: moment().format(),
+                            fmxMilestoneStatus: "Custom Clearance Release",
+                            fmxMilestoneStatusCode: "38",
+                            instructions: "FMX Milestone ID 38",
+                            $push: {
+                                history: {
+                                    statusHistory: "Custom Clearance Release",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2199,27 +2417,75 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('38')) */) {
-                    var update = {
-                        currentStatus: "At Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "At Warehouse",
-                        fmxMilestoneStatusCode: "12",
-                        instructions: "FMX Milestone ID 12",
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: "N/A",
+                            }],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "At Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID 38",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "At Warehouse",
+                            fmxMilestoneStatusCode: "12",
+                            latestReason: "N/A",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            fmxMilestoneStatus: "At Warehouse",
+                            fmxMilestoneStatusCode: "12",
+                            instructions: "FMX Milestone ID 12",
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2235,32 +2501,77 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        console.log("FL1 here " + req.body.freelancerName)
-                        var update = {
-                            currentStatus: "Out for Delivery",
-                            lastUpdateDateTime: moment().format(),
-                            fmxMilestoneStatus: "Out for Delivery",
-                            fmxMilestoneStatusCode: "35",
-                            instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
-                            $push: {
-                                history: {
+                        if (!existingOrder) {
+                            newOrder = new ORDERS({
+                                area: data.data.zone,
+                                items: [{
+                                    quantity: data.data.items[0].quantity,
+                                    description: data.data.items[0].description,
+                                    totalItemPrice: data.data.total_price
+                                }],
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
                                     updatedBy: "User",
                                     lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                     reason: "N/A",
+                                }],
+                                product: "fmx",
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                deliveryType: "Delivery",
+                                parcelWeight: data.data.weight,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Out for Delivery",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: data.data.phone_number,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                cargoPrice: data.data.insurance_price,
+                                instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                fmxMilestoneStatus: "Out for Delivery",
+                                fmxMilestoneStatusCode: "35",
+                                latestReason: "N/A",
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                fmxMilestoneStatus: "Out for Delivery",
+                                fmxMilestoneStatusCode: "35",
+                                instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: "User",
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "N/A",
+                                    }
                                 }
                             }
-                        }
 
-                        console.log("update test" + update)
+                            mongoDBrun = 2;
+                        }
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
@@ -2272,29 +2583,76 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        console.log("Detrack update test" + detrackUpdateData)
-
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
                         console.log("Portal update test" + portalUpdate)
 
                     } else {
-                        var update = {
-                            currentStatus: "Out for Delivery",
-                            lastUpdateDateTime: moment().format(),
-                            fmxMilestoneStatus: "Out for Delivery",
-                            fmxMilestoneStatusCode: "35",
-                            instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                            assignedTo: req.body.dispatchers,
-                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
-                            $push: {
-                                history: {
+                        if (!existingOrder) {
+                            newOrder = new ORDERS({
+                                area: data.data.zone,
+                                items: [{
+                                    quantity: data.data.items[0].quantity,
+                                    description: data.data.items[0].description,
+                                    totalItemPrice: data.data.total_price
+                                }],
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
                                     updatedBy: "User",
                                     lastAssignedTo: req.body.dispatchers,
                                     reason: "N/A",
+                                }],
+                                product: "fmx",
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                deliveryType: "Delivery",
+                                parcelWeight: data.data.weight,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Out for Delivery",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: data.data.phone_number,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                cargoPrice: data.data.insurance_price,
+                                instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                fmxMilestoneStatus: "Out for Delivery",
+                                fmxMilestoneStatusCode: "35",
+                                latestReason: "N/A",
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                fmxMilestoneStatus: "Out for Delivery",
+                                fmxMilestoneStatusCode: "35",
+                                instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                assignedTo: req.body.dispatchers,
+                                attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: "User",
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                    }
                                 }
                             }
+
+                            mongoDBrun = 2;
                         }
 
                         var detrackUpdateData = {
@@ -2314,24 +2672,72 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        var update = {
-                            lastUpdateDateTime: moment().format(),
-                            instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            $push: {
-                                history: {
+                        if (!existingOrder) {
+                            newOrder = new ORDERS({
+                                area: data.data.zone,
+                                items: [{
+                                    quantity: data.data.items[0].quantity,
+                                    description: data.data.items[0].description,
+                                    totalItemPrice: data.data.total_price
+                                }],
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
                                     dateUpdated: moment().format(),
                                     updatedBy: "User",
                                     lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                     reason: "N/A",
+                                }],
+                                product: "fmx",
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                deliveryType: "Delivery",
+                                parcelWeight: data.data.weight,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Out for Delivery",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: data.data.phone_number,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                cargoPrice: data.data.insurance_price,
+                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                fmxMilestoneStatus: "Out for Delivery",
+                                fmxMilestoneStatusCode: "35",
+                                latestReason: "N/A",
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: "User",
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "N/A",
+                                    }
                                 }
                             }
+
+                            mongoDBrun = 2;
                         }
 
                         var detrackUpdateData = {
@@ -2346,19 +2752,68 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
 
                     } else {
-                        var update = {
-                            lastUpdateDateTime: moment().format(),
-                            instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                            assignedTo: req.body.dispatchers,
-                            $push: {
-                                history: {
+                        if (!existingOrder) {
+                            newOrder = new ORDERS({
+                                area: data.data.zone,
+                                items: [{
+                                    quantity: data.data.items[0].quantity,
+                                    description: data.data.items[0].description,
+                                    totalItemPrice: data.data.total_price
+                                }],
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
                                     dateUpdated: moment().format(),
                                     updatedBy: "User",
-                                    lastAssignedTo: req.body.dispatchers,
+                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                     reason: "N/A",
+                                }],
+                                product: "fmx",
+                                assignedTo: req.body.dispatchers,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                deliveryType: "Delivery",
+                                parcelWeight: data.data.weight,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Out for Delivery",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: data.data.phone_number,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                cargoPrice: data.data.insurance_price,
+                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                fmxMilestoneStatus: "Out for Delivery",
+                                fmxMilestoneStatusCode: "35",
+                                latestReason: "N/A",
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                assignedTo: req.body.dispatchers,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: "User",
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                    }
                                 }
                             }
+
+                            mongoDBrun = 2;
                         }
 
                         var detrackUpdateData = {
@@ -2374,36 +2829,94 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')) {
                     fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery (MD). Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    var update = {
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "FMX Milestone ID MD, 44",
-                        assignedTo: "N/A",
-                        latestReason: "Unattempted Delivery",
-                        fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
-                        fmxMilestoneStatusCode: "MD, 44",
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "Unattempted Delivery",
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [
+                                {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Unattempted Delivery",
+                                },
+                                {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: "Delivery",
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Return to Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID MD, 44",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
+                            fmxMilestoneStatusCode: "MD, 44",
+                            latestReason: "Unattempted Delivery",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID MD, 44",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
+                            fmxMilestoneStatusCode: "MD, 44",
+                            latestReason: "Unattempted Delivery",
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Unattempted Delivery",
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2423,7 +2936,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')) {
@@ -2431,29 +2943,88 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery (RF) due to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    var update = {
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "FMX Milestone ID RF, 44",
-                        assignedTo: "N/A",
-                        latestReason: "Customer Declined Delivery due to " + detrackReason,
-                        fmxMilestoneStatus: "Failed Delivery. Customer Declined Delivery due to " + detrackReason + ". Return to Warehouse",
-                        fmxMilestoneStatusCode: "RF, 44",
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "Customer Declined Delivery due to " + detrackReason,
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [
+                                {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Customer Declined Delivery due to " + detrackReason,
+                                },
+                                {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: "Delivery",
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Return to Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID RF, 44",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Failed Delivery. Customer Declined Delivery due to " + detrackReason + ". Return to Warehouse",
+                            fmxMilestoneStatusCode: "RF, 44",
+                            latestReason: "Customer Declined Delivery due to " + detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID RF, 44",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Failed Delivery. Customer Declined Delivery due to " + detrackReason + ". Return to Warehouse",
+                            fmxMilestoneStatusCode: "RF, 44",
+                            latestReason: "Customer Declined Delivery due to " + detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Customer Declined Delivery due to " + detrackReason,
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2473,7 +3044,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')) {
@@ -2481,29 +3051,88 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    var update = {
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "FMX Milestone ID FD, 44",
-                        assignedTo: "N/A",
-                        latestReason: "Customer Declined Delivery due to " + detrackReason,
-                        fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + detrackReason + ". Return to Warehouse.",
-                        fmxMilestoneStatusCode: "FD, 44",
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "Customer Declined Delivery due to " + detrackReason,
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [
+                                {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Reschedule Delivery Requested By Customer to " + detrackReason,
+                                },
+                                {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: "Delivery",
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Return to Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID RF, 44",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + detrackReason + ". Return to Warehouse.",
+                            fmxMilestoneStatusCode: "FD, 44",
+                            latestReason: "Reschedule Delivery Requested By Customer to " + detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID FD, 44",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + detrackReason + ". Return to Warehouse.",
+                            fmxMilestoneStatusCode: "FD, 44",
+                            latestReason: "Reschedule Delivery Requested By Customer to " + detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Reschedule Delivery Requested By Customer to " + detrackReason,
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2523,7 +3152,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')) {
@@ -2531,29 +3159,88 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    var update = {
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "FMX Milestone ID SC, 44",
-                        assignedTo: "N/A",
-                        latestReason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
-                        fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + detrackReason + ". Return to Warehouse",
-                        fmxMilestoneStatusCode: "SC, 44",
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [
+                                {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
+                                },
+                                {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: "Delivery",
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Return to Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID SC, 44",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + detrackReason + ". Return to Warehouse",
+                            fmxMilestoneStatusCode: "SC, 44",
+                            latestReason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID SC, 44",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + detrackReason + ". Return to Warehouse",
+                            fmxMilestoneStatusCode: "SC, 44",
+                            latestReason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "Reschedule to Self Collect Requested By Customer to " + detrackReason,
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2573,7 +3260,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status == 'failed')) {
@@ -2584,29 +3270,88 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse (44). Reason: " + detrackReason;
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    var update = {
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "FMX Milestone ID 44",
-                        assignedTo: "N/A",
-                        latestReason: detrackReason,
-                        fmxMilestoneStatus: "Failed delivery, return to warehouse.",
-                        fmxMilestoneStatusCode: "44",
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: data.data.assign_to,
-                                reason: detrackReason,
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [
+                                {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: detrackReason,
+                                },
+                                {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: "Delivery",
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Return to Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID 44",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Failed delivery, return to warehouse.",
+                            fmxMilestoneStatusCode: "44",
+                            latestReason: detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID 44",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Failed delivery, return to warehouse.",
+                            fmxMilestoneStatusCode: "44",
+                            latestReason: detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: detrackReason,
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2626,25 +3371,74 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 2;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
-                    var update = {
-                        currentStatus: "Self Collect",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "Assigned for Self Collect.",
-                        assignedTo: "Selfcollect",
-                        attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [{
                                 statusHistory: "Self Collect",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "Selfcollect",
                                 reason: "N/A",
+                            }],
+                            product: "fmx",
+                            assignedTo: "Selfcollect",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: "Pickup",
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Self Collect",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "Assigned for Self Collect.",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "At Warehouse/Return to Warehouse",
+                            fmxMilestoneStatusCode: "12/44",
+                            latestReason: detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: req.body.assignDate,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Self Collect",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Assigned for Self Collect.",
+                            assignedTo: "Selfcollect",
+                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                            jobDate: req.body.assignDate,
+                            $push: {
+                                history: {
+                                    statusHistory: "Self Collect",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "Selfcollect",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2659,25 +3453,73 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
-                    var update = {
-                        currentStatus: "Completed",
-                        lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "Parcel Delivered",
-                        fmxMilestoneStatusCode: "50",
-                        instructions: "FMX Milestone ID 50.",
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [{
                                 statusHistory: "Completed",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: data.data.assign_to,
                                 reason: "N/A",
+                            }],
+                            product: "fmx",
+                            assignedTo: data.data.assign_to,
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Completed",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID 50.",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Parcel Delivered",
+                            fmxMilestoneStatusCode: "50",
+                            latestReason: detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: req.body.assignDate,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Completed",
+                            lastUpdateDateTime: moment().format(),
+                            fmxMilestoneStatus: "Parcel Delivered",
+                            fmxMilestoneStatusCode: "50",
+                            instructions: "FMX Milestone ID 50.",
+                            $push: {
+                                history: {
+                                    statusHistory: "Completed",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2692,7 +3534,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 5;
-                    mongoDBrun = 2;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -2703,21 +3544,74 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
                     fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + detrackReason;
 
-                    var update = {
-                        currentStatus: "Cancelled",
-                        lastUpdateDateTime: moment().format(),
-                        fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + detrackReason,
-                        fmxMilestoneStatusCode: "RF",
-                        instructions: "FMX Milestone ID RF.",
-                        $push: {
-                            history: {
-                                statusHistory: "Cancelled",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [
+                                {
+                                    statusHistory: "Cancelled",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Cancelled",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID RF.",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + detrackReason,
+                            fmxMilestoneStatusCode: "RF",
+                            latestReason: detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Cancelled",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID RF.",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + detrackReason,
+                            fmxMilestoneStatusCode: "RF",
+                            latestReason: detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Cancelled",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2731,26 +3625,108 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
-                    mongoDBrun = 2;
                 }
             }
 
             if (product != 'FMX') {
-                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
-                    var update = {
-                        currentStatus: "At Warehouse",
+                if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
+                    newOrder = new ORDERS({
+                        area: data.data.zone,
+                        items: [{
+                            quantity: data.data.items[0].quantity,
+                            description: data.data.items[0].description,
+                            totalItemPrice: data.data.total_price
+                        }],
+                        attempt: "0",
+                        history: [{
+                            updatedBy: "User",
+                            dateUpdated: moment().format(),
+                            statusHistory: "Info Received",
+                            lastAssignedTo: "N/A",
+                            reason: "N/A"
+                        }],
+                        product: currentProduct,
+                        assignedTo: "N/A",
+                        senderName: data.data.job_owner,
+                        totalPrice: data.data.total_price,
+                        deliveryType: data.data.job_type,
+                        receiverName: data.data.deliver_to_collect_from,
+                        trackingLink: data.data.tracking_link,
+                        currentStatus: "Info Received",
+                        paymentMethod: data.data.payment_mode,
+                        warehouseEntry: "No",
+                        warehouseEntryDateTime: "N/A",
+                        receiverAddress: data.data.address,
+                        receiverPhoneNumber: data.data.phone_number,
+                        doTrackingNumber: consignmentID,
+                        instructions: data.data.instructions,
+                        latestReason: "N/A",
                         lastUpdateDateTime: moment().format(),
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        $push: {
-                            history: {
+                        creationDate: data.data.created_at,
+                        jobDate: "N/A",
+                    });
+
+                    portalUpdate = "Portal status updated to Info Received. ";
+                    mongoDBrun = 1;
+                }
+
+                if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: "N/A",
+                            }],
+                            product: currentProduct,
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "At Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: data.data.tracking_number,
+                            parcelTrackingNum: consignmentID,
+                            remarks: data.data.remarks,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2765,11 +3741,49 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
-                    var update = {
+                    newOrder = new ORDERS({
+                        area: data.data.zone,
+                        items: [{
+                            quantity: data.data.items[0].quantity,
+                            description: data.data.items[0].description,
+                            totalItemPrice: data.data.total_price
+                        }],
+                        attempt: "0",
+                        history: [{
+                            statusHistory: "At Warehouse",
+                            dateUpdated: moment().format(),
+                            updatedBy: "User",
+                            lastAssignedTo: "N/A",
+                            reason: "N/A",
+                        }],
+                        product: currentProduct,
+                        assignedTo: "N/A",
+                        senderName: data.data.job_owner,
+                        totalPrice: data.data.total_price,
+                        deliveryType: data.data.job_type,
+                        receiverName: data.data.deliver_to_collect_from,
+                        trackingLink: data.data.tracking_link,
+                        currentStatus: "At Warehouse",
+                        paymentMethod: data.data.payment_mode,
+                        warehouseEntry: "Yes",
+                        warehouseEntryDateTime: moment().format(),
+                        receiverAddress: data.data.address,
+                        receiverPhoneNumber: data.data.phone_number,
+                        doTrackingNumber: data.data.tracking_number,
+                        parcelTrackingNum: consignmentID,
+                        remarks: data.data.remarks,
+                        lastUpdateDateTime: moment().format(),
+                        creationDate: data.data.created_at,
+                        jobDate: "N/A",
+                    });
+
+                    mongoDBrun = 1;
+
+                } else {
+                    update = {
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
                         warehouseEntry: "Yes",
@@ -2784,6 +3798,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
                     }
+
+                    mongoDBrun = 2;
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2801,20 +3817,62 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
-                    var update = {
-                        currentStatus: "At Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        $push: {
-                            history: {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: "N/A",
+                            }],
+                            product: currentProduct,
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "At Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            latestReason: "N/A",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
+
+                        mongoDBrun = 2;
                     }
 
                     var detrackUpdateData = {
@@ -2827,12 +3885,11 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        var update = {
+                        update = {
                             currentStatus: "Out for Delivery",
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
@@ -2849,6 +3906,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
 
+                        mongoDBrun = 2;
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2862,7 +3921,7 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
-                        var update = {
+                        update = {
                             currentStatus: "Out for Delivery",
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
@@ -2879,6 +3938,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
 
+                        mongoDBrun = 2;
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2893,12 +3954,11 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        var update = {
+                        update = {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
@@ -2913,6 +3973,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
 
+                        mongoDBrun = 2;
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2925,7 +3987,7 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackportalUpdatepdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
-                        var update = {
+                        update = {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers,
@@ -2940,6 +4002,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
 
+                        mongoDBrun = 2;
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
@@ -2953,7 +4017,6 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status != 'at_warehouse')) {
@@ -2961,7 +4024,8 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackReason = req.body.additionalReason;
                     }
 
-                    var update = {
+                    update = {
+                        currentStatus: "Return to Warehouse",
                         lastUpdateDateTime: moment().format(),
                         instructions: "Failed delivery due to " + detrackReason,
                         assignedTo: "N/A",
@@ -2984,6 +4048,8 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     }
 
+                    mongoDBrun = 2;
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
@@ -3000,16 +4066,16 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 2;
-                    mongoDBrun = 2;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
-                    var update = {
+                    update = {
                         currentStatus: "Self Collect",
                         lastUpdateDateTime: moment().format(),
                         instructions: "Assigned for Self Collect.",
                         assignedTo: "Selfcollect",
                         attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                        jobDate: req.body.assignDate,
                         $push: {
                             history: {
                                 statusHistory: "Self Collect",
@@ -3020,6 +4086,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
                     }
+
+                    mongoDBrun = 2;
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3033,7 +4101,6 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -3041,34 +4108,108 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackReason = req.body.additionalReason;
                     }
 
-                    var update = {
+                    update = {
                         currentStatus: "Cancelled",
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Customer Declined Delivery due to " + detrackReason,
+                        instructions: "Cancelled Delivery due to " + detrackReason,
+                        assignedTo: "N/A",
+                        latestReason: detrackReason,
                         $push: {
                             history: {
                                 statusHistory: "Cancelled",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
-                                reason: "N/A",
+                                reason: "Cancelled Delivery due to " + detrackReason,
                             }
                         }
                     }
+
+                    mongoDBrun = 2
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
                             note: req.body.additionalReason,
-                            instructions: "Customer Declined Delivery due to " + detrackReason
+                            instructions: "Cancelled Delivery due to " + detrackReason,
                         }
                     };
 
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
+                }
+
+                if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
+                    if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [{
+                                statusHistory: "Completed",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: data.data.assign_to,
+                                reason: "N/A",
+                            }],
+                            product: currentProduct,
+                            assignedTo: data.data.assign_to,
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Completed",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            instructions: "FMX Milestone ID 50.",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: req.body.assignDate,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Completed",
+                            lastUpdateDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    statusHistory: "Completed",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: "N/A",
+                                }
+                            }
+                        }
+
+                        mongoDBrun = 2;
+                    }
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            instructions: "FMX Milestone ID 50"
+                        }
+                    };
+
+                    fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
+                    portalUpdate = "Portal status updated to Completed. ";
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 5;
                 }
             }
 
@@ -3080,7 +4221,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
-                newFmxOrder.save()
+                newOrder.save()
                     .then(savedOrder => {
                         console.log('New FMX order saved successfully:', savedOrder);
                     })
