@@ -4185,7 +4185,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             //normal run
-            /* if (FMXAPIrun == 1) {
+            if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
 
@@ -4352,7 +4352,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 // Show a success message
                 console.log('Success');
-            } */
+            }
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
@@ -4387,7 +4387,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
@@ -4638,7 +4638,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
