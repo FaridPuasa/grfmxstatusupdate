@@ -1350,7 +1350,7 @@ app.post('/generatePOD', async (req, res) => {
         const areasJoined = areasArray.join(', ');
 
         // Split tracking numbers into an array
-        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim());
+        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim().toUpperCase());
 
         const runSheetData = [];
         const uniqueTrackingNumbers = new Set(); // Use a Set to automatically remove duplicates
@@ -1795,7 +1795,7 @@ app.post('/updateDelivery', async (req, res) => {
     const accessToken = authResponse.data.result.accessToken;
 
     // Split the tracking numbers by newlines
-    const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim());
+    const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
 
     const uniqueConsignmentIDs = new Set(); // Use a Set to automatically remove duplicates
 
@@ -4185,7 +4185,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             //normal run
-            if (FMXAPIrun == 1) {
+            /* if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
 
@@ -4352,7 +4352,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 // Show a success message
                 console.log('Success');
-            }
+            } */
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
@@ -4387,7 +4387,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
@@ -4638,7 +4638,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
