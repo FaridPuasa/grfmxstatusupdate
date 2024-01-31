@@ -91,7 +91,8 @@
                     <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
                     <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             POD List
                         </a>
                         <div class="dropdown-menu" aria-labelledby="podListDropdown">
@@ -103,7 +104,8 @@
                         </div>
                     </li>
                     <li class="nav-item"><a class="nav-link" href="/listofpharmacyMOHForms">Pharmacy Form List</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a>
+                    </li>
                 </ul>
             </nav>
         </div>
@@ -130,12 +132,17 @@
                         <th class="header">Quantity</th>
                         <th class="header">Total Price</th>
                         <th class="header">Weight</th>
-                        <th class="header">Delivery Type</th>
+                        <th class="header">Job Type</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Delivery Charge</th>
                         <th class="header">Remarks</th>
                         <th class="header">Date Time Submitted</th>
-                        <th class="header">Membership</th>
+                        <th class="header">Job Date</th>
+                        <th class="header">Current Status</th>
+                        <th class="header">Assigned To</th>
+                        <th class="header">Attempt No.</th>
+                        <th class="header">Age in Warehouse</th>
+                        <th class="header">Latest Reason</th>
                     </tr>
                 </thead>
 
@@ -183,7 +190,8 @@
                                 <%= order.items[0].quantity %>
                             </td>
                             <td>
-                                <%= order.currency %> <%= order.items[0].totalItemPrice %>
+                                <%= order.currency %>
+                                    <%= order.items[0].totalItemPrice %>
                             </td>
                             <td>
                                 <%= order.parcelWeight %>
@@ -204,7 +212,31 @@
                                 <%= order.dateTimeSubmission %>
                             </td>
                             <td>
-                                <%= order.membership %>
+                                <%= order.jobDate %>
+                            </td>
+                            <td>
+                                <%= order.currentStatus %>
+                            </td>
+                            <td>
+                                <%= order.assignedTo %>
+                            </td>
+                            <td>
+                                <%= order.attempt %>
+                            </td>
+                            <td>
+                                <% if (order.warehouseEntry==="No" ) { %>
+                                    0
+                                    <% } else { %>
+                                        <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                            <% const currentDate=new Date(); %>
+                                                <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                    <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 * 60 *
+                                                        24)); %>
+                                                        <%= ageInDays %>
+                                                            <% } %>
+                            </td>
+                            <td>
+                                <%= order.latestReason %>
                             </td>
                         </tr>
                         <% }); %>

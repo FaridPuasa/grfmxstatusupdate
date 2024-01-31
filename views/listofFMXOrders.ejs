@@ -87,12 +87,14 @@
                             <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
                             <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
                             <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service (Limbang)</a>
+                            <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
                         </div>
                     </li>
                     <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
                     <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             POD List
                         </a>
                         <div class="dropdown-menu" aria-labelledby="podListDropdown">
@@ -104,7 +106,8 @@
                         </div>
                     </li>
                     <li class="nav-item"><a class="nav-link" href="/listofpharmacyMOHForms">Pharmacy Form List</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker (FMX)</a>
+                    </li>
                 </ul>
             </nav>
         </div>
@@ -200,27 +203,30 @@
                                 <%= order.attempt %>
                             </td>
                             <td>
-                                <% if (order.warehouseEntry === "No") { %>
+                                <% if (order.warehouseEntry==="No" ) { %>
                                     0
-                                <% } else { %>
-                                    <% const entryDate = new Date(order.warehouseEntryDateTime); %>
-                                    <% const currentDate = new Date(); %>
-                                    <% const ageInMilliseconds = currentDate - entryDate; %>
-                                    <% const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24)); %>
-                                    <%= ageInDays %>
-                                <% } %>
+                                    <% } else { %>
+                                        <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                            <% const currentDate=new Date(); %>
+                                                <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                    <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 * 60 *
+                                                        24)); %>
+                                                        <%= ageInDays %>
+                                                            <% } %>
                             </td>
                             <td>
                                 <%= order.latestReason %>
                             </td>
                             <td>
-                                <% const lastUpdateDate = new Date(order.lastUpdateDateTime); %>
-                                <% const formattedDate = lastUpdateDate.toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }); %>
-                                <% const [datePart, timePart] = formattedDate.split(', '); %>
-                                <% const [month, day, year] = datePart.split('/'); %>
-                                <% const [hourMinute, period] = timePart.split(/:?\s/); %>
-                                <% const [hour, minute] = hourMinute.split(':'); %>
-                                <%= `${day}/${month}/${year}, ${hour}:${minute} ${period}` %>
+                                <% const lastUpdateDate=new Date(order.lastUpdateDateTime); %>
+                                    <% const formattedDate=lastUpdateDate.toLocaleString('en-US', { day: '2-digit' ,
+                                        month: '2-digit' , year: 'numeric' , hour: '2-digit' , minute: '2-digit' ,
+                                        hour12: true }); %>
+                                        <% const [datePart, timePart]=formattedDate.split(', '); %>
+                                <% const [month, day, year] = datePart.split(' /'); %>
+                                            <% const [hourMinute, period]=timePart.split(/:?\s/); %>
+                                                <% const [hour, minute]=hourMinute.split(':'); %>
+                                                    <%= `${day}/${month}/${year}, ${hour}:${minute} ${period}` %>
                             </td>
                         </tr>
                         <% }); %>

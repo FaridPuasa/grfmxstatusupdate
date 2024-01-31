@@ -234,7 +234,16 @@ app.get('/listofpharmacyMOHTTGOrders', async (req, res) => {
                 'dateTimeSubmission',
                 'membership',
                 'pharmacyFormCreated',
-                'sendOrderTo'
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -268,7 +277,16 @@ app.get('/listofpharmacyMOHKBOrders', async (req, res) => {
                 'dateTimeSubmission',
                 'membership',
                 'pharmacyFormCreated',
-                'sendOrderTo'
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -302,7 +320,16 @@ app.get('/listofpharmacyMOHIMMOrders', async (req, res) => {
                 'dateTimeSubmission',
                 'membership',
                 'pharmacyFormCreated',
-                'sendOrderTo'
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -335,7 +362,16 @@ app.get('/listofpharmacyJPMCOrders', async (req, res) => {
                 'paymentMethod',
                 'paymentAmount',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -366,7 +402,16 @@ app.get('/listofpharmacyPHCOrders', async (req, res) => {
                 'remarks',
                 'paymentMethod',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -404,7 +449,16 @@ app.get('/listofLDOrders', async (req, res) => {
                 'paymentAmount',
                 'billTo',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -442,7 +496,16 @@ app.get('/listofGRPOrders', async (req, res) => {
                 'paymentAmount',
                 'remarks',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -476,7 +539,16 @@ app.get('/listofCBSLOrders', async (req, res) => {
                 'paymentAmount',
                 'remarks',
                 'dateTimeSubmission',
-                'membership'
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -2456,7 +2528,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ". ";
 
                     } else {
                         if (existingOrder === null) {
@@ -2539,7 +2611,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ". ";
                     }
 
                     fmxUpdate = "FMX milestone updated to Out for Delivery.";
@@ -2626,7 +2698,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ". ";
 
                     } else {
                         if (existingOrder === null) {
@@ -2704,7 +2776,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ". ";
                     }
 
                     DetrackAPIrun = 1;
@@ -4028,7 +4100,7 @@ app.post('/updateDelivery', async (req, res) => {
                         mongoDBrun = 2;
                     }
 
-                    fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
+                    fmxUpdate = "FMX milestone updated to Parcel Delivered.";
                     portalUpdate = "Portal status updated to Completed. ";
 
                     FMXAPIrun = 5;
@@ -4315,7 +4387,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
@@ -4566,7 +4638,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
