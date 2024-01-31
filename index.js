@@ -1899,6 +1899,7 @@ app.post('/updateDelivery', async (req, res) => {
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+                console.log ("here")
             }
 
             if (req.body.statusCode == 'FD') {
@@ -1942,6 +1943,8 @@ app.post('/updateDelivery', async (req, res) => {
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
+
+            console.log ("Exisiting order is "+existingOrder)
 
             var option = { upsert: false, new: false };
 
@@ -2027,7 +2030,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -2091,7 +2094,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2114,7 +2117,7 @@ app.post('/updateDelivery', async (req, res) => {
                         detrackReason = req.body.additionalReason;
                     }
 
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -2179,7 +2182,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2197,7 +2200,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 38) && (data.data.status == 'custom_clearing') /* && ((data.data.instructions.includes('CP'))||(data.data.instructions.includes('DC'))) */) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -2261,7 +2264,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2279,7 +2282,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('38')) */) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -2345,7 +2348,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2365,7 +2368,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        if (!existingOrder) {
+                        /* if (!existingOrder) {
                             newOrder = new ORDERS({
                                 area: data.data.zone,
                                 items: [{
@@ -2512,7 +2515,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
 
                             mongoDBrun = 2;
-                        }
+                        } */
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
@@ -2536,7 +2539,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        if (!existingOrder) {
+                        /* if (!existingOrder) {
                             newOrder = new ORDERS({
                                 area: data.data.zone,
                                 items: [{
@@ -2674,7 +2677,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
 
                             mongoDBrun = 2;
-                        }
+                        } */
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
@@ -2696,7 +2699,7 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery (MD). Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -2778,7 +2781,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2805,6 +2808,8 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery. Customer Declined Delivery (RF) due to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
+                    /* console.log(existingOrder)
+
                     if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
@@ -2858,6 +2863,8 @@ app.post('/updateDelivery', async (req, res) => {
                             jobDate: data.data.date,
                         });
 
+                        console.log("and here")
+
                         mongoDBrun = 1;
                     } else {
                         update = {
@@ -2887,7 +2894,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -2914,7 +2921,7 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -2996,7 +3003,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3023,7 +3030,7 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + detrackReason + ". Return to Warehouse (44).";
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3105,7 +3112,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3135,7 +3142,7 @@ app.post('/updateDelivery', async (req, res) => {
                     fmxUpdate = "FMX milestone updated to Failed delivery, return to warehouse (44). Reason: " + detrackReason;
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3217,7 +3224,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3240,7 +3247,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3305,7 +3312,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3323,7 +3330,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3387,7 +3394,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3412,7 +3419,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
                     fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + detrackReason;
 
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3480,7 +3487,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3541,7 +3548,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3597,7 +3604,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3615,62 +3622,63 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
-                    newOrder = new ORDERS({
-                        area: data.data.zone,
-                        items: [{
-                            quantity: data.data.items[0].quantity,
-                            description: data.data.items[0].description,
-                            totalItemPrice: data.data.total_price
-                        }],
-                        attempt: "0",
-                        history: [{
-                            statusHistory: "At Warehouse",
-                            dateUpdated: moment().format(),
-                            updatedBy: "User",
-                            lastAssignedTo: "N/A",
-                            reason: "N/A",
-                        }],
-                        product: currentProduct,
-                        assignedTo: "N/A",
-                        senderName: data.data.job_owner,
-                        totalPrice: data.data.total_price,
-                        deliveryType: data.data.job_type,
-                        receiverName: data.data.deliver_to_collect_from,
-                        trackingLink: data.data.tracking_link,
-                        currentStatus: "At Warehouse",
-                        paymentMethod: data.data.payment_mode,
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        receiverAddress: data.data.address,
-                        receiverPhoneNumber: data.data.phone_number,
-                        doTrackingNumber: data.data.tracking_number,
-                        parcelTrackingNum: consignmentID,
-                        remarks: data.data.remarks,
-                        lastUpdateDateTime: moment().format(),
-                        creationDate: data.data.created_at,
-                        jobDate: "N/A",
-                    });
-
-                    mongoDBrun = 1;
-
-                } else {
-                    update = {
-                        currentStatus: "At Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        $push: {
-                            history: {
+                    /* if (!existingOrder) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: "0",
+                            history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: "User",
                                 lastAssignedTo: "N/A",
                                 reason: "N/A",
+                            }],
+                            product: currentProduct,
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "At Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: data.data.tracking_number,
+                            parcelTrackingNum: consignmentID,
+                            remarks: data.data.remarks,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: "N/A",
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
-                    }
 
-                    mongoDBrun = 2;
+                        mongoDBrun = 2;
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -3688,7 +3696,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -3744,7 +3752,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -4019,7 +4027,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
-                    if (!existingOrder) {
+                    /* if (!existingOrder) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
                             items: [{
@@ -4073,7 +4081,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
 
                         mongoDBrun = 2;
-                    }
+                    } */
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
@@ -4091,7 +4099,10 @@ app.post('/updateDelivery', async (req, res) => {
                 }
             }
 
-            if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || (completeRun == 0)) {
+            
+            console.log("completeRun is "+completeRun)
+
+            if (completeRun == 0) {
                 ceCheck = 1;
             }
 
