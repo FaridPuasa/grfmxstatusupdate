@@ -1228,8 +1228,6 @@ app.post('/save-pod', (req, res) => {
             return res.status(400).send('Invalid collection');
     }
 
-    console.log(PodModel)
-
     // Create a new document and save it to the MongoDB collection
     const newPod = new PodModel({
         podName: podName,
@@ -1243,8 +1241,6 @@ app.post('/save-pod', (req, res) => {
         htmlContent: htmlContent,
         creationDate: moment().format()
     });
-
-    console.log(newPod)
 
     newPod.save()
         .then(() => {
@@ -1714,147 +1710,8 @@ app.post('/addressAreaCheck', (req, res) => {
     res.render('successAddressArea', { entries: result });
 });
 
-// Function to update the document in the ORDERS collection
-/* async function updateOrdersDocument(consignmentID, req) {
-    try {
-        const filter = { doTrackingNumber: consignmentID };
-        const update = {
-            $set: {
-                lastUpdateDateTime: moment().format(),
-            },
-        };
-
-        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-            var finalDispatcherName = req.body.dispatchers.toUpperCase() + " " + req.body.freelancerName.toUpperCase()
-        } else {
-            var finalDispatcherName = req.body.dispatchers.toUpperCase()
-        }
-
-        // Update based on different status codes
-        if (req.body.statusCode === 'CP') {
-            update.$set.currentStatus = 'Custom Clearance in Progress';
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Custom Clearance in Progress',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                },
-            };
-        } else if (req.body.statusCode === '38') {
-            update.$set.currentStatus = 'Custom Clearance Release';
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Custom Clearance Release',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                },
-            };
-        } else if (req.body.statusCode === '12') {
-            update.$set.warehouseEntry = 'Yes';
-            update.$set.warehouseEntryDateTime = moment().format();
-            update.$set.currentStatus = 'Item in Warehouse';
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Item in Warehouse',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                },
-            };
-        } else if (req.body.statusCode === 35) {
-            update.$set.currentStatus = 'Out for Delivery';
-            update.$inc = { attempt: 1 };
-            update.$set.assignedTo = finalDispatcherName;
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Out for Delivery',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                    lastAssignedTo: finalDispatcherName,
-                },
-            };
-        } else if (req.body.statusCode === 'SD') {
-            update.$set.lastUpdateDateTime = moment().format();
-            update.$set.assignedTo = finalDispatcherName;
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Out for Delivery',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                    lastAssignedTo: finalDispatcherName,
-                },
-            };
-        } else if (
-            req.body.statusCode === 'MD' ||
-            req.body.statusCode === 'RF' ||
-            req.body.statusCode === 'FD' ||
-            req.body.statusCode === 'SC' ||
-            req.body.statusCode === 44
-        ) {
-            update.$set.currentStatus = 'Failed Delivery. Return to Warehouse';
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Failed Delivery. Return to Warehouse',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                    lastFailedReason: req.body.additionalReason,
-                },
-            };
-        } else if (req.body.statusCode === 'CSSC') {
-            update.$set.currentStatus = 'Self Collect';
-            update.$inc = { attempt: 1 };
-            update.$set.assignedTo = 'Selfcollect';
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Self Collect',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                    lastAssignedTo: 'Selfcollect',
-                },
-            };
-        } else if (req.body.statusCode === 50) {
-            update.$set.currentStatus = 'Success/Completed';
-
-            // Add new entry to history array
-            update.$push = {
-                history: {
-                    statusHistory: 'Success/Completed',
-                    dateUpdated: moment().format(),
-                    updatedBy: 'User',
-                },
-            };
-        }
-
-        // Update the document in the ORDERS collection
-        const result = await ORDERS.updateOne(filter, update);
-
-        if (result.modifiedCount === 1) {
-            console.log(`Document updated successfully for Consignment ID: ${consignmentID}`);
-        } else {
-            console.log(`No document found for Consignment ID: ${consignmentID}`);
-        }
-    } catch (error) {
-        console.error(`Error updating document for Consignment ID: ${consignmentID}`, error);
-    }
-} */
-
 // Handle form submission for /scanFMX route
 app.post('/updateDelivery', async (req, res) => {
-
-    console.log("Update FMX Status " + req.body.statusCode);
     // Step 1: Authenticate and get accessToken
     const authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
         userNameOrEmailAddress: username,
@@ -1882,8 +1739,8 @@ app.post('/updateDelivery', async (req, res) => {
             var DetrackAPIrun = 0;
             var FMXAPIrun = 0;
             var mongoDBrun = 0;
-            var ccCheck = 0;
             var ceCheck = 0;
+            var warehouseEntryCheck = 0;
             var product = '';
             var latestPODDate = "";
             var fmxUpdate = "";
@@ -1895,13 +1752,12 @@ app.post('/updateDelivery', async (req, res) => {
             var newOrder = "";
             var update = "";
             var currentProduct = "";
+            var warehouseEntryCheckDateTime = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
 
             console.log('Processing Consignment ID:', consignmentID);
-
-            const consignmentID = req.body.consignmentID; // Assuming consignmentID is sent in the request body
 
             // Step 2: Make the first API GET request to fetch data from Detrack
             const response1 = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
@@ -1916,14 +1772,15 @@ app.post('/updateDelivery', async (req, res) => {
             const counttaskhistory = data.data.milestones.length;
 
             for (let i = 0; i < counttaskhistory; i++) {
-                if (data.data.milestones[i].status == 'custom_clearing') {
-                    ccCheck = 1;
-                }
                 if (data.data.milestones[i].status == 'completed') {
                     latestPODDate = data.data.milestones[i].pod_at;
                 }
                 if (data.data.milestones[i].status == 'failed') {
                     detrackReason = data.data.milestones[i].reason;
+                }
+                if ((data.data.milestones[i].status == 'at_warehouse')&&(warehouseEntryCheck == 0)) {
+                    warehouseEntryCheckDateTime = data.data.milestones[i].created_at;
+                    warehouseEntryCheck = 1;
                 }
             }
 
@@ -2084,8 +1941,6 @@ app.post('/updateDelivery', async (req, res) => {
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
-
-
 
             var option = { upsert: false, new: false };
 
@@ -2532,7 +2387,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 currentStatus: "Out for Delivery",
                                 paymentMethod: data.data.payment_mode,
                                 warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
                                 receiverAddress: data.data.address,
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
@@ -2584,7 +2439,6 @@ app.post('/updateDelivery', async (req, res) => {
                         };
 
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
-                        console.log("Portal update test" + portalUpdate)
 
                     } else {
                         if (!existingOrder) {
@@ -2614,7 +2468,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 currentStatus: "Out for Delivery",
                                 paymentMethod: data.data.payment_mode,
                                 warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
                                 receiverAddress: data.data.address,
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
@@ -2703,7 +2557,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 currentStatus: "Out for Delivery",
                                 paymentMethod: data.data.payment_mode,
                                 warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
                                 receiverAddress: data.data.address,
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
@@ -2779,7 +2633,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 currentStatus: "Out for Delivery",
                                 paymentMethod: data.data.payment_mode,
                                 warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
                                 receiverAddress: data.data.address,
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
@@ -2871,7 +2725,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Return to Warehouse",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -2979,7 +2833,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Return to Warehouse",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -3087,7 +2941,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Return to Warehouse",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -3195,7 +3049,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Return to Warehouse",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -3306,7 +3160,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Return to Warehouse",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -3401,7 +3255,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Self Collect",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -3483,7 +3337,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Completed",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -3573,7 +3427,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Cancelled",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -4168,7 +4022,7 @@ app.post('/updateDelivery', async (req, res) => {
                             currentStatus: "Completed",
                             paymentMethod: data.data.payment_mode,
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
                             receiverAddress: data.data.address,
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
@@ -4217,9 +4071,7 @@ app.post('/updateDelivery', async (req, res) => {
                 ceCheck = 1;
             }
 
-            console.log("Test if mongo have run" + mongoDBrun)
-
-            if (mongoDBrun == 1) {
+            /* if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newOrder.save()
                     .then(savedOrder => {
@@ -4231,15 +4083,9 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (mongoDBrun == 2) {
-                console.log("mongoDBrun supposed to be here")
-                console.log(filter)
-                console.log(update)
-                console.log(option)
-
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
-                console.log(result);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            }
+            } */
 
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
@@ -4433,8 +4279,6 @@ app.post('/updateDelivery', async (req, res) => {
                     throw new Error('No valid photo URL found');
                 }
 
-                console.log(selectedPhotoUrl);
-
                 // Download the image from the selected photo URL
                 const imageResponse = await axios.get(selectedPhotoUrl, { responseType: 'arraybuffer' });
 
@@ -4466,7 +4310,6 @@ app.post('/updateDelivery', async (req, res) => {
                 });
 
                 // Show a success message
-                console.log(response3.data);
                 console.log('Success');
             }
 
@@ -4503,20 +4346,14 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
-    console.log("test mongodb")
-    console.log(change.operationType)
+orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
                 let filter = new mongoose.Types.ObjectId(result[0]._id);
 
-                console.log(filter)
-
                 if (result[0].product != null) {
                     let products = result[0].product
-
-                    console.log(products)
 
                     if (products.includes("pharmacy") == true) {
                         products = "pharmacy"
@@ -4527,12 +4364,9 @@ app.post('/updateDelivery', async (req, res) => {
                     let sequenceToAdd = 0;
                     let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim();
 
-                    console.log(sequence)
-
                     let checkProduct = 0;
 
                     if ((result.length >= 2) && (checkProduct == 0)) {
-                        console.log("done check length and product")
                         for (let i = 1; i < result.length; i++) {
                             if (result[i].product.includes(products)) {
                                 if (result[i].sequence == "N/A") {
@@ -4736,9 +4570,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     }
 
-                    console.log(tracker + " " + sequence)
                     let update = { ['doTrackingNumber']: tracker, ['sequence']: sequence }
-                    console.log(update)
                     let option = { upsert: false, new: false }
 
                     ORDERS.findById(filter)
@@ -4748,8 +4580,10 @@ app.post('/updateDelivery', async (req, res) => {
                                 return;
                             }
 
-                            foundOrder.doTrackingNumber = tracker;
-                            foundOrder.sequence = sequence;
+                            if (result[0].product != "fmx") {
+                                foundOrder.doTrackingNumber = tracker;
+                                foundOrder.sequence = sequence;
+                            }
 
                             return foundOrder.save();
                         })
@@ -4791,7 +4625,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
