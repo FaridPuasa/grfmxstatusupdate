@@ -4387,7 +4387,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
@@ -4638,7 +4638,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
