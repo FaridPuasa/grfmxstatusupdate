@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
     product: String,
     doTrackingNumber: String,
+    jobDate: String,
     receiverName: String,
     receiverAddress: String,
     area: String,
@@ -87,7 +88,6 @@ const orderSchema = new mongoose.Schema({
     fmxMilestoneStatus: String,
     fmxMilestoneStatusCode: String,
     latestReason: String,
-    deliveryDate: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,

@@ -125,7 +125,8 @@
                         <th class="header">Flight Date</th>
                         <th class="header">MAWB No.</th>
                         <th class="header">Area</th>
-                        <th class="header">Delivery Type</th>
+                        <th class="header">Job Type</th>
+                        <th class="header">Job Date</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
                         <th class="header">Remarks</th>
@@ -172,6 +173,9 @@
                             </td>
                             <td>
                                 <%= order.deliveryType %>
+                            </td>
+                            <td>
+                                <%= order.jobDate %>
                             </td>
                             <td>
                                 <%= order.paymentMethod %>
