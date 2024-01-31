@@ -1739,6 +1739,7 @@ app.post('/updateDelivery', async (req, res) => {
             var DetrackAPIrun = 0;
             var FMXAPIrun = 0;
             var mongoDBrun = 0;
+            var completeRun = 0;
             var ceCheck = 0;
             var warehouseEntryCheck = 0;
             var product = '';
@@ -2105,6 +2106,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == "DC") && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('CP')) */) {
@@ -2191,6 +2193,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 38) && (data.data.status == 'custom_clearing') /* && ((data.data.instructions.includes('CP'))||(data.data.instructions.includes('DC'))) */) {
@@ -2272,6 +2275,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('38')) */) {
@@ -2356,6 +2360,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
@@ -2526,6 +2531,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -2683,6 +2689,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'MD') && (data.data.status == 'failed')) {
@@ -2790,6 +2797,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'RF') && (data.data.status == 'failed')) {
@@ -2898,6 +2906,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'FD') && (data.data.status == 'failed')) {
@@ -3006,6 +3015,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'SC') && (data.data.status == 'failed')) {
@@ -3114,6 +3124,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 3;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status == 'failed')) {
@@ -3225,6 +3236,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 2;
                     FMXAPIrun = 2;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
@@ -3307,6 +3319,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
@@ -3388,6 +3401,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 5;
+                    completeRun = 1;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -3479,6 +3493,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
+                    completeRun = 1;
                 }
             }
 
@@ -3522,6 +3537,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                     portalUpdate = "Portal status updated to Info Received. ";
                     mongoDBrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
@@ -3595,6 +3611,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
@@ -3667,7 +3684,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
-                    mongoDBrun = 2;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
@@ -3739,6 +3756,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
@@ -3808,6 +3826,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -3871,6 +3890,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status != 'at_warehouse')) {
@@ -3920,6 +3940,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 2;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
@@ -3955,6 +3976,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated for Self Collect. ";
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if (req.body.statusCode == 'CD') {
@@ -3993,6 +4015,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
 
                     DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 50) && (data.data.status == 'completed')) {
@@ -4064,10 +4087,11 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 5;
+                    completeRun = 1;
                 }
             }
 
-            if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || (mongoDBrun == 0)) {
+            if (((req.body.statusCode != 50) && (data.data.status == 'completed')) || (completeRun == 0)) {
                 ceCheck = 1;
             }
 
