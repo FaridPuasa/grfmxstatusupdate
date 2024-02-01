@@ -122,29 +122,41 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <!-- <option value="IR">Info Received (FMX only)</option> -->
-                        <option value="CP">Custom Clearance In Progress (FMX only)</option>
-                        <!-- <option value="DC">Detained by Customs (FMX only)</option> -->
-                        <option value="38">Custom Clearance Release (FMX only)</option>
-                        <option value="12">Item In Warehouse (All)</option>
-                        <option value="35">Out for Delivery (All)</option>
-                        <option value="SD">Swap Dispatchers (All)</option>
-                        <option value="CSSC">Self Collect (All)</option>
-                        <option value="50">Success/Completed (FMX only)</option>
-                        <option value="44">Failed Delivery. Return To Warehouse (with optional additional remarks for
-                            FMX)(All)
+                        <!-- <option value="IR">|FMX only| Info Received</option> -->
+                        <option value="CP">|FMX only| Custom Clearance In Progress</option>
+                        <option value="DC">|FMX only| Detained by Customs</option>
+                        <option value="38">|FMX only| Custom Clearance Release</option>
+                        <option value="12">|All| Item In Warehouse</option>
+                        <option value="35">|All| Out for Delivery</option>
+                        <option value="SD">|All| Swap Dispatchers</option>
+                        <option value="CSSC">|All| Self Collect</option>
+                        <option value="50">|FMX only| Success/Completed</option>
+                        <option value="44">|All| Failed Delivery. Return To Warehouse
                         </option>
-                        <option value="MD">Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX only)
+                        <option value="MD">|FMX only| Failed Delivery due to Unattempted Delivery. Return to Warehouse
                         </option>
-                        <option value="RF">Failed Delivery due to Customer Declined Delivery. Return to Warehouse (FMX
-                            only)
+                        <option value="FD">|FMX only| Failed Delivery due to Reschedule Delivery Requested By Customer.
+                            Return to
+                            Warehouse</option>
+                        <option value="SC">|FMX only| Failed Delivery due to Reschedule to Self Collect Requested By
+                            Customer.
+                            Return to Warehouse</option>
+                        <option value="DU">|FMX only| Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse
                         </option>
-                        <option value="FD">Failed Delivery due to Reschedule Delivery Requested By Customer. Return to
-                            Warehouse (FMX only)</option>
-                        <option value="SC">Failed Delivery due to Reschedule to Self Collect Requested By Customer.
-                            Return
-                            to Warehouse (FMX only)</option>
-                        <option value="CD">Cancelled Delivery (All)</option>
+                        <option value="NA">|FMX only| Failed Delivery due to Consignee Not In, Business Closed/Customer
+                            not pickup phone. Return to Warehouse
+                        </option>
+                        <option value="NP">|FMX only| Failed Delivery due to No Such Person. Return to Warehouse
+                        </option>
+                        <option value="RF">|FMX only| Failed Delivery due to Customer Declined Delivery / Shipment
+                            Refused by Consignee. Return to
+                            Warehouse</option>
+                        <option value="UL">|FMX only| Failed Delivery due to Unable to Locate Receiver Address. Return
+                            to Warehouse
+                        </option>
+                        <option value="WA">|FMX only| Failed Delivery due to Incorrect Address. Return to Warehouse
+                        </option>
+                        <option value="CD">|All| Cancelled Delivery</option>
                     </select>
                 </div>
             </div>
@@ -310,7 +322,7 @@
             function updateFreelancerNameField() {
                 const selectedDispatcher = dispatchersField.value;
 
-                if ((selectedDispatcher === 'FL1')||(selectedDispatcher === 'FL2')) {
+                if ((selectedDispatcher === 'FL1') || (selectedDispatcher === 'FL2')) {
                     // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
                     $("#freelancerNameWrapper").fadeIn();
                     freelancerNameField.disabled = false;
@@ -370,7 +382,7 @@
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
 
-                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC') || (selectedStatusCode === 'CD')|| (selectedStatusCode === 'DC')) {
+                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC') || (selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
                     additionalReasonField.required = true;
