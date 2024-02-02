@@ -122,7 +122,7 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <option value="IR">|FMX only| Info Received</option>
+                        <!-- <option value="IR">|FMX only| Info Received</option> -->
                         <option value="CP">|FMX only| Custom Clearance In Progress</option>
                         <option value="DC">|FMX only| Detained by Customs</option>
                         <option value="38">|FMX only| Custom Clearance Release</option>
@@ -133,30 +133,8 @@
                         <option value="50">|FMX only| Success/Completed</option>
                         <option value="44">|All| Failed Delivery. Return To Warehouse
                         </option>
-                        <option value="MD">|FMX only| Failed Delivery due to Unattempted Delivery. Return to Warehouse
-                        </option>
-                        <option value="FD">|FMX only| Failed Delivery due to Reschedule Delivery Requested By Customer.
-                            Return to
-                            Warehouse</option>
-                        <option value="SC">|FMX only| Failed Delivery due to Reschedule to Self Collect Requested By
-                            Customer.
-                            Return to Warehouse</option>
-                        <option value="DU">|FMX only| Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse
-                        </option>
-                        <option value="NA">|FMX only| Failed Delivery due to Consignee Not In, Business Closed/Customer
-                            not pickup phone. Return to Warehouse
-                        </option>
-                        <option value="NP">|FMX only| Failed Delivery due to No Such Person. Return to Warehouse
-                        </option>
-                        <option value="RF">|FMX only| Failed Delivery due to Customer Declined Delivery / Shipment
-                            Refused by Consignee. Return to
-                            Warehouse</option>
-                        <option value="UL">|FMX only| Failed Delivery due to Unable to Locate Receiver Address. Return
-                            to Warehouse
-                        </option>
-                        <option value="WA">|FMX only| Failed Delivery due to Incorrect Address. Return to Warehouse
-                        </option>
                         <option value="CD">|All| Cancelled Delivery</option>
+                        <option value="47">|FMX only| Dispose Delivery</option>
                     </select>
                 </div>
             </div>
@@ -383,26 +361,10 @@
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
 
-                } else if ((selectedStatusCode === 'RF') || (selectedStatusCode === 'FD') || (selectedStatusCode === 'SC') || (selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
+                } else if (selectedStatusCode === 'CD') {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
                     additionalReasonField.required = true;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
-                    assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").fadeIn();
-                    $("#freelancerNameWrapper").hide();
-                } else if (selectedStatusCode === '44') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = false;
-                    additionalReasonField.required = false;
 
                     // Disable the "Dispatchers" field
                     dispatchersField.disabled = true;
