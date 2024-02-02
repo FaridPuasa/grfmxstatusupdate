@@ -4019,7 +4019,6 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
-                            note: fmxUpdate,
                             instructions: "FMX Milestone ID RF. Cancelled Delivery due to " + detrackReason
                         }
                     };
@@ -4547,7 +4546,6 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
-                            note: req.body.additionalReason,
                             instructions: "Cancelled Delivery due to " + detrackReason,
                         }
                     };
