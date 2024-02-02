@@ -2096,7 +2096,7 @@ app.post('/updateDelivery', async (req, res) => {
                             description: data.data.items[0].description,
                             totalItemPrice: data.data.total_price
                         }],
-                        attempt: "0",
+                        attempt: data.data.attempt - 1,
                         history: [{
                             updatedBy: "User",
                             dateUpdated: moment().format(),
@@ -2146,7 +2146,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: "0",
+                            attempt: data.data.attempt - 1,
                             history: [{
                                 statusHistory: "Custom Clearing",
                                 dateUpdated: moment().format(),
@@ -2234,7 +2234,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: "0",
+                            attempt: data.data.attempt - 1,
                             history: [{
                                 statusHistory: "Detained by Customs",
                                 dateUpdated: moment().format(),
@@ -2318,7 +2318,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: "0",
+                            attempt: data.data.attempt - 1,
                             history: [{
                                 statusHistory: "Custom Clearance Release",
                                 dateUpdated: moment().format(),
@@ -2392,7 +2392,7 @@ app.post('/updateDelivery', async (req, res) => {
                     completeRun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('38')) */) {
+                if ((req.body.statusCode == 12) /* && (data.data.status == 'custom_clearing') */ /* && (data.data.instructions.includes('38')) */) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
@@ -2401,7 +2401,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: "0",
+                            attempt: data.data.attempt - 1,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
@@ -4180,7 +4180,7 @@ app.post('/updateDelivery', async (req, res) => {
                             description: data.data.items[0].description,
                             totalItemPrice: data.data.total_price
                         }],
-                        attempt: "0",
+                        attempt: data.data.attempt - 1,
                         history: [{
                             updatedBy: "User",
                             dateUpdated: moment().format(),
@@ -4291,7 +4291,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: "0",
+                            attempt: data.data.attempt - 1,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
@@ -4685,7 +4685,7 @@ app.post('/updateDelivery', async (req, res) => {
                 ceCheck = 1;
             }
 
-            /* if (mongoDBrun == 1) {
+            if (mongoDBrun == 1) {
                 // Save the new document to the database using promises
                 newOrder.save()
                     .then(savedOrder => {
@@ -4699,7 +4699,7 @@ app.post('/updateDelivery', async (req, res) => {
             if (mongoDBrun == 2) {
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
                 console.log(`MongoDB Updated for Consignment ID: ${consignmentID}`);
-            } */
+            }
 
             if (DetrackAPIrun == 1) {
                 // Make the API request to update the status in Detrack
@@ -4757,7 +4757,7 @@ app.post('/updateDelivery', async (req, res) => {
                 });
             }
 
-            //normal run
+            /* //normal run
             if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
@@ -4925,7 +4925,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 // Show a success message
                 console.log('Success');
-            }
+            } */
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
@@ -5194,7 +5194,7 @@ orderWatch.on('change', change => {
                                 return;
                             }
 
-                            if ((result[0].product != "fmx") || (result[0].product != "bb") || (result[0].product != "fcas")) {
+                            if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
                                 foundOrder.doTrackingNumber = tracker;
                                 foundOrder.sequence = sequence;
                             }
