@@ -288,6 +288,7 @@
         $(document).ready(function () {
             // Initialize DataTable for the order table
             const table = $('#orderTable').DataTable({
+                "ordering": false,  // Disable client-side sorting
                 "iDisplayLength": 100,  // Set the default number of entries to 100
                 "dom": 'Bfrtip', // Add buttons to the DOM
                 "buttons": [
