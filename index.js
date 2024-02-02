@@ -103,7 +103,7 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHEXPOrders', { orders });
+        res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -137,7 +137,7 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHSTDOrders', { orders });
+        res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -248,7 +248,7 @@ app.get('/listofpharmacyMOHTTGOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHTTGOrders', { orders });
+        res.render('listofpharmacyMOHTTGOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -291,7 +291,7 @@ app.get('/listofpharmacyMOHKBOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHKBOrders', { orders });
+        res.render('listofpharmacyMOHKBOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -334,7 +334,7 @@ app.get('/listofpharmacyMOHIMMOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHIMMOrders', { orders });
+        res.render('listofpharmacyMOHIMMOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -376,7 +376,7 @@ app.get('/listofpharmacyJPMCOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyJPMCOrders', { orders });
+        res.render('listofpharmacyJPMCOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -416,7 +416,7 @@ app.get('/listofpharmacyPHCOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyPHCOrders', { orders });
+        res.render('listofpharmacyPHCOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -463,7 +463,7 @@ app.get('/listofLDOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofLDOrders', { orders });
+        res.render('listofLDOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -510,7 +510,7 @@ app.get('/listofGRPOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofGRPOrders', { orders });
+        res.render('listofGRPOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -553,7 +553,7 @@ app.get('/listofCBSLOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofCBSLOrders', { orders });
+        res.render('listofCBSLOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -595,7 +595,7 @@ app.get('/listofFMXOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrders', { orders });
+        res.render('listofFMXOrders', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4757,8 +4757,8 @@ app.post('/updateDelivery', async (req, res) => {
                 });
             }
 
-            /* //normal run
-            if (FMXAPIrun == 1) {
+            //normal run
+            /* if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
                 const currentTime = moment().format();
 
@@ -4960,7 +4960,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
@@ -5211,7 +5211,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
