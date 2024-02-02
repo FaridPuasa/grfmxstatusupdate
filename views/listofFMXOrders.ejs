@@ -129,6 +129,7 @@
                         <th class="header">MAWB No.</th>
                         <th class="header">Area</th>
                         <th class="header">Job Type</th>
+                        <th class="header">Job Created</th>
                         <th class="header">Job Date</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
@@ -176,6 +177,9 @@
                             </td>
                             <td>
                                 <%= order.deliveryType %>
+                            </td>
+                            <td>
+                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
                             </td>
                             <td>
                                 <%= order.jobDate %>
