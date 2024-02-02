@@ -2820,6 +2820,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Unattempted Delivery") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery (MD). Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Unattempted Delivery.";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -2924,6 +2925,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Reschedule delivery requested by customer") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + data.data.note + ". Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Reschedule Delivery Requested By Customer to " + data.data.note + ".";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3029,6 +3031,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Reschedule to self collect requested by customer") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + data.data.note + ". Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Reschedule to Self Collect Requested By Customer to " + data.data.note + ".";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3134,6 +3137,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Cash/Duty Not Ready") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery due to Cash/Duty Not Ready (DU). Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Cash/Duty Not Ready.";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3238,6 +3242,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Customer not available / cannot be contacted") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone (NA). Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Consignee Not In, Business Closed/Customer not pickup phone.";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3343,6 +3348,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "No Such Person") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery due to No Such Person (NP). Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "No Such Person.";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3447,6 +3453,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Customer declined delivery") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery. Shipment Refused by Consignee (RF) due to " + data.data.note + ". Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Shipment Refused by Consignee due to " + data.data.note + ".";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3536,7 +3543,7 @@ app.post('/updateDelivery', async (req, res) => {
                             do_number: consignmentID,
                             data: {
                                 status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID RF, 44. Shipment Refused by Consignee due to " + detrackReason + ".",
+                                instructions: "FMX Milestone ID RF, 44. Shipment Refused by Consignee due to " + data.data.note + ".",
                                 job_type: "Delivery"
                             }
                         };
@@ -3552,6 +3559,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Unable to Locate Address") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery due to Unable to Locate Receiver Address (UL). Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Unable to Locate Address";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -3656,6 +3664,7 @@ app.post('/updateDelivery', async (req, res) => {
                     if (data.data.reason == "Incorrect Address") {
                         fmxUpdate = "FMX milestone updated to Failed Delivery due to Incorrect Address (WA). Return to Warehouse (44).";
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        detrackReason = "Incorrect Address";
 
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -4770,7 +4779,7 @@ app.post('/updateDelivery', async (req, res) => {
                         CityName: 'BN',
                         ConsigneeName: ''
                     };
-
+                    
                     if (req.body.statusCode != 'MD') {
                         // Conditionally set the Remark field in the first run
                         if (i == 0) {
