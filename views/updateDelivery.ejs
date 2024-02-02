@@ -361,7 +361,7 @@
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
 
-                } else if (selectedStatusCode === 'CD') {
+                } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = false;
                     additionalReasonField.required = true;
