@@ -4674,10 +4674,8 @@ app.post('/updateDelivery', async (req, res) => {
                         mongoDBrun = 2;
                     }
 
-                    fmxUpdate = "FMX milestone updated to Parcel Delivered.";
                     portalUpdate = "Portal status updated to Completed. ";
 
-                    FMXAPIrun = 5;
                     completeRun = 1;
                 }
             }
