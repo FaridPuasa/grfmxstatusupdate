@@ -99,6 +99,15 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
                 'membership',
                 'pharmacyFormCreated',
                 'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
@@ -132,7 +141,16 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
                 'dateTimeSubmission',
                 'membership',
                 'pharmacyFormCreated',
-                'sendOrderTo'
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
             ])
             .sort({ _id: -1 });
 
