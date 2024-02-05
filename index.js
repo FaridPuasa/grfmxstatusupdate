@@ -4963,7 +4963,7 @@ app.post('/updateDelivery', async (req, res) => {
 
 orderWatch.on('change', change => {
     if (change.operationType == "insert") {
-        ORDERS.find().sort({ $natural: -1 }).then(
+        ORDERS.find().sort({ $natural: -1 }).limit(2000).then(
             (result) => {
                 let filter = new mongoose.Types.ObjectId(result[0]._id);
                 if (result[0].product != null) {
@@ -4983,7 +4983,7 @@ orderWatch.on('change', change => {
                     if ((result.length >= 2) && (checkProduct == 0)) {
                         for (let i = 1; i < result.length; i++) {
                             if (result[i].product.includes(products)) {
-                                console.log("sequence is "+result[i].sequence)
+                                console.log("sequence is " + result[i].sequence)
                                 if (result[i].sequence == "N/A") {
                                     sequenceToAdd = parseInt(sequenceToAdd) + 1;
                                 }
@@ -5211,7 +5211,6 @@ orderWatch.on('change', change => {
                 console.log(err)
             }
         )
-        console.log("not here")
     }
 })
 
