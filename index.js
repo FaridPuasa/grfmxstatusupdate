@@ -4963,7 +4963,7 @@ app.post('/updateDelivery', async (req, res) => {
 
 orderWatch.on('change', change => {
     if (change.operationType == "insert") {
-        ORDERS.find().sort({ $natural: -1 }).limit(2000).then(
+        ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
                 let filter = new mongoose.Types.ObjectId(result[0]._id);
                 if (result[0].product != null) {
