@@ -2848,7 +2848,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: (update && update.attempt ? update.attempt : 0) - 1, // Check if update and attempt are defined
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -2903,6 +2903,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
                                 fmxMilestoneStatusCode: "MD, 44",
                                 latestReason: "Unattempted Delivery",
+                                attempt: (update && update.attempt ? update.attempt : 0) - 1, // Check if update and attempt are defined
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -2933,11 +2934,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
+                        DetrackAPIrun = 1;
                     }
 
                     if (data.data.reason == "Reschedule delivery requested by customer") {
@@ -3043,6 +3040,8 @@ app.post('/updateDelivery', async (req, res) => {
                                 do_number: consignmentID,
                             }
                         };
+
+                        DetrackAPIrun = 2;
 
                     }
 
@@ -3150,6 +3149,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
+                        DetrackAPIrun = 2;
                     }
 
                     if (data.data.reason == "Cash/Duty Not Ready") {
@@ -3255,6 +3255,8 @@ app.post('/updateDelivery', async (req, res) => {
                                 do_number: consignmentID,
                             }
                         };
+
+                        DetrackAPIrun = 2;
                     }
 
                     if (data.data.reason == "Customer not available / cannot be contacted") {
@@ -3361,6 +3363,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
+                        DetrackAPIrun = 2;
                     }
 
                     if (data.data.reason == "No Such Person") {
@@ -3466,6 +3469,8 @@ app.post('/updateDelivery', async (req, res) => {
                                 do_number: consignmentID,
                             }
                         };
+
+                        DetrackAPIrun = 2;
                     }
 
                     if (data.data.reason == "Customer declined delivery") {
@@ -3572,6 +3577,8 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
+                        DetrackAPIrun = 2;
+
                     }
 
                     if (data.data.reason == "Unable to Locate Address") {
@@ -3677,6 +3684,8 @@ app.post('/updateDelivery', async (req, res) => {
                                 do_number: consignmentID,
                             }
                         };
+
+                        DetrackAPIrun = 2;
                     }
 
                     if (data.data.reason == "Incorrect Address") {
@@ -3782,9 +3791,10 @@ app.post('/updateDelivery', async (req, res) => {
                                 do_number: consignmentID,
                             }
                         };
+
+                        DetrackAPIrun = 2;
                     }
 
-                    DetrackAPIrun = 2;
                     FMXAPIrun = 3;
                     completeRun = 1;
                 }
@@ -4455,48 +4465,84 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if ((req.body.statusCode == 44) && (data.data.status != 'at_warehouse')) {
-                    update = {
-                        currentStatus: "Return to Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "Failed delivery due to " + data.data.reason,
-                        assignedTo: "N/A",
-                        latestReason: data.data.reason,
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: data.data.assign_to,
-                                reason: data.data.reason,
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: "User",
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+                    if (data.data.reason == "Unattempted Delivery") {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Failed delivery due to " + data.data.reason,
+                            assignedTo: "N/A",
+                            latestReason: data.data.reason,
+                            attempt: (update && update.attempt ? update.attempt : 0) - 1, // Check if update and attempt are defined
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: data.data.reason,
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
                             }
                         }
-                    }
 
-                    mongoDBrun = 2;
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "at_warehouse" // Use the calculated dStatus
-                        }
-                    };
-
-                    var detrackUpdateDataAttempt = {
-                        data: {
+                        var detrackUpdateData = {
                             do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse" // Use the calculated dStatus
+                            }
+                        };
+
+                        DetrackAPIrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Failed delivery due to " + data.data.reason,
+                            assignedTo: "N/A",
+                            latestReason: data.data.reason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: data.data.assign_to,
+                                    reason: data.data.reason,
+                                },
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            }
                         }
-                    };
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse" // Use the calculated dStatus
+                            }
+                        };
+
+                        var detrackUpdateDataAttempt = {
+                            data: {
+                                do_number: consignmentID,
+                            }
+                        };
+
+                        DetrackAPIrun = 2;
+                    }
 
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
-                    DetrackAPIrun = 2;
+                    mongoDBrun = 2;
                     completeRun = 1;
                 }
 
@@ -4795,7 +4841,7 @@ app.post('/updateDelivery', async (req, res) => {
                         CityName: 'BN',
                         ConsigneeName: ''
                     };
-                    
+
                     if (req.body.statusCode != 'MD') {
                         // Conditionally set the Remark field in the first run
                         if (i == 0) {
