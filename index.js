@@ -4962,17 +4962,11 @@ app.post('/updateDelivery', async (req, res) => {
 });
 
 orderWatch.on('change', change => {
-    console.log("Operation changed from "+change.operationType)
     if (change.operationType == "insert") {
-        console.log("Operation already changed")
         ORDERS.find().sort({ $natural: -1 }).then(
             (result) => {
-                console.log("find here")
                 let filter = new mongoose.Types.ObjectId(result[0]._id);
-
-                console.log("filter here" + filter)
                 if (result[0].product != null) {
-                    console.log("product here" + result[0].product)
                     let products = result[0].product
 
                     if (products.includes("pharmacy") == true) {
@@ -4982,7 +4976,7 @@ orderWatch.on('change', change => {
                     let tracker
                     let sequence
                     let sequenceToAdd = 0;
-                    /* let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim(); */
+                    let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim();
 
                     let checkProduct = 0;
 
@@ -5217,6 +5211,7 @@ orderWatch.on('change', change => {
                 console.log(err)
             }
         )
+        console.log("not here")
     }
 })
 
