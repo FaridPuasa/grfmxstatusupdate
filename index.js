@@ -4977,7 +4977,7 @@ orderWatch.on('change', change => {
                     let tracker
                     let sequence
                     let sequenceToAdd = 0;
-                    let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim();
+                    /* let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim(); */
 
                     let checkProduct = 0;
 
