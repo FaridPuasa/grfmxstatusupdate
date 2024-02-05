@@ -4958,7 +4958,7 @@ app.post('/updateDelivery', async (req, res) => {
             continue; // Move to the next consignmentID
         }
     }
-    res.redirect('/successUpdate'); // Redirect to the successUpdate page
+    res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
 orderWatch.on('change', change => {
