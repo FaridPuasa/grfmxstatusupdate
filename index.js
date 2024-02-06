@@ -611,7 +611,8 @@ app.get('/listofFMXOrders', async (req, res) => {
                 'lastUpdateDateTime',
                 'creationDate'
             ])
-            .sort({ _id: -1 });
+            .sort({ _id: -1 })
+            .limit(1000); 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofFMXOrders', { orders, moment: moment });
