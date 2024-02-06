@@ -1847,6 +1847,7 @@ app.post('/updateDelivery', async (req, res) => {
             var currentProduct = "";
             var warehouseEntryCheckDateTime = "";
             var completedCheckDateTime = "";
+            var fmxMilestoneCode = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -1968,98 +1969,30 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (req.body.statusCode == 35) {
-                appliedStatus = "Out for Delivery"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'SD') {
-                appliedStatus = "Swap Dispatchers"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'MD') {
-                appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'FD') {
-                appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'SC') {
-                appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'CSSC') {
-                appliedStatus = "Self Collect"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'SF') {
-                appliedStatus = "Success/Failed"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'CD') {
-                appliedStatus = "Cancelled"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'DU') {
-                appliedStatus = "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'NA') {
-                appliedStatus = "Failed Delivery due to Customer not available / cannot be contacted. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'NP') {
-                appliedStatus = "Failed Delivery due to No Such Person. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'RF') {
-                appliedStatus = "Failed Delivery due to Customer Declined Delivery / Shipment Refused by Consignee. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'UL') {
-                appliedStatus = "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse (FMX)"
-                filter = { doTrackingNumber: consignmentID };
-                // Determine if there's an existing document in MongoDB
-                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-            }
-
-            if (req.body.statusCode == 'WA') {
-                appliedStatus = "Failed Delivery due to Unable to Incorrect Address. Return to Warehouse (FMX)"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
@@ -2145,6 +2078,7 @@ app.post('/updateDelivery', async (req, res) => {
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
+                    appliedStatus = "Info Received"
                     mongoDBrun = 1;
                     completeRun = 1;
                 }
@@ -2227,6 +2161,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
                     fmxUpdate = "FMX milestone updated to Custom Clearance In Progress.";
+                    fmxMilestoneCode = "CP"
+                    appliedStatus = "Custom Clearance in Progress"
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
@@ -2315,6 +2251,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     portalUpdate = "Portal status updated to Detained by Customs. "
                     fmxUpdate = "FMX milestone updated to Detained by Customs.";
+                    fmxMilestoneCode = "DC"
+                    appliedStatus = "Detained by Customs"
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
@@ -2398,6 +2336,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     portalUpdate = "Portal and Detrack status updated to Custom Clearance Release. "
                     fmxUpdate = "FMX milestone updated to Custom Clearance Release.";
+                    fmxMilestoneCode = "38"
+                    appliedStatus = "Custom Clearance Release"
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
@@ -2484,6 +2424,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     fmxUpdate = "FMX milestone updated to At Warehouse.";
+                    fmxMilestoneCode = "12"
+                    appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
@@ -2659,6 +2601,8 @@ app.post('/updateDelivery', async (req, res) => {
                     }
 
                     fmxUpdate = "FMX milestone updated to Out for Delivery.";
+                    fmxMilestoneCode = "35"
+                    appliedStatus = "Out for Delivery"
 
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
@@ -2823,6 +2767,8 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ". ";
                     }
 
+                    appliedStatus = "Swap Dispatchers"
+
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
@@ -2929,6 +2875,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 1;
+                            fmxMilestoneCode = "MD"
+                            appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Reschedule delivery requested by customer") {
@@ -3036,7 +2984,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
-
+                            fmxMilestoneCode = "FD"
+                            appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Reschedule to self collect requested by customer") {
@@ -3144,6 +3093,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
+                            fmxMilestoneCode = "SC"
+                            appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Cash/Duty Not Ready") {
@@ -3251,6 +3202,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
+                            fmxMilestoneCode = "DU"
+                            appliedStatus = "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Customer not available / cannot be contacted") {
@@ -3358,6 +3311,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
+                            fmxMilestoneCode = "NA"
+                            appliedStatus = "Failed Delivery due to Customer not available / cannot be contacted. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "No Such Person") {
@@ -3465,6 +3420,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
+                            fmxMilestoneCode = "NP"
+                            appliedStatus = "Failed Delivery due to No Such Person. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Customer declined delivery") {
@@ -3572,7 +3529,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
-
+                            fmxMilestoneCode = "RF"
+                            appliedStatus = "Failed Delivery due to Customer Declined Delivery / Shipment Refused by Consignee. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Unable to Locate Address") {
@@ -3680,6 +3638,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
+                            fmxMilestoneCode = "UL"
+                            appliedStatus = "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse (FMX)"
                         }
 
                         if (data.data.reason == "Incorrect Address") {
@@ -3787,6 +3747,8 @@ app.post('/updateDelivery', async (req, res) => {
                             };
 
                             DetrackAPIrun = 2;
+                            fmxMilestoneCode = "WA"
+                            appliedStatus = "Failed Delivery due to Unable to Incorrect Address. Return to Warehouse (FMX)"
                         }
 
                         FMXAPIrun = 3;
@@ -3869,6 +3831,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                         fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
                         portalUpdate = "Portal status updated to Completed. ";
+                        fmxMilestoneCode = "50"
+                        appliedStatus = "Completed"
 
                         DetrackAPIrun = 1;
                         FMXAPIrun = 5;
@@ -3956,6 +3920,7 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     portalUpdate = "Portal and Detrack status updated for Self Collect. ";
+                    appliedStatus = "Self Collect"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4047,6 +4012,9 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    fmxMilestoneCode = "RF"
+                    appliedStatus = "Cancelled"
+
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
                     completeRun = 1;
@@ -4133,6 +4101,9 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
+                    fmxMilestoneCode = "47"
+                    appliedStatus = "Dispose Parcel"
+
                     DetrackAPIrun = 1;
                     FMXAPIrun = 2;
                     completeRun = 1;
@@ -4211,6 +4182,7 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4245,6 +4217,7 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4317,6 +4290,7 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4390,6 +4364,8 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                     }
 
+                    appliedStatus = "Out for Delivery"
+
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
@@ -4455,6 +4431,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                         portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
                     }
+                    appliedStatus = "Swap Dispatchers"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4496,6 +4473,7 @@ app.post('/updateDelivery', async (req, res) => {
                             };
     
                             DetrackAPIrun = 1;
+                            appliedStatus = "Failed Delivery, Return to Warehouse"
                         } else {
                             update = {
                                 currentStatus: "Return to Warehouse",
@@ -4535,6 +4513,7 @@ app.post('/updateDelivery', async (req, res) => {
                             };
     
                             DetrackAPIrun = 2;
+                            appliedStatus = "Failed Delivery, Return to Warehouse"
                         }
     
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
@@ -4600,6 +4579,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
     
                         portalUpdate = "Portal status updated to Completed. ";
+                        appliedStatus = "Completed"
                         completeRun = 1;
                     }
                     
@@ -4636,6 +4616,7 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     portalUpdate = "Portal and Detrack status updated for Self Collect. ";
+                    appliedStatus = "Self Collect"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4674,6 +4655,7 @@ app.post('/updateDelivery', async (req, res) => {
                     };
 
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
+                    appliedStatus = "Cancelled"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
@@ -4768,7 +4750,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FileData: '',
                     DateEvent: currentTime,
                     ConsignmentId: consignmentID,
-                    StatusCode: req.body.statusCode,
+                    StatusCode: fmxMilestoneCode,
                     CityName: 'BN',
                     ConsigneeName: ''
                 };
@@ -4797,16 +4779,11 @@ app.post('/updateDelivery', async (req, res) => {
                     FileData: '',
                     DateEvent: currentTime,
                     ConsignmentId: consignmentID,
+                    StatusCode: fmxMilestoneCode,
                     CityName: 'BN',
                     ConsigneeName: '',
                     Remark: detrackReason
                 };
-
-                if (req.body.statusCode == 'CD') {
-                    requestData.StatusCode = 'RF';
-                } else {
-                    requestData.StatusCode = req.body.statusCode;
-                }
 
                 // Step 4: Make the second API request with bearer token
                 const response4 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
@@ -4822,7 +4799,7 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (FMXAPIrun == 3) {
                 // Define an array of status codes to use in the two runs
-                const statusCodesToRun = [req.body.statusCode, '44']; // Replace with actual status codes
+                const statusCodesToRun = [fmxMilestoneCode, '44']; // Replace with actual status codes
 
                 for (let i = 0; i < statusCodesToRun.length; i++) {
                     // Step 3: Create data for the API request
@@ -4837,15 +4814,9 @@ app.post('/updateDelivery', async (req, res) => {
                         ConsignmentId: consignmentID,
                         StatusCode: statusCodesToRun[i], // Use the current status code from the array
                         CityName: 'BN',
-                        ConsigneeName: ''
+                        ConsigneeName: '',
+                        Remark: detrackReason
                     };
-
-                    if (req.body.statusCode != 'MD') {
-                        // Conditionally set the Remark field in the first run
-                        if (i == 0) {
-                            requestData.Remark = detrackReason;
-                        }
-                    }
 
                     // Step 4: Make the API request with the bearer token
                     const response = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
@@ -4912,7 +4883,7 @@ app.post('/updateDelivery', async (req, res) => {
                     },
                     DateEvent: currentDate,
                     ConsignmentId: consignmentID,
-                    StatusCode: '50',
+                    StatusCode: fmxMilestoneCode,
                     CityName: 'BN',
                     ConsigneeName: ''
                 }, {
