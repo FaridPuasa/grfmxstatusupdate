@@ -109,7 +109,8 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
                 'assignedTo',
                 'attempt'
             ])
-            .sort({ _id: -1 });
+            .sort({ _id: -1 })
+            .limit(500); 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment });
@@ -152,7 +153,8 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
                 'assignedTo',
                 'attempt'
             ])
-            .sort({ _id: -1 });
+            .sort({ _id: -1 })
+            .limit(500); 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment });
@@ -612,7 +614,7 @@ app.get('/listofFMXOrders', async (req, res) => {
                 'creationDate'
             ])
             .sort({ _id: -1 })
-            .limit(1000); 
+            .limit(500); 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofFMXOrders', { orders, moment: moment });
