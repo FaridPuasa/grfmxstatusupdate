@@ -5171,6 +5171,31 @@ orderWatch.on('change', change => {
 
                             return foundOrder.save();
                         })
+                        .then((updatedOrder) => {
+                            if (updatedOrder) {
+                                if (phoneNumber.length <= 10) {
+                                    var optInNumber = "00" + phoneNumber
+                                }
+
+                                if (phoneNumber.length > 10) {
+                                    var optInNumber = phoneNumber
+                                }
+
+                                let gid = "2000215252"
+                                let pas = "6@SemFzr"
+                                let format = "json"
+                                let auth_scheme = "plain"
+
+                                let b = tracker
+
+                                let msg = `Hello%2C%0A%0AWe+have+received+your+order.+Please+refer+to+the+following+for+your+reference.%0A%0ATracking+Number%3A+${b}%0A%0AOur+team+will+process+your+order.+Thank+you`
+
+                                const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
+
+                                let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
+                                axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
+                            }
+                        })
                         .catch((err) => {
                             console.log(err);
                         });
