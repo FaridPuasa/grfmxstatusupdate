@@ -110,7 +110,7 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
                 'attempt'
             ])
             .sort({ _id: -1 })
-            .limit(500); 
+            .limit(500);
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment });
@@ -154,7 +154,7 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
                 'attempt'
             ])
             .sort({ _id: -1 })
-            .limit(500); 
+            .limit(500);
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment });
@@ -582,8 +582,11 @@ app.get('/listofCBSLOrders', async (req, res) => {
 
 app.get('/listofFMXOrders', async (req, res) => {
     try {
-        // Query the database to find orders with "product" value "localdelivery"
-        const orders = await ORDERS.find({ product: "fmx" })
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({ 
+            product: "fmx",
+            currentStatus: { $ne: "complete" } // Not equal to "complete"
+        })
             .select([
                 '_id',
                 'product',
@@ -613,8 +616,7 @@ app.get('/listofFMXOrders', async (req, res) => {
                 'lastUpdateDateTime',
                 'creationDate'
             ])
-            .sort({ _id: -1 })
-            .limit(500); 
+            .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofFMXOrders', { orders, moment: moment });
@@ -623,6 +625,55 @@ app.get('/listofFMXOrders', async (req, res) => {
         res.status(500).send('Failed to fetch orders');
     }
 });
+
+app.get('/listofFMXOrdersToBeUpdated', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({ 
+            product: "fmx",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofFMXOrdersToBeUpdated', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+
 
 app.get('/listofpharmacyMOHForms', async (req, res) => {
     try {
@@ -4467,14 +4518,14 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
                                     status: "at_warehouse" // Use the calculated dStatus
                                 }
                             };
-    
+
                             DetrackAPIrun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse"
                         } else {
@@ -4501,26 +4552,26 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
                                     status: "at_warehouse" // Use the calculated dStatus
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             appliedStatus = "Failed Delivery, Return to Warehouse"
                         }
-    
+
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-    
+
                         mongoDBrun = 2;
                         completeRun = 1;
                     }
@@ -4561,7 +4612,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                             });
-    
+
                             mongoDBrun = 1;
                         } else {
                             update = {
@@ -4577,15 +4628,15 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             mongoDBrun = 2;
                         }
-    
+
                         portalUpdate = "Portal status updated to Completed. ";
                         appliedStatus = "Completed"
                         completeRun = 1;
                     }
-                    
+
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
