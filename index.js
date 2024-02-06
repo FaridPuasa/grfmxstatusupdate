@@ -4912,7 +4912,7 @@ app.post('/updateDelivery', async (req, res) => {
                     },
                     DateEvent: currentDate,
                     ConsignmentId: consignmentID,
-                    StatusCode: req.body.statusCode,
+                    StatusCode: '50',
                     CityName: 'BN',
                     ConsigneeName: ''
                 }, {
