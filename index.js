@@ -2052,6 +2052,12 @@ app.post('/updateDelivery', async (req, res) => {
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
+            if (req.body.statusCode == 'AJ') {
+                filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+            }
+
             var option = { upsert: false, new: false };
 
             if (product == 'BB') {
@@ -4807,6 +4813,7 @@ app.post('/updateDelivery', async (req, res) => {
 
                 if ((req.body.statusCode == 'AJ') && (data.data.status == 'cancelled')) {
                     portalUpdate = "Portal and Detrack status updated to Return to Warehouse from Cancelled. ";
+
                     update = {
                         currentStatus: "Return to Warehouse",
                         lastUpdateDateTime: moment().format(),
