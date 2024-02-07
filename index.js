@@ -583,7 +583,7 @@ app.get('/listofCBSLOrders', async (req, res) => {
 app.get('/listofFMXOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
-        const orders = await ORDERS.find({ 
+        const orders = await ORDERS.find({
             product: "fmx",
             currentStatus: { $ne: "complete" } // Not equal to "complete"
         })
@@ -629,7 +629,7 @@ app.get('/listofFMXOrders', async (req, res) => {
 app.get('/listofFMXOrdersToBeUpdated', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
-        const orders = await ORDERS.find({ 
+        const orders = await ORDERS.find({
             product: "fmx",
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
         })
@@ -4074,6 +4074,96 @@ app.post('/updateDelivery', async (req, res) => {
                     completeRun = 1;
                 }
 
+                if ((req.body.statusCode == 'AJ') && (data.data.status == 'cancelled')) {
+                    portalUpdate = "Portal and Detrack status updated to Return to Warehouse from Cancelled. ";
+                    fmxUpdate = "FMX milestone updated to Return to Warehouse (44).";
+
+                    if (existingOrder === null) {
+                        newOrder = new ORDERS({
+                            area: data.data.zone,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt - 1,
+                            history: [
+                                {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: "N/A",
+                                }
+                            ],
+                            product: "fmx",
+                            assignedTo: "N/A",
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            deliveryType: data.data.job_type,
+                            parcelWeight: data.data.weight,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Return to Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            cargoPrice: data.data.insurance_price,
+                            instructions: "FMX Milestone ID 44. Return to Warehouse from Cancelled.",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            fmxMilestoneStatus: "Return to Warehouse (44).",
+                            fmxMilestoneStatusCode: "44",
+                            latestReason: detrackReason,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: data.data.date,
+                        });
+
+                        mongoDBrun = 1;
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "FMX Milestone ID 44. Return to Warehouse from Cancelled.",
+                            assignedTo: "N/A",
+                            fmxMilestoneStatus: "Return to Warehouse (44).",
+                            fmxMilestoneStatusCode: "44",
+                            latestReason: detrackReason,
+                            $push: {
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "User",
+                                    lastAssignedTo: "N/A",
+                                    reason: detrackReason,
+                                }
+                            }
+                        }
+
+                        mongoDBrun = 2;
+                    }
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse",
+                            instructions: "FMX Milestone ID 44. Return to Warehouse from Cancelled."
+                        }
+                    };
+
+                    fmxMilestoneCode = "44"
+                    appliedStatus = "Return to Warehouse from Cancelled"
+
+                    DetrackAPIrun = 1;
+                    FMXAPIrun = 2;
+                    completeRun = 1;
+                }
+
                 if (req.body.statusCode == 47) {
                     portalUpdate = "Portal and Detrack status updated to Disposed. ";
                     fmxUpdate = "FMX milestone updated to Shipment Destroyed (47).";
@@ -4710,6 +4800,41 @@ app.post('/updateDelivery', async (req, res) => {
 
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
                     appliedStatus = "Cancelled"
+
+                    DetrackAPIrun = 1;
+                    completeRun = 1;
+                }
+
+                if ((req.body.statusCode == 'AJ') && (data.data.status == 'cancelled')) {
+                    portalUpdate = "Portal and Detrack status updated to Return to Warehouse from Cancelled. ";
+                    update = {
+                        currentStatus: "Return to Warehouse",
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Return to Warehouse from Cancelled.",
+                        assignedTo: "N/A",
+                        latestReason: detrackReason,
+                        $push: {
+                            history: {
+                                statusHistory: "Return to Warehouse",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: "N/A",
+                                reason: detrackReason,
+                            }
+                        }
+                    }
+
+                    mongoDBrun = 2;
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse",
+                            instructions: "Return to Warehouse from Cancelled."
+                        }
+                    };
+
+                    appliedStatus = "Return to Warehouse from Cancelled"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
