@@ -585,7 +585,7 @@ app.get('/listofFMXOrders', async (req, res) => {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
             product: "fmx",
-            currentStatus: { $ne: "complete" } // Not equal to "complete"
+            currentStatus: { $ne: "Completed" } // Not equal to "complete"
         })
             .select([
                 '_id',
