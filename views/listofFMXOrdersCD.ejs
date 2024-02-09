@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List of MOH IMM Orders</title>
+    <title>Cancelled/Disposed FMX Orders</title>
     <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
     <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
@@ -36,16 +36,6 @@
         .btn-submit {
             margin-top: 10px;
             /* Adjust the margin-top as needed */
-        }
-
-        /* Style the form */
-        .custom-form {
-            background-color: #ffffe0;
-            /* Light yellow background */
-            border: 1px solid #000;
-            /* Small black border */
-            padding: 20px;
-            /* Add some padding for spacing */
         }
 
         th {
@@ -162,160 +152,120 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>List of MOH Orders (IMM)</h1>
+        <h1>Cancelled/Disposed FMX Orders</h1>
         <div class="table-responsive">
-            <div class="container">
-                <form action="/createPharmacyFormSuccess" method="post" class="custom-form">
-                    <input type="hidden" name="mohForm" id="mohForm" value="IMM">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="dateOfForm">Date of Form:</label>
-                                <input type="date" class="form-control" id="dateOfForm" name="dateOfForm" required>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="batchChoice">Batch 1 or 2:</label>
-                                <select class="form-control" id="batchChoice" name="batchChoice" required>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3" id="b2StartField" style="display: none;">
-                            <div class="form-group">
-                                <label for="b2Start">B2 Start:</label>
-                                <input type="number" class="form-control" id="b2Start" name="b2Start"
-                                    placeholder="Enter B2 Start">
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-primary mt-4">Create Pharmacy Form</button>
-                            </div>
-                        </div>
-                        <div class="col-md-1">
-                            <div class="form-group">
-                                <a href="https://docs.google.com/document/d/1BZYdnMphVQDITEvY5XdneGcWqGtvmsxG/edit?usp=sharing&ouid=111753871965049759883&rtpof=true&sd=true"
-                                    class="btn btn-secondary mt-4" target="_blank" download>Download</a>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped" id="orderTable">
-                    <thead class="table-primary">
+            <table class="table table-bordered table-striped" id="orderTable">
+                <thead class="table-primary">
+                    <tr>
+                        <th class="header">Consignment No.</th>
+                        <th class="header">Consignee Name</th>
+                        <th class="header">Consignee Address</th>
+                        <th class="header">Consignee Contact No.</th>
+                        <th class="header">Shipper Name</th>
+                        <th class="header">Item Description</th>
+                        <th class="header">Flight Date</th>
+                        <th class="header">MAWB No.</th>
+                        <th class="header">Area</th>
+                        <th class="header">Job Type</th>
+                        <th class="header">Job Created</th>
+                        <th class="header">Job Date</th>
+                        <th class="header">Payment Method</th>
+                        <th class="header">Price</th>
+                        <th class="header">Remarks</th>
+                        <th class="header">Current Status</th>
+                        <th class="header">FMX Status</th>
+                        <th class="header">Assigned To</th>
+                        <th class="header">Attempt No.</th>
+                        <th class="header">Age in Warehouse</th>
+                        <th class="header">Latest Reason</th>
+                        <th class="header">Last Date Time Update</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <!-- Iterate through the orders and display the data -->
+                    <% orders.forEach(function(order) { %>
                         <tr>
-                            <th class="header">Tracking Number</th>
-                            <th class="header">Customer Name</th>
-                            <th class="header">Address</th>
-                            <th class="header">Area</th>
-                            <th class="header">Patient Number</th>
-                            <th class="header">IC/Passport Number</th>
-                            <th class="header">Appointment Place</th>
-                            <th class="header">Phone Number</th>
-                            <th class="header">Additional Phone Number</th>
-                            <th class="header">Job Type</th>
-                            <th class="header">Remarks</th>
-                            <th class="header">Payment Method</th>
-                            <th class="header">Job Created</th>
-                            <th class="header">Send Order To</th>
-                            <th class="header">Membership</th>
-                            <th class="header">Pharmacy Form Created</th>
-                            <th class="header">Current Status</th>
-                            <th class="header">Assigned To</th>
-                            <th class="header">Attempt No.</th>
-                            <th class="header">Age in Warehouse</th>
-                            <th class="header">Latest Reason</th>
-                            <th class="header">Last Date Time Update</th>
+                            <td>
+                                <%= order.doTrackingNumber %>
+                            </td>
+                            <td>
+                                <%= order.receiverName %>
+                            </td>
+                            <td>
+                                <%= order.receiverAddress %>
+                            </td>
+                            <td>
+                                <%= order.receiverPhoneNumber %>
+                            </td>
+                            <td>
+                                <%= order.senderName %>
+                            </td>
+                            <td>
+                                <%= order.items[0].description %>
+                            </td>
+                            <td>
+                                <%= order.flightDate %>
+                            </td>
+                            <td>
+                                <%= order.mawbNo %>
+                            </td>
+                            <td>
+                                <%= order.area %>
+                            </td>
+                            <td>
+                                <%= order.deliveryType %>
+                            </td>
+                            <td>
+                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
+                            </td>
+                            <td>
+                                <%= order.jobDate %>
+                            </td>
+                            <td>
+                                <%= order.paymentMethod %>
+                            </td>
+                            <td>
+                                <%= order.totalPrice %>
+                            </td>
+                            <td>
+                                <%= order.remarks %>
+                            </td>
+                            <td>
+                                <%= order.currentStatus %>
+                            </td>
+                            <td>
+                                <%= order.fmxMilestoneStatus %> (<%= order.fmxMilestoneStatusCode %>)
+                            </td>
+                            <td>
+                                <%= order.assignedTo %>
+                            </td>
+                            <td>
+                                <%= order.attempt %>
+                            </td>
+                            <td>
+                                <% if (order.warehouseEntry==="No" ) { %>
+                                    0
+                                    <% } else { %>
+                                        <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                            <% const currentDate=new Date(); %>
+                                                <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                    <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 * 60 *
+                                                        24)); %>
+                                                        <%= ageInDays %>
+                                                            <% } %>
+                            </td>
+                            <td>
+                                <%= order.latestReason %>
+                            </td>
+                            <td>
+                                <%= moment(order.lastUpdateDateTime).format('DD-MM-YYYY h:mm a') %>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Iterate through the orders and display the data -->
-                        <% orders.forEach(function(order) { %>
-                            <tr>
-                                <td>
-                                    <%= order.doTrackingNumber %>
-                                </td>
-                                <td>
-                                    <%= order.receiverName %>
-                                </td>
-                                <td>
-                                    <%= order.receiverAddress %>
-                                </td>
-                                <td>
-                                    <%= order.area %>
-                                </td>
-                                <td>
-                                    <%= order.patientNumber %>
-                                </td>
-                                <td>
-                                    <%= order.icPassNum %>
-                                </td>
-                                <td>
-                                    <%= order.appointmentPlace %>
-                                </td>
-                                <td>
-                                    <%= order.receiverPhoneNumber %>
-                                </td>
-                                <td>
-                                    <%= order.additionalPhoneNumber %>
-                                </td>
-                                <td>
-                                    <%= order.deliveryTypeCode %>
-                                </td>
-                                <td>
-                                    <%= order.remarks %>
-                                </td>
-                                <td>
-                                    <%= order.paymentMethod %>
-                                </td>
-                                <td>
-                                    <%= order.dateTimeSubmission %>
-                                </td>
-                                <td>
-                                    <%= order.sendOrderTo %>
-                                </td>
-                                <td>
-                                    <%= order.membership %>
-                                </td>
-                                <td>
-                                    <%= order.pharmacyFormCreated %>
-                                </td>
-                                <td>
-                                    <%= order.currentStatus %>
-                                </td>
-                                <td>
-                                    <%= order.assignedTo %>
-                                </td>
-                                <td>
-                                    <%= order.attempt %>
-                                </td>
-                                <td>
-                                    <% if (order.warehouseEntry==="No" ) { %>
-                                        0
-                                        <% } else { %>
-                                            <% const entryDate=new Date(order.warehouseEntryDateTime); %>
-                                                <% const currentDate=new Date(); %>
-                                                    <% const ageInMilliseconds=currentDate - entryDate; %>
-                                                        <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 * 60 *
-                                                            24)); %>
-                                                            <%= ageInDays %>
-                                                                <% } %>
-                                </td>
-                                <td>
-                                    <%= order.latestReason %>
-                                </td>
-                                <td>
-                                    <%= moment(order.lastUpdateDateTime).format('DD-MM-YYYY h:mm a') %>
-                                </td>
-                            </tr>
-                            <% }); %>
-                    </tbody>
-                </table>
-            </div>
+                        <% }); %>
+                </tbody>
+            </table>
+        </div>
     </main>
 
     <!-- Include the necessary JavaScript libraries for DataTables and other custom scripts if needed -->
@@ -336,18 +286,6 @@
                 "buttons": [
                     'copy', 'csv', 'excel', 'pdf', 'print' // Buttons for copy, CSV, Excel, PDF, and print
                 ]
-            });
-        });
-    </script>
-
-    <script>
-        $(document).ready(function () {
-            $('#batchChoice').change(function () {
-                if ($(this).val() === '2') {
-                    $('#b2StartField').show();
-                } else {
-                    $('#b2StartField').hide();
-                }
             });
         });
     </script>

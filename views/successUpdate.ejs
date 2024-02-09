@@ -53,45 +53,80 @@
                         </a>
                         <ul class="navbar-nav flex-row">
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="orderListDropdown" role="button"
+                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Orders List
+                                    Operation
                                 </a>
-                                <div class="dropdown-menu" aria-labelledby="orderListDropdown">
+                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                    <a class="dropdown-item" href="/">Update Delivery</a>
+                                    <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                    <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                    <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                    <a class="dropdown-item" href="/listofldPod">POD LD</a>
+                                    <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
+                                    <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
+                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                                </div>
+                            </li>
+        
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    All Jobs (Except FMX)
+                                </a>
+                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                    <a class="dropdown-item" href="/listofOrders">All</a>
+                                    <a class="dropdown-item" href="/listofOrdersOFD">Out for Delivery*</a>
+                                    <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
+                                    <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
+                                    <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
+                                    <a class="dropdown-item" href="/listofOrdersCD">Cancelled/Disposed</a>
+                                </div>
+                            </li>
+        
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    MOH
+                                </a>
+                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                     <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
                                     <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
                                     <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
                                     <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
                                     <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
+                                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form List</a>
+                                </div>
+                            </li>
+        
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    FMX
+                                </a>
+                                <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
+                                    <a class="dropdown-item" href="/listofFMXOrders">All</a>
+                                    <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for Delivery*</a>
+                                    <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
+                                    <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
+                                    <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
+                                    <a class="dropdown-item" href="/listofFMXOrdersCD">Cancelled/Disposed</a>
+                                </div>
+                            </li>
+        
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    JPMC/PHC/LD/GRP/GRP/CBSL
+                                </a>
+                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                     <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
                                     <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                                     <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
                                     <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
                                     <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service (Limbang)</a>
-                                    <a class="dropdown-item" href="/listofFMXOrders">FMX
-                                        (Incomplete/Cancelled/Disposed)</a>
-                            <a class="dropdown-item" href="/listofFMXOrdersToBeUpdated">FMX (Out For Delivery, Required to be Updated)</a>
                                 </div>
                             </li>
-                            <li class="nav-item"><a class="nav-link" href="/">Update Delivery</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/podGenerator">POD Generator</a></li>
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="podListDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    POD List
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="podListDropdown">
-                                    <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
-                                    <a class="dropdown-item" href="/listofldPod">LD</a>
-                                    <a class="dropdown-item" href="/listofgrpPod">GRP</a>
-                                    <a class="dropdown-item" href="/listoffmxPod">FMX</a>
-                                    <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
-                                </div>
-                            </li>
-                            <li class="nav-item"><a class="nav-link" href="/listofpharmacyMOHForms">Pharmacy Form
-                                    List</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/addressAreaCheck">Address Area Checker
-                                    (FMX)</a></li>
                         </ul>
                     </nav>
                 </div>
