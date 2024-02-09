@@ -584,8 +584,7 @@ app.get('/listofFMXOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: "fmx",
-            currentStatus: { $ne: "Completed" } // Not equal to "complete"
+            product: "fmx"
         })
             .select([
                 '_id',
@@ -626,7 +625,53 @@ app.get('/listofFMXOrders', async (req, res) => {
     }
 });
 
-app.get('/listofFMXOrdersToBeUpdated', async (req, res) => {
+app.get('/listofFMXOrdersCompleted', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "fmx",
+            currentStatus: { $ne: "Completed" } // Not equal to "complete"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofFMXOrdersCompleted', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofFMXOrdersOFD', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
         const orders = await ORDERS.find({
@@ -663,10 +708,110 @@ app.get('/listofFMXOrdersToBeUpdated', async (req, res) => {
                 'creationDate',
                 'instructions'
             ])
-            .sort({ _id: -1 });
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersToBeUpdated', { orders, moment: moment });
+        res.render('listofFMXOrdersOFD', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofFMXOrdersAW', async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "fmx",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofFMXOrdersAW', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofFMXOrdersIRCC', async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "fmx",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofFMXOrdersIRCC', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
