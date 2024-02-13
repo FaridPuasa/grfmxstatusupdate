@@ -118,6 +118,48 @@ app.get('/listofOrders', async (req, res) => {
     }
 });
 
+app.get('/listofOrdersCompleted', async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: { $ne: "fmx" },
+            currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofOrdersCompleted', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofOrdersOFD', async (req, res) => {
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
@@ -844,7 +886,7 @@ app.get('/listofFMXOrdersCompleted', async (req, res) => {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
             product: "fmx",
-            currentStatus: { $ne: "Completed" } // Not equal to "complete"
+            currentStatus: "Completed" // Equal to "Out for Delivery"
         })
             .select([
                 '_id',
