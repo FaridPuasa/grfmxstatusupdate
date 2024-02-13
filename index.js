@@ -235,7 +235,7 @@ app.get('/listofOrdersAW', async (req, res) => {
                 'lastUpdateDateTime',
                 'creationDate'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofOrdersAW', { orders, moment: moment });
