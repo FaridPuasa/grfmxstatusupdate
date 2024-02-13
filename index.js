@@ -2351,6 +2351,7 @@ app.post('/updateDelivery', async (req, res) => {
             var warehouseEntryCheckDateTime = "";
             var completedCheckDateTime = "";
             var fmxMilestoneCode = "";
+            var remarkSC = '';
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -5508,6 +5509,10 @@ app.post('/updateDelivery', async (req, res) => {
                 // Convert the image to base64
                 const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
 
+                if (data.data.status === 'Selfcollect') {
+                    remarkSC = 'Self Collect';
+                }
+
                 // Make the third API POST request with accessToken and base64Image
                 const response3 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', {
                     ImageUploader: {
@@ -5520,7 +5525,8 @@ app.post('/updateDelivery', async (req, res) => {
                     ConsignmentId: consignmentID,
                     StatusCode: fmxMilestoneCode,
                     CityName: 'BN',
-                    ConsigneeName: ''
+                    ConsigneeName: '',
+                    Remark: remarkSC // Add remark field with value
                 }, {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
