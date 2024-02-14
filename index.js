@@ -4437,12 +4437,10 @@ app.post('/updateDelivery', async (req, res) => {
                 }
 
                 if (req.body.statusCode == 'CD') {
-                    if (req.body.additionalReason.length != 0) {
-                        detrackReason = req.body.additionalReason;
-                    }
+                    detrackReason = "Cancelled";
 
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
-                    fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: " + detrackReason;
+                    fmxUpdate = "FMX milestone updated to Customer Declined Delivery (RF). Reason: Cancelled";
 
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
@@ -4482,7 +4480,7 @@ app.post('/updateDelivery', async (req, res) => {
                             instructions: "FMX Milestone ID RF.",
                             flightDate: data.data.job_received_date,
                             mawbNo: data.data.run_number,
-                            fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + detrackReason,
+                            fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: Cancelled",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
                             lastUpdateDateTime: moment().format(),
@@ -4497,7 +4495,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "FMX Milestone ID RF.",
                             assignedTo: "N/A",
-                            fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: " + detrackReason,
+                            fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: Cancelled",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
                             $push: {
@@ -4518,7 +4516,7 @@ app.post('/updateDelivery', async (req, res) => {
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
-                            instructions: "FMX Milestone ID RF. Cancelled Delivery due to " + detrackReason
+                            instructions: "FMX Milestone ID RF. Cancelled Delivery"
                         }
                     };
 
