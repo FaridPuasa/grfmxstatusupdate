@@ -2551,7 +2551,7 @@ app.post('/updateDelivery', async (req, res) => {
                             description: data.data.items[0].description,
                             totalItemPrice: data.data.total_price
                         }],
-                        attempt: data.data.attempt - 1,
+                        attempt: data.data.attempt,
                         history: [{
                             updatedBy: "User",
                             dateUpdated: moment().format(),
@@ -2602,7 +2602,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt - 1,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Custom Clearing",
                                 dateUpdated: moment().format(),
@@ -2692,7 +2692,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt - 1,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Detained by Customs",
                                 dateUpdated: moment().format(),
@@ -2778,7 +2778,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt - 1,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Custom Clearance Release",
                                 dateUpdated: moment().format(),
@@ -2863,7 +2863,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt - 1,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
@@ -2997,7 +2997,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatusCode: "35",
                                 instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                                attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
                                 $push: {
                                     history: {
@@ -3080,7 +3080,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatusCode: "35",
                                 instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers,
-                                attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                                attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
                                 $push: {
                                     history: {
@@ -3353,7 +3353,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
                                     fmxMilestoneStatusCode: "MD, 44",
                                     latestReason: "Unattempted Delivery",
-                                    attempt: (update && update.attempt ? update.attempt : 0) - 1, // Check if update and attempt are defined
+                                    attempt: data.data.attempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -4403,7 +4403,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned for Self Collect.",
                             assignedTo: "Selfcollect",
-                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                            attempt: data.data.attempt,
                             jobDate: req.body.assignDate,
                             $push: {
                                 history: {
@@ -4542,7 +4542,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt - 1,
+                            attempt: data.data.attempt,
                             history: [
                                 {
                                     statusHistory: "Return to Warehouse",
@@ -4719,7 +4719,7 @@ app.post('/updateDelivery', async (req, res) => {
                             description: data.data.items[0].description,
                             totalItemPrice: data.data.total_price
                         }],
-                        attempt: data.data.attempt - 1,
+                        attempt: data.data.attempt,
                         history: [{
                             updatedBy: "User",
                             dateUpdated: moment().format(),
@@ -4832,7 +4832,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt - 1,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
@@ -4903,7 +4903,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                            attempt: data.data.attempt,
                             jobDate: req.body.assignDate,
                             $push: {
                                 history: {
@@ -4936,7 +4936,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers,
-                            attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                            attempt: data.data.attempt,
                             jobDate: req.body.assignDate,
                             $push: {
                                 history: {
@@ -5046,7 +5046,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 instructions: "Failed delivery due to " + data.data.reason,
                                 assignedTo: "N/A",
                                 latestReason: data.data.reason,
-                                attempt: (update && update.attempt ? update.attempt : 0) - 1, // Check if update and attempt are defined
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -5191,7 +5191,7 @@ app.post('/updateDelivery', async (req, res) => {
                         lastUpdateDateTime: moment().format(),
                         instructions: "Assigned for Self Collect.",
                         assignedTo: "Selfcollect",
-                        attempt: (update && update.attempt ? update.attempt : 0) + 1, // Check if update and attempt are defined
+                        attempt: data.data.attempt,
                         jobDate: req.body.assignDate,
                         $push: {
                             history: {
