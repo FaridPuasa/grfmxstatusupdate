@@ -22,7 +22,7 @@ const orderSchema = new mongoose.Schema({
         quantity: String,
         expiryDate: String,
         description: String,
-        totalItemPrice: String
+        totalItemPrice: String,
     }],
     ldCOD: String,
     billTo: String,
