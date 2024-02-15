@@ -2897,7 +2897,7 @@ app.post('/updateDelivery', async (req, res) => {
                             doTrackingNumber: consignmentID,
                             remarks: data.data.remarks,
                             cargoPrice: data.data.insurance_price,
-                            instructions: "FMX Milestone ID 38",
+                            instructions: "FMX Milestone ID 12",
                             flightDate: data.data.job_received_date,
                             mawbNo: data.data.run_number,
                             fmxMilestoneStatus: "At Warehouse",
