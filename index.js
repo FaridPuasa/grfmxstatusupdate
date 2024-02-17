@@ -2655,6 +2655,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Customs Clearance in Progress",
                             fmxMilestoneStatusCode: "CP",
                             instructions: "FMX Milestone ID CP",
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Custom Clearing",
@@ -2746,6 +2747,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatusCode: "DC",
                             instructions: "FMX Milestone ID DC",
                             latestReason: detrackReason,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Detained by Customs",
@@ -2831,6 +2833,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Custom Clearance Release",
                             fmxMilestoneStatusCode: "38",
                             instructions: "FMX Milestone ID 38",
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Custom Clearance Release",
@@ -2918,6 +2921,7 @@ app.post('/updateDelivery', async (req, res) => {
                             instructions: "FMX Milestone ID 12",
                             warehouseEntry: "Yes",
                             warehouseEntryDateTime: moment().format(),
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "At Warehouse",
@@ -3181,6 +3185,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -3259,6 +3264,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers,
                                 jobDate: req.body.assignDate,
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -3465,6 +3471,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + data.data.note + ". Return to Warehouse.",
                                 fmxMilestoneStatusCode: "FD, 44",
                                 latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -3574,6 +3581,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + data.data.note + ". Return to Warehouse",
                                 fmxMilestoneStatusCode: "SC, 44",
                                 latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -3683,6 +3691,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse",
                                 fmxMilestoneStatusCode: "DU, 44",
                                 latestReason: "Cash/Duty Not Ready",
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -3792,6 +3801,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone. Return to Warehouse",
                                 fmxMilestoneStatusCode: "NA, 44",
                                 latestReason: "Customer not available / cannot be contacted",
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -3901,6 +3911,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to No Such Person. Return to Warehouse",
                                 fmxMilestoneStatusCode: "NP, 44",
                                 latestReason: "No Such Person",
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4010,6 +4021,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery. Shipment Refused by Consignee due to " + data.data.note + ". Return to Warehouse",
                                 fmxMilestoneStatusCode: "RF, 44",
                                 latestReason: "Shipment Refused by Consignee due to " + data.data.note,
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4119,6 +4131,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse",
                                 fmxMilestoneStatusCode: "UL, 44",
                                 latestReason: "Unable to Locate Receiver Address",
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4228,6 +4241,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Incorrect Address. Return to Warehouse",
                                 fmxMilestoneStatusCode: "WA, 44",
                                 latestReason: "Incorrect Address",
+                                attempt: data.data.attempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4326,6 +4340,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Parcel Delivered",
                             fmxMilestoneStatusCode: "50",
                             instructions: "FMX Milestone ID 50.",
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -4505,6 +4520,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: Cancelled",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Cancelled",
@@ -4595,6 +4611,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Return to Warehouse (44).",
                             fmxMilestoneStatusCode: "44",
                             latestReason: detrackReason,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Return to Warehouse",
@@ -4685,6 +4702,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Shipment Destroyed (47).",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Disposed",
@@ -4764,6 +4782,7 @@ app.post('/updateDelivery', async (req, res) => {
                         lastUpdateDateTime: moment().format(),
                         warehouseEntry: "Yes",
                         warehouseEntryDateTime: moment().format(),
+                        attempt: data.data.attempt,
                         $push: {
                             history: {
                                 statusHistory: "At Warehouse",
@@ -4799,6 +4818,7 @@ app.post('/updateDelivery', async (req, res) => {
                         lastUpdateDateTime: moment().format(),
                         warehouseEntry: "Yes",
                         warehouseEntryDateTime: moment().format(),
+                        attempt: data.data.attempt,
                         $push: {
                             history: {
                                 statusHistory: "At Warehouse",
@@ -4982,6 +5002,7 @@ app.post('/updateDelivery', async (req, res) => {
                             instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                             jobDate: req.body.assignDate,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -5012,6 +5033,7 @@ app.post('/updateDelivery', async (req, res) => {
                             instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             assignedTo: req.body.dispatchers,
                             jobDate: req.body.assignDate,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -5085,6 +5107,7 @@ app.post('/updateDelivery', async (req, res) => {
                             instructions: "Failed delivery due to " + data.data.reason,
                             assignedTo: "N/A",
                             latestReason: data.data.reason,
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Failed Delivery",
@@ -5168,6 +5191,7 @@ app.post('/updateDelivery', async (req, res) => {
                         update = {
                             currentStatus: "Completed",
                             lastUpdateDateTime: moment().format(),
+                            attempt: data.data.attempt,
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -5233,6 +5257,7 @@ app.post('/updateDelivery', async (req, res) => {
                         instructions: "Cancelled Delivery",
                         assignedTo: "N/A",
                         latestReason: detrackReason,
+                        attempt: data.data.attempt,
                         $push: {
                             history: {
                                 statusHistory: "Cancelled",
@@ -5270,6 +5295,7 @@ app.post('/updateDelivery', async (req, res) => {
                         instructions: "Return to Warehouse from Cancelled.",
                         assignedTo: "N/A",
                         latestReason: detrackReason,
+                        attempt: data.data.attempt,
                         $push: {
                             history: {
                                 statusHistory: "Return to Warehouse",
