@@ -2506,12 +2506,15 @@ app.post('/updateDelivery', async (req, res) => {
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-
-                console.log("Filter is " + filter)
-                console.log("Existing order is" + existingOrder)
             }
 
             if (req.body.statusCode == 'AJ') {
+                filter = { doTrackingNumber: consignmentID };
+                // Determine if there's an existing document in MongoDB
+                existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+            }
+
+            if (req.body.statusCode == 47) {
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
@@ -4652,7 +4655,7 @@ app.post('/updateDelivery', async (req, res) => {
                             items: [{
                                 quantity: data.data.items[0].quantity,
                                 description: data.data.items[0].description,
-                                totalItemPrice: data.data.total_price
+                                totalItemPrice: data.data.total_price,
                             }],
                             attempt: data.data.attempt,
                             history: [
