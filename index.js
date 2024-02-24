@@ -5841,7 +5841,7 @@ orderWatch.on('change', change => {
 
                             return foundOrder.save();
                         })
-                        .then((updatedOrder) => {
+                        /* .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
                                     if (phoneNumber.length <= 10) {
@@ -5867,7 +5867,7 @@ orderWatch.on('change', change => {
                                     axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
                                 }
                             }
-                        })
+                        }) */
                         .catch((err) => {
                             console.log(err);
                         });
