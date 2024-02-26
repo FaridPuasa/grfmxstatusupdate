@@ -365,7 +365,7 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
                 'attempt'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(1000);
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment });
@@ -409,7 +409,7 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
                 'attempt'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(1000);
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment });
