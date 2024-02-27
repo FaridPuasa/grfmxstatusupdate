@@ -2427,7 +2427,6 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (req.body.statusCode == 'IR') {
-                appliedStatus = "Info Received"
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -2435,28 +2434,24 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (req.body.statusCode == 'CP') {
-                appliedStatus = "Custom Clearance in Progress"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 'DC') {
-                appliedStatus = "Detained by Customs"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 38) {
-                appliedStatus = "Custom Clearance Release"
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
             if (req.body.statusCode == 12) {
-                appliedStatus = "Item in Warehouse"
                 if ((product == 'CBSL')) {
                     filter = { doTrackingNumber: data.data.tracking_number };
                     // Determine if there's an existing document in MongoDB
@@ -4775,6 +4770,7 @@ app.post('/updateDelivery', async (req, res) => {
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
+                    appliedStatus = "Info Received"
                     mongoDBrun = 1;
                     completeRun = 1;
                 }
