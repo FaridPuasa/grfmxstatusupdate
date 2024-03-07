@@ -4456,7 +4456,7 @@ app.post('/updateDelivery', async (req, res) => {
                     completeRun = 1;
                 }
 
-                if (req.body.statusCode == 'CD') {
+                if ((req.body.statusCode == 'CD') && (data.data.status != 'completed')) {
                     detrackReason = "Cancelled";
 
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
@@ -4640,7 +4640,7 @@ app.post('/updateDelivery', async (req, res) => {
                     completeRun = 1;
                 }
 
-                if (req.body.statusCode == 47) {
+                if ((req.body.statusCode == 47) && (data.data.status != 'completed')) {
                     portalUpdate = "Portal and Detrack status updated to Disposed. ";
                     fmxUpdate = "FMX milestone updated to Shipment Destroyed (47).";
 
@@ -5247,7 +5247,7 @@ app.post('/updateDelivery', async (req, res) => {
                     completeRun = 1;
                 }
 
-                if (req.body.statusCode == 'CD') {
+                if ((req.body.statusCode == 'CD') && (data.data.status != 'completed')) {
                     detrackReason = "Cancelled";
 
                     update = {
