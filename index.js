@@ -419,10 +419,6 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
     }
 });
 
-app.get('/test', (req, res) => {
-    res.send('Hello, this is a test endpoint.');
-});
-
 app.post('/createPharmacyFormSuccess', async (req, res) => {
     try {
         // Extract data from the form submission
