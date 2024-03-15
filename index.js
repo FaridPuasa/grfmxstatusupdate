@@ -2426,8 +2426,8 @@ app.post('/updateDelivery', async (req, res) => {
                 currentDetrackStatus = "Missing Parcel"
             }
 
-            if ((req.body.statusCode == 'IR')||(req.body.statusCode == 'CP')||(req.body.statusCode == 'DC')||(req.body.statusCode == 38)||(req.body.statusCode == 35)||(req.body.statusCode == 'SD')
-            ||(req.body.statusCode == 'CSSC')||(req.body.statusCode == 'SJ')||(req.body.statusCode == 'FJ')||(req.body.statusCode == 'CD')||(req.body.statusCode == 'AJ')||(req.body.statusCode == 47)||(req.body.statusCode == 'SFJ')) {
+            if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
+                || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')) {
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -3237,7 +3237,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery (MD). Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Unattempted Delivery.";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3290,7 +3290,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3319,10 +3319,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3331,17 +3331,17 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             DetrackAPIrun = 1;
                             fmxMilestoneCode = "MD"
                             appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Reschedule delivery requested by customer") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + data.data.note + ". Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Reschedule Delivery Requested By Customer to " + data.data.note + ".";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3394,7 +3394,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3423,10 +3423,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3435,23 +3435,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "FD"
                             appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Reschedule to self collect requested by customer") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + data.data.note + ". Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Reschedule to Self Collect Requested By Customer to " + data.data.note + ".";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3504,7 +3504,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3533,10 +3533,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3545,23 +3545,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "SC"
                             appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Cash/Duty Not Ready") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery due to Cash/Duty Not Ready (DU). Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Cash/Duty Not Ready.";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3614,7 +3614,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3643,10 +3643,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3655,23 +3655,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "DU"
                             appliedStatus = "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Customer not available / cannot be contacted") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone (NA). Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Consignee Not In, Business Closed/Customer not pickup phone.";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3724,7 +3724,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3753,10 +3753,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3765,23 +3765,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "NA"
                             appliedStatus = "Failed Delivery due to Customer not available / cannot be contacted. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "No Such Person") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery due to No Such Person (NP). Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "No Such Person.";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3834,7 +3834,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3863,10 +3863,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3875,23 +3875,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "NP"
                             appliedStatus = "Failed Delivery due to No Such Person. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Customer declined delivery") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery. Shipment Refused by Consignee (RF) due to " + data.data.note + ". Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Shipment Refused by Consignee due to " + data.data.note + ".";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -3944,7 +3944,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -3973,10 +3973,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -3985,23 +3985,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "RF"
                             appliedStatus = "Failed Delivery due to Customer Declined Delivery / Shipment Refused by Consignee. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Unable to Locate Address") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery due to Unable to Locate Receiver Address (UL). Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Unable to Locate Address";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -4054,7 +4054,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -4083,10 +4083,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -4095,23 +4095,23 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "UL"
                             appliedStatus = "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse (FMX)"
                         }
-    
+
                         if (data.data.reason == "Incorrect Address") {
                             fmxUpdate = "FMX milestone updated to Failed Delivery due to Incorrect Address (WA). Return to Warehouse (44).";
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             detrackReason = "Incorrect Address";
-    
+
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
                                     area: data.data.zone,
@@ -4164,7 +4164,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                 });
-    
+
                                 mongoDBrun = 1;
                             } else {
                                 update = {
@@ -4193,10 +4193,10 @@ app.post('/updateDelivery', async (req, res) => {
                                         }
                                     }
                                 }
-    
+
                                 mongoDBrun = 2;
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
@@ -4205,18 +4205,18 @@ app.post('/updateDelivery', async (req, res) => {
                                     job_type: "Delivery"
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             fmxMilestoneCode = "WA"
                             appliedStatus = "Failed Delivery due to Unable to Incorrect Address. Return to Warehouse (FMX)"
                         }
-    
+
                         FMXAPIrun = 3;
                         completeRun = 1;
                     }
@@ -4265,7 +4265,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
                             });
-    
+
                             mongoDBrun = 1;
                         } else {
                             update = {
@@ -4285,22 +4285,22 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             mongoDBrun = 2;
                         }
-    
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 instructions: "FMX Milestone ID 50"
                             }
                         };
-    
+
                         fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
                         portalUpdate = "Portal status updated to Completed. ";
                         fmxMilestoneCode = "50"
                         appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
-    
+
                         DetrackAPIrun = 1;
                         FMXAPIrun = 5;
                         completeRun = 1;
@@ -6101,14 +6101,14 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
                                     status: "at_warehouse" // Use the calculated dStatus
                                 }
                             };
-    
+
                             DetrackAPIrun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
                         } else {
@@ -6136,26 +6136,26 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
                                     status: "at_warehouse" // Use the calculated dStatus
                                 }
                             };
-    
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
                                 }
                             };
-    
+
                             DetrackAPIrun = 2;
                             appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
                         }
-    
+
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-    
+
                         mongoDBrun = 2;
                         completeRun = 1;
                     }
@@ -6196,7 +6196,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                             });
-    
+
                             mongoDBrun = 1;
                         } else {
                             update = {
@@ -6213,10 +6213,10 @@ app.post('/updateDelivery', async (req, res) => {
                                     }
                                 }
                             }
-    
+
                             mongoDBrun = 2;
                         }
-    
+
                         portalUpdate = "Portal status updated to Completed. ";
                         appliedStatus = "Failed/Completed"
                         completeRun = 1;
@@ -6771,7 +6771,7 @@ orderWatch.on('change', change => {
                     let tracker
                     let sequence
                     let sequenceToAdd = 0;
-                    let phoneNumber = result[0].receiverPhoneNumber.replace(/[`'"+@]+/g, '').trim();
+                    let phoneNumber = "+" + result[0].receiverPhoneNumber.trim();
 
                     let checkProduct = 0;
 
@@ -6997,33 +6997,62 @@ orderWatch.on('change', change => {
 
                             return foundOrder.save();
                         })
-                        /* .then((updatedOrder) => {
+                        .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
-                                    if (phoneNumber.length <= 10) {
-                                        var optInNumber = "00" + phoneNumber
-                                    }
-    
-                                    if (phoneNumber.length > 10) {
-                                        var optInNumber = phoneNumber
-                                    }
-    
-                                    let gid = "2000215252"
-                                    let pas = "6@SemFzr"
-                                    let format = "json"
-                                    let auth_scheme = "plain"
-    
-                                    let b = tracker
-    
-                                    let msg = `Hello%2C%0A%0AWe+have+received+your+order.+Please+refer+to+the+following+for+your+reference.%0A%0ATracking+Number%3A+${b}%0A%0AOur+team+will+process+your+order.+Thank+you`
-    
-                                    const URL = `https://media.smsgupshup.com/GatewayAPI/rest?userid=2000215252&password=6@SemFzr&send_to=${optInNumber}&v=1.1&format=json&msg_type=TEXT&method=SENDMESSAGE&msg=${msg}&isTemplate=true&header=Order+Confirmation&footer=Go+Rush+Express`
-    
-                                    let OPT_IN_URL = `https://media.smsgupshup.com/GatewayAPI/rest?method=OPT_IN&format=${format}&userid=${gid}&password=${pas}&phone_number=${optInNumber}&v=1.1&auth_scheme=${auth_scheme}&channel=WHATSAPP`
-                                    axios.get(OPT_IN_URL).then(response => { axios.post(URL).then(response => { console.log(response) }).catch(err => { console.log(err) }) }).catch(err => { console.log(err) })
+                                    let b = tracker;
+
+                                    // Make the API call
+                                    const apiUrl = `https://api.respond.io/v2/contact/${phoneNumber}/message`;
+                                    const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+
+                                    const requestBody = {
+                                        "message": {
+                                            "type": "whatsapp_template",
+                                            "template": {
+                                                "name": "website_order_submittted",
+                                                "components": [
+                                                    {
+                                                        "type": "header",
+                                                        "format": "text",
+                                                        "text": "Order Confirmation"
+                                                    },
+                                                    {
+                                                        "text": `Hello,\n\nWe have received your order. Please refer to the following for your reference.\n\nTracking Number: ${b}\n\nOur team will process your order. Thank you`,
+                                                        "type": "body",
+                                                        "parameters": [
+                                                            {
+                                                                "text": b,
+                                                                "type": "text"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "text": "Go Rush Express",
+                                                        "type": "footer"
+                                                    }
+                                                ],
+                                                "languageCode": "en"
+                                            }
+                                        },
+                                        "channelId": 209602
+                                    };
+
+                                    axios.post(apiUrl, requestBody, {
+                                        headers: {
+                                            'Authorization': `Bearer ${authToken}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    })
+                                        .then(response => {
+                                            console.log('Message sent successfully:', response.data);
+                                        })
+                                        .catch(error => {
+                                            console.error('Error sending message:', error.response.data);
+                                        });
                                 }
                             }
-                        }) */
+                        })
                         .catch((err) => {
                             console.log(err);
                         });
