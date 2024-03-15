@@ -419,6 +419,10 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
     }
 });
 
+app.get('/test', (req, res) => {
+    res.send('Hello, this is a test endpoint.');
+});
+
 app.post('/createPharmacyFormSuccess', async (req, res) => {
     try {
         // Extract data from the form submission
@@ -7000,10 +7004,56 @@ orderWatch.on('change', change => {
                         .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
-                                    let b = tracker
+                                    let b = tracker;
 
-                                    
+                                    // Make the API call
+                                    const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
+                                    const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
 
+                                    const requestBody = {
+                                        "message": {
+                                            "type": "whatsapp_template",
+                                            "template": {
+                                                "name": "website_order_submittted",
+                                                "components": [
+                                                    {
+                                                        "type": "header",
+                                                        "format": "text",
+                                                        "text": "Order Confirmation"
+                                                    },
+                                                    {
+                                                        "text": `Hello,\n\nWe have received your order. Please refer to the following for your reference.\n\nTracking Number: ${b}\n\nOur team will process your order. Thank you`,
+                                                        "type": "body",
+                                                        "parameters": [
+                                                            {
+                                                                "text": b,
+                                                                "type": "text"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "text": "Go Rush Express",
+                                                        "type": "footer"
+                                                    }
+                                                ],
+                                                "languageCode": "en"
+                                            }
+                                        },
+                                        "channelId": 209602
+                                    };
+
+                                    axios.post(apiUrl, requestBody, {
+                                        headers: {
+                                            'Authorization': `Bearer ${authToken}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    })
+                                        .then(response => {
+                                            console.log('Message sent successfully:', response.data);
+                                        })
+                                        .catch(error => {
+                                            console.error('Error sending message:', error.response.data);
+                                        });
                                 }
                             }
                         })
