@@ -6772,6 +6772,7 @@ orderWatch.on('change', change => {
                     let sequence
                     let sequenceToAdd = 0;
                     let phoneNumber = "+" + result[0].receiverPhoneNumber.trim();
+                    let whatsappName = result[0].receiverName;
 
                     let checkProduct = 0;
 
@@ -7000,56 +7001,79 @@ orderWatch.on('change', change => {
                         .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
+                                    let a = whatsappName;
                                     let b = tracker;
-
-                                    // Make the API call
-                                    const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                                    const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-
-                                    const requestBody = {
-                                        "message": {
-                                            "type": "whatsapp_template",
-                                            "template": {
-                                                "name": "website_order_submittted",
-                                                "components": [
-                                                    {
-                                                        "type": "header",
-                                                        "format": "text",
-                                                        "text": "Order Confirmation"
-                                                    },
-                                                    {
-                                                        "text": `Hello,\n\nWe have received your order. Please refer to the following for your reference.\n\nTracking Number: ${b}\n\nOur team will process your order. Thank you`,
-                                                        "type": "body",
-                                                        "parameters": [
-                                                            {
-                                                                "text": b,
-                                                                "type": "text"
-                                                            }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "text": "Go Rush Express",
-                                                        "type": "footer"
-                                                    }
-                                                ],
-                                                "languageCode": "en"
-                                            }
-                                        },
-                                        "channelId": 209602
+                        
+                                    const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
+                                    const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+                                    const createOrUpdateRequestBody = {
+                                        "firstName": a,
+                                        "phone": phoneNumber
                                     };
-
-                                    axios.post(apiUrl, requestBody, {
+                        
+                                    // Make the API call to create or update contact information
+                                    axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
                                         headers: {
-                                            'Authorization': `Bearer ${authToken}`,
+                                            'Authorization': `Bearer ${createOrUpdateAuthToken}`,
                                             'Content-Type': 'application/json'
                                         }
                                     })
-                                        .then(response => {
-                                            console.log('Message sent successfully:', response.data);
-                                        })
-                                        .catch(error => {
-                                            console.error('Error sending message:', error.response.data);
-                                        });
+                                    .then(response => {
+                                        console.log('Contact information created or updated successfully:', response.data);
+                        
+                                        // Introduce a delay of 10 seconds before proceeding with the next API call
+                                        setTimeout(() => {
+                                            const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
+                                            const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+                                            const requestBody = {
+                                                "message": {
+                                                    "type": "whatsapp_template",
+                                                    "template": {
+                                                        "name": "website_order_submittted",
+                                                        "components": [
+                                                            {
+                                                                "type": "header",
+                                                                "format": "text",
+                                                                "text": "Order Confirmation"
+                                                            },
+                                                            {
+                                                                "text": `Hello,\n\nWe have received your order. Please refer to the following for your reference.\n\nTracking Number: ${b}\n\nOur team will process your order. Thank you`,
+                                                                "type": "body",
+                                                                "parameters": [
+                                                                    {
+                                                                        "text": b,
+                                                                        "type": "text"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "text": "Go Rush Express",
+                                                                "type": "footer"
+                                                            }
+                                                        ],
+                                                        "languageCode": "en"
+                                                    }
+                                                },
+                                                "channelId": 209602
+                                            };
+                        
+                                            axios.post(apiUrl, requestBody, {
+                                                headers: {
+                                                    'Authorization': `Bearer ${authToken}`,
+                                                    'Content-Type': 'application/json'
+                                                }
+                                            })
+                                            .then(response => {
+                                                console.log('Message sent successfully:', response.data);
+                                            })
+                                            .catch(error => {
+                                                console.error('Error sending message:', error.response.data);
+                                            });
+                                        }, 10000); // 10 seconds delay
+                                    })
+                                    .catch(error => {
+                                        console.error('Error creating or updating contact information:', error.response.data);
+                                    });
                                 }
                             }
                         })
