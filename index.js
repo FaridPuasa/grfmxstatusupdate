@@ -5960,6 +5960,15 @@ app.post('/updateDelivery', async (req, res) => {
                     waOrderArrivedDeliver = 1;
                 }
 
+                if ((req.body.statusCode == "NC") && (data.data.status == 'at_warehouse')) {
+                    portalUpdate = "Notification sent to customer. ";
+                    appliedStatus = "Order Delivery Confirmation"
+
+                    completeRun = 1;
+
+                    waOrderOfdTomorrow = 1;
+                }
+
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         update = {
