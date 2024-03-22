@@ -2888,7 +2888,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     fmxUpdate = "FMX milestone updated to At Warehouse.";
                     fmxMilestoneCode = "12"
                     appliedStatus = "Item in Warehouse"
@@ -2991,7 +2991,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ". Customer notified. ";
 
                     } else {
                         if (existingOrder === null) {
@@ -3074,7 +3074,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ". Customer notified. ";
                     }
 
                     fmxUpdate = "FMX milestone updated to Out for Delivery.";
@@ -5838,7 +5838,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
@@ -5876,7 +5876,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
@@ -5951,13 +5951,15 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
                     waOrderArrivedDeliver = 1;
+
+                    console.log("reach here")
                 }
 
                 if ((req.body.statusCode == "NC") && (data.data.status == 'at_warehouse')) {
@@ -6001,7 +6003,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". Customer notified. ";
 
                     } else {
                         update = {
@@ -6034,7 +6036,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
                     }
 
                     appliedStatus = "Out for Delivery"
@@ -6766,7 +6768,8 @@ app.post('/updateDelivery', async (req, res) => {
             if (waOrderArrivedDeliver == 1) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
-                var c = data.data.tracking_link;
+                let c = data.data.tracking_link;
+                let phoneNumber = data.data.phone_number;
 
                 const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
                 const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
@@ -6852,7 +6855,8 @@ app.post('/updateDelivery', async (req, res) => {
             if (waOrderArrivedPickup == 1) {
                 let a = data.data.deliver_to_collect_from;
                 let b = data.data.tracking_number;
-                var c = data.data.tracking_link;
+                let c = data.data.tracking_link;
+                let phoneNumber = data.data.phone_number;
 
                 const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
                 const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
@@ -6938,7 +6942,8 @@ app.post('/updateDelivery', async (req, res) => {
             if (waOrderOfdTomorrow == 1) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
-                var c = data.data.tracking_link;
+                let c = data.data.tracking_link;
+                let phoneNumber = data.data.phone_number;
 
                 const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
                 const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
@@ -7024,7 +7029,8 @@ app.post('/updateDelivery', async (req, res) => {
             if (waOrderOfdToday == 1) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
-                var c = data.data.tracking_link;
+                let c = data.data.tracking_link;
+                let phoneNumber = data.data.phone_number;
 
                 const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
                 const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
