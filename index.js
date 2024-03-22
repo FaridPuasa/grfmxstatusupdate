@@ -2343,9 +2343,10 @@ app.post('/updateDelivery', async (req, res) => {
             var completeRun = 0;
             var ceCheck = 0;
             var warehouseEntryCheck = 0;
-            var waWarehouseD = 0;
-            var waWarehouseP = 0;
-            var waDeliveryN = 0;
+            var waOrderArrivedDeliver = 0;
+            var waOrderArrivedPickup = 0;
+            var waOrderOfdTomorrow = 0;
+            var waOrderOfdToday = 0;
             var product = '';
             var latestPODDate = "";
             var fmxUpdate = "";
@@ -2808,7 +2809,7 @@ app.post('/updateDelivery', async (req, res) => {
                     completeRun = 1;
                 }
 
-                if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing') /* && (data.data.instructions.includes('38')) */) {
+                if ((req.body.statusCode == 12) && (data.data.status == 'custom_clearing')) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
                             area: data.data.zone,
@@ -2895,6 +2896,8 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
                     completeRun = 1;
+
+                    waOrderArrivedDeliver = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
@@ -3072,6 +3075,8 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     FMXAPIrun = 1;
                     completeRun = 1;
+
+                    waOrderOfdToday = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -5829,6 +5834,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
+
+                    waOrderArrivedPickup = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
@@ -5865,6 +5872,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
+
+                    waOrderArrivedPickup = 1;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
@@ -5938,6 +5947,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
+
+                    waOrderArrivedDeliver = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
@@ -6012,6 +6023,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
+
+                    waOrderOfdToday = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -6732,6 +6745,101 @@ app.post('/updateDelivery', async (req, res) => {
                 console.log('Success');
             }
 
+            //start here
+            if (waOrderArrivedDeliver == 1) {
+                let a = whatsappName;
+                let b = tracker;
+
+                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
+                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+                const createOrUpdateRequestBody = {
+                    "firstName": a,
+                    "phone": phoneNumber
+                };
+
+                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
+                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+                const requestBody =
+                {
+                    "message": {
+                        "type": "whatsapp_template",
+                        "template": {
+                            "name": "order_received",
+                            "components": [
+                                {
+                                    "type": "header",
+                                    "format": "text",
+                                    "text": "Order Received"
+                                },
+                                {
+                                    "text": `Hello ${a},\n\nYour order has been successfully received.\n\nYour tracking number is ${b} which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp or call us at 2332065.`,
+                                    "type": "body",
+                                    "parameters": [
+                                        {
+                                            "text": a,
+                                            "type": "text"
+                                        },
+                                        {
+                                            "text": b,
+                                            "type": "text"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "text": "Go Rush Express",
+                                    "type": "footer"
+                                }
+                            ],
+                            "languageCode": "en"
+                        }
+                    },
+                    "channelId": 209602
+                }
+
+                // Make the API call to create or update contact information
+                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
+                    headers: {
+                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        console.log('Contact information created or updated successfully:', response.data);
+
+                        // Introduce a delay of 10 seconds before proceeding with the next API call
+                        setTimeout(() => {
+                            axios.post(apiUrl, requestBody, {
+                                headers: {
+                                    'Authorization': `Bearer ${authToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            })
+                                .then(response => {
+                                    console.log('Message sent successfully:', response.data);
+                                })
+                                .catch(error => {
+                                    console.error('Error sending message:', error.response.data);
+                                });
+                        }, 10000); // 10 seconds delay
+                    })
+                    .catch(error => {
+                        console.error('Error creating or updating contact information:', error.response.data);
+                    });
+
+            }
+
+            if (waOrderArrivedPickup == 1) {
+
+            }
+
+            if (waOrderOfdTomorrow == 1) {
+
+            }
+
+            if (waOrderOfdToday == 1) {
+
+            }
+
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
                 processingResults.push({
@@ -7022,21 +7130,26 @@ orderWatch.on('change', change => {
 
                                     const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
                                     const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                                    const requestBody = {
+                                    const requestBody =
+                                    {
                                         "message": {
                                             "type": "whatsapp_template",
                                             "template": {
-                                                "name": "website_order_submittted",
+                                                "name": "order_received",
                                                 "components": [
                                                     {
                                                         "type": "header",
                                                         "format": "text",
-                                                        "text": "Order Confirmation"
+                                                        "text": "Order Received"
                                                     },
                                                     {
-                                                        "text": `Hello,\n\nWe have received your order. Please refer to the following for your reference.\n\nTracking Number: ${b}\n\nOur team will process your order. Thank you`,
+                                                        "text": `Hello ${a},\n\nYour order has been successfully received.\n\nYour tracking number is ${b} which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp or call us at 2332065.`,
                                                         "type": "body",
                                                         "parameters": [
+                                                            {
+                                                                "text": a,
+                                                                "type": "text"
+                                                            },
                                                             {
                                                                 "text": b,
                                                                 "type": "text"
@@ -7052,7 +7165,7 @@ orderWatch.on('change', change => {
                                             }
                                         },
                                         "channelId": 209602
-                                    };
+                                    }
 
                                     // Make the API call to create or update contact information
                                     axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
