@@ -2351,6 +2351,7 @@ app.post('/updateDelivery', async (req, res) => {
             var waOrderOfdTomorrowFMX = 0;
             var waOrderOfdTodayFMX = 0;
             var waOrderFailedDelivery = 0;
+            var waOrderCompletedFeedback = 0;
             var product = '';
             var latestPODDate = "";
             var fmxUpdate = "";
@@ -4333,6 +4334,8 @@ app.post('/updateDelivery', async (req, res) => {
                         DetrackAPIrun = 1;
                         FMXAPIrun = 5;
                         completeRun = 1;
+
+                        waOrderCompletedFeedback = 1;
                     }
                 }
 
@@ -5408,6 +5411,8 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     FMXAPIrun = 5;
                     completeRun = 1;
+
+                    waOrderCompletedFeedback = 1;
                 }
 
 
@@ -6268,6 +6273,7 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Portal status updated to Completed. ";
                         appliedStatus = "Failed/Completed"
                         completeRun = 1;
+                        waOrderCompletedFeedback = 1;
                     }
                 }
 
@@ -6418,6 +6424,7 @@ app.post('/updateDelivery', async (req, res) => {
                     portalUpdate = "Portal status updated to Completed. ";
                     appliedStatus = "Completed"
                     completeRun = 1;
+                    waOrderCompletedFeedback = 1;
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
@@ -7426,6 +7433,93 @@ app.post('/updateDelivery', async (req, res) => {
                                 },
                                 {
                                     "text": `Hello ${a},\n\nWe apologize for the order with tracking number ${b} not delivered today due to insufficient time.\n\nWe are committed to ensuring your order will be delivered on the next business day.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nFor reschedule delivery trip to Tutong, Belait, and Temburong or any further inquiries, please reach us via WhatsApp or call us at 2332065.`,
+                                    "type": "body",
+                                    "parameters": [
+                                        {
+                                            "text": a,
+                                            "type": "text"
+                                        },
+                                        {
+                                            "text": b,
+                                            "type": "text"
+                                        },
+                                        {
+                                            "text": c,
+                                            "type": "text"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "text": "Go Rush Express",
+                                    "type": "footer"
+                                }
+                            ],
+                            "languageCode": "en"
+                        }
+                    },
+                    "channelId": 209602
+                }
+
+                // Make the API call to create or update contact information
+                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
+                    headers: {
+                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        console.log('Contact information created or updated successfully:', response.data);
+
+                        // Introduce a delay of 10 seconds before proceeding with the next API call
+                        setTimeout(() => {
+                            axios.post(apiUrl, requestBody, {
+                                headers: {
+                                    'Authorization': `Bearer ${authToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            })
+                                .then(response => {
+                                    console.log('Message sent successfully:', response.data);
+                                })
+                                .catch(error => {
+                                    console.error('Error sending message:', error.response.data);
+                                });
+                        }, 10000); // 10 seconds delay
+                    })
+                    .catch(error => {
+                        console.error('Error creating or updating contact information:', error.response.data);
+                    });
+            }
+
+            if (waOrderCompletedFeedback == 1){
+                let a = data.data.deliver_to_collect_from;
+                let b = consignmentID;
+                let c = data.data.tracking_link;
+                let phoneNumber = data.data.phone_number;
+
+                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
+                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+                const createOrUpdateRequestBody = {
+                    "firstName": a,
+                    "phone": phoneNumber
+                };
+
+                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
+                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+                const requestBody =
+                {
+                    "message": {
+                        "type": "whatsapp_template",
+                        "template": {
+                            "name": "order_completed_feedback",
+                            "components": [
+                                {
+                                    "type": "header",
+                                    "format": "text",
+                                    "text": "Order Completed"
+                                },
+                                {
+                                    "text": `Hello ${a},\n\nWe are thankful for selecting us as your delivery service for the order with tracking number ${b}.\n\nWe kindly request a moment of your time to rate and provide comments on our service by clicking the link below:\n\n${c}\n\nYour cooperation and feedback are highly valued as they contribute to our continuous improvement efforts.\n\nHave a pleasant day ahead!`,
                                     "type": "body",
                                     "parameters": [
                                         {
