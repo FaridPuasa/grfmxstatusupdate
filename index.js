@@ -2893,7 +2893,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     fmxUpdate = "FMX milestone updated to At Warehouse.";
                     fmxMilestoneCode = "12"
                     appliedStatus = "Item in Warehouse"
@@ -2902,7 +2902,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedDeliverFMX = 1;
+                    waOrderArrivedDeliverFMX = 0;
                 }
 
                 if ((req.body.statusCode == "NC") && (data.data.status == 'at_warehouse')) {
@@ -5849,13 +5849,13 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedPickup = 1;
+                    waOrderArrivedPickup = 0;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
@@ -5887,13 +5887,13 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedPickup = 1;
+                    waOrderArrivedPickup = 0;
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
@@ -5962,13 +5962,13 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedDeliver = 1;
+                    waOrderArrivedDeliver = 0;
 
                     console.log("reach here")
                 }
