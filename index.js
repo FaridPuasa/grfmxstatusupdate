@@ -7806,6 +7806,36 @@ orderWatch.on('change', change => {
                         }
                     }
 
+                    if (result[0].product == "localdeliveryjb") {
+                        let suffix = "GR3"
+                        let prefix = "JB"
+
+                        if (sequence >= 0 && sequence <= 9) {
+                            tracker = suffix + "0000000" + sequence + prefix
+                        }
+                        if (sequence >= 10 && sequence <= 99) {
+                            tracker = suffix + "000000" + sequence + prefix
+                        }
+                        if (sequence >= 100 && sequence <= 999) {
+                            tracker = suffix + "00000" + sequence + prefix
+                        }
+                        if (sequence >= 1000 && sequence <= 9999) {
+                            tracker = suffix + "0000" + sequence + prefix
+                        }
+                        if (sequence >= 10000 && sequence <= 99999) {
+                            tracker = suffix + "000" + sequence + prefix
+                        }
+                        if (sequence >= 100000 && sequence <= 999999) {
+                            tracker = suffix + "00" + sequence + prefix
+                        }
+                        if (sequence >= 1000000 && sequence <= 9999999) {
+                            tracker = suffix + "0" + sequence + prefix
+                        }
+                        if (sequence >= 10000000 && sequence <= 99999999) {
+                            tracker = suffix + sequence + prefix
+                        }
+                    }
+
                     if (result[0].product == "cbsl") {
                         let suffix = "GR5"
                         let prefix = "CB"
