@@ -5849,13 +5849,17 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedPickup = 1;
+                    if (data.data.group_name == "BB"){
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    }else{
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                        waOrderArrivedPickup = 1;
+                    }
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'CBSL')) {
@@ -5887,13 +5891,17 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedPickup = 1;
+                    if (data.data.group_name == "BB"){
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    }else{
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                        waOrderArrivedPickup = 1;
+                    }
                 }
 
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL')) {
@@ -5962,15 +5970,17 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                     appliedStatus = "Item in Warehouse"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedDeliver = 1;
-
-                    console.log("reach here")
+                    if (data.data.group_name == "BB"){
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                    }else{
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                        waOrderArrivedDeliver = 1;
+                    } 
                 }
 
                 if ((req.body.statusCode == "NC") && (data.data.status == 'at_warehouse')) {
@@ -6047,15 +6057,18 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
+                        if (data.data.group_name == "BB"){
+                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                        }else{
+                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
+                            waOrderOfdToday = 1;
+                        }
                     }
 
                     appliedStatus = "Out for Delivery"
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
-
-                    waOrderOfdToday = 1;
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -6164,7 +6177,13 @@ app.post('/updateDelivery', async (req, res) => {
 
                             DetrackAPIrun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+
+                            if (data.data.group_name == "BB"){
+                                portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                            }else{
+                                portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                                waOrderFailedDelivery = 1;
+                            }
                         } else {
                             update = {
                                 currentStatus: "Return to Warehouse",
@@ -6270,10 +6289,15 @@ app.post('/updateDelivery', async (req, res) => {
                             mongoDBrun = 2;
                         }
 
-                        portalUpdate = "Portal status updated to Completed. ";
                         appliedStatus = "Failed/Completed"
                         completeRun = 1;
-                        waOrderCompletedFeedback = 1;
+
+                        if (data.data.group_name == "BB"){
+                            portalUpdate = "Portal status updated to Completed. ";
+                        }else{
+                            portalUpdate = "Portal status updated to Completed. Customer notified. ";
+                            waOrderCompletedFeedback = 1;
+                        }
                     }
                 }
 
@@ -6314,7 +6338,12 @@ app.post('/updateDelivery', async (req, res) => {
                         DetrackAPIrun = 1;
                         appliedStatus = "Failed Delivery, Return to Warehouse"
 
-                        waOrderFailedDelivery = 1;
+                        if (data.data.group_name == "BB"){
+                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        }else{
+                            portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
+                            waOrderFailedDelivery = 1;
+                        }
                     } else {
                         update = {
                             currentStatus: "Return to Warehouse",
@@ -6356,9 +6385,8 @@ app.post('/updateDelivery', async (req, res) => {
 
                         DetrackAPIrun = 2;
                         appliedStatus = "Failed Delivery, Return to Warehouse"
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     }
-
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                     mongoDBrun = 2;
                     completeRun = 1;
@@ -6421,10 +6449,15 @@ app.post('/updateDelivery', async (req, res) => {
                         mongoDBrun = 2;
                     }
 
-                    portalUpdate = "Portal status updated to Completed. ";
                     appliedStatus = "Completed"
                     completeRun = 1;
-                    waOrderCompletedFeedback = 1;
+
+                    if (data.data.group_name == "BB"){
+                        portalUpdate = "Portal status updated to Completed. ";
+                    }else{
+                        portalUpdate = "Portal status updated to Completed. Customer notified. ";
+                        waOrderCompletedFeedback = 1;
+                    }
                 }
 
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
