@@ -5975,7 +5975,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if if ((product == "BB")||(product == "FCAS")){
+                    if ((product == "BB")||(product == "FCAS")){
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     }else{
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -6057,7 +6057,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        if if ((product == "BB")||(product == "FCAS")){
+                        if ((product == "BB")||(product == "FCAS")){
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                         }else{
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
