@@ -5854,7 +5854,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if (data.data.group_name == "BB"){
+                    if ((product == "BB")||(product == "FCAS")){
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     }else{
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -5896,7 +5896,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if (data.data.group_name == "BB"){
+                    if ((product == "BB")||(product == "FCAS")){
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     }else{
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -5975,7 +5975,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if (data.data.group_name == "BB"){
+                    if if ((product == "BB")||(product == "FCAS")){
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     }else{
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -6057,7 +6057,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        if (data.data.group_name == "BB"){
+                        if if ((product == "BB")||(product == "FCAS")){
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                         }else{
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
@@ -6178,7 +6178,7 @@ app.post('/updateDelivery', async (req, res) => {
                             DetrackAPIrun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
 
-                            if (data.data.group_name == "BB"){
+                            if ((product == "BB")||(product == "FCAS")){
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             }else{
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -6292,7 +6292,7 @@ app.post('/updateDelivery', async (req, res) => {
                         appliedStatus = "Failed/Completed"
                         completeRun = 1;
 
-                        if (data.data.group_name == "BB"){
+                        if ((product == "BB")||(product == "FCAS")){
                             portalUpdate = "Portal status updated to Completed. ";
                         }else{
                             portalUpdate = "Portal status updated to Completed. Customer notified. ";
@@ -6338,7 +6338,7 @@ app.post('/updateDelivery', async (req, res) => {
                         DetrackAPIrun = 1;
                         appliedStatus = "Failed Delivery, Return to Warehouse"
 
-                        if (data.data.group_name == "BB"){
+                        if ((product == "BB")||(product == "FCAS")){
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                         }else{
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -6452,7 +6452,7 @@ app.post('/updateDelivery', async (req, res) => {
                     appliedStatus = "Completed"
                     completeRun = 1;
 
-                    if (data.data.group_name == "BB"){
+                    if ((product == "BB")||(product == "FCAS")){
                         portalUpdate = "Portal status updated to Completed. ";
                     }else{
                         portalUpdate = "Portal status updated to Completed. Customer notified. ";
