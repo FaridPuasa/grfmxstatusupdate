@@ -6024,7 +6024,12 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". Customer notified. ";
+                        if ((product == "BB")||(product == "FCAS")){
+                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                        }else{
+                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". Customer notified. ";
+                            waOrderOfdToday = 1;
+                        }
 
                     } else {
                         update = {
