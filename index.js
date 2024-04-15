@@ -5854,9 +5854,9 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if ((product == "BB")||(product == "FCAS")){
+                    if ((product == "BB") || (product == "FCAS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                    }else{
+                    } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                         waOrderArrivedPickup = 1;
                     }
@@ -5896,9 +5896,9 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if ((product == "BB")||(product == "FCAS")){
+                    if ((product == "BB") || (product == "FCAS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                    }else{
+                    } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                         waOrderArrivedPickup = 1;
                     }
@@ -5975,12 +5975,12 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if ((product == "BB")||(product == "FCAS")){
+                    if ((product == "BB") || (product == "FCAS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                    }else{
+                    } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                         waOrderArrivedDeliver = 1;
-                    } 
+                    }
                 }
 
                 if ((req.body.statusCode == "NC") && (data.data.status == 'at_warehouse')) {
@@ -6024,9 +6024,9 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        if ((product == "BB")||(product == "FCAS")){
+                        if ((product == "BB") || (product == "FCAS")) {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
-                        }else{
+                        } else {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". Customer notified. ";
                             waOrderOfdToday = 1;
                         }
@@ -6062,9 +6062,9 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         };
 
-                        if ((product == "BB")||(product == "FCAS")){
+                        if ((product == "BB") || (product == "FCAS")) {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
-                        }else{
+                        } else {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
                             waOrderOfdToday = 1;
                         }
@@ -6183,9 +6183,9 @@ app.post('/updateDelivery', async (req, res) => {
                             DetrackAPIrun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
 
-                            if ((product == "BB")||(product == "FCAS")){
+                            if ((product == "BB") || (product == "FCAS")) {
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                            }else{
+                            } else {
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                                 waOrderFailedDelivery = 1;
                             }
@@ -6297,9 +6297,9 @@ app.post('/updateDelivery', async (req, res) => {
                         appliedStatus = "Failed/Completed"
                         completeRun = 1;
 
-                        if ((product == "BB")||(product == "FCAS")){
+                        if ((product == "BB") || (product == "FCAS")) {
                             portalUpdate = "Portal status updated to Completed. ";
-                        }else{
+                        } else {
                             portalUpdate = "Portal status updated to Completed. Customer notified. ";
                             waOrderCompletedFeedback = 1;
                         }
@@ -6343,9 +6343,9 @@ app.post('/updateDelivery', async (req, res) => {
                         DetrackAPIrun = 1;
                         appliedStatus = "Failed Delivery, Return to Warehouse"
 
-                        if ((product == "BB")||(product == "FCAS")){
+                        if ((product == "BB") || (product == "FCAS")) {
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        }else{
+                        } else {
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                             waOrderFailedDelivery = 1;
                         }
@@ -6457,9 +6457,9 @@ app.post('/updateDelivery', async (req, res) => {
                     appliedStatus = "Completed"
                     completeRun = 1;
 
-                    if ((product == "BB")||(product == "FCAS")){
+                    if ((product == "BB") || (product == "FCAS")) {
                         portalUpdate = "Portal status updated to Completed. ";
-                    }else{
+                    } else {
                         portalUpdate = "Portal status updated to Completed. Customer notified. ";
                         waOrderCompletedFeedback = 1;
                     }
@@ -7529,7 +7529,7 @@ app.post('/updateDelivery', async (req, res) => {
                     });
             }
 
-            if (waOrderCompletedFeedback == 1){
+            if (waOrderCompletedFeedback == 1) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
                 let c = data.data.tracking_link;
@@ -7671,15 +7671,42 @@ orderWatch.on('change', change => {
 
                     if ((result.length >= 2) && (checkProduct == 0)) {
                         for (let i = 1; i < result.length; i++) {
-                            if (result[i].product.includes(products)) {
-                                console.log("sequence is " + result[i].sequence)
-                                if (result[i].sequence == "N/A") {
-                                    sequenceToAdd = parseInt(sequenceToAdd) + 1;
+                            if (products.includes("localdelivery") == true) {
+                                if (result[i].product == "localdelivery") {
+                                    console.log("sequence is " + result[i].sequence)
+                                    if (result[i].sequence == "N/A") {
+                                        sequenceToAdd = parseInt(sequenceToAdd) + 1;
+                                    }
+                                    else {
+                                        sequence = parseInt(result[i].sequence) + 1 + parseInt(sequenceToAdd)
+                                        checkProduct = 1
+                                        i = result.length
+                                    }
                                 }
-                                else {
-                                    sequence = parseInt(result[i].sequence) + 1 + parseInt(sequenceToAdd)
-                                    checkProduct = 1
-                                    i = result.length
+
+                                if (result[i].product == "localdeliveryjb") {
+                                    console.log("sequence is " + result[i].sequence)
+                                    if (result[i].sequence == "N/A") {
+                                        sequenceToAdd = parseInt(sequenceToAdd) + 1;
+                                    }
+                                    else {
+                                        sequence = parseInt(result[i].sequence) + 1 + parseInt(sequenceToAdd)
+                                        checkProduct = 1
+                                        i = result.length
+                                    }
+                                }
+
+                            } else {
+                                if (result[i].product.includes(products)) {
+                                    console.log("sequence is " + result[i].sequence)
+                                    if (result[i].sequence == "N/A") {
+                                        sequenceToAdd = parseInt(sequenceToAdd) + 1;
+                                    }
+                                    else {
+                                        sequence = parseInt(result[i].sequence) + 1 + parseInt(sequenceToAdd)
+                                        checkProduct = 1
+                                        i = result.length
+                                    }
                                 }
                             }
                         }
