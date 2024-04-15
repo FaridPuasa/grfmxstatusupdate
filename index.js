@@ -7671,7 +7671,7 @@ orderWatch.on('change', change => {
 
                     if ((result.length >= 2) && (checkProduct == 0)) {
                         for (let i = 1; i < result.length; i++) {
-                            if (products.includes("localdelivery") == true) {
+                            if ((result[i].product == "localdelivery")||(result[i].product == "localdeliveryjb")) {
                                 if (result[i].product == "localdelivery") {
                                     console.log("sequence is " + result[i].sequence)
                                     if (result[i].sequence == "N/A") {
