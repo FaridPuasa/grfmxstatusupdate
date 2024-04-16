@@ -7671,9 +7671,8 @@ orderWatch.on('change', change => {
 
                     if ((result.length >= 2) && (checkProduct == 0)) {
                         for (let i = 1; i < result.length; i++) {
-                            if ((result[i].product == "localdelivery")||(result[i].product == "localdeliveryjb")) {
-                                if (result[i].product == "localdelivery") {
-                                    console.log("sequence is " + result[i].sequence)
+                            if (result[i].product.includes("localdelivery")) {
+                                if (products == "localdelivery") {
                                     if (result[i].sequence == "N/A") {
                                         sequenceToAdd = parseInt(sequenceToAdd) + 1;
                                     }
@@ -7684,8 +7683,7 @@ orderWatch.on('change', change => {
                                     }
                                 }
 
-                                if (result[i].product == "localdeliveryjb") {
-                                    console.log("sequence is " + result[i].sequence)
+                                if (products == "localdeliveryjb") {
                                     if (result[i].sequence == "N/A") {
                                         sequenceToAdd = parseInt(sequenceToAdd) + 1;
                                     }
@@ -7698,7 +7696,6 @@ orderWatch.on('change', change => {
 
                             } else {
                                 if (result[i].product.includes(products)) {
-                                    console.log("sequence is " + result[i].sequence)
                                     if (result[i].sequence == "N/A") {
                                         sequenceToAdd = parseInt(sequenceToAdd) + 1;
                                     }
