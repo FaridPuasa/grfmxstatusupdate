@@ -7672,7 +7672,7 @@ orderWatch.on('change', change => {
                     if ((result.length >= 2) && (checkProduct == 0)) {
                         for (let i = 1; i < result.length; i++) {
                             if (result[i].product.includes("localdelivery")) {
-                                if (products == "localdelivery") {
+                                if (products == result[i].product) {
                                     if (result[i].sequence == "N/A") {
                                         sequenceToAdd = parseInt(sequenceToAdd) + 1;
                                     }
@@ -7682,18 +7682,6 @@ orderWatch.on('change', change => {
                                         i = result.length
                                     }
                                 }
-
-                                if (products == "localdeliveryjb") {
-                                    if (result[i].sequence == "N/A") {
-                                        sequenceToAdd = parseInt(sequenceToAdd) + 1;
-                                    }
-                                    else {
-                                        sequence = parseInt(result[i].sequence) + 1 + parseInt(sequenceToAdd)
-                                        checkProduct = 1
-                                        i = result.length
-                                    }
-                                }
-
                             } else {
                                 if (result[i].product.includes(products)) {
                                     if (result[i].sequence == "N/A") {
