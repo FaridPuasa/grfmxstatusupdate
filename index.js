@@ -2507,6 +2507,8 @@ app.post('/updateDelivery', async (req, res) => {
             var completedCheckDateTime = "";
             var fmxMilestoneCode = "";
             var remarkSC = '';
+            var wmsAttempt = 0;
+            var unattemptedTimes = 0;
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -2530,12 +2532,22 @@ app.post('/updateDelivery', async (req, res) => {
                     latestPODDate = data.data.milestones[i].pod_at;
                     completedCheckDateTime = data.data.milestones[i].created_at;
                 }
+
                 if (data.data.milestones[i].status == 'failed') {
                     detrackReason = data.data.milestones[i].reason;
+                    if (data.data.milestones[i].reason == "Unattempted Delivery") {
+                        wmsAttempt = wmsAttempt - 1;
+                        unattemptedTimes = unattemptedTimes + 1;
+                    }
                 }
+
                 if ((data.data.milestones[i].status == 'at_warehouse') && (warehouseEntryCheck == 0)) {
                     warehouseEntryCheckDateTime = data.data.milestones[i].created_at;
                     warehouseEntryCheck = 1;
+                }
+
+                if (data.data.milestones[i].status == "out_for_delivery") {
+                    wmsAttempt = wmsAttempt + 1;
                 }
             }
 
@@ -2582,7 +2594,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
-                || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')) {
+                || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA')) {
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -2640,6 +2652,19 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (product == 'FMX') {
+                if (req.body.statusCode == 'FA') {
+                    update = {
+                        attempt: wmsAttempt
+                    }
+
+                    mongoDBrun = 2;
+
+                    portalUpdate = "Attempt is fixed. Detrack no. of attempt are " + data.data.attempt + ". Unattempted times are " + unattemptedTimes + ". Actual no. of attempts are " + wmsAttempt;
+                    appliedStatus = "Attempt Fix"
+
+                    completeRun = 1;
+                }
+
                 if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
                     newOrder = new ORDERS({
                         area: data.data.zone,
@@ -2648,7 +2673,7 @@ app.post('/updateDelivery', async (req, res) => {
                             description: data.data.items[0].description,
                             totalItemPrice: data.data.total_price
                         }],
-                        attempt: data.data.attempt,
+                        attempt: wmsAttempt,
                         history: [{
                             updatedBy: "User",
                             dateUpdated: moment().format(),
@@ -2699,7 +2724,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [{
                                 statusHistory: "Custom Clearing",
                                 dateUpdated: moment().format(),
@@ -2743,7 +2768,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Customs Clearance in Progress",
                             fmxMilestoneStatusCode: "CP",
                             instructions: "FMX Milestone ID CP",
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Custom Clearing",
@@ -2790,7 +2815,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [{
                                 statusHistory: "Detained by Customs",
                                 dateUpdated: moment().format(),
@@ -2835,7 +2860,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatusCode: "DC",
                             instructions: "FMX Milestone ID DC",
                             latestReason: detrackReason,
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Detained by Customs",
@@ -2877,7 +2902,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [{
                                 statusHistory: "Custom Clearance Release",
                                 dateUpdated: moment().format(),
@@ -2921,7 +2946,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Custom Clearance Release",
                             fmxMilestoneStatusCode: "38",
                             instructions: "FMX Milestone ID 38",
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Custom Clearance Release",
@@ -2963,7 +2988,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
@@ -3009,7 +3034,7 @@ app.post('/updateDelivery', async (req, res) => {
                             instructions: "FMX Milestone ID 12",
                             warehouseEntry: "Yes",
                             warehouseEntryDateTime: moment().format(),
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "At Warehouse",
@@ -3064,7 +3089,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
@@ -3109,7 +3134,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatusCode: "35",
                                 instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 jobDate: req.body.assignDate,
                                 $push: {
                                     history: {
@@ -3147,7 +3172,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
@@ -3192,7 +3217,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatusCode: "35",
                                 instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 jobDate: req.body.assignDate,
                                 $push: {
                                     history: {
@@ -3243,7 +3268,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [{
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
                                     dateUpdated: moment().format(),
@@ -3286,7 +3311,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -3322,7 +3347,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [{
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
                                     dateUpdated: moment().format(),
@@ -3365,7 +3390,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers,
                                 jobDate: req.body.assignDate,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -3414,7 +3439,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -3469,7 +3494,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
                                     fmxMilestoneStatusCode: "MD, 44",
                                     latestReason: "Unattempted Delivery",
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -3520,7 +3545,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -3575,7 +3600,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + data.data.note + ". Return to Warehouse.",
                                     fmxMilestoneStatusCode: "FD, 44",
                                     latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -3630,7 +3655,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -3685,7 +3710,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + data.data.note + ". Return to Warehouse",
                                     fmxMilestoneStatusCode: "SC, 44",
                                     latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -3740,7 +3765,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -3795,7 +3820,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse",
                                     fmxMilestoneStatusCode: "DU, 44",
                                     latestReason: "Cash/Duty Not Ready",
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -3850,7 +3875,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -3905,7 +3930,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone. Return to Warehouse",
                                     fmxMilestoneStatusCode: "NA, 44",
                                     latestReason: "Customer not available / cannot be contacted",
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -3960,7 +3985,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -4015,7 +4040,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to No Such Person. Return to Warehouse",
                                     fmxMilestoneStatusCode: "NP, 44",
                                     latestReason: "No Such Person",
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -4070,7 +4095,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -4125,7 +4150,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery. Shipment Refused by Consignee due to " + data.data.note + ". Return to Warehouse",
                                     fmxMilestoneStatusCode: "RF, 44",
                                     latestReason: "Shipment Refused by Consignee due to " + data.data.note,
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -4180,7 +4205,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -4235,7 +4260,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse",
                                     fmxMilestoneStatusCode: "UL, 44",
                                     latestReason: "Unable to Locate Receiver Address",
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -4290,7 +4315,7 @@ app.post('/updateDelivery', async (req, res) => {
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -4345,7 +4370,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     fmxMilestoneStatus: "Failed Delivery due to Incorrect Address. Return to Warehouse",
                                     fmxMilestoneStatusCode: "WA, 44",
                                     latestReason: "Incorrect Address",
-                                    attempt: data.data.attempt,
+                                    attempt: wmsAttempt,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -4400,7 +4425,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [{
                                     statusHistory: "Completed",
                                     dateUpdated: moment().format(),
@@ -4444,7 +4469,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Parcel Delivered",
                                 fmxMilestoneStatusCode: "50",
                                 instructions: "FMX Milestone ID 50.",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Completed",
@@ -4493,7 +4518,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -4548,7 +4573,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
                                 fmxMilestoneStatusCode: "MD, 44",
                                 latestReason: "Unattempted Delivery",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4597,7 +4622,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -4652,7 +4677,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + data.data.note + ". Return to Warehouse.",
                                 fmxMilestoneStatusCode: "FD, 44",
                                 latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4707,7 +4732,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -4762,7 +4787,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + data.data.note + ". Return to Warehouse",
                                 fmxMilestoneStatusCode: "SC, 44",
                                 latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4817,7 +4842,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -4872,7 +4897,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse",
                                 fmxMilestoneStatusCode: "DU, 44",
                                 latestReason: "Cash/Duty Not Ready",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -4927,7 +4952,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -4982,7 +5007,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone. Return to Warehouse",
                                 fmxMilestoneStatusCode: "NA, 44",
                                 latestReason: "Customer not available / cannot be contacted",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -5037,7 +5062,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -5092,7 +5117,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to No Such Person. Return to Warehouse",
                                 fmxMilestoneStatusCode: "NP, 44",
                                 latestReason: "No Such Person",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -5147,7 +5172,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -5202,7 +5227,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery. Shipment Refused by Consignee due to " + data.data.note + ". Return to Warehouse",
                                 fmxMilestoneStatusCode: "RF, 44",
                                 latestReason: "Shipment Refused by Consignee due to " + data.data.note,
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -5257,7 +5282,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -5312,7 +5337,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse",
                                 fmxMilestoneStatusCode: "UL, 44",
                                 latestReason: "Unable to Locate Receiver Address",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -5367,7 +5392,7 @@ app.post('/updateDelivery', async (req, res) => {
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 history: [
                                     {
                                         statusHistory: "Failed Delivery",
@@ -5422,7 +5447,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 fmxMilestoneStatus: "Failed Delivery due to Incorrect Address. Return to Warehouse",
                                 fmxMilestoneStatusCode: "WA, 44",
                                 latestReason: "Incorrect Address",
-                                attempt: data.data.attempt,
+                                attempt: wmsAttempt,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -5477,7 +5502,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [{
                                 statusHistory: "Completed",
                                 dateUpdated: moment().format(),
@@ -5521,7 +5546,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Parcel Delivered",
                             fmxMilestoneStatusCode: "50",
                             instructions: "FMX Milestone ID 50.",
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -5565,7 +5590,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [{
                                 statusHistory: "Self Collect",
                                 dateUpdated: moment().format(),
@@ -5608,7 +5633,7 @@ app.post('/updateDelivery', async (req, res) => {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned for Self Collect.",
                             assignedTo: "Selfcollect",
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             jobDate: req.body.assignDate,
                             $push: {
                                 history: {
@@ -5655,7 +5680,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [
                                 {
                                     statusHistory: "Cancelled",
@@ -5703,7 +5728,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: Cancelled",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Cancelled",
@@ -5746,7 +5771,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [
                                 {
                                     statusHistory: "Return to Warehouse",
@@ -5794,7 +5819,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Return to Warehouse (44).",
                             fmxMilestoneStatusCode: "44",
                             latestReason: detrackReason,
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Return to Warehouse",
@@ -5837,7 +5862,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price,
                             }],
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             history: [
                                 {
                                     statusHistory: "Disposed",
@@ -5885,7 +5910,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneStatus: "Shipment Destroyed (47).",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
-                            attempt: data.data.attempt,
+                            attempt: wmsAttempt,
                             $push: {
                                 history: {
                                     statusHistory: "Disposed",
@@ -7789,7 +7814,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -8167,7 +8192,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
