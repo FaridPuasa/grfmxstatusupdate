@@ -2653,14 +2653,128 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (product == 'FMX') {
                 if (req.body.statusCode == 'FA') {
-                    update = {
-                        attempt: wmsAttempt
+                    if (data.data.payment_mode == null) {
+
+                    } else if (((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("CASH")))
+                        || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("Cash")))
+                        || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("COD")))) {
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                payment_mode: "COD, BT",
+                            }
+                        };
+
+                        update = {
+                            paymentMethod: "COD, BT",
+                            totalPrice: data.data.total_price
+                        }
+
+                    } else if (data.data.payment_mode.includes("Bill")) {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                payment_mode: "BT",
+                            }
+                        };
+
+                        update = {
+                            paymentMethod: "BT",
+                        }
+
+                    } else if ((data.data.payment_mode == "Cash") || (data.data.payment_mode == "CASH") || (data.data.payment_mode == "COD")) {
+                        if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "NON COD",
+                                        total_price: 0,
+                                        payment_amount: 0
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "NON COD",
+                                    totalPrice: 0
+                                }
+                            } else {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        total_price: data.data.payment_amount,
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "COD",
+                                    totalPrice: data.data.payment_amount
+                                }
+                            }
+                        }
+
+                    } else if (data.data.payment_mode == "BT") {
+                        if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "NON COD",
+                                        total_price: 0,
+                                        payment_amount: 0
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "NON COD",
+                                    totalPrice: 0
+                                }
+                            } else {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        total_price: data.data.payment_amount,
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "COD",
+                                    totalPrice: data.data.payment_amount
+                                }
+                            }
+                        } else {
+                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_amount: 0
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "BT",
+                                }
+                            } else {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "COD"
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "COD",
+                                }
+                            }
+                        }
                     }
 
+                    DetrackAPIrun = 1;
                     mongoDBrun = 2;
 
-                    portalUpdate = "Attempt is fixed. Detrack no. of attempt are " + data.data.attempt + ". Unattempted times are " + unattemptedTimes + ". Actual no. of attempts are " + wmsAttempt;
-                    appliedStatus = "Attempt Fix"
+                    portalUpdate = "Detrack/Mongo updated. Attempt is fixed. Detrack no. of attempt are " + data.data.attempt + ". Unattempted times are " + unattemptedTimes + ". Actual no. of attempts are " + wmsAttempt;
+                    appliedStatus = "Attempt and Payment Method Fix"
 
                     completeRun = 1;
                 }
@@ -7814,7 +7928,7 @@ app.post('/updateDelivery', async (req, res) => {
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -8192,7 +8306,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
