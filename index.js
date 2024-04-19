@@ -2654,6 +2654,62 @@ app.post('/updateDelivery', async (req, res) => {
             if (product == 'FMX') {
                 if (req.body.statusCode == 'FA') {
                     if (data.data.payment_mode == null) {
+                        if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "NON COD",
+                                        total_price: 0,
+                                        payment_amount: 0
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "NON COD",
+                                    totalPrice: 0
+                                }
+
+                            } else {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "COD",
+                                        total_price: data.data.payment_amount,
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "COD",
+                                    totalPrice: data.data.payment_amount
+                                }
+                            }
+                        } else {
+                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "BT",
+                                        payment_amount: 0
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "BT",
+                                }
+                            } else {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        payment_mode: "COD"
+                                    }
+                                };
+
+                                update = {
+                                    paymentMethod: "COD",
+                                }
+                            }
+                        }
 
                     } else if (((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("CASH")))
                         || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("Cash")))
@@ -2668,7 +2724,6 @@ app.post('/updateDelivery', async (req, res) => {
 
                         update = {
                             paymentMethod: "COD, BT",
-                            totalPrice: data.data.total_price
                         }
 
                     } else if (data.data.payment_mode.includes("Bill")) {
@@ -2703,6 +2758,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 var detrackUpdateData = {
                                     do_number: consignmentID,
                                     data: {
+                                        payment_mode: "COD",
                                         total_price: data.data.payment_amount,
                                     }
                                 };
@@ -2734,6 +2790,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 var detrackUpdateData = {
                                     do_number: consignmentID,
                                     data: {
+                                        payment_mode: "COD",
                                         total_price: data.data.payment_amount,
                                     }
                                 };
@@ -2748,6 +2805,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 var detrackUpdateData = {
                                     do_number: consignmentID,
                                     data: {
+                                        payment_mode: "BT",
                                         payment_amount: 0
                                     }
                                 };
