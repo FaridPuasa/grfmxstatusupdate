@@ -2546,7 +2546,7 @@ app.post('/updateDelivery', async (req, res) => {
                     warehouseEntryCheck = 1;
                 }
 
-                if (data.data.milestones[i].status == "out_for_delivery") {
+                if ((data.data.milestones[i].status == "out_for_delivery")||(data.data.milestones[i].status == "dispatched")) {
                     wmsAttempt = wmsAttempt + 1;
                 }
             }
@@ -2653,7 +2653,39 @@ app.post('/updateDelivery', async (req, res) => {
 
             if (product == 'FMX') {
                 if (req.body.statusCode == 'FA') {
-                    if (data.data.payment_mode == null) {
+                    update = {
+                        currentStatus: "Return to Warehouse",
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Failed delivery due to Safwan MC",
+                        assignedTo: "N/A",
+                        latestReason: "Failed delivery due to Safwan MC",
+                        attempt: data.data.attempt,
+                        $push: {
+                            history: {
+                                statusHistory: "Failed Delivery",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: data.data.assign_to,
+                                reason: "Failed delivery due to Safwan MC",
+                            },
+                            history: {
+                                statusHistory: "Return to Warehouse",
+                                dateUpdated: moment().format(),
+                                updatedBy: "User",
+                                lastAssignedTo: "N/A",
+                                reason: "N/A",
+                            }
+                        }
+                    }
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "at_warehouse" // Use the calculated dStatus
+                        }
+                    };
+
+                    /* if (data.data.payment_mode == null) {
                         if ((data.data.total_price == null) || (data.data.total_price == 0)) {
                             if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
                                 var detrackUpdateData = {
@@ -2826,12 +2858,12 @@ app.post('/updateDelivery', async (req, res) => {
                                 }
                             }
                         }
-                    }
+                    } */
 
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
 
-                    portalUpdate = "Detrack/Mongo updated. Attempt is fixed. Detrack no. of attempt are " + data.data.attempt + ". Unattempted times are " + unattemptedTimes + ". Actual no. of attempts are " + wmsAttempt;
+                    portalUpdate = "Detrack/Mongo updated. Attempt is fixed. Detrack no. of attempt are ";
                     appliedStatus = "Attempt and Payment Method Fix"
 
                     completeRun = 1;
@@ -6913,6 +6945,223 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
+            }
+
+            if (req.body.statusCode == 'FA') {
+                update = {
+                    currentStatus: "Return to Warehouse",
+                    lastUpdateDateTime: moment().format(),
+                    instructions: "Failed delivery due to Safwan MC",
+                    assignedTo: "N/A",
+                    latestReason: "Failed delivery due to Safwan MC",
+                    attempt: data.data.attempt,
+                    $push: {
+                        history: {
+                            statusHistory: "Failed Delivery",
+                            dateUpdated: moment().format(),
+                            updatedBy: "User",
+                            lastAssignedTo: data.data.assign_to,
+                            reason: "Failed delivery due to Safwan MC",
+                        },
+                        history: {
+                            statusHistory: "Return to Warehouse",
+                            dateUpdated: moment().format(),
+                            updatedBy: "User",
+                            lastAssignedTo: "N/A",
+                            reason: "N/A",
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "at_warehouse" // Use the calculated dStatus
+                    }
+                };
+
+                /* if (data.data.payment_mode == null) {
+                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "NON COD",
+                                totalPrice: 0
+                            }
+
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD",
+                                    total_price: data.data.payment_amount,
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "COD",
+                                totalPrice: data.data.payment_amount
+                            }
+                        }
+                    } else {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "BT",
+                                    payment_amount: 0
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "BT",
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD"
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "COD",
+                            }
+                        }
+                    }
+
+                } else if (((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("CASH")))
+                    || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("Cash")))
+                    || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("COD")))) {
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            payment_mode: "COD, BT",
+                        }
+                    };
+
+                    update = {
+                        paymentMethod: "COD, BT",
+                    }
+
+                } else if (data.data.payment_mode.includes("Bill")) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            payment_mode: "BT",
+                        }
+                    };
+
+                    update = {
+                        paymentMethod: "BT",
+                    }
+
+                } else if ((data.data.payment_mode == "Cash") || (data.data.payment_mode == "CASH") || (data.data.payment_mode == "COD")) {
+                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "NON COD",
+                                totalPrice: 0
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD",
+                                    total_price: data.data.payment_amount,
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "COD",
+                                totalPrice: data.data.payment_amount
+                            }
+                        }
+                    }
+
+                } else if (data.data.payment_mode == "BT") {
+                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "NON COD",
+                                totalPrice: 0
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD",
+                                    total_price: data.data.payment_amount,
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "COD",
+                                totalPrice: data.data.payment_amount
+                            }
+                        }
+                    } else {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "BT",
+                                    payment_amount: 0
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "BT",
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD"
+                                }
+                            };
+
+                            update = {
+                                paymentMethod: "COD",
+                            }
+                        }
+                    }
+                } */
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                portalUpdate = "Detrack/Mongo updated. Attempt is fixed. Detrack no. of attempt are ";
+                appliedStatus = "Attempt and Payment Method Fix"
+
+                completeRun = 1;
             }
 
             if (completeRun == 0) {

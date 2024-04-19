@@ -297,16 +297,20 @@
                                     <%= order.attempt %>
                                 </td>
                                 <td>
-                                    <% if (order.warehouseEntry==="No" ) { %>
-                                        0
+                                    <% if (order.currentStatus !== "Completed") { %>
+                                        <% if (order.warehouseEntry === "No") { %>
+                                            0
                                         <% } else { %>
-                                            <% const entryDate=new Date(order.warehouseEntryDateTime); %>
-                                                <% const currentDate=new Date(); %>
-                                                    <% const ageInMilliseconds=currentDate - entryDate; %>
-                                                        <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 * 60 *
-                                                            24)); %>
-                                                            <%= ageInDays %>
-                                                                <% } %>
+                                            <% const entryDate = new Date(order.warehouseEntryDateTime); %>
+                                            <% const currentDate = new Date(); %>
+                                            <% const ageInMilliseconds = currentDate - entryDate; %>
+                                            <% const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24)); %>
+                                            <%= ageInDays %>
+                                        <% } %>
+                                    <% } else { %>
+                                        <!-- Add an empty cell or any placeholder when the status is "Completed" -->
+                                        <!-- Adjust the colspan to match the number of columns in the table -->
+                                    <% } %>
                                 </td>
                                 <td>
                                     <%= order.latestReason %>
