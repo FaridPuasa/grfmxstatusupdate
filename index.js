@@ -2652,7 +2652,7 @@ app.post('/updateDelivery', async (req, res) => {
             }
 
             if (product == 'FMX') {
-                if (req.body.statusCode == 'FA') {
+                /* if (req.body.statusCode == 'FA') {
                     update = {
                         currentStatus: "Return to Warehouse",
                         lastUpdateDateTime: moment().format(),
@@ -2685,7 +2685,7 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    /* if (data.data.payment_mode == null) {
+                    if (data.data.payment_mode == null) {
                         if ((data.data.total_price == null) || (data.data.total_price == 0)) {
                             if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
                                 var detrackUpdateData = {
@@ -2858,7 +2858,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 }
                             }
                         }
-                    } */
+                    }
 
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
@@ -2867,7 +2867,7 @@ app.post('/updateDelivery', async (req, res) => {
                     appliedStatus = "Attempt and Payment Method Fix"
 
                     completeRun = 1;
-                }
+                } */
 
                 if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
                     newOrder = new ORDERS({
@@ -3271,7 +3271,9 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderArrivedDeliverFMX = 1;
+                    if (data.data.phone_number != null){
+                        waOrderArrivedDeliverFMX = 1;
+                    }
                 }
 
                 if ((req.body.statusCode == "NC") && (data.data.status == 'at_warehouse')) {
@@ -3459,7 +3461,9 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                     completeRun = 1;
 
-                    waOrderOfdTodayFMX = 1;
+                    if (data.data.phone_number != null){
+                        waOrderOfdTodayFMX = 1;
+                    }
                 }
 
                 if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
@@ -3733,7 +3737,9 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneCode = "MD"
                             appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
 
-                            waOrderFailedDelivery = 1;
+                            if (data.data.phone_number != null){
+                                waOrderFailedDelivery = 1;
+                            }
                         }
 
                         if (data.data.reason == "Reschedule delivery requested by customer") {
@@ -4704,7 +4710,9 @@ app.post('/updateDelivery', async (req, res) => {
                         FMXAPIrun = 5;
                         completeRun = 1;
 
-                        waOrderCompletedFeedback = 1;
+                        if (data.data.phone_number != null){
+                            waOrderCompletedFeedback = 1;
+                        }
                     }
                 }
 
@@ -5781,7 +5789,9 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 5;
                     completeRun = 1;
 
-                    waOrderCompletedFeedback = 1;
+                    if (data.data.phone_number != null){
+                        waOrderCompletedFeedback = 1;
+                    }
                 }
 
 
@@ -6269,7 +6279,9 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                        waOrderArrivedPickup = 1;
+                        if (data.data.phone_number != null){
+                            waOrderArrivedPickup = 1;
+                        }
                     }
                 }
 
@@ -6348,7 +6360,9 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                        waOrderArrivedDeliver = 1;
+                        if (data.data.phone_number != null){
+                            waOrderArrivedDeliver = 1;
+                        }
                     }
                 }
 
@@ -6435,7 +6449,9 @@ app.post('/updateDelivery', async (req, res) => {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                         } else {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
-                            waOrderOfdToday = 1;
+                            if (data.data.phone_number != null){
+                                waOrderOfdToday = 1;
+                            }
                         }
                     }
 
@@ -6556,7 +6572,9 @@ app.post('/updateDelivery', async (req, res) => {
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             } else {
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                                waOrderFailedDelivery = 1;
+                                if (data.data.phone_number != null){
+                                    waOrderFailedDelivery = 1;
+                                }
                             }
                         } else {
                             update = {
@@ -6670,7 +6688,9 @@ app.post('/updateDelivery', async (req, res) => {
                             portalUpdate = "Portal status updated to Completed. ";
                         } else {
                             portalUpdate = "Portal status updated to Completed. Customer notified. ";
-                            waOrderCompletedFeedback = 1;
+                            if (data.data.phone_number != null){
+                                waOrderCompletedFeedback = 1;
+                            }
                         }
                     }
                 }
@@ -6716,7 +6736,9 @@ app.post('/updateDelivery', async (req, res) => {
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                         } else {
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                            waOrderFailedDelivery = 1;
+                            if (data.data.phone_number != null){
+                                waOrderFailedDelivery = 1;
+                            }
                         }
                     } else {
                         update = {
@@ -6830,7 +6852,9 @@ app.post('/updateDelivery', async (req, res) => {
                         portalUpdate = "Portal status updated to Completed. ";
                     } else {
                         portalUpdate = "Portal status updated to Completed. Customer notified. ";
-                        waOrderCompletedFeedback = 1;
+                        if (data.data.phone_number != null){
+                            waOrderCompletedFeedback = 1;
+                        }
                     }
                 }
 
@@ -6947,7 +6971,7 @@ app.post('/updateDelivery', async (req, res) => {
                 }
             }
 
-            if (req.body.statusCode == 'FA') {
+            /* if (req.body.statusCode == 'FA') {
                 update = {
                     currentStatus: "Return to Warehouse",
                     lastUpdateDateTime: moment().format(),
@@ -6980,7 +7004,7 @@ app.post('/updateDelivery', async (req, res) => {
                     }
                 };
 
-                /* if (data.data.payment_mode == null) {
+                if (data.data.payment_mode == null) {
                     if ((data.data.total_price == null) || (data.data.total_price == 0)) {
                         if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
                             var detrackUpdateData = {
@@ -7153,7 +7177,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
                     }
-                } */
+                }
 
                 DetrackAPIrun = 1;
                 mongoDBrun = 2;
@@ -7162,7 +7186,7 @@ app.post('/updateDelivery', async (req, res) => {
                 appliedStatus = "Attempt and Payment Method Fix"
 
                 completeRun = 1;
-            }
+            } */
 
             if (completeRun == 0) {
                 ceCheck = 1;
@@ -8250,7 +8274,11 @@ orderWatch.on('change', change => {
                     let tracker
                     let sequence
                     let sequenceToAdd = 0;
-                    let phoneNumber = "+" + result[0].receiverPhoneNumber.trim();
+
+                    if (result[0].receiverPhoneNumber != null){
+                        var phoneNumber = "+" + result[0].receiverPhoneNumber.trim();
+                    }
+
                     let whatsappName = result[0].receiverName;
 
                     let checkProduct = 0;
