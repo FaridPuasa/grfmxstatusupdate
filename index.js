@@ -2651,6 +2651,14 @@ app.post('/updateDelivery', async (req, res) => {
                 currentProduct = 'pharmacyphc'
             }
 
+            if (product == 'LDJB') {
+                currentProduct = 'localdeliveryjb'
+            }
+
+            if (product == 'ICARUS') {
+                currentProduct = 'icarus'
+            }
+
             if (product == 'FMX') {
                 /* if (req.body.statusCode == 'FA') {
                     update = {
