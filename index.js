@@ -2546,7 +2546,7 @@ app.post('/updateDelivery', async (req, res) => {
                     warehouseEntryCheck = 1;
                 }
 
-                if ((data.data.milestones[i].status == "out_for_delivery")||(data.data.milestones[i].status == "dispatched")) {
+                if ((data.data.milestones[i].status == "out_for_delivery") || (data.data.milestones[i].status == "dispatched")) {
                     wmsAttempt = wmsAttempt + 1;
                 }
             }
@@ -3271,7 +3271,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                     completeRun = 1;
 
-                    if (data.data.phone_number != null){
+                    if (data.data.phone_number != null) {
                         waOrderArrivedDeliverFMX = 1;
                     }
                 }
@@ -3461,7 +3461,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 1;
                     completeRun = 1;
 
-                    if (data.data.phone_number != null){
+                    if (data.data.phone_number != null) {
                         waOrderOfdTodayFMX = 1;
                     }
                 }
@@ -3737,7 +3737,7 @@ app.post('/updateDelivery', async (req, res) => {
                             fmxMilestoneCode = "MD"
                             appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
 
-                            if (data.data.phone_number != null){
+                            if (data.data.phone_number != null) {
                                 waOrderFailedDelivery = 1;
                             }
                         }
@@ -4710,7 +4710,7 @@ app.post('/updateDelivery', async (req, res) => {
                         FMXAPIrun = 5;
                         completeRun = 1;
 
-                        if (data.data.phone_number != null){
+                        if (data.data.phone_number != null) {
                             waOrderCompletedFeedback = 1;
                         }
                     }
@@ -5789,7 +5789,7 @@ app.post('/updateDelivery', async (req, res) => {
                     FMXAPIrun = 5;
                     completeRun = 1;
 
-                    if (data.data.phone_number != null){
+                    if (data.data.phone_number != null) {
                         waOrderCompletedFeedback = 1;
                     }
                 }
@@ -6233,7 +6233,7 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if ((product == "BB") || (product == "FCAS")) {
+                    if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
@@ -6275,11 +6275,11 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if ((product == "BB") || (product == "FCAS")) {
+                    if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                        if (data.data.phone_number != null){
+                        if (data.data.phone_number != null) {
                             waOrderArrivedPickup = 1;
                         }
                     }
@@ -6356,11 +6356,11 @@ app.post('/updateDelivery', async (req, res) => {
                     DetrackAPIrun = 1;
                     completeRun = 1;
 
-                    if ((product == "BB") || (product == "FCAS")) {
+                    if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                        if (data.data.phone_number != null){
+                        if (data.data.phone_number != null) {
                             waOrderArrivedDeliver = 1;
                         }
                     }
@@ -6449,7 +6449,7 @@ app.post('/updateDelivery', async (req, res) => {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                         } else {
                             portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". Customer notified. ";
-                            if (data.data.phone_number != null){
+                            if (data.data.phone_number != null) {
                                 waOrderOfdToday = 1;
                             }
                         }
@@ -6572,7 +6572,7 @@ app.post('/updateDelivery', async (req, res) => {
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             } else {
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                                if (data.data.phone_number != null){
+                                if (data.data.phone_number != null) {
                                     waOrderFailedDelivery = 1;
                                 }
                             }
@@ -6684,11 +6684,11 @@ app.post('/updateDelivery', async (req, res) => {
                         appliedStatus = "Failed/Completed"
                         completeRun = 1;
 
-                        if ((product == "BB") || (product == "FCAS")) {
+                        if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
                             portalUpdate = "Portal status updated to Completed. ";
                         } else {
                             portalUpdate = "Portal status updated to Completed. Customer notified. ";
-                            if (data.data.phone_number != null){
+                            if (data.data.phone_number != null) {
                                 waOrderCompletedFeedback = 1;
                             }
                         }
@@ -6736,7 +6736,7 @@ app.post('/updateDelivery', async (req, res) => {
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                         } else {
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
-                            if (data.data.phone_number != null){
+                            if (data.data.phone_number != null) {
                                 waOrderFailedDelivery = 1;
                             }
                         }
@@ -6848,11 +6848,11 @@ app.post('/updateDelivery', async (req, res) => {
                     appliedStatus = "Completed"
                     completeRun = 1;
 
-                    if ((product == "BB") || (product == "FCAS")) {
+                    if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
                         portalUpdate = "Portal status updated to Completed. ";
                     } else {
                         portalUpdate = "Portal status updated to Completed. Customer notified. ";
-                        if (data.data.phone_number != null){
+                        if (data.data.phone_number != null) {
                             waOrderCompletedFeedback = 1;
                         }
                     }
@@ -8275,7 +8275,7 @@ orderWatch.on('change', change => {
                     let sequence
                     let sequenceToAdd = 0;
 
-                    if (result[0].receiverPhoneNumber != null){
+                    if (result[0].receiverPhoneNumber != null) {
                         var phoneNumber = "+" + result[0].receiverPhoneNumber.trim();
                     }
 
@@ -8540,7 +8540,7 @@ orderWatch.on('change', change => {
                                 return;
                             }
 
-                            if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
+                            if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus")) {
                                 foundOrder.doTrackingNumber = tracker;
                                 foundOrder.sequence = sequence;
                             }
@@ -8549,7 +8549,7 @@ orderWatch.on('change', change => {
                         })
                         .then((updatedOrder) => {
                             if (updatedOrder) {
-                                if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas")) {
+                                if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus")) {
                                     let a = whatsappName;
                                     let b = tracker;
 
