@@ -798,6 +798,53 @@ app.get('/listofLDJBOrders', async (req, res) => {
     }
 });
 
+app.get('/listofICARUSOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "localdelivery"
+        const orders = await ORDERS.find({ product: "icarus" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'senderName',
+                'senderPhoneNumber',
+                'receiverName',
+                'receiverPhoneNumber',
+                'receiverAddress',
+                'area',
+                'deliveryType',
+                'ldPickupOrDelivery',
+                'items',
+                'ldProductType',
+                'ldProductWeight',
+                'pickupAddress',
+                'pickupDate',
+                'remarks',
+                'paymentMethod',
+                'paymentAmount',
+                'billTo',
+                'dateTimeSubmission',
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofICARUSOrders', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofFCASOrders', async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
