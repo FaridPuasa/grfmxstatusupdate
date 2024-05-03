@@ -2640,6 +2640,70 @@ app.post('/updateDelivery', async (req, res) => {
                 currentDetrackStatus = "Missing Parcel"
             }
 
+            if (req.body.statusCode == 'FA') {
+                appliedStatus = "Attempt and Payment Method Fix"
+            }
+
+            if (req.body.statusCode == 'IR') {
+                appliedStatus = "Info Received"
+            }
+
+            if (req.body.statusCode == 'CP') {
+                appliedStatus = "Custom Clearance in Progress"
+            }
+
+            if (req.body.statusCode == 'DC') {
+                appliedStatus = "Detained by Customs"
+            }
+
+            if (req.body.statusCode == '38') {
+                appliedStatus = "Custom Clearance Release"
+            }
+
+            if (req.body.statusCode == '12') {
+                appliedStatus = "Item in Warehouse"
+            }
+
+            if (req.body.statusCode == '35') {
+                appliedStatus = "Out for Delivery"
+            }
+
+            if (req.body.statusCode == 'SD') {
+                appliedStatus = "Swap Dispatchers"
+            }
+
+            if (req.body.statusCode == 'NC') {
+                appliedStatus = "Order Delivery Confirmation"
+            }
+
+            if (req.body.statusCode == 'CSSC') {
+                appliedStatus = "Self Collect"
+            }
+
+            if (req.body.statusCode == 'SJ') {
+                appliedStatus = "Completed"
+            }
+
+            if (req.body.statusCode == 'FJ') {
+                appliedStatus = "Failed Delivery"
+            }
+
+            if (req.body.statusCode == 'CD') {
+                appliedStatus = "Cancelled"
+            }
+
+            if (req.body.statusCode == 'AJ') {
+                appliedStatus = "Return to Warehouse from Cancelled"
+            }
+
+            if (req.body.statusCode == '47') {
+                appliedStatus = "Dispose Parcel"
+            }
+
+            if (req.body.statusCode == 'SFJ') {
+                appliedStatus = "Completed/Failed Delivery"
+            }
+
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
                 || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA')) {
                 filter = { doTrackingNumber: consignmentID };
