@@ -6467,8 +6467,12 @@ app.post('/updateDelivery', async (req, res) => {
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                         if (data.data.phone_number != null) {
-                            if ((data.data.job_type.includes("Standard"))||(data.data.job_type.includes("Drop off"))){
+                            if (data.data.job_type.includes("Standard")){
                                 waOrderArrivedDeliverStandard = 1;
+                            }
+
+                            if (data.data.job_type.includes("Drop off")){
+                                waOrderArrivedDeliverExpressNonMedicine = 1;
                             }
 
                             if (data.data.job_type.includes("Express")){
