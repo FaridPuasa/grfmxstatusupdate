@@ -173,10 +173,11 @@
                                     <a class="dropdown-item" href="/listofldPod">POD LD</a>
                                     <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
                                     <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                        (Limbang)</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -191,7 +192,7 @@
                                     <a class="dropdown-item" href="/listofOrdersCD">Cancelled/Disposed</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -206,7 +207,7 @@
                                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form List</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -221,7 +222,7 @@
                                     <a class="dropdown-item" href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -267,75 +268,98 @@
             </thead>
             <tbody>
                 <% let prefix='' ; %>
-                    <% let startCounter=1; %>
-
-                        <% if (batchChoice==='2' && b2Start) { %>
-                            <% startCounter=parseInt(b2Start); %>
+                    <% if ((mohForm==='STD' )||(mohForm==='EXP' )||(mohForm==='IMM' )) { %>
+                        <% if (batchChoice==='1' ) { %>
+                            <% var startCounter=1; %>
                                 <% } %>
+                                    <% if (batchChoice==='2' ) { %>
+                                        <% var startCounter=parseInt(b2Start); %>
+                                            <% } %>
+                                                <% } %>
 
-                                    <% if (mohForm==='STD' ) { %>
-                                        <% prefix='S' ; %>
-                                            <% } else if (mohForm==='EXP' ) { %>
-                                                <% prefix='E' ; %>
-                                                    <% } else if (mohForm==='IMM' ) { %>
-                                                        <% prefix='IMM' ; %>
-                                                            <% } else if (mohForm==='TTG' ) { %>
-                                                                <% prefix='T' ; %>
-                                                                    <% } else if (mohForm==='KB' ) { %>
-                                                                        <% prefix='K' ; %>
-                                                                            <% } %>
+                                                    <% if ((mohForm==='TTG' )||(mohForm==='KB' )) { %>
+                                                        <% var startCounter=parseInt(b2Start); %>
+                                                            <% } %>
 
-                                                                                <% orders.forEach(function(order) { %>
-                                                                                    <tr>
-                                                                                        <td>
-                                                                                            <%= dateOfForm %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= prefix +
-                                                                                                (startCounter++) %>
-                                                                                        </td>
-                                                                                        <td contenteditable="true">
-                                                                                        </td>
-                                                                                        <td id="trackingNumber" class="selectable-content">
-                                                                                            <%= order.doTrackingNumber
-                                                                                                %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.receiverName %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.receiverAddress %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.area %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.patientNumber %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.icPassNum %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.appointmentPlace
-                                                                                                %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.receiverPhoneNumber
-                                                                                                %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.additionalPhoneNumber
-                                                                                                %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.deliveryTypeCode
-                                                                                                %>
-                                                                                        </td>
-                                                                                        <td>
-                                                                                            <%= order.remarks %>
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                    <% }); %>
+                                                                <% if (mohForm==='STD' ) { %>
+                                                                    <% prefix='S' ; %>
+                                                                        <% } else if (mohForm==='EXP' ) { %>
+                                                                            <% prefix='E' ; %>
+                                                                                <% } else if (mohForm==='IMM' ) { %>
+                                                                                    <% prefix='IMM' ; %>
+                                                                                        <% } else if (mohForm==='TTG' )
+                                                                                            { %>
+                                                                                            <% prefix='T' ; %>
+                                                                                                <% } else if
+                                                                                                    (mohForm==='KB' ) {
+                                                                                                    %>
+                                                                                                    <% prefix='K' ; %>
+                                                                                                        <% } %>
+
+                                                                                                            <% orders.forEach(function(order)
+                                                                                                                { %>
+                                                                                                                <tr>
+                                                                                                                    <td>
+                                                                                                                        <%= dateOfForm
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= prefix
+                                                                                                                            +
+                                                                                                                            (startCounter++)
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td
+                                                                                                                        contenteditable="true">
+                                                                                                                    </td>
+                                                                                                                    <td id="trackingNumber"
+                                                                                                                        class="selectable-content">
+                                                                                                                        <%= order.doTrackingNumber
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.receiverName
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.receiverAddress
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.area
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.patientNumber
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.icPassNum
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.appointmentPlace
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.receiverPhoneNumber
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.additionalPhoneNumber
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.deliveryTypeCode
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                    <td>
+                                                                                                                        <%= order.remarks
+                                                                                                                            %>
+                                                                                                                    </td>
+                                                                                                                </tr>
+                                                                                                                <% });
+                                                                                                                    %>
             </tbody>
         </table>
 

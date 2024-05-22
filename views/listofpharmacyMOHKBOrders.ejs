@@ -177,20 +177,19 @@
                             <input type="date" class="form-control" id="dateOfForm" name="dateOfForm" required>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3" style="display: none;">
                         <div class="form-group">
                             <label for="batchChoice">Batch 1 or 2:</label>
                             <select class="form-control" id="batchChoice" name="batchChoice" required>
                                 <option value="1">1</option>
-                                <option value="2">2</option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-3" id="b2StartField" style="display: none;">
+                    <div class="col-md-3" id="b2StartField">
                         <div class="form-group">
-                            <label for="b2Start">B2 Start:</label>
+                            <label for="b2Start">Next Pharmacy Form Number for KB:</label>
                             <input type="number" class="form-control" id="b2Start" name="b2Start"
-                                placeholder="Enter B2 Start">
+                                placeholder="Enter Next Form Number">
                         </div>
                     </div>
                     <div class="col-md-2">
@@ -342,19 +341,6 @@
             });
         });
     </script>
-
-    <script>
-        $(document).ready(function () {
-            $('#batchChoice').change(function () {
-                if ($(this).val() === '2') {
-                    $('#b2StartField').show();
-                } else {
-                    $('#b2StartField').hide();
-                }
-            });
-        });
-    </script>
-
 </body>
 
 </html>
