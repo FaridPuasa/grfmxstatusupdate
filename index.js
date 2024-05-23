@@ -6457,11 +6457,6 @@ app.post('/updateDelivery', async (req, res) => {
                         }
                     };
 
-                    appliedStatus = "Item in Warehouse"
-
-                    DetrackAPIrun = 1;
-                    completeRun = 1;
-
                     if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     } else {
@@ -6476,7 +6471,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
 
                             if (data.data.job_type.includes("Express")){
-                                if (data.data.product.includes("pharmacy")){
+                                if (product.includes("pharmacy")){
                                     waOrderArrivedDeliverExpressMedicine = 1;
                                 } else {
                                     waOrderArrivedDeliverExpressNonMedicine = 1;
@@ -6488,6 +6483,11 @@ app.post('/updateDelivery', async (req, res) => {
                             }
                         }
                     }
+
+                    appliedStatus = "Item in Warehouse"
+
+                    DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
