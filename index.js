@@ -6471,7 +6471,7 @@ app.post('/updateDelivery', async (req, res) => {
                             }
 
                             if (data.data.job_type.includes("Express")){
-                                if (product.includes("pharmacy")){
+                                if (currentProduct.includes("pharmacy")){
                                     waOrderArrivedDeliverExpressMedicine = 1;
                                 } else {
                                     waOrderArrivedDeliverExpressNonMedicine = 1;
