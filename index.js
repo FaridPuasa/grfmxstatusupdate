@@ -8550,7 +8550,7 @@ orderWatch.on('change', change => {
                                 return;
                             }
 
-                            if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus")) {
+                            if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")) {
                                 foundOrder.doTrackingNumber = tracker;
                                 foundOrder.sequence = sequence;
                             }
@@ -8559,7 +8559,7 @@ orderWatch.on('change', change => {
                         })
                         .then((updatedOrder) => {
                             if (updatedOrder) {
-                                if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus")) {
+                                if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")) {
                                     let a = whatsappName;
                                     let b = tracker;
 
