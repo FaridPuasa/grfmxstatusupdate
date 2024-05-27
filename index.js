@@ -2769,6 +2769,10 @@ app.post('/updateDelivery', async (req, res) => {
                 currentProduct = 'icarus'
             }
 
+            if (product == 'EWE') {
+                currentProduct = 'ewe'
+            }
+
             if (product == 'FMX') {
                 /* if (req.body.statusCode == 'FA') {
                     update = {
