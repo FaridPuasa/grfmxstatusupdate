@@ -37,6 +37,7 @@ const PharmacyPOD = require('./models/PharmacyPOD');
 const LDPOD = require('./models/LDPOD');
 const GRPPOD = require('./models/GRPPOD');
 const FMXPOD = require('./models/FMXPOD');
+const EWEPOD = require('./models/EWEPOD');
 const CBSLPOD = require('./models/CBSLPOD');
 const ORDERS = require('./models/ORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
@@ -1317,6 +1318,295 @@ app.get('/listofFMXOrdersCD', async (req, res) => {
     }
 });
 
+app.get('/listofEWEOrders', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "ewe"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate'
+            ])
+            .sort({ _id: -1 })
+            .limit(500);
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrders', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWEOrdersCompleted', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "ewe",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersCompleted', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWEOrdersOFD', async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "ewe",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersOFD', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWEOrdersAW', async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "ewe",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersAW', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWEOrdersIRCC', async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "ewe",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersIRCC', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWEOrdersCD', async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "ewe",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersCD', { orders, moment: moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofpharmacyMOHForms', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -1524,6 +1814,32 @@ app.get('/listoffmxPod', async (req, res) => {
     }
 });
 
+app.get('/listofewePod', async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await EWEPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofewePod', { pods });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch EWE POD data');
+    }
+});
+
 app.get('/listofcbslPod', async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -1615,6 +1931,24 @@ app.get('/podfmxDetail/:podId', async (req, res) => {
 
         // Render the podDetail.ejs template with the HTML content
         res.render('podfmxDetail', { htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podeweDetail/:podId', async (req, res) => {
+    try {
+        const pod = await EWEPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podeweDetail', { htmlContent: pod.htmlContent });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1784,6 +2118,26 @@ app.get('/editFmxPod/:id', (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editEwePod/:id', (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    EWEPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editEwePod.ejs', { pod });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
 app.get('/editCbslPod/:id', (req, res) => {
     const podId = req.params.id;
 
@@ -1810,6 +2164,27 @@ app.post('/updateFmxPod/:id', (req, res) => {
 
     // Find the specific POD by ID
     FMXPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateEwePod/:id', (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    EWEPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
         .then((pod) => {
             if (!pod) {
                 return res.status(404).send('POD not found');
@@ -1917,6 +2292,24 @@ app.get('/deleteFMXPod/:podId', async (req, res) => {
     }
 });
 
+app.get('/deleteEWEPod/:podId', async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await EWEPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofewePod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('EWE POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete EWE POD');
+    }
+});
+
 app.get('/deleteCBSLPod/:podId', async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -2008,6 +2401,9 @@ app.post('/save-pod', (req, res) => {
             break;
         case 'FMX POD':
             PodModel = FMXPOD;
+            break;
+        case 'EWE POD':
+            PodModel = EWEPOD;
             break;
         case 'CBSL POD':
             PodModel = CBSLPOD;
@@ -6466,23 +6862,23 @@ app.post('/updateDelivery', async (req, res) => {
                     } else {
                         portalUpdate = "Portal and Detrack status updated to At Warehouse. Customer notified. ";
                         if (data.data.phone_number != null) {
-                            if (data.data.job_type.includes("Standard")){
+                            if (data.data.job_type.includes("Standard")) {
                                 waOrderArrivedDeliverStandard = 1;
                             }
 
-                            if (data.data.job_type.includes("Drop off")){
+                            if (data.data.job_type.includes("Drop off")) {
                                 waOrderArrivedDeliverExpressNonMedicine = 1;
                             }
 
-                            if (data.data.job_type.includes("Express")){
-                                if (currentProduct.includes("pharmacy")){
+                            if (data.data.job_type.includes("Express")) {
+                                if (currentProduct.includes("pharmacy")) {
                                     waOrderArrivedDeliverExpressMedicine = 1;
                                 } else {
                                     waOrderArrivedDeliverExpressNonMedicine = 1;
                                 }
                             }
 
-                            if (data.data.job_type.includes("Immediate")){
+                            if (data.data.job_type.includes("Immediate")) {
                                 waOrderArrivedDeliverImmediate = 1
                             }
                         }

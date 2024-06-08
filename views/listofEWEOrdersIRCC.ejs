@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Out for Delivery Orders</title>
+    <title>New EWE Orders</title>
     <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
     <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
@@ -172,17 +172,19 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>Out for Delivery Orders</h1>
+        <h1>New EWE Orders</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Tracking No.</th>
-                        <th class="header">Product</th>
-                        <th class="header">Customer Name</th>
-                        <th class="header">Customer Address</th>
-                        <th class="header">Customer Contact No.</th>
+                        <th class="header">Consignment No.</th>
+                        <th class="header">Consignee Name</th>
+                        <th class="header">Consignee Address</th>
+                        <th class="header">Consignee Contact No.</th>
+                        <th class="header">Shipper Name</th>
                         <th class="header">Item Description</th>
+                        <th class="header">Flight Date</th>
+                        <th class="header">MAWB No.</th>
                         <th class="header">Area</th>
                         <th class="header">Job Type</th>
                         <th class="header">Job Created</th>
@@ -207,9 +209,6 @@
                                 <%= order.doTrackingNumber %>
                             </td>
                             <td>
-                                <%= order.product %>
-                            </td>
-                            <td>
                                 <%= order.receiverName %>
                             </td>
                             <td>
@@ -219,7 +218,16 @@
                                 <%= order.receiverPhoneNumber %>
                             </td>
                             <td>
+                                <%= order.senderName %>
+                            </td>
+                            <td>
                                 <%= order.items[0].description %>
+                            </td>
+                            <td>
+                                <%= order.flightDate %>
+                            </td>
+                            <td>
+                                <%= order.mawbNo %>
                             </td>
                             <td>
                                 <%= order.area %>
@@ -228,7 +236,7 @@
                                 <%= order.deliveryType %>
                             </td>
                             <td>
-                                <%= order.creationDate %>
+                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
                             </td>
                             <td>
                                 <%= order.jobDate %>
@@ -237,7 +245,7 @@
                                 <%= order.paymentMethod %>
                             </td>
                             <td>
-                                <%= order.paymentAmount %>
+                                <%= order.totalPrice %>
                             </td>
                             <td>
                                 <%= order.remarks %>
