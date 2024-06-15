@@ -175,10 +175,11 @@
                                     <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
                                     <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
                                     <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                        (Limbang)</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -193,7 +194,7 @@
                                     <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -208,7 +209,7 @@
                                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form List</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -223,7 +224,7 @@
                                     <a class="dropdown-item" href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -238,7 +239,7 @@
                                     <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
                                 </div>
                             </li>
-        
+
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -465,6 +466,8 @@
                         collectionName = 'GRP POD';
                     } else if (product === 'FMX Delivery') {
                         collectionName = 'FMX POD';
+                    } else if (product === 'EWE Delivery') {
+                        collectionName = 'EWE POD';
                     } else if (product === 'CBSL Delivery') {
                         collectionName = 'CBSL POD';
                     }
