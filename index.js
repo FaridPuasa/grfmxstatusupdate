@@ -58,8 +58,35 @@ const password = process.env.PASSWORD;
 // Create an array to store processing results
 const processingResults = [];
 
+app.get('/', async (req, res) => {
+    try {
+        // Fetch EWE Orders
+        const eweOrders = await ORDERS.aggregate([
+            { $match: { product: 'ewe' } },
+            {
+                $group: {
+                    _id: '$mawbNo',
+                    mawbNo: { $first: '$mawbNo' },
+                    flightDate: { $first: '$flightDate' },
+                    total: { $sum: 1 },
+                    atWarehouse: { $sum: { $cond: [{ $eq: ['$currentStatus', 'At Warehouse'] }, 1, 0] } },
+                    outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
+                    completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
+                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
+                }
+            },
+            { $sort: { flightDate: -1 } } // Sort by flightDate in ascending order
+        ]);
+        // Render the dashboard view with the fetched orders
+        res.render('dashboard', { eweOrders, moment });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 // Render the scanFMX page
-app.get('/', (req, res) => {
+app.get('/updateDelivery', (req, res) => {
     processingResults.length = 0;
     res.render('updateDelivery');
 });
@@ -1501,56 +1528,6 @@ app.get('/listofEWEOrdersAW', async (req, res) => {
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofEWEOrdersAW', { orders, moment: moment });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.get('/listofEWEOrdersIRCC', async (req, res) => {
-    try {
-        // Define an array containing the desired currentStatus values
-        const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
-
-        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
-        const orders = await ORDERS.find({
-            product: "ewe",
-            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
-        })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'receiverPhoneNumber',
-                'area',
-                'remarks',
-                'paymentMethod',
-                'items',
-                'senderName',
-                'totalPrice',
-                'deliveryType',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'flightDate',
-                'mawbNo',
-                'fmxMilestoneStatus',
-                'fmxMilestoneStatusCode',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'creationDate',
-                'instructions'
-            ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersIRCC', { orders, moment: moment });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
