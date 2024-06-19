@@ -69,7 +69,7 @@ app.get('/', async (req, res) => {
                     mawbNo: { $first: '$mawbNo' },
                     flightDate: { $first: '$flightDate' },
                     total: { $sum: 1 },
-                    atWarehouse: { $sum: { $cond: [{ $eq: ['$currentStatus', 'At Warehouse'] }, 1, 0] } },
+                    atWarehouse: { $sum: { $cond: [{ $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }, 1, 0] } },
                     outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
                     completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
                     cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
