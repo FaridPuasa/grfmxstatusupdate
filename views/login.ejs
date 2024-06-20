@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <style>
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        .navbar {
+            background-color: transparent;
+        }
+
+        .container-bg {
+            background-color: #333;
+        }
+
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        .btn-submit {
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            font-size: 15px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .card {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <div class="container-bg">
+        <div class="container">
+            <nav class="navbar navbar-expand-lg navbar-dark">
+                <a class="navbar-brand mr-auto" href="/">
+                    <h2>Go Rush</h2>
+                </a>
+                <ul class="navbar-nav flex-row">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <h1>Login</h1>
+        <!-- Login form -->
+        <% if (typeof errors !=='undefined' ) { %>
+            <ul>
+                <% errors.forEach(function(error) { %>
+                    <li>
+                        <%= error.msg %>
+                    </li>
+                    <% }); %>
+            </ul>
+            <% } %>
+                <form action="/login" method="post">
+                    <div>
+                        <label for="email">Email:</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div>
+                        <label for="password">Password:</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

@@ -6,6 +6,11 @@ const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const moment = require('moment');
+const session = require('express-session');
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const bcrypt = require('bcryptjs');
+const flash = require('connect-flash');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -29,10 +34,128 @@ mongoose.connect(db, {
     .then(console.log('Database Connected'))
     .catch(err => console.log(err))
 
+// Session management
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
+}));
+
+app.use((req, res, next) => {
+    console.log(req.session); // Log the session object
+    next();
+});
+
+// Initialize passport
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
+
+// Passport configuration
+passport.use(new LocalStrategy({ usernameField: 'email' }, (email, password, done) => {
+    USERS.findOne({ email: email })
+        .then(user => {
+            if (!user) {
+                return done(null, false, { message: 'No user found with that email' });
+            }
+
+            bcrypt.compare(password, user.password, (err, isMatch) => {
+                if (err) throw err;
+                if (isMatch) {
+                    return done(null, user);
+                } else {
+                    return done(null, false, { message: 'Password incorrect' });
+                }
+            });
+        })
+        .catch(err => done(err));
+}));
+
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await USERS.findById(id);
+        done(null, user);
+    } catch (err) {
+        done(err, null);
+    }
+});
+
+// Middleware to check authentication and authorization
+function ensureAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    req.flash('error_msg', 'Please log in to view that resource');
+    res.redirect('/login');
+}
+
+// Middleware to check if user is authenticated
+function ensureNotAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        // If user is authenticated, redirect to dashboard or another page
+        return res.redirect('/'); // Change '/dashboard' to the appropriate URL
+    }
+    // If user is not authenticated, continue to the next middleware
+    next();
+}
+
+function ensureAdmin(req, res, next) {
+    if (req.isAuthenticated() && req.user.role === 'admin') {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+function ensureGeneratePODandUpdateDelivery(req, res, next) {
+    if (req.isAuthenticated() && (req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+function ensureViewPOD(req, res, next) {
+    if (req.isAuthenticated() && (req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+function ensureViewJob(req, res, next) {
+    if (req.isAuthenticated() && (req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'manager' || req.user.role === 'admin')) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+function ensureViewMOHJob(req, res, next) {
+    if (req.isAuthenticated() && (req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'moh' || req.user.role === 'manager' || req.user.role === 'admin')) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+function ensureMOHForm(req, res, next) {
+    if (req.isAuthenticated() && (req.user.role === 'cs' || req.user.role === 'manager' || req.user.role === 'admin')) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
 // Import the shared schema
 const podSchema = require('./schemas/podSchema');
 
 // Import your models
+const USERS = require('./models/USERS');
 const PharmacyPOD = require('./models/PharmacyPOD');
 const LDPOD = require('./models/LDPOD');
 const GRPPOD = require('./models/GRPPOD');
@@ -58,7 +181,7 @@ const password = process.env.PASSWORD;
 // Create an array to store processing results
 const processingResults = [];
 
-app.get('/', async (req, res) => {
+app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         // Fetch EWE Orders
         const eweOrders = await ORDERS.aggregate([
@@ -75,40 +198,222 @@ app.get('/', async (req, res) => {
                     cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
                 }
             },
-            { $sort: { flightDate: -1 } } // Sort by flightDate in ascending order
+            { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
         ]);
-        // Render the dashboard view with the fetched orders
-        res.render('dashboard', { eweOrders, moment });
+
+        // Fetch FMX Orders
+        const fmxOrders = await ORDERS.aggregate([
+            { $match: { product: 'fmx' } },
+            {
+                $group: {
+                    _id: '$mawbNo',
+                    mawbNo: { $first: '$mawbNo' },
+                    flightDate: { $first: '$flightDate' },
+                    total: { $sum: 1 },
+                    atWarehouse: { $sum: { $cond: [{ $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }, 1, 0] } },
+                    outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
+                    completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
+                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
+                }
+            },
+            { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
+        ]);
+
+// Fetch MOH Orders
+const mohOrders = await ORDERS.aggregate([
+    {
+        $match: { product: 'pharmacymoh' }
+    },
+    {
+        $group: {
+            _id: {
+                deliveryTypeCode: '$deliveryTypeCode',
+                sendOrderTo: '$sendOrderTo'
+            },
+            total: { $sum: 1 },
+            atWarehouse: {
+                $sum: {
+                    $cond: [
+                        { $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] },
+                        1,
+                        0
+                    ]
+                }
+            },
+            outForDelivery: {
+                $sum: {
+                    $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0]
+                }
+            },
+            completed: {
+                $sum: {
+                    $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0]
+                }
+            },
+            cancelled: {
+                $sum: {
+                    $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0]
+                }
+            }
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            deliveryType: {
+                $switch: {
+                    branches: [
+                        {
+                            case: { $eq: ['$_id.deliveryTypeCode', 'IMM'] },
+                            then: 'IMM OPD'
+                        },
+                        {
+                            case: { $eq: ['$_id.deliveryTypeCode', 'EXP'] },
+                            then: 'EXP OPD'
+                        },
+                        {
+                            case: { 
+                                $eq: ['$_id.deliveryTypeCode', 'STD'], 
+                                $eq: ['$_id.sendOrderTo', 'PMMH'] 
+                            },
+                            then: 'STD PMMH'
+                        },
+                        {
+                            case: { 
+                                $eq: ['$_id.deliveryTypeCode', 'STD'], 
+                                $eq: ['$_id.sendOrderTo', 'SSBH'] 
+                            },
+                            then: 'STD SSBH'
+                        }
+                    ],
+                    default: 'STD OPD'
+                }
+            },
+            total: 1,
+            atWarehouse: 1,
+            outForDelivery: 1,
+            completed: 1,
+            cancelled: 1
+        }
+    },
+    {
+        $sort: { "deliveryType": 1 } // Sort by delivery type
+    }
+]);
+
+        // Render the dashboard view with both sets of orders
+        res.render('dashboard', { mohOrders, eweOrders, fmxOrders, moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
+// Render login page
+app.get('/login', ensureNotAuthenticated, (req, res) => {
+    res.render('login', { errors: [], user: null }); // Pass an empty user object or null
+});
+
+app.post('/login', ensureNotAuthenticated, (req, res, next) => {
+    passport.authenticate('local', {
+        successRedirect: '/',
+        failureRedirect: '/login',
+        failureFlash: true
+    })(req, res, next);
+});
+
+// Logout route
+app.get('/logout', ensureAuthenticated, (req, res) => {
+    req.logout((err) => { // Logout the user
+        if (err) {
+            console.error('Error logging out:', err);
+            res.status(500).send('Internal Server Error');
+        } else {
+            req.session.destroy((err) => { // Destroy the session
+                if (err) {
+                    console.error('Error destroying session:', err);
+                    res.status(500).send('Internal Server Error');
+                } else {
+                    res.redirect('/login'); // Redirect to login page after logout
+                }
+            });
+        }
+    });
+});
+
+// Restricting routes to "admin" role
+app.get('/createUser', ensureAuthenticated, ensureAdmin, (req, res) => {
+    res.render('createUser', { user: req.user });
+});
+
+app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    const { name, email, password, role } = req.body;
+    let errors = [];
+
+    if (!name || !email || !password || !role) {
+        errors.push({ msg: 'Please enter all fields' });
+    }
+
+    if (password.length < 6) {
+        errors.push({ msg: 'Password must be at least 6 characters' });
+    }
+
+    if (errors.length > 0) {
+        res.render('createUser', { errors, name, email, password, role });
+    } else {
+        try {
+            let user = await USERS.findOne({ email: email });
+
+            if (user) {
+                errors.push({ msg: 'Email already exists' });
+                res.render('createUser', { errors, name, email, password, role });
+            } else {
+                const newUser = new USERS({ name, email, password, role });
+
+                bcrypt.genSalt(10, (err, salt) => {
+                    bcrypt.hash(newUser.password, salt, (err, hash) => {
+                        if (err) throw err;
+                        newUser.password = hash;
+                        newUser.save()
+                            .then(user => {
+                                req.flash('success_msg', 'You have now registered!');
+                                res.redirect('/');
+                            })
+                            .catch(err => console.log(err));
+                    });
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            res.status(500).send('Server error');
+        }
+    }
+});
+
 // Render the scanFMX page
-app.get('/updateDelivery', (req, res) => {
+app.get('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     processingResults.length = 0;
-    res.render('updateDelivery');
+    res.render('updateDelivery', { user: req.user });
 });
 
-app.get('/podGenerator', (req, res) => {
+app.get('/podGenerator', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     // Render the form page with EJS
-    res.render('podGenerator');
+    res.render('podGenerator', { user: req.user });
 });
 
-app.get('/addressAreaCheck', (req, res) => {
-    res.render('addressAreaCheck');
+app.get('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    res.render('addressAreaCheck', { user: req.user });
 });
 
-app.get('/successUpdate', (req, res) => {
-    res.render('successUpdate', { processingResults });
+app.get('/successUpdate', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    res.render('successUpdate', { processingResults, user: req.user });
 });
 
-app.get('/listofOrders', async (req, res) => {
+app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $ne: "fmx" }, // Product not equal to "fmx"
+            product: { $nin: ["fmx", "ewe"] },
         })
             .select([
                 '_id',
@@ -140,18 +445,18 @@ app.get('/listofOrders', async (req, res) => {
             .limit(500);
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrders', { orders, moment: moment });
+        res.render('listofOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofOrdersCompleted', async (req, res) => {
+app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $ne: "fmx" },
+            product: { $nin: ["fmx", "ewe"] },
             currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -183,18 +488,18 @@ app.get('/listofOrdersCompleted', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersCompleted', { orders, moment: moment });
+        res.render('listofOrdersCompleted', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofOrdersOFD', async (req, res) => {
+app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $ne: "fmx" },
+            product: { $nin: ["fmx", "ewe"] },
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -226,19 +531,19 @@ app.get('/listofOrdersOFD', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersOFD', { orders, moment: moment });
+        res.render('listofOrdersOFD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofOrdersAW', async (req, res) => {
+app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const statusValues = ["At Warehouse", "Return to Warehouse"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $ne: "fmx" },
+            product: { $nin: ["fmx", "ewe"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -270,19 +575,19 @@ app.get('/listofOrdersAW', async (req, res) => {
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersAW', { orders, moment: moment });
+        res.render('listofOrdersAW', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofOrdersIRCC', async (req, res) => {
+app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $ne: "fmx" },
+            product: { $nin: ["fmx", "ewe"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -314,19 +619,19 @@ app.get('/listofOrdersIRCC', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersIRCC', { orders, moment: moment });
+        res.render('listofOrdersIRCC', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofOrdersCD', async (req, res) => {
+app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const statusValues = ["Cancelled", "Disposed"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $ne: "fmx" },
+            product: { $nin: ["fmx", "ewe"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -358,14 +663,14 @@ app.get('/listofOrdersCD', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersCD', { orders, moment: moment });
+        res.render('listofOrdersCD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
+app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "EXP" })
@@ -402,14 +707,14 @@ app.get('/listofpharmacyMOHEXPOrders', async (req, res) => {
             .limit(1000);
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment });
+        res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
+app.get('/listofpharmacyMOHSTDOrders', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "OPD" })
@@ -446,14 +751,14 @@ app.get('/listofpharmacyMOHSTDOrders', async (req, res) => {
             .limit(1000);
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment });
+        res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.post('/createPharmacyFormSuccess', async (req, res) => {
+app.post('/createPharmacyFormSuccess', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         // Extract data from the form submission
         const { dateOfForm, batchChoice, b2Start, mohForm } = req.body;
@@ -521,7 +826,7 @@ app.post('/createPharmacyFormSuccess', async (req, res) => {
     }
 });
 
-app.get('/listofpharmacyMOHTTGOrders', async (req, res) => {
+app.get('/listofpharmacyMOHTTGOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "PMMH" })
@@ -557,14 +862,14 @@ app.get('/listofpharmacyMOHTTGOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHTTGOrders', { orders, moment: moment });
+        res.render('listofpharmacyMOHTTGOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyMOHKBOrders', async (req, res) => {
+app.get('/listofpharmacyMOHKBOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "SSBH" })
@@ -600,14 +905,14 @@ app.get('/listofpharmacyMOHKBOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHKBOrders', { orders, moment: moment });
+        res.render('listofpharmacyMOHKBOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyMOHIMMOrders', async (req, res) => {
+app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "IMM" })
@@ -643,14 +948,14 @@ app.get('/listofpharmacyMOHIMMOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHIMMOrders', { orders, moment: moment });
+        res.render('listofpharmacyMOHIMMOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyJPMCOrders', async (req, res) => {
+app.get('/listofpharmacyJPMCOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacyjpmc" })
@@ -685,14 +990,14 @@ app.get('/listofpharmacyJPMCOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyJPMCOrders', { orders, moment: moment });
+        res.render('listofpharmacyJPMCOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyPHCOrders', async (req, res) => {
+app.get('/listofpharmacyPHCOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
         const orders = await ORDERS.find({ product: "pharmacyphc" })
@@ -725,14 +1030,14 @@ app.get('/listofpharmacyPHCOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyPHCOrders', { orders, moment: moment });
+        res.render('listofpharmacyPHCOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofLDOrders', async (req, res) => {
+app.get('/listofLDOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "localdelivery" })
@@ -772,14 +1077,14 @@ app.get('/listofLDOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofLDOrders', { orders, moment: moment });
+        res.render('listofLDOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofLDJBOrders', async (req, res) => {
+app.get('/listofLDJBOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "localdeliveryjb" })
@@ -819,14 +1124,14 @@ app.get('/listofLDJBOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofLDJBOrders', { orders, moment: moment });
+        res.render('listofLDJBOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofICARUSOrders', async (req, res) => {
+app.get('/listofICARUSOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "icarus" })
@@ -866,14 +1171,14 @@ app.get('/listofICARUSOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofICARUSOrders', { orders, moment: moment });
+        res.render('listofICARUSOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFCASOrders', async (req, res) => {
+app.get('/listofFCASOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "fcas" })
@@ -913,14 +1218,14 @@ app.get('/listofFCASOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFCASOrders', { orders, moment: moment });
+        res.render('listofFCASOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofBBOrders', async (req, res) => {
+app.get('/listofBBOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "bb" })
@@ -959,14 +1264,14 @@ app.get('/listofBBOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofBBOrders', { orders, moment: moment });
+        res.render('listofBBOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofGRPOrders', async (req, res) => {
+app.get('/listofGRPOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "grp" })
@@ -1006,14 +1311,14 @@ app.get('/listofGRPOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofGRPOrders', { orders, moment: moment });
+        res.render('listofGRPOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofCBSLOrders', async (req, res) => {
+app.get('/listofCBSLOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "localdelivery"
         const orders = await ORDERS.find({ product: "cbsl" })
@@ -1049,14 +1354,14 @@ app.get('/listofCBSLOrders', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofCBSLOrders', { orders, moment: moment });
+        res.render('listofCBSLOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFMXOrders', async (req, res) => {
+app.get('/listofFMXOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
@@ -1095,14 +1400,14 @@ app.get('/listofFMXOrders', async (req, res) => {
             .limit(500);
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrders', { orders, moment: moment });
+        res.render('listofFMXOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFMXOrdersCompleted', async (req, res) => {
+app.get('/listofFMXOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
@@ -1141,14 +1446,14 @@ app.get('/listofFMXOrdersCompleted', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersCompleted', { orders, moment: moment });
+        res.render('listofFMXOrdersCompleted', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFMXOrdersOFD', async (req, res) => {
+app.get('/listofFMXOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
         const orders = await ORDERS.find({
@@ -1188,14 +1493,14 @@ app.get('/listofFMXOrdersOFD', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersOFD', { orders, moment: moment });
+        res.render('listofFMXOrdersOFD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFMXOrdersAW', async (req, res) => {
+app.get('/listofFMXOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
         const statusValues = ["At Warehouse", "Return to Warehouse"];
@@ -1238,14 +1543,14 @@ app.get('/listofFMXOrdersAW', async (req, res) => {
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersAW', { orders, moment: moment });
+        res.render('listofFMXOrdersAW', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFMXOrdersIRCC', async (req, res) => {
+app.get('/listofFMXOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
@@ -1288,14 +1593,14 @@ app.get('/listofFMXOrdersIRCC', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersIRCC', { orders, moment: moment });
+        res.render('listofFMXOrdersIRCC', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofFMXOrdersCD', async (req, res) => {
+app.get('/listofFMXOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
         const statusValues = ["Cancelled", "Disposed"];
@@ -1338,14 +1643,14 @@ app.get('/listofFMXOrdersCD', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersCD', { orders, moment: moment });
+        res.render('listofFMXOrdersCD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofEWEOrders', async (req, res) => {
+app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
@@ -1384,14 +1689,14 @@ app.get('/listofEWEOrders', async (req, res) => {
             .limit(500);
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrders', { orders, moment: moment });
+        res.render('listofEWEOrders', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofEWEOrdersCompleted', async (req, res) => {
+app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
@@ -1430,14 +1735,14 @@ app.get('/listofEWEOrdersCompleted', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersCompleted', { orders, moment: moment });
+        res.render('listofEWEOrdersCompleted', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofEWEOrdersOFD', async (req, res) => {
+app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
         const orders = await ORDERS.find({
@@ -1477,14 +1782,14 @@ app.get('/listofEWEOrdersOFD', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersOFD', { orders, moment: moment });
+        res.render('listofEWEOrdersOFD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofEWEOrdersAW', async (req, res) => {
+app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
         const statusValues = ["At Warehouse", "Return to Warehouse"];
@@ -1527,14 +1832,14 @@ app.get('/listofEWEOrdersAW', async (req, res) => {
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersAW', { orders, moment: moment });
+        res.render('listofEWEOrdersAW', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofEWEOrdersCD', async (req, res) => {
+app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
         const statusValues = ["Cancelled", "Disposed"];
@@ -1577,14 +1882,14 @@ app.get('/listofEWEOrdersCD', async (req, res) => {
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersCD', { orders, moment: moment });
+        res.render('listofEWEOrdersCD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
 
-app.get('/listofpharmacyMOHForms', async (req, res) => {
+app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const forms = await PharmacyFORM.find({})
@@ -1602,7 +1907,7 @@ app.get('/listofpharmacyMOHForms', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofpharmacyMOHForms', { forms });
+        res.render('listofpharmacyMOHForms', { forms, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1611,7 +1916,7 @@ app.get('/listofpharmacyMOHForms', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/formpharmacyDetail/:formId', async (req, res) => {
+app.get('/formpharmacyDetail/:formId', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         const form = await PharmacyFORM.findById(req.params.formId);
 
@@ -1620,7 +1925,7 @@ app.get('/formpharmacyDetail/:formId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('formpharmacyDetail', { htmlContent: form.htmlContent });
+        res.render('formpharmacyDetail', { htmlContent: form.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1629,7 +1934,7 @@ app.get('/formpharmacyDetail/:formId', async (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editPharmacyForm/:id', (req, res) => {
+app.get('/editPharmacyForm/:id', ensureAuthenticated, ensureMOHForm, (req, res) => {
     const formId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -1640,7 +1945,7 @@ app.get('/editPharmacyForm/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editPharmacyForm.ejs', { form });
+            res.render('editPharmacyForm.ejs', { form, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -1649,7 +1954,7 @@ app.get('/editPharmacyForm/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updatePharmacyForm/:id', (req, res) => {
+app.post('/updatePharmacyForm/:id', ensureAuthenticated, ensureMOHForm, (req, res) => {
     const formId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -1669,7 +1974,7 @@ app.post('/updatePharmacyForm/:id', (req, res) => {
         });
 });
 
-app.get('/deletePharmacyForm/:formId', async (req, res) => {
+app.get('/deletePharmacyForm/:formId', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         const formId = req.params.formId;
 
@@ -1687,7 +1992,7 @@ app.get('/deletePharmacyForm/:formId', async (req, res) => {
     }
 });
 
-app.get('/listofpharmacyPod', async (req, res) => {
+app.get('/listofpharmacyPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await PharmacyPOD.find({})
@@ -1705,7 +2010,7 @@ app.get('/listofpharmacyPod', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofpharmacyPod', { pods });
+        res.render('listofpharmacyPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1713,7 +2018,7 @@ app.get('/listofpharmacyPod', async (req, res) => {
     }
 });
 
-app.get('/listofldPod', async (req, res) => {
+app.get('/listofldPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await LDPOD.find({})
@@ -1731,7 +2036,7 @@ app.get('/listofldPod', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofldPod', { pods });
+        res.render('listofldPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1739,7 +2044,7 @@ app.get('/listofldPod', async (req, res) => {
     }
 });
 
-app.get('/listofgrpPod', async (req, res) => {
+app.get('/listofgrpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await GRPPOD.find({})
@@ -1757,7 +2062,7 @@ app.get('/listofgrpPod', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofgrpPod', { pods });
+        res.render('listofgrpPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1765,7 +2070,7 @@ app.get('/listofgrpPod', async (req, res) => {
     }
 });
 
-app.get('/listoffmxPod', async (req, res) => {
+app.get('/listoffmxPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await FMXPOD.find({})
@@ -1783,7 +2088,7 @@ app.get('/listoffmxPod', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listoffmxPod', { pods });
+        res.render('listoffmxPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1791,7 +2096,7 @@ app.get('/listoffmxPod', async (req, res) => {
     }
 });
 
-app.get('/listofewePod', async (req, res) => {
+app.get('/listofewePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await EWEPOD.find({})
@@ -1809,7 +2114,7 @@ app.get('/listofewePod', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofewePod', { pods });
+        res.render('listofewePod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1817,7 +2122,7 @@ app.get('/listofewePod', async (req, res) => {
     }
 });
 
-app.get('/listofcbslPod', async (req, res) => {
+app.get('/listofcbslPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await CBSLPOD.find({})
@@ -1835,7 +2140,7 @@ app.get('/listofcbslPod', async (req, res) => {
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofcbslPod', { pods });
+        res.render('listofcbslPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1844,7 +2149,7 @@ app.get('/listofcbslPod', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/podpharmacyDetail/:podId', async (req, res) => {
+app.get('/podpharmacyDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await PharmacyPOD.findById(req.params.podId);
 
@@ -1853,7 +2158,7 @@ app.get('/podpharmacyDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podpharmacyDetail', { htmlContent: pod.htmlContent });
+        res.render('podpharmacyDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1862,7 +2167,7 @@ app.get('/podpharmacyDetail/:podId', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/podldDetail/:podId', async (req, res) => {
+app.get('/podldDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await LDPOD.findById(req.params.podId);
 
@@ -1871,7 +2176,7 @@ app.get('/podldDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podldDetail', { htmlContent: pod.htmlContent });
+        res.render('podldDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1880,7 +2185,7 @@ app.get('/podldDetail/:podId', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/podgrpDetail/:podId', async (req, res) => {
+app.get('/podgrpDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await GRPPOD.findById(req.params.podId);
 
@@ -1889,7 +2194,7 @@ app.get('/podgrpDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podgrpDetail', { htmlContent: pod.htmlContent });
+        res.render('podgrpDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1898,7 +2203,7 @@ app.get('/podgrpDetail/:podId', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/podfmxDetail/:podId', async (req, res) => {
+app.get('/podfmxDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await FMXPOD.findById(req.params.podId);
 
@@ -1907,7 +2212,7 @@ app.get('/podfmxDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podfmxDetail', { htmlContent: pod.htmlContent });
+        res.render('podfmxDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1916,7 +2221,7 @@ app.get('/podfmxDetail/:podId', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/podeweDetail/:podId', async (req, res) => {
+app.get('/podeweDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await EWEPOD.findById(req.params.podId);
 
@@ -1925,7 +2230,7 @@ app.get('/podeweDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podeweDetail', { htmlContent: pod.htmlContent });
+        res.render('podeweDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1934,7 +2239,7 @@ app.get('/podeweDetail/:podId', async (req, res) => {
 });
 
 // Add a new route in your Express application
-app.get('/podcbslDetail/:podId', async (req, res) => {
+app.get('/podcbslDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await CBSLPOD.findById(req.params.podId);
 
@@ -1943,7 +2248,7 @@ app.get('/podcbslDetail/:podId', async (req, res) => {
         }
 
         // Render the podDetail.ejs template with the HTML content
-        res.render('podcbslDetail', { htmlContent: pod.htmlContent });
+        res.render('podcbslDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -1952,7 +2257,7 @@ app.get('/podcbslDetail/:podId', async (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editPharmacyPod/:id', (req, res) => {
+app.get('/editPharmacyPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -1963,7 +2268,7 @@ app.get('/editPharmacyPod/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editPharmacyPod.ejs', { pod });
+            res.render('editPharmacyPod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -1972,7 +2277,7 @@ app.get('/editPharmacyPod/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updatePharmacyPod/:id', (req, res) => {
+app.post('/updatePharmacyPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -1993,7 +2298,7 @@ app.post('/updatePharmacyPod/:id', (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editLdPod/:id', (req, res) => {
+app.get('/editLdPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -2004,7 +2309,7 @@ app.get('/editLdPod/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editLdPod.ejs', { pod });
+            res.render('editLdPod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -2013,7 +2318,7 @@ app.get('/editLdPod/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updateLdPod/:id', (req, res) => {
+app.post('/updateLdPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -2034,7 +2339,7 @@ app.post('/updateLdPod/:id', (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editGrpPod/:id', (req, res) => {
+app.get('/editGrpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -2045,7 +2350,7 @@ app.get('/editGrpPod/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editGrpPod.ejs', { pod });
+            res.render('editGrpPod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -2054,7 +2359,7 @@ app.get('/editGrpPod/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updateGrpPod/:id', (req, res) => {
+app.post('/updateGrpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -2075,7 +2380,7 @@ app.post('/updateGrpPod/:id', (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editFmxPod/:id', (req, res) => {
+app.get('/editFmxPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -2086,7 +2391,7 @@ app.get('/editFmxPod/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editFmxPod.ejs', { pod });
+            res.render('editFmxPod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -2095,7 +2400,7 @@ app.get('/editFmxPod/:id', (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editEwePod/:id', (req, res) => {
+app.get('/editEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -2106,7 +2411,7 @@ app.get('/editEwePod/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editEwePod.ejs', { pod });
+            res.render('editEwePod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -2115,7 +2420,7 @@ app.get('/editEwePod/:id', (req, res) => {
 });
 
 // Route to render the edit page for a specific POD
-app.get('/editCbslPod/:id', (req, res) => {
+app.get('/editCbslPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
     // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
@@ -2126,7 +2431,7 @@ app.get('/editCbslPod/:id', (req, res) => {
             }
 
             // Render the edit page, passing the found POD data
-            res.render('editCbslPod.ejs', { pod });
+            res.render('editCbslPod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -2135,7 +2440,7 @@ app.get('/editCbslPod/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updateFmxPod/:id', (req, res) => {
+app.post('/updateFmxPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -2156,7 +2461,7 @@ app.post('/updateFmxPod/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updateEwePod/:id', (req, res) => {
+app.post('/updateEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -2177,7 +2482,7 @@ app.post('/updateEwePod/:id', (req, res) => {
 });
 
 // Route to update the HTML content of a specific POD
-app.post('/updateCbslPod/:id', (req, res) => {
+app.post('/updateCbslPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
@@ -2197,7 +2502,7 @@ app.post('/updateCbslPod/:id', (req, res) => {
         });
 });
 
-app.get('/deletePharmacyPod/:podId', async (req, res) => {
+app.get('/deletePharmacyPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
 
@@ -2215,7 +2520,7 @@ app.get('/deletePharmacyPod/:podId', async (req, res) => {
     }
 });
 
-app.get('/deleteLDPod/:podId', async (req, res) => {
+app.get('/deleteLDPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
 
@@ -2233,7 +2538,7 @@ app.get('/deleteLDPod/:podId', async (req, res) => {
     }
 });
 
-app.get('/deleteGRPPod/:podId', async (req, res) => {
+app.get('/deleteGRPPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
 
@@ -2251,7 +2556,7 @@ app.get('/deleteGRPPod/:podId', async (req, res) => {
     }
 });
 
-app.get('/deleteFMXPod/:podId', async (req, res) => {
+app.get('/deleteFMXPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
 
@@ -2269,7 +2574,7 @@ app.get('/deleteFMXPod/:podId', async (req, res) => {
     }
 });
 
-app.get('/deleteEWEPod/:podId', async (req, res) => {
+app.get('/deleteEWEPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
 
@@ -2287,7 +2592,7 @@ app.get('/deleteEWEPod/:podId', async (req, res) => {
     }
 });
 
-app.get('/deleteCBSLPod/:podId', async (req, res) => {
+app.get('/deleteCBSLPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
 
@@ -2307,7 +2612,7 @@ app.get('/deleteCBSLPod/:podId', async (req, res) => {
 // ...
 
 // Add this route to handle the saving of the PharmacyFORM and updating ORDERS collection
-app.post('/save-form', (req, res) => {
+app.post('/save-form', ensureAuthenticated, ensureMOHForm, (req, res) => {
     const { formName, formDate, batchNo, startNo, endNo, htmlContent, mohForm, numberOfForms } = req.body;
 
     // Create a new document and save it to the MongoDB collection
@@ -2361,7 +2666,7 @@ function updateOrdersCollection(trackingNumbers) {
 
 
 // Route to save POD data
-app.post('/save-pod', (req, res) => {
+app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
 
     // Choose the appropriate model based on the collection
@@ -2413,7 +2718,7 @@ app.post('/save-pod', (req, res) => {
         });
 });
 
-app.post('/generatePOD', async (req, res) => {
+app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Parse input data from the form
         const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
@@ -2487,7 +2792,8 @@ app.post('/generatePOD', async (req, res) => {
             areas: areasJoined, // Use the joined string instead of the original variable
             dispatchers: finalDispatcherName,
             trackingNumbers: runSheetData,
-            podCreatedDate: moment().format('DD.MM.YY')
+            podCreatedDate: moment().format('DD.MM.YY'),
+            user: req.user
         });
     } catch (error) {
         console.error('Error:', error);
@@ -2495,7 +2801,7 @@ app.post('/generatePOD', async (req, res) => {
     }
 });
 
-app.post('/addressAreaCheck', (req, res) => {
+app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const customerAddresses = req.body.customerAddresses.split('\n');
     const result = [];
 
@@ -2868,11 +3174,11 @@ app.post('/addressAreaCheck', (req, res) => {
         result.push({ customerAddress: address.trim(), area });
     }
 
-    res.render('successAddressArea', { entries: result });
+    res.render('successAddressArea', { entries: result, user: req.user });
 });
 
 // Handle form submission for /scanFMX route
-app.post('/updateDelivery', async (req, res) => {
+app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     // Step 1: Authenticate and get accessToken
     const authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
         userNameOrEmailAddress: username,

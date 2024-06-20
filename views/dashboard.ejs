@@ -27,7 +27,8 @@
             margin-top: 10px;
         }
 
-        th, td {
+        th,
+        td {
             font-size: 15px;
             text-align: center;
         }
@@ -58,94 +59,134 @@
                         </a>
                         <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                             <a class="dropdown-item" href="/">Dashboard</a>
-                            <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                            <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
-                            <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                            <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                            <a class="dropdown-item" href="/listofldPod">POD LD</a>
-                            <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
-                            <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                            <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                            <% if (['cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                <% } %>
+                                    <% if (['finance', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role))
+                                        { %>
+                                        <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                        <a class="dropdown-item" href="/listofldPod">POD LD</a>
+                                        <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
+                                        <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
+                                        <a class="dropdown-item" href="/listofewePod">POD EWE</a>
+                                        <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                            (Limbang)</a>
+                                        <% } %>
                         </div>
                     </li>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            All Jobs (Except FMX)
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                            <a class="dropdown-item" href="/listofOrders">All</a>
-                            <a class="dropdown-item" href="/listofOrdersOFD">Out for Delivery*</a>
-                            <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
-                            <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                            <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
-                            <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
-                        </div>
-                    </li>
+                    <% if (['finance', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                All Jobs (Except FMX)
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                <a class="dropdown-item" href="/listofOrders">All</a>
+                                <a class="dropdown-item" href="/listofOrdersOFD">Out for Delivery*</a>
+                                <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
+                                <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
+                                <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
+                                <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
+                            </div>
+                        </li>
+                        <% } %>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            MOH
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                            <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
-                            <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
-                            <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
-                            <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
-                            <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
-                            <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form List</a>
-                        </div>
-                    </li>
+                            <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        MOH
+                                    </a>
+                                    <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                        <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
+                                        <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
+                                        <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
+                                        <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
+                                        <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
+                                        <% } %>
+                                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form
+                                                    List</a>
+                                                <% } %>
+                                                    <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
+                                                        ].includes(user.role)) { %>
+                                    </div>
+                                </li>
+                                <% } %>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            FMX
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
-                            <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                            <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for Delivery*</a>
-                            <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
-                            <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                            <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
-                            <a class="dropdown-item" href="/listofFMXOrdersCD">Cancelled/Disposed</a>
-                        </div>
-                    </li>
+                                    <% if (['finance', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                FMX
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
+                                                <a class="dropdown-item" href="/listofFMXOrders">All</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for
+                                                    Delivery*</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofFMXOrdersCD">Cancelled/Disposed</a>
+                                            </div>
+                                        </li>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            EWE
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                            <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                            <a class="dropdown-item" href="/listofEWEOrdersOFD">Out for Delivery*</a>
-                            <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
-                            <a class="dropdown-item" href="/listofEWEOrdersCompleted">Completed</a>
-                            <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
-                        </div>
-                    </li>
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                EWE
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="eweListDropdown">
+                                                <a class="dropdown-item" href="/listofEWEOrders">All</a>
+                                                <a class="dropdown-item" href="/listofEWEOrdersOFD">Out for
+                                                    Delivery*</a>
+                                                <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofEWEOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                            </div>
+                                        </li>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            JPMC/PHC/LD/GRP/GRP/CBSL
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                            <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
-                            <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
-                            <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
-                            <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
-                            <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service (Limbang)</a>
-                            <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
-                            <a class="dropdown-item" href="/listofFCASOrders">Fathan & Co.</a>
-                            <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
-                            <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
-                        </div>
-                    </li>
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                JPMC/PHC/LD/GRP/GRP/CBSL
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
+                                                <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
+                                                <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
+                                                <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service
+                                                    (Limbang)</a>
+                                                <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
+                                                <a class="dropdown-item" href="/listofFCASOrders">Fathan & Co.</a>
+                                                <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
+                                                <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
+                                            </div>
+                                        </li>
+                                        <% } %>
+
+                                            <!-- Add conditional rendering for login/logout buttons -->
+                                            <% if (user) { %>
+                                                <li class="nav-item">
+                                                    <span class="nav-link">Welcome, <%= user.name %> (<%=
+                                                                user.role.toUpperCase() %>)</span>
+                                                </li>
+                                                <li class="nav-item">
+                                                    <a class="nav-link" href="/logout">Logout</a>
+                                                </li>
+                                                <% } else { %>
+                                                    <li class="nav-item">
+                                                        <a class="nav-link" href="/login">Login</a>
+                                                    </li>
+                                                    <% } %>
                 </ul>
             </nav>
         </div>
@@ -153,11 +194,109 @@
 
     <div class="container mt-4">
         <h1>Dashboard</h1>
+        <!-- Buttons for navigation -->
+        <div class="btn-group" role="group" aria-label="Basic example">
+            <button id="moh-btn" type="button" class="btn btn-primary active" onclick="showSection('moh')">MOH</button>
+            <button id="fmx-btn" type="button" class="btn btn-primary" onclick="showSection('fmx')">FMX</button>
+            <button id="ewe-btn" type="button" class="btn btn-primary" onclick="showSection('ewe')">EWE</button>
+        </div>
 
-        <!-- EWE Orders content -->
-        <div class="table-content mt-3">
+        <div id="moh-section" class="content-section mt-4">
+            <h2>MOH Orders</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Delivery Type / From Pharmacy</th>
+                        <th>Total</th>
+                        <th>At Warehouse</th>
+                        <th>Out for Delivery</th>
+                        <th>Completed</th>
+                        <th>Cancelled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% mohOrders.forEach(function(order) { %>
+                        <tr class="<%= order.outForDelivery > 0 ? 'table-warning' : '' %>">
+                            <td><%= order.deliveryType %></td>
+                            <td><%= order.total %></td>
+                            <td><%= order.atWarehouse %></td>
+                            <td><%= order.outForDelivery %></td>
+                            <td><%= order.completed %></td>
+                            <td><%= order.cancelled %></td>
+                        </tr>
+                    <% }); %>
+                    <!-- Calculate totals -->
+                    <% const total = mohOrders.reduce((acc, order) => {
+                        acc.total += order.total;
+                        acc.atWarehouse += order.atWarehouse;
+                        acc.outForDelivery += order.outForDelivery;
+                        acc.completed += order.completed;
+                        acc.cancelled += order.cancelled;
+                        return acc;
+                    }, { total: 0, atWarehouse: 0, outForDelivery: 0, completed: 0, cancelled: 0 }); %>
+                    <!-- Append totals row -->
+                    <tr class="<%= total.outForDelivery > 0 ? 'table-warning' : '' %>">
+                        <td><strong>Total</strong></td>
+                        <td><%= total.total %></td>
+                        <td><%= total.atWarehouse %></td>
+                        <td><%= total.outForDelivery %></td>
+                        <td><%= total.completed %></td>
+                        <td><%= total.cancelled %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="fmx-section" class="content-section mt-4" style="display:none;">
+            <h2>FMX Orders</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>MAWB No.</th>
+                        <th>Total</th>
+                        <th>At Warehouse</th>
+                        <th>Out for Delivery</th>
+                        <th>Completed</th>
+                        <th>Cancelled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% fmxOrders.forEach(function(order) { %>
+                        <tr class="<%= order.outForDelivery > 0 ? 'table-warning' : '' %>">
+                            <td><%= order.mawbNo %></td>
+                            <td><%= order.total %></td>
+                            <td><%= order.atWarehouse %></td>
+                            <td><%= order.outForDelivery %></td>
+                            <td><%= order.completed %></td>
+                            <td><%= order.cancelled %></td>
+                        </tr>
+                    <% }); %>
+                    <!-- Calculate totals -->
+                    <% const totalFMX = fmxOrders.reduce((acc, order) => {
+                        acc.total += order.total;
+                        acc.atWarehouse += order.atWarehouse;
+                        acc.outForDelivery += order.outForDelivery;
+                        acc.completed += order.completed;
+                        acc.cancelled += order.cancelled;
+                        return acc;
+                    }, { total: 0, atWarehouse: 0, outForDelivery: 0, completed: 0, cancelled: 0 }); %>
+                    <!-- Append totals row -->
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td><%= totalFMX.total %></td>
+                        <td><%= totalFMX.atWarehouse %></td>
+                        <td><%= totalFMX.outForDelivery %></td>
+                        <td><%= totalFMX.completed %></td>
+                        <td><%= totalFMX.cancelled %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+
+        <div id="ewe-section" class="content-section mt-4" style="display:none;">
             <h2>EWE Orders</h2>
-            <table class="table table-striped">
+            <table class="table">
                 <thead>
                     <tr>
                         <th>MAWB No.</th>
@@ -171,7 +310,7 @@
                 </thead>
                 <tbody>
                     <% eweOrders.forEach(function(order) { %>
-                        <tr>
+                        <tr class="<%= order.outForDelivery > 0 ? 'table-warning' : '' %>">
                             <td><%= order.mawbNo %></td>
                             <td><%= order.flightDate %></td>
                             <td><%= order.total %></td>
@@ -181,13 +320,49 @@
                             <td><%= order.cancelled %></td>
                         </tr>
                     <% }); %>
+                    <!-- Calculate totals -->
+                    <% const totalEWE = eweOrders.reduce((acc, order) => {
+                        acc.total += order.total;
+                        acc.atWarehouse += order.atWarehouse;
+                        acc.outForDelivery += order.outForDelivery;
+                        acc.completed += order.completed;
+                        acc.cancelled += order.cancelled;
+                        return acc;
+                    }, { total: 0, atWarehouse: 0, outForDelivery: 0, completed: 0, cancelled: 0 }); %>
+                    <!-- Append totals row -->
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td></td>
+                        <td><%= totalEWE.total %></td>
+                        <td><%= totalEWE.atWarehouse %></td>
+                        <td><%= totalEWE.outForDelivery %></td>
+                        <td><%= totalEWE.completed %></td>
+                        <td><%= totalEWE.cancelled %></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
-    </div>
+
+    <script>
+        function showSection(section) {
+            document.getElementById('moh-section').style.display = section === 'moh' ? 'block' : 'none';
+            document.getElementById('fmx-section').style.display = section === 'fmx' ? 'block' : 'none';
+            document.getElementById('ewe-section').style.display = section === 'ewe' ? 'block' : 'none';
+    
+            // Remove the 'active' class from all buttons
+            document.querySelectorAll('.btn-group button').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+    
+            // Add the 'active' class to the clicked button
+            document.getElementById(section + '-btn').classList.add('active');
+        }
+    </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
+
 </body>
 
 </html>
