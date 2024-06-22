@@ -66,94 +66,150 @@
                                 </a>
                                 <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                     <a class="dropdown-item" href="/">Dashboard</a>
-                                    <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                    <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
-                                    <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                                    <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                                    <a class="dropdown-item" href="/listofldPod">POD LD</a>
-                                    <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
-                                    <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                                    <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                                    <% if (['cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                        <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                        <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                        <% } %>
+                                            <% if (['finance', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role))
+                                                { %>
+                                                <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                                <a class="dropdown-item" href="/listofldPod">POD LD</a>
+                                                <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
+                                                <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
+                                                <a class="dropdown-item" href="/listofewePod">POD EWE</a>
+                                                <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                                    (Limbang)</a>
+                                                <% } %>
                                 </div>
                             </li>
         
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    All Jobs (Except FMX)
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                    <a class="dropdown-item" href="/listofOrders">All</a>
-                                    <a class="dropdown-item" href="/listofOrdersOFD">Out for Delivery*</a>
-                                    <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
-                                    <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                                    <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
-                                    <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
-                                </div>
-                            </li>
+                            <% if (['finance', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        All Jobs (Except FMX)
+                                    </a>
+                                    <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                        <a class="dropdown-item" href="/listofOrders">All</a>
+                                        <a class="dropdown-item" href="/listofOrdersOFD">Out for Delivery*</a>
+                                        <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
+                                        <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
+                                        <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
+                                        <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
+                                    </div>
+                                </li>
+                                <% } %>
         
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    MOH
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                    <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
-                                    <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
-                                    <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
-                                    <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
-                                    <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
-                                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form List</a>
-                                </div>
-                            </li>
+                                    <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                MOH
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                                <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
+                                                <% } %>
+                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy Form
+                                                            List</a>
+                                                        <% } %>
+                                                            <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
+                                                                ].includes(user.role)) { %>
+                                            </div>
+                                        </li>
+                                        <% } %>
         
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    FMX
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
-                                    <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                                    <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for Delivery*</a>
-                                    <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
-                                    <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                    <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
-                                    <a class="dropdown-item" href="/listofFMXOrdersCD">Cancelled/Disposed</a>
-                                </div>
-                            </li>
+                                            <% if (['finance', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        FMX
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
+                                                        <a class="dropdown-item" href="/listofFMXOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for
+                                                            Delivery*</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofFMXOrdersCD">Cancelled/Disposed</a>
+                                                    </div>
+                                                </li>
         
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    EWE
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                    <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                    <a class="dropdown-item" href="/listofEWEOrdersOFD">Out for Delivery*</a>
-                                    <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
-                                    <a class="dropdown-item" href="/listofEWEOrdersCompleted">Completed</a>
-                                    <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
-                                </div>
-                            </li>
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        EWE
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="eweListDropdown">
+                                                        <a class="dropdown-item" href="/listofEWEOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersOFD">Out for
+                                                            Delivery*</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                    </div>
+                                                </li>
         
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    JPMC/PHC/LD/GRP/GRP/CBSL
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                    <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
-                                    <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
-                                    <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
-                                    <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
-                                    <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service (Limbang)</a>
-                                    <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
-                                    <a class="dropdown-item" href="/listofFCASOrders">Fathan & Co.</a>
-                                    <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
-                                    <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
-                                </div>
-                            </li>
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        JPMC/PHC/LD/GRP/GRP/CBSL
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                                        <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                        <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
+                                                        <a class="dropdown-item" href="/listofLDOrders">Local Delivery</a>
+                                                        <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
+                                                        <a class="dropdown-item" href="/listofCBSLOrders">Cross Border Service
+                                                            (Limbang)</a>
+                                                        <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
+                                                        <a class="dropdown-item" href="/listofFCASOrders">Fathan & Co.</a>
+                                                        <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
+                                                        <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
+                                                    </div>
+                                                </li>
+                                                <% } %>
+        
+        
+                                                <% if (['admin'].includes(user.role)) { %>
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="accountSettingsDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        Account Settings
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="accountSettingsDropdown">
+                                                        <a class="dropdown-item" href="/createUser">Create User</a>
+                                                        <a class="dropdown-item" href="/">Manage Users</a>
+                                                        <a class="dropdown-item" href="/">Edit Profile</a>
+                                                    </div>
+                                                </li>
+                                                <% } %>
+        
+                                                    <!-- Add conditional rendering for login/logout buttons -->
+                                                    <% if (user) { %>
+                                                        <li class="nav-item">
+                                                            <span class="nav-link">Welcome, <%= user.name %> (<%=
+                                                                        user.role.toUpperCase() %>)</span>
+                                                        </li>
+                                                        <li class="nav-item">
+                                                            <a class="nav-link" href="/logout">Logout</a>
+                                                        </li>
+                                                        <% } else { %>
+                                                            <li class="nav-item">
+                                                                <a class="nav-link" href="/login">Login</a>
+                                                            </li>
+                                                            <% } %>
                         </ul>
                     </nav>
                 </div>
@@ -168,10 +224,6 @@
                     <label for="consignmentID" class="form-label">Tracking Number(s):</label>
                     <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2"
                         required></textarea>
-                    <small>*For warehouse update, use Go Rush tracking number for old GRP orders that are before
-                        9.10.23.</small><br>
-                    <small>**For warehouse update, use original tracking number for new GRP and CBSL orders from 9.10.23
-                        onwards. Next update after warehouse, can use Go Rush Tracking Numbers for update.</small>
                 </div>
             </div>
             <div class="mb-3">
@@ -237,6 +289,18 @@
                         FMX)</small><br>
                     <small>****For FMX Cancelled Delivery, fill in the reason "Customer cancel order" (required) with
                         the reason (optional) why the delivery is cancelled. (FMX only)</small>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="warehouseWrapper">
+                    <label for="warehouse" class="form-label">Warehouse:</label>
+                    <select id="warehouse" name="warehouse" class="form-select" disabled>
+                        <option value="" selected>Please select warehouse location</option>
+                        <option value="Warehouse K1">Warehouse K1</option>
+                        <option value="Warehouse K2">Warehouse K2</option>
+                    </select>
+                    <small>K1 > Go Rush Kiarong</small><br>
+                    <small>K2 > Simpang 14-9</small><br>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -322,12 +386,15 @@
         document.addEventListener("DOMContentLoaded", function () {
             $("#assignDateWrapper").hide();
             $("#dispatchersWrapper").hide();
+            $("#freelancerNameWrapper").hide();
             $("#additionalReasonWrapper").hide();
+            $("#warehouseWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
             const freelancerNameField = document.getElementById('freelancerName');
             const additionalReasonField = document.getElementById('additionalReason');
+            const warehouseField = document.getElementById('warehouse');
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -371,42 +438,68 @@
                 dispatchersField.value = '';
                 additionalReasonField.value = '';
                 freelancerNameField.value = ''; // Clear the field's value
+                assignWarehouseField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
                 $("#additionalReasonWrapper").hide();
                 $("#freelancerNameWrapper").hide();
+                $("#warehouseWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
                     dispatchersField.disabled = false;
                     additionalReasonField.disabled = true;
+                    assignWarehouseField.disabled = true;
 
                     $("#assignDateWrapper").fadeIn();
                     $("#dispatchersWrapper").fadeIn();
                     $("#additionalReasonWrapper").hide();
                     $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
                     dispatchersField.required = true;
                     additionalReasonField.required = false;
+                    warehouseField.required = false;
                 } else if (selectedStatusCode === 'CSSC') {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
+                    warehouseField.disabled = true;
 
                     $("#assignDateWrapper").fadeIn();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
                     $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
+                    warehouseField.required = false;
+
+                } else if (selectedStatusCode === '12')  {
+                    assignDateField.disabled = true;
+                    dispatchersField.disabled = true;
+                    additionalReasonField.disabled = true;
+                    warehouseField.disabled = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").fadeIn();
+
+                    // Set the fields as required
+                    assignDateField.required = false;
+                    dispatchersField.required = false;
+                    additionalReasonField.required = false;
+                    warehouseField.required = true;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -420,26 +513,33 @@
                     assignDateField.disabled = true;
                     assignDateField.required = false;
 
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
                     $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
                 } else {
                     // Disable the fields for other status codes
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
+                    warehouseField.disabled = true;
 
                     // Remove the "required" attribute from the fields
                     assignDateField.required = false;
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
+                    warehouseField.required = false;
 
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
                     $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;

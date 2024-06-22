@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>MOH Search</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
     <style>
         .navbar-nav.flex-row {
@@ -91,8 +91,7 @@
                             </div>
                         </li>
                         <% } %>
-                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
-                                {%>
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {%>
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -238,297 +237,105 @@
             </nav>
         </div>
     </div>
-
-    <div class="container mt-4">
-        <h1>Dashboard</h1>
-        <% if (['warehouse' ,'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-            <!-- Buttons for navigation -->
-            <div class="btn-group" role="group" aria-label="Basic example">
-                <button id="moh-btn" type="button" class="btn btn-primary active"
-                    onclick="showSection('moh')">MOH</button>
-                <button id="fmx-btn" type="button" class="btn btn-primary" onclick="showSection('fmx')">FMX</button>
-                <button id="ewe-btn" type="button" class="btn btn-primary" onclick="showSection('ewe')">EWE</button>
+    <div class="container mt-5">
+        <h1>MOH Search</h1>
+        <form action="/mohsearch" method="post">
+            <div class="form-group">
+                <label for="patientNumber">Patient Number</label>
+                <input type="text" id="patientNumber" name="patientNumber" class="form-control"
+                    value="<%= searchQuery.patientNumber %>">
             </div>
-            <% } %>
-
-                <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                    <div id="moh-section" class="content-section mt-4">
-                        <% if (['moh', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                            <a href="/mohsearch"><button class="btn btn-primary">Click here to search for patient
-                                    record</button></a><br><br>
-                    </div>
-                    <% } %>
-                        <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                            <h2>MOH Orders</h2>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Delivery Type / From Pharmacy</th>
-                                        <th>Total</th>
-                                        <th>At Warehouse</th>
-                                        <th>Out for Delivery</th>
-                                        <th>Self Collect</th>
-                                        <th>Completed</th>
-                                        <th>Cancelled</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% mohOrders.forEach(function(order) { %>
-                                        <tr
-                                            class="<%= (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                            <td>
-                                                <%= order.deliveryType %>
-                                            </td>
-                                            <td>
-                                                <%= order.total %>
-                                            </td>
-                                            <td>
-                                                <%= order.atWarehouse %>
-                                            </td>
-                                            <td>
-                                                <%= order.outForDelivery %>
-                                            </td>
-                                            <td>
-                                                <%= order.selfCollect %>
-                                            </td>
-                                            <td>
-                                                <%= order.completed %>
-                                            </td>
-                                            <td>
-                                                <%= order.cancelled %>
-                                            </td>
-                                        </tr>
-                                        <% }); %>
-                                            <!-- Calculate totals -->
-                                            <% const total=mohOrders.reduce((acc, order)=> {
-                                                acc.total += order.total;
-                                                acc.atWarehouse += order.atWarehouse;
-                                                acc.outForDelivery += order.outForDelivery;
-                                                acc.selfCollect += order.selfCollect;
-                                                acc.completed += order.completed;
-                                                acc.cancelled += order.cancelled;
-                                                return acc;
-                                                }, { total: 0, atWarehouse: 0, outForDelivery: 0, selfCollect: 0,
-                                                completed:
-                                                0,
-                                                cancelled: 0 }); %>
-                                                <!-- Append totals row -->
-                                                <tr
-                                                    class="<%= (total.outForDelivery > 0 || total.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                    <td><strong>Total</strong></td>
-                                                    <td>
-                                                        <%= total.total %>
-                                                    </td>
-                                                    <td>
-                                                        <%= total.atWarehouse %>
-                                                    </td>
-                                                    <td>
-                                                        <%= total.outForDelivery %>
-                                                    </td>
-                                                    <td>
-                                                        <%= total.selfCollect %>
-                                                    </td>
-                                                    <td>
-                                                        <%= total.completed %>
-                                                    </td>
-                                                    <td>
-                                                        <%= total.cancelled %>
-                                                    </td>
-                                                </tr>
-                                </tbody>
-                            </table>
+            <div class="form-group">
+                <label for="icPassNum">IC/Passport Number</label>
+                <input type="text" id="icPassNum" name="icPassNum" class="form-control"
+                    value="<%= searchQuery.icPassNum %>">
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+        <div id="results" class="mt-4">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tracking Number</th>
+                        <th>Customer Name</th>
+                        <th>Address</th>
+                        <th>Area</th>
+                        <th>Patient Number</th>
+                        <th>IC/Passport Number</th>
+                        <th>Appointment Place</th>
+                        <th>Phone Number</th>
+                        <th>Additional Phone Number</th>
+                        <th>Job Type</th>
+                        <th>Remarks</th>
+                        <th>Job Created</th>
+                        <th>Current Status</th>
+                        <th>Latest Reason</th>
+                        <th>Last Date Time Update</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <% if (orders.length===0) { %>
+                        <tr>
+                            <td colspan="15" class="text-center">No records found</td>
+                        </tr>
+                        <% } else { %>
+                            <% orders.forEach(order=> { %>
+                                <tr>
+                                    <td>
+                                        <%= order.doTrackingNumber %>
+                                    </td>
+                                    <td>
+                                        <%= order.receiverName %>
+                                    </td>
+                                    <td>
+                                        <%= order.receiverAddress %>
+                                    </td>
+                                    <td>
+                                        <%= order.area %>
+                                    </td>
+                                    <td>
+                                        <%= order.patientNumber %>
+                                    </td>
+                                    <td>
+                                        <%= order.icPassNum %>
+                                    </td>
+                                    <td>
+                                        <%= order.appointmentPlace %>
+                                    </td>
+                                    <td>
+                                        <%= order.receiverPhoneNumber %>
+                                    </td>
+                                    <td>
+                                        <%= order.additionalPhoneNumber %>
+                                    </td>
+                                    <td>
+                                        <%= order.deliveryTypeCode %>
+                                    </td>
+                                    <td>
+                                        <%= order.remarks %>
+                                    </td>
+                                    <td>
+                                        <%= order.dateTimeSubmission %>
+                                    </td>
+                                    <td>
+                                        <%= order.currentStatus %>
+                                    </td>
+                                    <td>
+                                        <%= order.latestReason %>
+                                    </td>
+                                    <td>
+                                        <%= moment(order.lastUpdateDateTime).format('DD/MM/YYYY hh:mm:ss A') %>
+                                    </td>
+                                </tr>
+                                <% }); %>
+                                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </div>
-    <% } %>
-        <% } %>
-
-            <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                <div id="fmx-section" class="content-section mt-4" style="display:none;">
-                    <h2>FMX Orders</h2>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>MAWB No.</th>
-                                <th>Total</th>
-                                <th>At Warehouse</th>
-                                <th>Out for Delivery</th>
-                                <th>Self Collect</th>
-                                <th>Completed</th>
-                                <th>Cancelled</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% fmxOrders.forEach(function(order) { %>
-                                <tr
-                                    class="<%= (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                    <td>
-                                        <%= order.mawbNo %>
-                                    </td>
-                                    <td>
-                                        <%= order.total %>
-                                    </td>
-                                    <td>
-                                        <%= order.atWarehouse %>
-                                    </td>
-                                    <td>
-                                        <%= order.outForDelivery %>
-                                    </td>
-                                    <td>
-                                        <%= order.selfCollect %>
-                                    </td>
-                                    <td>
-                                        <%= order.completed %>
-                                    </td>
-                                    <td>
-                                        <%= order.cancelled %>
-                                    </td>
-                                </tr>
-                                <% }); %>
-                                    <!-- Calculate totals -->
-                                    <% const totalFMX=fmxOrders.reduce((acc, order)=> {
-                                        acc.total += order.total;
-                                        acc.atWarehouse += order.atWarehouse;
-                                        acc.outForDelivery += order.outForDelivery;
-                                        acc.selfCollect += order.selfCollect;
-                                        acc.completed += order.completed;
-                                        acc.cancelled += order.cancelled;
-                                        return acc;
-                                        }, { total: 0, atWarehouse: 0, outForDelivery: 0,
-                                        selfCollect: 0,
-                                        completed:
-                                        0, cancelled: 0 }); %>
-                                        <!-- Append totals row -->
-                                        <tr
-                                            class="<%= (totalFMX.outForDelivery > 0 || totalFMX.selfCollect > 0) ? 'table-warning' : '' %>">
-                                            <td><strong>Total</strong></td>
-                                            <td>
-                                                <%= totalFMX.total %>
-                                            </td>
-                                            <td>
-                                                <%= totalFMX.atWarehouse %>
-                                            </td>
-                                            <td>
-                                                <%= totalFMX.outForDelivery %>
-                                            </td>
-                                            <td>
-                                                <%= totalFMX.selfCollect %>
-                                            </td>
-                                            <td>
-                                                <%= totalFMX.completed %>
-                                            </td>
-                                            <td>
-                                                <%= totalFMX.cancelled %>
-                                            </td>
-                                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div id="ewe-section" class="content-section mt-4" style="display:none;">
-                    <h2>EWE Orders</h2>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>MAWB No.</th>
-                                <th>Flight Date</th>
-                                <th>Total</th>
-                                <th>At Warehouse</th>
-                                <th>Out for Delivery</th>
-                                <th>Self Collect</th>
-                                <th>Completed</th>
-                                <th>Cancelled</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% eweOrders.forEach(function(order) { %>
-                                <tr
-                                    class="<%= (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                    <td>
-                                        <%= order.mawbNo %>
-                                    </td>
-                                    <td>
-                                        <%= order.flightDate %>
-                                    </td>
-                                    <td>
-                                        <%= order.total %>
-                                    </td>
-                                    <td>
-                                        <%= order.atWarehouse %>
-                                    </td>
-                                    <td>
-                                        <%= order.outForDelivery %>
-                                    </td>
-                                    <td>
-                                        <%= order.selfCollect %>
-                                    </td>
-                                    <td>
-                                        <%= order.completed %>
-                                    </td>
-                                    <td>
-                                        <%= order.cancelled %>
-                                    </td>
-                                </tr>
-                                <% }); %>
-                                    <!-- Calculate totals -->
-                                    <% const totalEWE=eweOrders.reduce((acc, order)=> {
-                                        acc.total += order.total;
-                                        acc.atWarehouse += order.atWarehouse;
-                                        acc.outForDelivery += order.outForDelivery;
-                                        acc.selfCollect += order.selfCollect;
-                                        acc.completed += order.completed;
-                                        acc.cancelled += order.cancelled;
-                                        return acc;
-                                        }, { total: 0, atWarehouse: 0, outForDelivery: 0,
-                                        selfCollect: 0,
-                                        completed:
-                                        0, cancelled: 0 }); %>
-                                        <!-- Append totals row -->
-                                        <tr
-                                            class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
-                                            <td><strong>Total</strong></td>
-                                            <td></td>
-                                            <td>
-                                                <%= totalEWE.total %>
-                                            </td>
-                                            <td>
-                                                <%= totalEWE.atWarehouse %>
-                                            </td>
-                                            <td>
-                                                <%= totalEWE.outForDelivery %>
-                                            </td>
-                                            <td>
-                                                <%= totalEWE.selfCollect %>
-                                            </td>
-                                            <td>
-                                                <%= totalEWE.completed %>
-                                            </td>
-                                            <td>
-                                                <%= totalEWE.cancelled %>
-                                            </td>
-                                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <% } %>
-
-                    <script>
-                        function showSection(section) {
-                            document.getElementById('moh-section').style.display = section === 'moh' ? 'block' : 'none';
-                            document.getElementById('fmx-section').style.display = section === 'fmx' ? 'block' : 'none';
-                            document.getElementById('ewe-section').style.display = section === 'ewe' ? 'block' : 'none';
-
-                            // Remove the 'active' class from all buttons
-                            document.querySelectorAll('.btn-group button').forEach(function (btn) {
-                                btn.classList.remove('active');
-                            });
-
-                            // Add the 'active' class to the clicked button
-                            document.getElementById(section + '-btn').classList.add('active');
-                        }
-                    </script>
-
-                    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
 </body>
 
 </html>
