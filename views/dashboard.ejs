@@ -75,9 +75,13 @@
                                 Operation
                             </a>
                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                <a class="dropdown-item bg-red" href="/updateDelivery">Update Delivery</a>
-                                <a class="dropdown-item bg-green" href="/addressAreaCheck">Address Area Checker</a>
-                                <a class="dropdown-item bg-blue" href="/podGenerator">POD Generator</a>
+                                <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/search">Search</a>
+                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                <% } %>
+                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                     <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>

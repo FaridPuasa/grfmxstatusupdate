@@ -4,70 +4,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List of MOH KB Orders (STD)</title>
-    <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
-    <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
+    <title>Search</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
     <style>
-        /* Custom CSS for your page */
         .navbar-nav.flex-row {
             flex-direction: row !important;
         }
 
-        /* Make the navbar background transparent */
         .navbar {
             background-color: transparent;
         }
 
-        /* Add background color to the container */
         .container-bg {
             background-color: #333;
-            /* You can use your desired background color here */
         }
 
-        /* Add margin to the navigation links */
         .navbar-nav.flex-row .nav-item {
             margin-right: 10px;
         }
 
-        /* Add margin to the submit button */
+        .bg-red {
+            background-color: rgb(255, 110, 110) !important;
+        }
+
+        .bg-yellow {
+            background-color: yellow !important;
+        }
+
+        .bg-blue {
+            background-color: rgb(152, 184, 255) !important;
+        }
+
+        .bg-green {
+            background-color: rgb(137, 253, 126) !important;
+        }
+
         .btn-submit {
             margin-top: 10px;
-            /* Adjust the margin-top as needed */
         }
 
-        /* Style the form */
-        .custom-form {
-            background-color: #ffffe0;
-            /* Light yellow background */
-            border: 1px solid #000;
-            /* Small black border */
-            padding: 20px;
-            /* Add some padding for spacing */
-        }
-
-        th {
-            background-color: #f2f2f2;
-            font-size: 15px;
-            text-align: center;
-            /* Center-align table headers horizontally */
-        }
-
+        th,
         td {
             font-size: 15px;
             text-align: center;
-            /* Center-align table data cells horizontally */
         }
 
         table {
-            width: 80%;
-            /* Set the desired width for the table */
+            width: 100%;
             margin: 0 auto;
-            /* Center the table horizontally */
-            vertical-align: middle;
-            /* Center-align table contents vertically */
+        }
+
+        .card {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -75,7 +65,6 @@
 <body class="bg-light">
     <div class="container-bg">
         <div class="container">
-            <!-- Create a similar navigation bar as in listofpharmacyPod.ejs -->
             <nav class="navbar navbar-expand-lg navbar-dark">
                 <a class="navbar-brand mr-auto" href="/">
                     <h2>Go Rush</h2>
@@ -255,163 +244,144 @@
             </nav>
         </div>
     </div>
+    <div class="container mt-5">
+        <h1>Search</h1>
+        <form action="/search" method="post">
+            <div class="form-group">
+                <label for="patientNumber">Patient Number</label>
+                <input type="text" id="patientNumber" name="patientNumber" class="form-control"
+                    value="<%= searchQuery.patientNumber %>">
+            </div>
+            <div class="form-group">
+                <label for="icPassNum">IC/Passport Number</label>
+                <input type="text" id="icPassNum" name="icPassNum" class="form-control"
+                    value="<%= searchQuery.icPassNum %>">
+            </div>
+            <div class="form-group">
+                <label for="receiverNumber">Phone Number</label>
+                <input type="text" id="receiverPhoneNumber" name="receiverPhoneNumber" class="form-control"
+                    value="<%= searchQuery.receiverPhoneNumber %>">
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+        
+    </div>
 
-    <main class="mt-4" style="width: 100%;">
-        <h1>List of MOH KB Orders (STD)</h1>
-        <div class="container">
-            <form action="/createPharmacyFormSuccess" method="post" class="custom-form">
-                <input type="hidden" name="mohForm" id="mohForm" value="KB">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="dateOfForm">Date of Form:</label>
-                            <input type="date" class="form-control" id="dateOfForm" name="dateOfForm" required>
-                        </div>
-                    </div>
-                    <div class="col-md-3" style="display: none;">
-                        <div class="form-group">
-                            <label for="batchChoice">Batch 1 or 2:</label>
-                            <select class="form-control" id="batchChoice" name="batchChoice" required>
-                                <option value="1">1</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3" id="b2StartField">
-                        <div class="form-group">
-                            <label for="b2Start">Next Pharmacy Form Number for KB:</label>
-                            <input type="number" class="form-control" id="b2Start" name="b2Start"
-                                placeholder="Enter Next Form Number">
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary mt-4">Create Pharmacy Form</button>
-                        </div>
-                    </div>
-                    <div class="col-md-1">
-                        <div class="form-group">
-                            <a href="https://docs.google.com/document/d/1BZYdnMphVQDITEvY5XdneGcWqGtvmsxG/edit?usp=sharing&ouid=111753871965049759883&rtpof=true&sd=true"
-                                class="btn btn-secondary mt-4" target="_blank" download>Download</a>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="orderTable">
-                <thead class="table-primary">
+    <div id="results" class="mt-4">
+        <table class="table" id="orderTable">
+            <thead>
+                <tr>
+                    <th class="header">Tracking Number</th>
+                    <th class="header">Customer Name</th>
+                    <th class="header">Current Status</th>
+                    <th class="header">Assigned To</th>
+                    <th class="header">Attempt No.</th>
+                    <th class="header">Age in Warehouse</th>
+                    <th class="header">Latest Reason</th>
+                    <th class="header">Last Date Time Update</th>
+                    <th class="header">Order Submitted on</th>
+                    <th class="header">Address</th>
+                    <th class="header">Area</th>
+                    <th class="header">Patient Number</th>
+                    <th class="header">IC/Passport Number</th>
+                    <th class="header">Appointment Place</th>
+                    <th class="header">Phone Number</th>
+                    <th class="header">Additional Phone Number</th>
+                    <th class="header">Remarks</th>
+                    <th class="header">Job Type</th>
+                    <th class="header">Payment Method</th>
+                    <th class="header">Price</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <% if (orders.length===0) { %>
                     <tr>
-                        <th class="header">Tracking Number</th>
-                        <th class="header">Customer Name</th>
-                        <th class="header">Address</th>
-                        <th class="header">Area</th>
-                        <th class="header">Patient Number</th>
-                        <th class="header">IC/Passport Number</th>
-                        <th class="header">Appointment Place</th>
-                        <th class="header">Phone Number</th>
-                        <th class="header">Additional Phone Number</th>
-                        <th class="header">Job Type</th>
-                        <th class="header">Remarks</th>
-                        <th class="header">Payment Method</th>
-                        <th class="header">Job Created</th>
-                        <th class="header">Membership</th>
-                        <th class="header">Pharmacy Form Created</th>
-                        <th class="header">Current Status</th>
-                        <th class="header">Assigned To</th>
-                        <th class="header">Attempt No.</th>
-                        <th class="header">Age in Warehouse</th>
-                        <th class="header">Latest Reason</th>
-                        <th class="header">Last Date Time Update</th>
+                        <td colspan="15" class="text-center">No records found</td>
                     </tr>
-                </thead>
-                <tbody>
-                    <!-- Iterate through the orders and display the data -->
-                    <% orders.forEach(function(order) { %>
-                        <tr>
-                            <td>
-                                <%= order.doTrackingNumber %>
-                            </td>
-                            <td>
-                                <%= order.receiverName %>
-                            </td>
-                            <td>
-                                <%= order.receiverAddress %>
-                            </td>
-                            <td>
-                                <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.patientNumber %>
-                            </td>
-                            <td>
-                                <%= order.icPassNum %>
-                            </td>
-                            <td>
-                                <%= order.appointmentPlace %>
-                            </td>
-                            <td>
-                                <%= order.receiverPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.additionalPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.deliveryTypeCode %>
-                            </td>
-                            <td>
-                                <%= order.remarks %>
-                            </td>
-                            <td>
-                                <%= order.paymentMethod %>
-                            </td>
-                            <td>
-                                <%= order.dateTimeSubmission %>
-                            </td>
-                            <td>
-                                <%= order.membership %>
-                            </td>
-                            <td>
-                                <%= order.pharmacyFormCreated %>
-                            </td>
-                            <td>
-                                <%= order.currentStatus %>
-                            </td>
-                            <td>
-                                <%= order.assignedTo %>
-                            </td>
-                            <td>
-                                <%= order.attempt %>
-                            </td>
-                            <td>
-                                <% if (order.currentStatus !== "Completed") { %>
-                                    <% if (order.warehouseEntry === "No") { %>
-                                        0
-                                    <% } else { %>
-                                        <% const entryDate = new Date(order.warehouseEntryDateTime); %>
-                                        <% const currentDate = new Date(); %>
-                                        <% const ageInMilliseconds = currentDate - entryDate; %>
-                                        <% const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24)); %>
-                                        <%= ageInDays %>
-                                    <% } %>
-                                <% } else { %>
-                                    <!-- Add an empty cell or any placeholder when the status is "Completed" -->
-                                    <!-- Adjust the colspan to match the number of columns in the table -->
+                    <% } else { %>
+                        <% orders.forEach(order=> { %>
+                            <tr>
+                                <td>
+                                    <%= order.doTrackingNumber %>
+                                </td>
+                                <td>
+                                    <%= order.receiverName %>
+                                </td>
+                                <td>
+                                    <%= order.currentStatus %>
+                                </td>
+                                <td>
+                                    <%= order.assignedTo %>
+                                </td>
+                                <td>
+                                    <%= order.attempt %>
+                                </td>
+                                <td>
+                                    <% if (order.currentStatus !=="Completed" ) { %>
+                                        <% if (order.warehouseEntry==="No" ) { %>
+                                            0
+                                            <% } else { %>
+                                                <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                                    <% const currentDate=new Date(); %>
+                                                        <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                            <% const ageInDays=Math.floor(ageInMilliseconds / (1000
+                                                                * 60 * 60 * 24)); %>
+                                                                <%= ageInDays %>
+                                                                    <% } %>
+                                                                        <% } else { %>
+                                                                            <!-- Add an empty cell or any placeholder when the status is "Completed" -->
+                                                                            <!-- Adjust the colspan to match the number of columns in the table -->
+                                                                            <% } %>
+                                </td>
+                                <td>
+                                    <%= order.latestReason %>
+                                </td>
+                                <td>
+                                    <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
+                                </td>
+                                <td>
+                                    <%= order.dateTimeSubmission %>
+                                </td>
+                                <td>
+                                    <%= order.receiverAddress %>
+                                </td>
+                                <td>
+                                    <%= order.area %>
+                                </td>
+                                <td>
+                                    <%= order.patientNumber %>
+                                </td>
+                                <td>
+                                    <%= order.icPassNum %>
+                                </td>
+                                <td>
+                                    <%= order.appointmentPlace %>
+                                </td>
+                                <td>
+                                    <%= order.receiverPhoneNumber %>
+                                </td>
+                                <td>
+                                    <%= order.additionalPhoneNumber %>
+                                </td>
+                                <td>
+                                    <%= order.remarks %>
+                                </td>
+                                <td>
+                                    <%= order.deliveryTypeCode %>
+                                </td>
+                                <td>
+                                    <%= order.paymentMethod %>
+                                </td>
+                                <td>
+                                    <%= order.paymentAmount %>
+                                </td>
+                            </tr>
+                            <% }); %>
                                 <% } %>
-                            </td>
-                            <td>
-                                <%= order.latestReason %>
-                            </td>
-                            <td>
-                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
-                            </td>
-                        </tr>
-                        <% }); %>
-                </tbody>
-            </table>
-        </div>
-    </main>
-
-    <!-- Include the necessary JavaScript libraries for DataTables and other custom scripts if needed -->
+            </tbody>
+        </table>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>

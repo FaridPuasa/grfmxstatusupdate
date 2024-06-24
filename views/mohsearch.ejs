@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOH Search</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
     <style>
         .navbar-nav.flex-row {
             flex-direction: row !important;
@@ -75,9 +77,13 @@
                                 Operation
                             </a>
                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                <a class="dropdown-item bg-red" href="/updateDelivery">Update Delivery</a>
-                                <a class="dropdown-item bg-green" href="/addressAreaCheck">Address Area Checker</a>
-                                <a class="dropdown-item bg-blue" href="/podGenerator">POD Generator</a>
+                                <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/search">Search</a>
+                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                <% } %>
+                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                     <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
@@ -91,7 +97,8 @@
                             </div>
                         </li>
                         <% } %>
-                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {%>
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
+                                {%>
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -252,90 +259,109 @@
             </div>
             <button type="submit" class="btn btn-primary">Search</button>
         </form>
-        <div id="results" class="mt-4">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Customer Name</th>
-                        <th>Address</th>
-                        <th>Area</th>
-                        <th>Patient Number</th>
-                        <th>IC/Passport Number</th>
-                        <th>Appointment Place</th>
-                        <th>Phone Number</th>
-                        <th>Additional Phone Number</th>
-                        <th>Job Type</th>
-                        <th>Remarks</th>
-                        <th>Job Created</th>
-                        <th>Current Status</th>
-                        <th>Latest Reason</th>
-                        <th>Last Date Time Update</th>
-                    </tr>
-                </thead>
-                <tbody id="results-body">
-                    <% if (orders.length===0) { %>
-                        <tr>
-                            <td colspan="15" class="text-center">No records found</td>
-                        </tr>
-                        <% } else { %>
-                            <% orders.forEach(order=> { %>
-                                <tr>
-                                    <td>
-                                        <%= order.doTrackingNumber %>
-                                    </td>
-                                    <td>
-                                        <%= order.receiverName %>
-                                    </td>
-                                    <td>
-                                        <%= order.receiverAddress %>
-                                    </td>
-                                    <td>
-                                        <%= order.area %>
-                                    </td>
-                                    <td>
-                                        <%= order.patientNumber %>
-                                    </td>
-                                    <td>
-                                        <%= order.icPassNum %>
-                                    </td>
-                                    <td>
-                                        <%= order.appointmentPlace %>
-                                    </td>
-                                    <td>
-                                        <%= order.receiverPhoneNumber %>
-                                    </td>
-                                    <td>
-                                        <%= order.additionalPhoneNumber %>
-                                    </td>
-                                    <td>
-                                        <%= order.deliveryTypeCode %>
-                                    </td>
-                                    <td>
-                                        <%= order.remarks %>
-                                    </td>
-                                    <td>
-                                        <%= order.dateTimeSubmission %>
-                                    </td>
-                                    <td>
-                                        <%= order.currentStatus %>
-                                    </td>
-                                    <td>
-                                        <%= order.latestReason %>
-                                    </td>
-                                    <td>
-                                        <%= moment(order.lastUpdateDateTime).format('DD/MM/YYYY hh:mm:ss A') %>
-                                    </td>
-                                </tr>
-                                <% }); %>
-                                    <% } %>
-                </tbody>
-            </table>
-        </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <div id="results" class="mt-4">
+        <table class="table" id="orderTable">
+            <thead>
+                <tr>
+                    <th>Tracking Number</th>
+                    <th>Customer Name</th>
+                    <th>Current Status</th>
+                    <th>Latest Reason</th>
+                    <th>Last Date Time Update</th>
+                    <th>Order Submitted</th>
+                    <th>Address</th>
+                    <th>Area</th>
+                    <th>Patient Number</th>
+                    <th>IC/Passport Number</th>
+                    <th>Appointment Place</th>
+                    <th>Phone Number</th>
+                    <th>Additional Phone Number</th>
+                    <th>Job Type</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <% if (orders.length===0) { %>
+                    <tr>
+                        <td colspan="15" class="text-center">No records found</td>
+                    </tr>
+                    <% } else { %>
+                        <% orders.forEach(order=> { %>
+                            <tr>
+                                <td>
+                                    <%= order.doTrackingNumber %>
+                                </td>
+                                <td>
+                                    <%= order.receiverName %>
+                                </td>
+                                <td>
+                                    <%= order.currentStatus %>
+                                </td>
+                                <td>
+                                    <%= order.latestReason %>
+                                </td>
+                                <td>
+                                    <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
+                                </td>
+                                <td>
+                                    <%= order.dateTimeSubmission %>
+                                </td>
+                                <td>
+                                    <%= order.receiverAddress %>
+                                </td>
+                                <td>
+                                    <%= order.area %>
+                                </td>
+                                <td>
+                                    <%= order.patientNumber %>
+                                </td>
+                                <td>
+                                    <%= order.icPassNum %>
+                                </td>
+                                <td>
+                                    <%= order.appointmentPlace %>
+                                </td>
+                                <td>
+                                    <%= order.receiverPhoneNumber %>
+                                </td>
+                                <td>
+                                    <%= order.additionalPhoneNumber %>
+                                </td>
+                                <td>
+                                    <%= order.deliveryTypeCode %>
+                                </td>
+                                <td>
+                                    <%= order.remarks %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                                <% } %>
+            </tbody>
+        </table>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Initialize DataTable for the order table
+            const table = $('#orderTable').DataTable({
+                "ordering": false,  // Disable client-side sorting
+                "iDisplayLength": 100,  // Set the default number of entries to 100
+                "dom": 'Bfrtip', // Add buttons to the DOM
+                "buttons": [
+                    'copy', 'csv', 'excel', 'pdf', 'print' // Buttons for copy, CSV, Excel, PDF, and print
+                ]
+            });
+        });
+    </script>
 </body>
 
 </html>

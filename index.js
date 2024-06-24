@@ -324,7 +324,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
 
         // Render the dashboard view with both sets of orders
-        res.render('dashboard', { mohOrders, eweOrders, fmxOrders, moment, user: req.user, orders: [], searchQuery: {} });
+        res.render('dashboard', { mohOrders, eweOrders, fmxOrders, moment, user: req.user, orders: [] });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -409,6 +409,68 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             console.error(err);
             res.status(500).send('Server error');
         }
+    }
+});
+
+app.get('/search', ensureAuthenticated, ensureViewJob, (req, res) => {
+    res.render('search', { moment: moment, user: req.user, orders: [], searchQuery: {} });
+});
+
+app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const { patientNumber, icPassNum, receiverPhoneNumber } = req.body;
+
+        let query = { product: "pharmacymoh" };
+
+        if (patientNumber) {
+            query.patientNumber = new RegExp(patientNumber, 'i'); // Case-insensitive partial match
+        }
+
+        if (icPassNum) {
+            query.icPassNum = new RegExp(icPassNum, 'i'); // Case-insensitive partial match
+        }
+
+        if (receiverPhoneNumber) {
+            query.receiverPhoneNumber = new RegExp(receiverPhoneNumber, 'i'); // Case-insensitive partial match
+        }
+
+        const orders = await ORDERS.find(query)
+            .select([
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ lastUpdateDateTime: -1 })
+            .limit(1000);
+
+        res.render('search', { moment: moment, user: req.user, orders, searchQuery: req.body });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
     }
 });
 
@@ -600,6 +662,49 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: { $nin: ["fmx", "ewe"] },
+            currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'paymentAmount',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofOrdersSC', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1901,6 +2006,53 @@ app.get('/listofFMXOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofFMXOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofFMXOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "fmx",
+            currentStatus: "Self Collect" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofFMXOrdersSC', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
