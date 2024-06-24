@@ -355,7 +355,7 @@
                                 <%= order.latestReason %>
                             </td>
                             <td>
-                                <%= moment(order.lastUpdateDateTime).format('DD-MM-YYYY h:mm a') %>
+                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
                             </td>
                         </tr>
                         <% }); %>

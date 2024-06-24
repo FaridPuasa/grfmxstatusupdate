@@ -112,7 +112,7 @@ function ensureAdmin(req, res, next) {
 }
 
 function ensureGeneratePODandUpdateDelivery(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'warehouse' ||req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
+    if (req.isAuthenticated() && (req.user.role === 'warehouse' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -120,7 +120,7 @@ function ensureGeneratePODandUpdateDelivery(req, res, next) {
 }
 
 function ensureViewPOD(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'warehouse' ||req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
+    if (req.isAuthenticated() && (req.user.role === 'warehouse' || req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -201,6 +201,8 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                     flightDate: { $first: '$flightDate' },
                     total: { $sum: 1 },
                     atWarehouse: { $sum: { $cond: [{ $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }, 1, 0] } },
+                    k1: { $sum: { $cond: [{ $eq: ['$latestLocation', 'Warehouse K1'] }, 1, 0] } },
+                    k2: { $sum: { $cond: [{ $eq: ['$latestLocation', 'Warehouse K2'] }, 1, 0] } },
                     outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
                     selfCollect: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Self Collect'] }, 1, 0] } },
                     completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
@@ -209,7 +211,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             },
             { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
         ]);
-
 
         // Fetch FMX Orders
         const fmxOrders = await ORDERS.aggregate([
@@ -737,6 +738,338 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
     }
 });
 
+app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ _id: -1 })
+            .limit(1000);
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrders', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh",
+            currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrdersCompleted', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh",
+            currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrdersSC', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrdersAW', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const statusValues = ["Info Received"];
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrdersIRCC', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofpharmacyMOHOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const statusValues = ["Cancelled"];
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pharmacymoh",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'patientNumber',
+                'icPassNum',
+                'appointmentPlace',
+                'receiverPhoneNumber',
+                'additionalPhoneNumber',
+                'deliveryTypeCode',
+                'remarks',
+                'paymentMethod',
+                'dateTimeSubmission',
+                'membership',
+                'pharmacyFormCreated',
+                'sendOrderTo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'paymentAmount'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofpharmacyMOHOrdersCD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
@@ -768,7 +1101,8 @@ app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -812,7 +1146,8 @@ app.get('/listofpharmacyMOHSTDOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -924,7 +1259,8 @@ app.get('/listofpharmacyMOHTTGOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 });
 
@@ -967,7 +1303,8 @@ app.get('/listofpharmacyMOHKBOrders', ensureAuthenticated, ensureViewMOHJob, asy
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 });
 
@@ -1010,7 +1347,8 @@ app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 });
 
@@ -1052,7 +1390,8 @@ app.get('/listofpharmacyJPMCOrders', ensureAuthenticated, ensureViewJob, async (
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 });
 
@@ -1092,7 +1431,8 @@ app.get('/listofpharmacyPHCOrders', ensureAuthenticated, ensureViewJob, async (r
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'paymentAmount'
             ])
             .sort({ _id: -1 });
 
@@ -1786,6 +2126,7 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'deliveryType',
                 'jobDate',
                 'currentStatus',
+                'latestLocation',
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
@@ -1832,6 +2173,7 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'deliveryType',
                 'jobDate',
                 'currentStatus',
+                'latestLocation',
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
@@ -1850,6 +2192,54 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofEWEOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "ewe",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersSC', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
