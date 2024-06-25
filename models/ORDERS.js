@@ -89,6 +89,7 @@ const orderSchema = new mongoose.Schema({
     fmxMilestoneStatusCode: String,
     latestReason: String,
     latestLocation: String,
+    lastUpdatedBy: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,

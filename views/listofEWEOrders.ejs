@@ -252,10 +252,17 @@
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Consignment No.</th>
-                        <th class="header">Consignee Name</th>
-                        <th class="header">Consignee Address</th>
-                        <th class="header">Consignee Contact No.</th>
+                        <th class="header">Tracking No.</th>
+                        <th class="header">Receiver Name</th>
+                        <th class="header">Current Status</th>
+                        <th class="header">Assigned To</th>
+                        <th class="header">Attempt No.</th>
+                        <th class="header">Age in Warehouse</th>
+                        <th class="header">Latest Reason</th>
+                        <th class="header">Last Update</th>
+                        <th class="header">Last Update By</th>
+                        <th class="header">Address</th>
+                        <th class="header">Phone No.</th>
                         <th class="header">Item Description</th>
                         <th class="header">Flight Date</th>
                         <th class="header">MAWB No.</th>
@@ -265,12 +272,6 @@
                         <th class="header">Job Date</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
-                        <th class="header">Current Status</th>
-                        <th class="header">Assigned To</th>
-                        <th class="header">Attempt No.</th>
-                        <th class="header">Age in Warehouse</th>
-                        <th class="header">Latest Reason</th>
-                        <th class="header">Last Date Time Update</th>
                     </tr>
                 </thead>
 
@@ -283,6 +284,40 @@
                             </td>
                             <td>
                                 <%= order.receiverName %>
+                            </td>
+                            <td>
+                                <%= order.currentStatus %>
+                            </td>
+                            <td>
+                                <%= order.assignedTo %>
+                            </td>
+                            <td>
+                                <%= order.attempt %>
+                            </td>
+                            <td>
+                                <% if (order.currentStatus !== "Completed") { %>
+                                    <% if (order.warehouseEntry === "No") { %>
+                                        0
+                                    <% } else { %>
+                                        <% const entryDate = new Date(order.warehouseEntryDateTime); %>
+                                        <% const currentDate = new Date(); %>
+                                        <% const ageInMilliseconds = currentDate - entryDate; %>
+                                        <% const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24)); %>
+                                        <%= ageInDays %>
+                                    <% } %>
+                                <% } else { %>
+                                    <!-- Add an empty cell or any placeholder when the status is "Completed" -->
+                                    <!-- Adjust the colspan to match the number of columns in the table -->
+                                <% } %>
+                            </td>
+                            <td>
+                                <%= order.latestReason %>
+                            </td>
+                            <td>
+                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
+                            </td>
+                            <td>
+                                <%= order.lastUpdatedBy %>
                             </td>
                             <td>
                                 <%= order.receiverAddress %>
@@ -316,37 +351,6 @@
                             </td>
                             <td>
                                 <%= order.totalPrice %>
-                            </td>
-                            <td>
-                                <%= order.currentStatus %>
-                            </td>
-                            <td>
-                                <%= order.assignedTo %>
-                            </td>
-                            <td>
-                                <%= order.attempt %>
-                            </td>
-                            <td>
-                                <% if (order.currentStatus !== "Completed") { %>
-                                    <% if (order.warehouseEntry === "No") { %>
-                                        0
-                                    <% } else { %>
-                                        <% const entryDate = new Date(order.warehouseEntryDateTime); %>
-                                        <% const currentDate = new Date(); %>
-                                        <% const ageInMilliseconds = currentDate - entryDate; %>
-                                        <% const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24)); %>
-                                        <%= ageInDays %>
-                                    <% } %>
-                                <% } else { %>
-                                    <!-- Add an empty cell or any placeholder when the status is "Completed" -->
-                                    <!-- Adjust the colspan to match the number of columns in the table -->
-                                <% } %>
-                            </td>
-                            <td>
-                                <%= order.latestReason %>
-                            </td>
-                            <td>
-                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
                             </td>
                         </tr>
                         <% }); %>

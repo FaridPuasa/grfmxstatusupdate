@@ -462,7 +462,8 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 })
             .limit(1000);
@@ -508,7 +509,8 @@ app.post('/mohsearch', ensureAuthenticated, ensureSearchMOHJob, async (req, res)
                 'dateTimeSubmission',
                 'currentStatus',
                 'latestReason',
-                'lastUpdateDateTime'
+                'lastUpdateDateTime',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 })
             .limit(1000);
@@ -569,7 +571,8 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -613,7 +616,8 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -656,7 +660,8 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -699,7 +704,8 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -743,7 +749,8 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -787,7 +794,8 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -831,7 +839,8 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -877,7 +886,8 @@ app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (r
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -925,7 +935,8 @@ app.get('/listofpharmacyMOHOrdersCompleted', ensureAuthenticated, ensureViewJob,
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -972,7 +983,8 @@ app.get('/listofpharmacyMOHOrdersOFD', ensureAuthenticated, ensureViewJob, async
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1019,7 +1031,8 @@ app.get('/listofpharmacyMOHOrdersSC', ensureAuthenticated, ensureViewJob, async 
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1067,7 +1080,8 @@ app.get('/listofpharmacyMOHOrdersAW', ensureAuthenticated, ensureViewJob, async 
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1115,7 +1129,8 @@ app.get('/listofpharmacyMOHOrdersIRCC', ensureAuthenticated, ensureViewJob, asyn
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1163,7 +1178,8 @@ app.get('/listofpharmacyMOHOrdersCD', ensureAuthenticated, ensureViewJob, async 
                 'warehouseEntryDateTime',
                 'assignedTo',
                 'attempt',
-                'paymentAmount'
+                'paymentAmount',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1585,7 +1601,8 @@ app.get('/listofLDOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1632,7 +1649,8 @@ app.get('/listofLDJBOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1679,7 +1697,8 @@ app.get('/listofICARUSOrders', ensureAuthenticated, ensureViewJob, async (req, r
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1726,7 +1745,8 @@ app.get('/listofFCASOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1772,7 +1792,8 @@ app.get('/listofBBOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1819,7 +1840,8 @@ app.get('/listofGRPOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1862,7 +1884,8 @@ app.get('/listofCBSLOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'warehouseEntry',
                 'warehouseEntryDateTime',
                 'assignedTo',
-                'attempt'
+                'attempt',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 });
 
@@ -1907,7 +1930,8 @@ app.get('/listofFMXOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -1954,7 +1978,8 @@ app.get('/listofFMXOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2001,7 +2026,8 @@ app.get('/listofFMXOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2048,7 +2074,8 @@ app.get('/listofFMXOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2098,7 +2125,8 @@ app.get('/listofFMXOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2148,7 +2176,8 @@ app.get('/listofFMXOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, 
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2198,7 +2227,8 @@ app.get('/listofFMXOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2243,7 +2273,9 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -2291,7 +2323,8 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'latestReason',
                 'history',
                 'lastUpdateDateTime',
-                'creationDate'
+                'creationDate',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2339,7 +2372,8 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2387,7 +2421,8 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2437,7 +2472,9 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2487,7 +2524,9 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'history',
                 'lastUpdateDateTime',
                 'creationDate',
-                'instructions'
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -4364,6 +4403,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         lastUpdateDateTime: moment().format(),
                         creationDate: data.data.created_at,
                         jobDate: "N/A",
+                        lastUpdatedBy: req.user.name,
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
@@ -4417,6 +4457,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -4429,6 +4470,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             instructions: "FMX Milestone ID CP",
                             attempt: wmsAttempt,
                             latestLocation: "Brunei Custom Clearance",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Custom Clearing",
@@ -4512,6 +4554,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -4525,6 +4568,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
                             latestLocation: "Brunei Custom Clearance",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Detained by Customs",
@@ -4603,6 +4647,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -4615,6 +4660,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             instructions: "FMX Milestone ID 38",
                             attempt: wmsAttempt,
                             latestLocation: "Brunei Custom Clearance",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Custom Clearance Release",
@@ -4693,6 +4739,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -4707,6 +4754,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             warehouseEntryDateTime: moment().format(),
                             attempt: wmsAttempt,
                             latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "At Warehouse",
@@ -4795,6 +4843,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -4809,6 +4858,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: wmsAttempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery",
@@ -4882,6 +4932,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -4896,6 +4947,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: wmsAttempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery",
@@ -4981,6 +5033,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -4992,6 +5045,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 attempt: wmsAttempt,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -5064,6 +5118,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -5075,6 +5130,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 attempt: wmsAttempt,
                                 latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -5170,6 +5226,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5184,6 +5241,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Unattempted Delivery",
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5284,6 +5342,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5298,6 +5357,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5400,6 +5460,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5414,6 +5475,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5516,6 +5578,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5530,6 +5593,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Cash/Duty Not Ready",
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5632,6 +5696,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5646,6 +5711,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Customer not available / cannot be contacted",
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5748,6 +5814,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5762,6 +5829,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "No Such Person",
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5864,6 +5932,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5878,6 +5947,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Shipment Refused by Consignee due to " + data.data.note,
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -5980,6 +6050,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -5994,6 +6065,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Unable to Locate Receiver Address",
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -6096,6 +6168,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
                                 });
 
                                 mongoDBrun = 1;
@@ -6110,6 +6183,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     latestReason: "Incorrect Address",
                                     attempt: wmsAttempt,
                                     latestLocation: "Warehouse K1",
+                                    lastUpdatedBy: req.user.name,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -6202,6 +6276,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6214,6 +6289,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 instructions: "FMX Milestone ID 50.",
                                 attempt: wmsAttempt,
                                 latestLocation: "Customer",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Completed",
@@ -6311,6 +6387,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6325,6 +6402,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Unattempted Delivery",
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -6421,6 +6499,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6435,6 +6514,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -6537,6 +6617,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6551,6 +6632,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -6653,6 +6735,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6667,6 +6750,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Cash/Duty Not Ready",
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -6769,6 +6853,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6783,6 +6868,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Customer not available / cannot be contacted",
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -6885,6 +6971,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -6899,6 +6986,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "No Such Person",
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -7001,6 +7089,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -7015,6 +7104,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Shipment Refused by Consignee due to " + data.data.note,
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -7117,6 +7207,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -7131,6 +7222,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Unable to Locate Receiver Address",
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -7233,6 +7325,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -7247,6 +7340,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Incorrect Address",
                                 attempt: wmsAttempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -7339,6 +7433,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: req.body.assignDate,
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -7351,6 +7446,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             instructions: "FMX Milestone ID 50.",
                             attempt: wmsAttempt,
                             latestLocation: "Customer",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -7433,6 +7529,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: req.body.assignDate,
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -7445,6 +7542,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             attempt: wmsAttempt,
                             jobDate: req.body.assignDate,
                             latestLocation: "Go Rush Office",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Self Collect",
@@ -7529,6 +7627,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -7543,6 +7642,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
                             latestLocation: "Warehouse K1",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Cancelled",
@@ -7624,6 +7724,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -7638,6 +7739,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
                             latestLocation: "Warehouse K1",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Return to Warehouse",
@@ -7719,6 +7821,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -7733,6 +7836,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
                             latestLocation: "Warehouse K1",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Disposed",
@@ -7802,6 +7906,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         lastUpdateDateTime: moment().format(),
                         creationDate: data.data.created_at,
                         jobDate: "N/A",
+                        lastUpdatedBy: req.user.name,
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
@@ -7818,6 +7923,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         warehouseEntryDateTime: moment().format(),
                         attempt: data.data.attempt,
                         latestLocation: req.body.warehouse,
+                        lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
                                 statusHistory: "At Warehouse",
@@ -7862,6 +7968,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         warehouseEntryDateTime: moment().format(),
                         attempt: data.data.attempt,
                         latestLocation: req.body.warehouse,
+                        lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
                                 statusHistory: "At Warehouse",
@@ -8299,6 +8406,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: "N/A",
                                     flightDate: data.data.job_received_date,
                                     mawbNo: data.data.run_number,
+                                    lastUpdatedBy: req.user.name,
                                 });
                             } else {
                                 newOrder = new ORDERS({
@@ -8337,6 +8445,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdateDateTime: moment().format(),
                                     creationDate: data.data.created_at,
                                     jobDate: "N/A",
+                                    lastUpdatedBy: req.user.name,
                                 });
                             }
 
@@ -8348,6 +8457,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 warehouseEntry: "Yes",
                                 warehouseEntryDateTime: moment().format(),
                                 latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "At Warehouse",
@@ -8475,6 +8585,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery",
@@ -8510,6 +8621,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery",
@@ -8553,6 +8665,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: req.body.assignDate,
                             attempt: data.data.attempt,
                             latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -8586,6 +8699,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: req.body.assignDate,
                             attempt: data.data.attempt,
                             latestLocation: req.body.dispatchers,
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
@@ -8628,6 +8742,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: data.data.reason,
                                 attempt: data.data.attempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -8675,6 +8790,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: data.data.reason,
                                 attempt: data.data.attempt,
                                 latestLocation: "Warehouse K1",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -8754,6 +8870,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
+                                lastUpdatedBy: req.user.name,
                             });
 
                             mongoDBrun = 1;
@@ -8763,6 +8880,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 attempt: data.data.attempt,
                                 latestLocation: "Customer",
+                                lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
                                         statusHistory: "Completed",
@@ -8802,6 +8920,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestReason: data.data.reason,
                             attempt: data.data.attempt,
                             latestLocation: "Warehouse K1",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Failed Delivery",
@@ -8849,6 +8968,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestReason: data.data.reason,
                             attempt: data.data.attempt,
                             latestLocation: "Warehouse K1",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Failed Delivery",
@@ -8928,6 +9048,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
+                            lastUpdatedBy: req.user.name,
                         });
 
                         mongoDBrun = 1;
@@ -8937,6 +9058,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             attempt: data.data.attempt,
                             latestLocation: "Customer",
+                            lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -8974,6 +9096,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         attempt: data.data.attempt,
                         jobDate: req.body.assignDate,
                         latestLocation: "Go Rush Office",
+                        lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
                                 statusHistory: "Self Collect",
@@ -9015,6 +9138,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         latestReason: detrackReason,
                         attempt: data.data.attempt,
                         latestLocation: "Warehouse K1",
+                        lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
                                 statusHistory: "Cancelled",
@@ -9055,6 +9179,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         latestReason: detrackReason,
                         attempt: data.data.attempt,
                         latestLocation: "Warehouse K1",
+                        lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
                                 statusHistory: "Return to Warehouse",
