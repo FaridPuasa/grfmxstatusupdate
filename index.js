@@ -1325,6 +1325,7 @@ app.post('/createPharmacyFormSuccess', ensureAuthenticated, ensureMOHForm, async
             batchChoice,
             b2Start,
             mohForm: mohForm,
+            user: req.user
         });
 
     } catch (error) {
