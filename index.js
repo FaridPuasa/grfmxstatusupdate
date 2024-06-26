@@ -475,11 +475,11 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
     }
 });
 
-app.get('/ewemanifesttobillsearch', ensureAuthenticated, ensureSearchMOHJob, (req, res) => {
+app.get('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
     res.render('ewemanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
 });
 
-app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureSearchMOHJob, async (req, res) => {
+app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const { mawbNo } = req.body;
 
