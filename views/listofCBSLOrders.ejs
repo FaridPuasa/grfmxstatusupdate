@@ -78,23 +78,24 @@
                                 Operation
                             </a>
                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                                <a class="dropdown-item" href="/search">Search</a>
-                                <div class="dropdown-divider"></div> <!-- Divider here -->
-                                <% } %>
-                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
-                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                                <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                    <a class="dropdown-item" href="/search">Search</a>
                                     <div class="dropdown-divider"></div> <!-- Divider here -->
-                                    <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                                    <a class="dropdown-item" href="/listofldPod">POD LD</a>
-                                    <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
-                                    <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                                    <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
-                                        (Limbang)</a>
                                     <% } %>
+                                        <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                        <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                        <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
+                                            ].includes(user.role)) { %>
+                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                            <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                            <a class="dropdown-item" href="/listofldPod">POD LD</a>
+                                            <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
+                                            <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
+                                            <a class="dropdown-item" href="/listofewePod">POD EWE</a>
+                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                                (Limbang)</a>
+                                            <% } %>
                             </div>
                         </li>
                         <% } %>
@@ -170,14 +171,21 @@
                                                 EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                                <a class="dropdown-item bg-yellow" href="/listofEWEOrdersOFD">Out for
-                                                    Delivery</a>
-                                                <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
-                                                    Collect</a>
-                                                <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
-                                                <a class="dropdown-item" href="/listofEWEOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <a class="dropdown-item" href="/listofEWEOrders">All</a>
+                                                        <a class="dropdown-item bg-yellow"
+                                                            href="/listofEWEOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWEOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -259,8 +267,9 @@
                         <th class="header">Assigned To</th>
                         <th class="header">Job Date</th>
                         <th class="header">Attempt No.</th>
-                        <th class="header">Age in Warehouse</th>
                         <th class="header">Latest Reason</th>
+                        <th class="header">Warehouse Entry Date</th>
+                        <th class="header">Age in Warehouse</th>
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
                         <th class="header">Order Created</th>
@@ -276,7 +285,6 @@
                         <th class="header">Payment Method</th>
                         <th class="header">Delivery Charge</th>
                         <th class="header">Remarks</th>
-                        <th class="header">Membership</th>
                     </tr>
                 </thead>
 
@@ -306,23 +314,27 @@
                                 <%= order.attempt %>
                             </td>
                             <td>
-                                <% if (order.currentStatus !== "Completed") { %>
-                                    <% if (order.warehouseEntry === "No") { %>
-                                        0
-                                    <% } else { %>
-                                        <% const entryDate = new Date(order.warehouseEntryDateTime); %>
-                                        <% const currentDate = new Date(); %>
-                                        <% const ageInMilliseconds = currentDate - entryDate; %>
-                                        <% const ageInDays = Math.floor(ageInMilliseconds / (1000 * 60 * 60 * 24)); %>
-                                        <%= ageInDays %>
-                                    <% } %>
-                                <% } else { %>
-                                    <!-- Add an empty cell or any placeholder when the status is "Completed" -->
-                                    <!-- Adjust the colspan to match the number of columns in the table -->
-                                <% } %>
+                                <%= order.latestReason %>
                             </td>
                             <td>
-                                <%= order.latestReason %>
+                                <%= order.warehouseEntryDateTime %>
+                            </td>
+                            <td>
+                                <% if (order.currentStatus !=="Completed" ) { %>
+                                    <% if (order.warehouseEntry==="No" ) { %>
+                                        0
+                                        <% } else { %>
+                                            <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                                <% const currentDate=new Date(); %>
+                                                    <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                        <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 *
+                                                            60 * 24)); %>
+                                                            <%= ageInDays %>
+                                                                <% } %>
+                                                                    <% } else { %>
+                                                                        <!-- Add an empty cell or any placeholder when the status is "Completed" -->
+                                                                        <!-- Adjust the colspan to match the number of columns in the table -->
+                                                                        <% } %>
                             </td>
                             <td>
                                 <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
@@ -368,9 +380,6 @@
                             </td>
                             <td>
                                 <%= order.remarks %>
-                            </td>
-                            <td>
-                                <%= order.membership %>
                             </td>
                         </tr>
                         <% }); %>

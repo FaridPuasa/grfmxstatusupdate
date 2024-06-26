@@ -170,6 +170,10 @@
                                                 EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                <a class="dropdown-item" href="/ewemanifesttobillsearch">Search Manifest to Bill</a>
+                                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                <% } %>
                                                 <a class="dropdown-item" href="/listofEWEOrders">All</a>
                                                 <a class="dropdown-item bg-yellow" href="/listofEWEOrdersOFD">Out for
                                                     Delivery</a>
@@ -252,25 +256,24 @@
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Consignment No.</th>
-                        <th class="header">Consignee Name</th>
-                        <th class="header">Consignee Address</th>
-                        <th class="header">Consignee Contact No.</th>
-                        <th class="header">Item Description</th>
+                        <th class="header">Tracking No.</th>
+                        <th class="header">Receiver Name</th>
+                        <th class="header">Current Status</th>
+                        <th class="header">Last Assigned To</th>
+                        <th class="header">Last Job Date</th>
+                        <th class="header">Attempt No.</th>
+                        <th class="header">Latest Reason</th>
+                        <th class="header">Warehouse Entry Date</th>
+                        <th class="header">Age in Warehouse</th>
                         <th class="header">Flight Date</th>
                         <th class="header">MAWB No.</th>
-                        <th class="header">Area</th>
-                        <th class="header">Job Type</th>
+                        <th class="header">Last Update</th>
+                        <th class="header">Last Update By</th>
                         <th class="header">Job Created</th>
-                        <th class="header">Job Date</th>
-                        <th class="header">Payment Method</th>
-                        <th class="header">Price</th>
-                        <th class="header">Current Status</th>
-                        <th class="header">Assigned To</th>
-                        <th class="header">Attempt No.</th>
-                        <th class="header">Age in Warehouse</th>
-                        <th class="header">Latest Reason</th>
-                        <th class="header">Last Date Time Update</th>
+                        <th class="header">Phone No.</th>
+                        <th class="header">Address</th>
+                        <th class="header">Area</th>
+                        <th class="header">Item Description</th>
                     </tr>
                 </thead>
 
@@ -285,46 +288,22 @@
                                 <%= order.receiverName %>
                             </td>
                             <td>
-                                <%= order.receiverAddress %>
-                            </td>
-                            <td>
-                                <%= order.receiverPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.items[0].description %>
-                            </td>
-                            <td>
-                                <%= order.flightDate %>
-                            </td>
-                            <td>
-                                <%= order.mawbNo %>
-                            </td>
-                            <td>
-                                <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.deliveryType %>
-                            </td>
-                            <td>
-                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
-                            </td>
-                            <td>
-                                <%= order.jobDate %>
-                            </td>
-                            <td>
-                                <%= order.paymentMethod %>
-                            </td>
-                            <td>
-                                <%= order.totalPrice %>
-                            </td>
-                            <td>
                                 <%= order.currentStatus %>
                             </td>
                             <td>
                                 <%= order.assignedTo %>
                             </td>
                             <td>
+                                <%= order.jobDate %>
+                            </td>
+                            <td>
                                 <%= order.attempt %>
+                            </td>
+                            <td>
+                                <%= order.latestReason %>
+                            </td>
+                            <td>
+                                <%= order.warehouseEntryDateTime %>
                             </td>
                             <td>
                                 <% if (order.warehouseEntry==="No" ) { %>
@@ -339,10 +318,31 @@
                                                             <% } %>
                             </td>
                             <td>
-                                <%= order.latestReason %>
+                                <%= order.flightDate %>
+                            </td>
+                            <td>
+                                <%= order.mawbNo %>
                             </td>
                             <td>
                                 <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
+                            </td>
+                            <td>
+                                <%= order.lastUpdatedBy %>
+                            </td>
+                            <td>
+                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
+                            </td>
+                            <td>
+                                <%= order.receiverPhoneNumber %>
+                            </td>
+                            <td>
+                                <%= order.receiverAddress %>
+                            </td>
+                            <td>
+                                <%= order.area %>
+                            </td>
+                            <td>
+                                <%= order.items[0].description %>
                             </td>
                         </tr>
                         <% }); %>

@@ -167,6 +167,10 @@
                                                 EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                <a class="dropdown-item" href="/ewemanifesttobillsearch">Search Manifest to Bill</a>
+                                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                <% } %>
                                                 <a class="dropdown-item" href="/listofEWEOrders">All</a>
                                                 <a class="dropdown-item bg-yellow" href="/listofEWEOrdersOFD">Out for
                                                     Delivery</a>
