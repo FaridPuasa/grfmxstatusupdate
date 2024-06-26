@@ -295,8 +295,8 @@
                         if (order.area === 'N/A') {
                             style2_8 = 'background-color: lightyellow;';
                             style3_5 = 'background-color: lightyellow;';
-                            handlingCharge2_8 = 'N/A'; // Or any appropriate placeholder for handling charge
-                            handlingCharge3_5 = 'N/A'; // Or any appropriate placeholder for handling charge
+                            handlingCharge2_8 = (2.8 + 0.25 * Math.max(0, order.parcelWeight - 3)).toFixed(2);
+                            handlingCharge3_5 = (3.5 + 0.50 * Math.max(0, order.parcelWeight - 3)).toFixed(2);
                         } else if (['TEMBURONG', 'KB', 'KB / SERIA', 'LUMUT', 'TUTONG'].includes(order.area)) {
                             handlingCharge2_8 = (2.8 + 0.25 * Math.max(0, order.parcelWeight - 3)).toFixed(2);
                             handlingCharge3_5 = (3.5 + 0.50 * Math.max(0, order.parcelWeight - 3)).toFixed(2);
