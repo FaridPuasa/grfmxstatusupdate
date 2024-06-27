@@ -274,9 +274,9 @@
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
                         <th class="header">Job Created</th>
+                        <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Phone No.</th>
                         <th class="header">Item Description</th>
                     </tr>
                 </thead>
@@ -342,13 +342,13 @@
                                 <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
                             </td>
                             <td>
+                                <%= order.receiverPhoneNumber %>
+                            </td>
+                            <td>
                                 <%= order.receiverAddress %>
                             </td>
                             <td>
                                 <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.receiverPhoneNumber %>
                             </td>
                             <td>
                                 <%= order.items[0].description %>
