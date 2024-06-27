@@ -264,6 +264,7 @@
                         <th class="header">Attempt No.</th>
                         <th class="header">Latest Reason</th>
                         <th class="header">Warehouse Entry Date</th>
+                        <th class="header">Current Location</th>
                         <th class="header">Age in Warehouse</th>
                         <th class="header">Flight Date</th>
                         <th class="header">MAWB No.</th>
@@ -291,7 +292,7 @@
                                 <%= order.currentStatus %>
                             </td>
                             <td>
-                                <%= order.assignedTo %>
+                                <%= order.lastAssignedTo %>
                             </td>
                             <td>
                                 <%= order.jobDate %>
@@ -303,7 +304,10 @@
                                 <%= order.latestReason %>
                             </td>
                             <td>
-                                <%= order.warehouseEntryDateTime %>
+                                <%= moment(order.warehouseEntryDateTime).format('DD-MM-YYYY') %>
+                            </td>
+                            <td>
+                                <%= order.latestLocation %>
                             </td>
                             <td>
                                 <% if (order.warehouseEntry==="No" ) { %>

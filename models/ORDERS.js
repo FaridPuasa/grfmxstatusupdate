@@ -90,6 +90,7 @@ const orderSchema = new mongoose.Schema({
     latestReason: String,
     latestLocation: String,
     lastUpdatedBy: String,
+    lastAssignedTo: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,
