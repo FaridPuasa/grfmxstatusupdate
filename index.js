@@ -10451,7 +10451,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     });
             }
 
-            if (waOrderCompletedFeedback == 1) {
+            if (waOrderCompletedFeedback == 5) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
                 let c = data.data.tracking_link;
