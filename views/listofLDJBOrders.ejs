@@ -256,7 +256,7 @@
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Tracking Number</th>
+                        <th class="header">Tracking No.</th>
                         <th class="header">Sender Name</th>
                         <th class="header">Receiver Name</th>
                         <th class="header">Current Status</th>
@@ -271,7 +271,7 @@
                         <th class="header">Receiver Address</th>
                         <th class="header">Area</th>
                         <th class="header">Item Description</th>
-                        
+                        <th class="header">Price</th> 
                     </tr>
                 </thead>
 
@@ -336,6 +336,9 @@
                             </td>
                             <td>
                                 <%= order.items[0].description %>
+                            </td>
+                            <td>
+                                <%= order.paymentAmount %>
                             </td>
                         </tr>
                         <% }); %>

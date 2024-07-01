@@ -266,24 +266,21 @@
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Tracking Number</th>
+                        <th class="header">Tracking No.</th>
                         <th class="header">Customer Name</th>
-                        <th class="header">Order Submitted on</th>
                         <th class="header">Current Status</th>
-                        <th class="header">Last Date Time Update</th>
+                        <th class="header">Order Created</th>
+                        <th class="header">Phone No.</th>
+                        <th class="header">Additional Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Patient Number</th>
-                        <th class="header">IC/Passport Number</th>
+                        <th class="header">Patient No.</th>
+                        <th class="header">IC/Passport No.</th>
                         <th class="header">Appointment Place</th>
-                        <th class="header">Phone Number</th>
-                        <th class="header">Additional Phone Number</th>
-                        <th class="header">Remarks</th>
                         <th class="header">Job Type</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
-                        <th class="header">Membership</th>
-                        <th class="header">Pharmacy Form Created</th>
+                        <th class="header">Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -297,13 +294,16 @@
                                 <%= order.receiverName %>
                             </td>
                             <td>
-                                <%= order.dateTimeSubmission %>
-                            </td>
-                            <td>
                                 <%= order.currentStatus %>
                             </td>
                             <td>
-                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
+                                <%= order.dateTimeSubmission %>
+                            </td>
+                            <td>
+                                <%= order.receiverPhoneNumber %>
+                            </td>
+                            <td>
+                                <%= order.additionalPhoneNumber %>
                             </td>
                             <td>
                                 <%= order.receiverAddress %>
@@ -321,15 +321,6 @@
                                 <%= order.appointmentPlace %>
                             </td>
                             <td>
-                                <%= order.receiverPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.additionalPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.remarks %>
-                            </td>
-                            <td>
                                 <%= order.deliveryTypeCode %>
                             </td>
                             <td>
@@ -339,10 +330,7 @@
                                 <%= order.paymentAmount %>
                             </td>
                             <td>
-                                <%= order.membership %>
-                            </td>
-                            <td>
-                                <%= order.pharmacyFormCreated %>
+                                <%= order.remarks %>
                             </td>
                         </tr>
                         <% }); %>

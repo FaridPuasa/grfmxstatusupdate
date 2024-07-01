@@ -260,7 +260,7 @@
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
-                        <th class="header">Tracking Number</th>
+                        <th class="header">Tracking No.</th>
                         <th class="header">Sender Name</th>
                         <th class="header">Sender Phone No.</th>
                         <th class="header">Receiver Name</th>
@@ -284,10 +284,10 @@
                         <th class="header">Weight</th>
                         <th class="header">Pickup Address</th>
                         <th class="header">Pickup Date</th>
-                        <th class="header">Remarks</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Payment Amount</th>
                         <th class="header">Bill To</th>
+                        <th class="header">Remarks</th>
                     </tr>
                 </thead>
 
@@ -382,9 +382,6 @@
                                 <%= order.pickupDate %>
                             </td>
                             <td>
-                                <%= order.remarks %>
-                            </td>
-                            <td>
                                 <%= order.paymentMethod %>
                             </td>
                             <td>
@@ -392,6 +389,9 @@
                             </td>
                             <td>
                                 <%= order.billTo %>
+                            </td>
+                            <td>
+                                <%= order.remarks %>
                             </td>
                         </tr>
                         <% }); %>
