@@ -1276,6 +1276,7 @@ app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 })
@@ -1322,6 +1323,7 @@ app.get('/listofpharmacyMOHSTDOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 })
@@ -1437,6 +1439,7 @@ app.get('/listofpharmacyMOHTTGOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 });
@@ -1482,6 +1485,7 @@ app.get('/listofpharmacyMOHKBOrders', ensureAuthenticated, ensureViewMOHJob, asy
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 });
@@ -1527,6 +1531,7 @@ app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 });
@@ -1571,6 +1576,7 @@ app.get('/listofpharmacyJPMCOrders', ensureAuthenticated, ensureViewJob, async (
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 });
@@ -1613,6 +1619,7 @@ app.get('/listofpharmacyPHCOrders', ensureAuthenticated, ensureViewJob, async (r
                 'assignedTo',
                 'attempt',
                 'paymentAmount',
+                'lastUpdatedBy',
                 'lastAssignedTo'
             ])
             .sort({ _id: -1 });

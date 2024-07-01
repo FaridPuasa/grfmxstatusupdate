@@ -270,7 +270,7 @@
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
                         <th class="header">Order Created</th>
-                        <th class="header">Phone Number</th>
+                        <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
                         <th class="header">Warehouse Reference</th>
@@ -297,6 +297,9 @@
                             </td>
                             <td>
                                 <%= order.parcelTrackingNum %>
+                            </td>
+                            <td>
+                                <%= order.goRushReceivingCountry %>
                             </td>
                             <td>
                                 <%= order.buyerName %>
@@ -352,9 +355,6 @@
                             </td>
                             <td>
                                 <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.goRushReceivingCountry %>
                             </td>
                             <td>
                                 <%= order.warehouseReference %>
