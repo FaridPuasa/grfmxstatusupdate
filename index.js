@@ -5300,11 +5300,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -5345,7 +5345,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "MD, 44",
                                     latestReason: "Unattempted Delivery",
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -5363,7 +5363,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -5418,11 +5418,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -5463,7 +5463,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "FD, 44",
                                     latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -5481,7 +5481,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -5538,11 +5538,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -5583,7 +5583,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "SC, 44",
                                     latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -5601,7 +5601,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -5658,11 +5658,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -5703,7 +5703,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "DU, 44",
                                     latestReason: "Cash/Duty Not Ready",
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -5721,7 +5721,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -5778,11 +5778,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -5823,7 +5823,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "NA, 44",
                                     latestReason: "Customer not available / cannot be contacted",
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -5841,7 +5841,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -5898,11 +5898,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -5943,7 +5943,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "NP, 44",
                                     latestReason: "No Such Person",
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -5961,7 +5961,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -6018,11 +6018,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -6063,7 +6063,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "RF, 44",
                                     latestReason: "Shipment Refused by Consignee due to " + data.data.note,
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -6081,7 +6081,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -6138,11 +6138,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -6183,7 +6183,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "UL, 44",
                                     latestReason: "Unable to Locate Receiver Address",
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -6201,7 +6201,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -6258,11 +6258,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     ],
                                     lastAssignedTo: data.data.assign_to,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     product: "fmx",
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
@@ -6303,7 +6303,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatusCode: "WA, 44",
                                     latestReason: "Incorrect Address",
                                     attempt: wmsAttempt,
-                                    latestLocation: "Warehouse K1",
+                                    latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     $push: {
@@ -6321,7 +6321,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                             updatedBy: req.user.name,
                                             lastAssignedTo: "N/A",
                                             reason: "N/A",
-                                            lastLocation: "Warehouse K1",
+                                            lastLocation: req.body.warehouse,
                                         }
                                     }
                                 }
@@ -6481,11 +6481,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -6526,7 +6526,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "MD, 44",
                                 latestReason: "Unattempted Delivery",
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -6544,7 +6544,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -6595,11 +6595,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -6640,7 +6640,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "FD, 44",
                                 latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -6658,7 +6658,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -6715,11 +6715,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -6760,7 +6760,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "SC, 44",
                                 latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -6778,7 +6778,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -6835,11 +6835,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -6880,7 +6880,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "DU, 44",
                                 latestReason: "Cash/Duty Not Ready",
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -6898,7 +6898,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -6955,11 +6955,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -7000,7 +7000,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "NA, 44",
                                 latestReason: "Customer not available / cannot be contacted",
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -7018,7 +7018,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -7075,11 +7075,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -7120,7 +7120,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "NP, 44",
                                 latestReason: "No Such Person",
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -7138,7 +7138,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -7195,11 +7195,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -7240,7 +7240,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "RF, 44",
                                 latestReason: "Shipment Refused by Consignee due to " + data.data.note,
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -7258,7 +7258,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -7315,11 +7315,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -7360,7 +7360,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "UL, 44",
                                 latestReason: "Unable to Locate Receiver Address",
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -7378,7 +7378,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -7435,11 +7435,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 ],
                                 lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 product: "fmx",
                                 assignedTo: "N/A",
                                 senderName: data.data.job_owner,
@@ -7480,7 +7480,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "WA, 44",
                                 latestReason: "Incorrect Address",
                                 attempt: wmsAttempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -7498,7 +7498,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -7743,11 +7743,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: "N/A",
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             ],
                             lastAssignedTo: "N/A",
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             product: "fmx",
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
@@ -7788,7 +7788,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
                             $push: {
@@ -7798,7 +7798,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: detrackReason,
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             }
                         }
@@ -7842,11 +7842,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: "N/A",
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             ],
                             lastAssignedTo: "N/A",
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             product: "fmx",
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
@@ -7887,7 +7887,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatusCode: "44",
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
                             $push: {
@@ -7897,7 +7897,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: detrackReason,
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             }
                         }
@@ -7941,11 +7941,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: "N/A",
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             ],
                             lastAssignedTo: "N/A",
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             product: "fmx",
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
@@ -7986,7 +7986,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
                             attempt: wmsAttempt,
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
                             $push: {
@@ -7996,7 +7996,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: detrackReason,
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             }
                         }
@@ -8905,7 +8905,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: "N/A",
                                 latestReason: data.data.reason,
                                 attempt: data.data.attempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -8923,7 +8923,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -8954,7 +8954,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: "N/A",
                                 latestReason: data.data.reason,
                                 attempt: data.data.attempt,
-                                latestLocation: "Warehouse K1",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
                                 $push: {
@@ -8972,7 +8972,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "N/A",
                                         reason: "N/A",
-                                        lastLocation: "Warehouse K1",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
@@ -9087,7 +9087,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             latestReason: data.data.reason,
                             attempt: data.data.attempt,
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: data.data.assign_to,
                             $push: {
@@ -9105,7 +9105,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: "N/A",
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             }
                         }
@@ -9136,7 +9136,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             latestReason: data.data.reason,
                             attempt: data.data.attempt,
-                            latestLocation: "Warehouse K1",
+                            latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: data.data.assign_to,
                             $push: {
@@ -9154,7 +9154,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "N/A",
                                     reason: "N/A",
-                                    lastLocation: "Warehouse K1",
+                                    lastLocation: req.body.warehouse,
                                 }
                             }
                         }
@@ -9310,7 +9310,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         assignedTo: "N/A",
                         latestReason: detrackReason,
                         attempt: data.data.attempt,
-                        latestLocation: "Warehouse K1",
+                        latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
                         lastAssignedTo: "N/A",
                         $push: {
@@ -9320,7 +9320,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 updatedBy: req.user.name,
                                 lastAssignedTo: "N/A",
                                 reason: "Cancelled Delivery",
-                                lastLocation: "Warehouse K1",
+                                lastLocation: req.body.warehouse,
                             }
                         }
                     }
@@ -9352,7 +9352,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         assignedTo: "N/A",
                         latestReason: detrackReason,
                         attempt: data.data.attempt,
-                        latestLocation: "Warehouse K1",
+                        latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
                         lastAssignedTo: "N/A",
                         $push: {
@@ -9362,7 +9362,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 updatedBy: req.user.name,
                                 lastAssignedTo: "N/A",
                                 reason: detrackReason,
-                                lastLocation: "Warehouse K1",
+                                lastLocation: req.body.warehouse,
                             }
                         }
                     }

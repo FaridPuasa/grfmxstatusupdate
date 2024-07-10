@@ -322,8 +322,9 @@
                         <option value="Warehouse K1">Warehouse K1</option>
                         <option value="Warehouse K2">Warehouse K2</option>
                     </select>
-                    <small>K1 > Go Rush Kiarong</small><br>
+                    <small>K1 > Go Rush Kiulap</small><br>
                     <small>K2 > Simpang 14-9</small><br>
+                    <small>*If no failed job, pick K1*</small><br>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -506,7 +507,7 @@
                     additionalReasonField.required = false;
                     warehouseField.required = false;
 
-                } else if (selectedStatusCode === '12')  {
+                } else if ((selectedStatusCode === '12')||(selectedStatusCode === 'FJ')||(selectedStatusCode === 'SFJ'))  {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
