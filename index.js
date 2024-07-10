@@ -714,6 +714,50 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     }
 });
 
+app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'paymentAmount',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofAllOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
@@ -753,6 +797,50 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofOrdersSC', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'paymentAmount',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofAllOrdersSC', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
