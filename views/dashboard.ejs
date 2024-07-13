@@ -75,27 +75,28 @@
                                 Operation
                             </a>
                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                                <a class="dropdown-item" href="/search">Search</a>
-                                <div class="dropdown-divider"></div> <!-- Divider here -->
-                                <% } %>
-                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
-                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                                <div class="dropdown-divider"></div> <!-- Divider here -->
-                                <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out for
-                                    Delivery</a>
-                                <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self Collect</a>
-                                <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                    <a class="dropdown-item" href="/search">Search</a>
                                     <div class="dropdown-divider"></div> <!-- Divider here -->
-                                    <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                                    <a class="dropdown-item" href="/listofldPod">POD LD</a>
-                                    <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
-                                    <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                                    <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
-                                        (Limbang)</a>
                                     <% } %>
+                                        <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                        <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                        <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out for
+                                            Delivery</a>
+                                        <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self Collect</a>
+                                        <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
+                                            ].includes(user.role)) { %>
+                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                            <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                            <a class="dropdown-item" href="/listofldPod">POD LD</a>
+                                            <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
+                                            <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
+                                            <a class="dropdown-item" href="/listofewePod">POD EWE</a>
+                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                                (Limbang)</a>
+                                            <% } %>
                             </div>
                         </li>
                         <% } %>
@@ -172,17 +173,20 @@
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
                                                 <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                <a class="dropdown-item" href="/ewemanifesttobillsearch">Search Manifest to Bill</a>
-                                                <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <% } %>
-                                                <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                                <a class="dropdown-item bg-yellow" href="/listofEWEOrdersOFD">Out for
-                                                    Delivery</a>
-                                                <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
-                                                    Collect</a>
-                                                <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
-                                                <a class="dropdown-item" href="/listofEWEOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <a class="dropdown-item" href="/listofEWEOrders">All</a>
+                                                        <a class="dropdown-item bg-yellow"
+                                                            href="/listofEWEOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWEOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -375,7 +379,7 @@
                                                 <tbody>
                                                     <% fmxOrders.forEach(function(order) { %>
                                                         <tr
-                                                            class="<%= (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                            class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
                                                             <td>
                                                                 <%= order.mawbNo %>
                                                             </td>
@@ -409,9 +413,7 @@
                                                                 acc.cancelled += order.cancelled;
                                                                 return acc;
                                                                 }, { total: 0, atWarehouse: 0, outForDelivery: 0,
-                                                                selfCollect: 0,
-                                                                completed:
-                                                                0, cancelled: 0 }); %>
+                                                                selfCollect: 0, completed: 0, cancelled: 0 }); %>
                                                                 <!-- Append totals row -->
                                                                 <tr
                                                                     class="<%= (totalFMX.outForDelivery > 0 || totalFMX.selfCollect > 0) ? 'table-warning' : '' %>">
@@ -459,7 +461,7 @@
                                                 <tbody>
                                                     <% eweOrders.forEach(function(order) { %>
                                                         <tr
-                                                            class="<%= (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                            class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
                                                             <td>
                                                                 <%= order.mawbNo %>
                                                             </td>
@@ -539,6 +541,7 @@
                                                 </tbody>
                                             </table>
                                         </div>
+
 
                                         <% } %>
 
