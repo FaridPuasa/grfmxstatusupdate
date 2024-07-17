@@ -91,6 +91,7 @@ const orderSchema = new mongoose.Schema({
     latestLocation: String,
     lastUpdatedBy: String,
     lastAssignedTo: String,
+    receiverPostalCode: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,

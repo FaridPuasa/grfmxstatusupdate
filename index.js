@@ -501,7 +501,8 @@ app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (
                 'parcelWeight',
                 'flightDate',
                 'items',
-                'mawbNo'
+                'mawbNo',
+                'receiverPostalCode'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -583,7 +584,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
         })
             .select([
                 '_id',
@@ -628,7 +629,7 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
             currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -673,7 +674,7 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -762,7 +763,7 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
             currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -852,7 +853,7 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["At Warehouse", "Return to Warehouse"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -898,7 +899,7 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -944,7 +945,7 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["Cancelled", "Disposed"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe","pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -4068,6 +4069,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var address = '';
             var kampong = '';
             var area = '';
+            var postalCode = 'N/A'
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -8254,6 +8256,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if ((data.data.status == 'info_recv')) {
                         if (existingOrder === null) {
                             if (product == 'EWE') {
+                                if (data.data.postal_code != null) {
+                                    postalCode = data.data.postal_code.toUpperCase()
+                                }
+
                                 address = data.data.address.toUpperCase();
 
                                 if (address.includes("MANGGIS") == true) { area = "B1", kampong = "MANGGIS" }
@@ -8653,6 +8659,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     mawbNo: data.data.run_number,
                                     lastUpdatedBy: req.user.name,
                                     parcelWeight: data.data.weight,
+                                    receiverPostalCode: postalCode,
                                 });
                             } else {
                                 newOrder = new ORDERS({
@@ -9680,14 +9687,18 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 } */
 
+                if (data.data.postal_code != null) {
+                    postalCode = data.data.postal_code.toUpperCase()
+                }
+
                 update = {
-                    parcelWeight: data.data.weight
+                    receiverPostalCode: postalCode,
                 }
 
                 mongoDBrun = 2;
 
-                portalUpdate = "Detrack/Mongo updated. Attempt is fixed. Detrack no. of attempt are ";
-                appliedStatus = "Attempt and Payment Method Fix"
+                portalUpdate = "Mongo updated. Add Postal Code. ";
+                appliedStatus = "Postal Code Fix"
 
                 completeRun = 1;
             }
