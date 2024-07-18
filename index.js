@@ -4112,6 +4112,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
+            if (data.data.postal_code != null) {
+                postalCode = data.data.postal_code.toUpperCase()
+            }
+
             product = data.data.group_name;
 
             if (product == 'EWE') {
@@ -4582,6 +4586,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         creationDate: data.data.created_at,
                         jobDate: "N/A",
                         lastUpdatedBy: req.user.name,
+                        receiverPostalCode: postalCode,
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
@@ -4637,6 +4642,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -4736,6 +4742,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -4831,6 +4838,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -4925,6 +4933,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -5031,6 +5040,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -5122,6 +5132,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -5225,6 +5236,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -5312,6 +5324,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -5422,6 +5435,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -5540,6 +5554,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -5660,6 +5675,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -5780,6 +5796,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -5900,6 +5917,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -6020,6 +6038,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -6140,6 +6159,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -6260,6 +6280,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -6380,6 +6401,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
 
                                 mongoDBrun = 1;
@@ -6490,6 +6512,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -6603,6 +6626,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -6717,6 +6741,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -6837,6 +6862,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -6957,6 +6983,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -7077,6 +7104,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -7197,6 +7225,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -7317,6 +7346,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -7437,6 +7467,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -7557,6 +7588,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
                                 lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
                             });
 
                             mongoDBrun = 1;
@@ -7667,6 +7699,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: req.body.assignDate,
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -7765,6 +7798,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: req.body.assignDate,
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -7865,6 +7899,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -7964,6 +7999,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -8063,6 +8099,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -8150,6 +8187,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         creationDate: data.data.created_at,
                         jobDate: "N/A",
                         lastUpdatedBy: req.user.name,
+                        receiverPostalCode: postalCode,
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
@@ -8256,10 +8294,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if ((data.data.status == 'info_recv')) {
                         if (existingOrder === null) {
                             if (product == 'EWE') {
-                                if (data.data.postal_code != null) {
-                                    postalCode = data.data.postal_code.toUpperCase()
-                                }
-
                                 address = data.data.address.toUpperCase();
 
                                 if (address.includes("MANGGIS") == true) { area = "B1", kampong = "MANGGIS" }
@@ -8700,6 +8734,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     creationDate: data.data.created_at,
                                     jobDate: "N/A",
                                     lastUpdatedBy: req.user.name,
+                                    receiverPostalCode: postalCode,
                                 });
                             }
 
@@ -9315,6 +9350,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             creationDate: data.data.created_at,
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
                         });
 
                         mongoDBrun = 1;
@@ -9686,10 +9722,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
                 } */
-
-                if (data.data.postal_code != null) {
-                    postalCode = data.data.postal_code.toUpperCase()
-                }
 
                 update = {
                     receiverPostalCode: postalCode,
