@@ -289,7 +289,7 @@
                         if (!order || !order.items || order.items.length === 0) {
                             return; // Skip if order or items are undefined or empty
                         }
-            
+        
                         let handlingCharge2_8;
                         let handlingCharge3_5;
                         let handlingCharge;
@@ -303,10 +303,17 @@
                             handlingCharge = handlingCharge2_8;
                         } else if (['K', 'T', 'P'].includes(firstChar)) {
                             handlingCharge = handlingCharge3_5;
-                        } else if (!order.receiverPostalCode) {
-                            handlingCharge = `${handlingCharge2_8} or ${handlingCharge3_5}`;
                         } else {
-                            handlingCharge = handlingCharge2_8;
+                            // Check order.area if postal code is not available or doesn't match
+                            if (order.area && order.area !== 'N/A') {
+                                if (['TEMBURONG', 'KB', 'KB / SERIA', 'LUMUT', 'TUTONG'].includes(order.area)) {
+                                    handlingCharge = handlingCharge3_5;
+                                } else {
+                                    handlingCharge = handlingCharge2_8;
+                                }
+                            } else {
+                                handlingCharge = `${handlingCharge2_8} or ${handlingCharge3_5}`;
+                            }
                         }
         
                         // Extracting descriptions
