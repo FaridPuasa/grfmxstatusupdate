@@ -8149,6 +8149,53 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     FMXAPIrun = 2;
                     completeRun = 1;
                 }
+
+                if (req.body.statusCode == 'UW') {
+                    if (data.data.weight != null){
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
+                            latestReason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Weight updated to " + req.body.weight + " kg.",
+                            latestReason: "Weight updated to " + req.body.weight + " kg.",
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Weight updated to " + req.body.weight + " kg.",
+                                }
+                            }
+                        }
+                    }
+    
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            weight: req.body.weight,
+                        }
+                    };
+    
+                    portalUpdate = "Mongo and Detrack weight updated. ";
+                    appliedStatus = "Weight Update"
+    
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+    
+                    completeRun = 1;
+                }
             }
 
             if (product != 'FMX') {
@@ -9740,16 +9787,32 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UW') {
-                update = {
-                    lastUpdateDateTime: moment().format(),
-                    instructions: "Weight updated from " + data.data.weight + " to " + req.body.weight + ".",
-                    latestReason: "Weight updated from " + data.data.weight + " to " + req.body.weight + ".",
-                    lastUpdatedBy: req.user.name,
-                    $push: {
-                        history: {
-                            dateUpdated: moment().format(),
-                            updatedBy: req.user.name,
-                            reason: "Weight updated from " + data.data.weight + " to " + req.body.weight + ".",
+                if (data.data.weight != null){
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
+                        latestReason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
+                        lastUpdatedBy: req.user.name,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Weight updated to " + req.body.weight + " kg.",
+                        latestReason: "Weight updated to " + req.body.weight + " kg.",
+                        lastUpdatedBy: req.user.name,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Weight updated to " + req.body.weight + " kg.",
+                            }
                         }
                     }
                 }
