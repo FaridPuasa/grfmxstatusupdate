@@ -4176,7 +4176,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'FA') {
-                appliedStatus = "Attempt and Payment Method Fix"
+                appliedStatus = "Attempt Fix"
+            }
+
+            if (req.body.statusCode == 'UW') {
+                appliedStatus = "Update Weight"
             }
 
             if (req.body.statusCode == 'IR') {
@@ -4245,7 +4249,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
                 || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
-                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN')) {
+                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW')) {
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -9735,6 +9739,37 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 completeRun = 1;
             }
 
+            if (req.body.statusCode == 'UW') {
+                update = {
+                    lastUpdateDateTime: moment().format(),
+                    instructions: "Weight updated from " + data.data.weight + " to " + req.body.weight + ".",
+                    latestReason: "Weight updated from " + data.data.weight + " to " + req.body.weight + ".",
+                    lastUpdatedBy: req.user.name,
+                    $push: {
+                        history: {
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            reason: "Weight updated from " + data.data.weight + " to " + req.body.weight + ".",
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        weight: req.body.weight,
+                    }
+                };
+
+                portalUpdate = "Mongo and Detrack weight updated. ";
+                appliedStatus = "Weight Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
             if (completeRun == 0) {
                 ceCheck = 1;
             }
@@ -10716,7 +10751,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -11133,7 +11168,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
