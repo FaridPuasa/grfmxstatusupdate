@@ -169,6 +169,7 @@ const LDPOD = require('./models/LDPOD');
 const GRPPOD = require('./models/GRPPOD');
 const FMXPOD = require('./models/FMXPOD');
 const EWEPOD = require('./models/EWEPOD');
+const EWENSPOD = require('./models/EWENSPOD');
 const CBSLPOD = require('./models/CBSLPOD');
 const ORDERS = require('./models/ORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
@@ -194,6 +195,27 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         // Fetch EWE Orders
         const eweOrders = await ORDERS.aggregate([
             { $match: { product: 'ewe' } },
+            {
+                $group: {
+                    _id: '$mawbNo',
+                    mawbNo: { $first: '$mawbNo' },
+                    flightDate: { $first: '$flightDate' },
+                    total: { $sum: 1 },
+                    atWarehouse: { $sum: { $cond: [{ $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }, 1, 0] } },
+                    k1: { $sum: { $cond: [{ $eq: ['$latestLocation', 'Warehouse K1'] }, 1, 0] } },
+                    k2: { $sum: { $cond: [{ $eq: ['$latestLocation', 'Warehouse K2'] }, 1, 0] } },
+                    outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
+                    selfCollect: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Self Collect'] }, 1, 0] } },
+                    completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
+                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
+                }
+            },
+            { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
+        ]);
+
+        // Fetch EWE Orders
+        const ewensOrders = await ORDERS.aggregate([
+            { $match: { product: 'ewens' } },
             {
                 $group: {
                     _id: '$mawbNo',
@@ -324,7 +346,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
 
         // Render the dashboard view with both sets of orders
-        res.render('dashboard', { mohOrders, eweOrders, fmxOrders, moment, user: req.user, orders: [] });
+        res.render('dashboard', { mohOrders, eweOrders, ewensOrders, fmxOrders, moment, user: req.user, orders: [] });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -484,7 +506,7 @@ app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (
     try {
         const { mawbNo } = req.body;
 
-        let query = { product: "ewe" };
+        let query = { product: { $in: ["ewe", "ewens"] } };
 
         if (mawbNo) {
             query.mawbNo = new RegExp(mawbNo, 'i'); // Case-insensitive partial match
@@ -2713,6 +2735,310 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofEWENSOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "ewens"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ _id: -1 })
+            .limit(500);
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWENSOrders', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWENSOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "ewens",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWENSOrdersCompleted', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWENSOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "ewens",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWENSOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWENSOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "ewens",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWENSOrdersSC', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWENSOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "ewens",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWENSOrdersAW', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofEWENSOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "ewens",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWENSOrdersCD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -2946,6 +3272,32 @@ app.get('/listofewePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
+app.get('/listofewensPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await EWENSPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofewensPod', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch EWENS POD data');
+    }
+});
+
 app.get('/listofcbslPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -3055,6 +3407,24 @@ app.get('/podeweDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
 
         // Render the podDetail.ejs template with the HTML content
         res.render('podeweDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podewensDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await EWENSPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podewensDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -3244,6 +3614,26 @@ app.get('/editEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelive
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editEweNSPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    EWENSPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editEweNSPod.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
 app.get('/editCbslPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
@@ -3291,6 +3681,27 @@ app.post('/updateEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDel
 
     // Find the specific POD by ID
     EWEPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateEweNSPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    EWENSPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
         .then((pod) => {
             if (!pod) {
                 return res.status(404).send('POD not found');
@@ -3416,6 +3827,24 @@ app.get('/deleteEWEPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
     }
 });
 
+app.get('/deleteEWENSPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await EWENSPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofewensPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('EWE POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete EWE POD');
+    }
+});
+
 app.get('/deleteCBSLPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -3510,6 +3939,9 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
             break;
         case 'EWE POD':
             PodModel = EWEPOD;
+            break;
+        case 'EWENS POD':
+            PodModel = EWENSPOD;
             break;
         case 'CBSL POD':
             PodModel = CBSLPOD;
@@ -4118,7 +4550,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             product = data.data.group_name;
 
-            if (product == 'EWE') {
+            if ((product == 'EWE') || (product == 'EWENS')) {
                 // Loop through each item in the data.data.items array and construct the items array
                 for (let i = 0; i < data.data.items.length; i++) {
                     itemsArray.push({
@@ -4316,6 +4748,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (product == 'EWE') {
                 currentProduct = 'ewe'
+            }
+
+            if (product == 'EWENS') {
+                currentProduct = 'ewens'
             }
 
             if (product == 'EWED') {
@@ -8151,7 +8587,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
 
                 if (req.body.statusCode == 'UW') {
-                    if (data.data.weight != null){
+                    if (data.data.weight != null) {
                         update = {
                             lastUpdateDateTime: moment().format(),
                             instructions: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
@@ -8180,20 +8616,20 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         }
                     }
-    
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             weight: req.body.weight,
                         }
                     };
-    
+
                     portalUpdate = "Mongo and Detrack weight updated. ";
                     appliedStatus = "Weight Update"
-    
+
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
-    
+
                     completeRun = 1;
                 }
             }
@@ -8344,7 +8780,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if ((req.body.statusCode == 12) && (product != 'GRP') && (product != 'CBSL')) {
                     if ((data.data.status == 'info_recv')) {
                         if (existingOrder === null) {
-                            if (product == 'EWE') {
+                            if ((product == 'EWE') || (product == 'EWENS')) {
                                 address = data.data.address.toUpperCase();
 
                                 if (address.includes("MANGGIS") == true) { area = "B1", kampong = "MANGGIS" }
@@ -8817,7 +9253,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
-                                status: "at_warehouse" // Use the calculated dStatus
+                                status: "at_warehouse", // Use the calculated dStatus
+                                zone: area
                             }
                         };
 
@@ -8913,7 +9350,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 ///EWE Control Attempts
                 if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
-                    if ((wmsAttempt > 2) && (product == 'EWE')) {
+                    if ((wmsAttempt > 2) && ((product == 'EWE') || (product == 'EWENS'))) {
                         maxAttempt = 1;
                         completeRun = 1;
                     } else {
@@ -9787,12 +10224,13 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UW') {
-                if (data.data.weight != null){
+                if (data.data.weight != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
                         instructions: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
                         latestReason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
                         lastUpdatedBy: req.user.name,
+                        parcelWeight: req.body.weight,
                         $push: {
                             history: {
                                 dateUpdated: moment().format(),
@@ -9807,6 +10245,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         instructions: "Weight updated to " + req.body.weight + " kg.",
                         latestReason: "Weight updated to " + req.body.weight + " kg.",
                         lastUpdatedBy: req.user.name,
+                        parcelWeight: req.body.weight,
                         $push: {
                             history: {
                                 dateUpdated: moment().format(),
@@ -9826,6 +10265,87 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 portalUpdate = "Mongo and Detrack weight updated. ";
                 appliedStatus = "Weight Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UP') {
+                if (req.body.paymentMethod == 'NON COD') {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        instructions: "Payment method updated to " + req.body.paymentMethod + ".",
+                        latestReason: "Payment method updated to " + req.body.paymentMethod + ".",
+                        lastUpdatedBy: req.user.name,
+                        paymentMethod: req.body.paymentMethod,
+                        totalPrice: 0,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Payment method updated to " + req.body.paymentMethod + ".",
+                            }
+                        }
+                    }
+
+                    var detrackUpdateData = {
+                        payment_mode: "NON COD",
+                        total_price: 0,
+                        payment_amount: 0
+                    };
+
+                } else {
+                    if (req.body.paymentMethod == 'Cash') {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                            latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                            lastUpdatedBy: req.user.name,
+                            paymentMethod: req.body.paymentMethod,
+                            totalPrice: req.body.price,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            payment_mode: req.body.paymentMethod,
+                            total_price: req.body.price,
+                            payment_amount: req.body.price
+                        };
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                            latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                            lastUpdatedBy: req.user.name,
+                            paymentMethod: req.body.paymentMethod,
+                            totalPrice: req.body.price,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            payment_mode: req.body.paymentMethod,
+                            total_price: req.body.price,
+                            payment_amount: 0
+                        };
+                    }
+                }
+
+                portalUpdate = "Mongo and Detrack payment method and price updated. ";
+                appliedStatus = "Payment Method and Price Update"
 
                 DetrackAPIrun = 1;
                 mongoDBrun = 2;
@@ -11129,7 +11649,7 @@ orderWatch.on('change', change => {
                             }
 
                             if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                && (result[0].product != "shein")) {
+                                && (result[0].product != "ewens") && (result[0].product != "shein")) {
                                 foundOrder.doTrackingNumber = tracker;
                                 foundOrder.sequence = sequence;
                             }
@@ -11139,7 +11659,7 @@ orderWatch.on('change', change => {
                         .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                    && (result[0].product != "shein")) {
+                                    && (result[0].product != "ewens")&& (result[0].product != "shein")) {
                                     let a = whatsappName;
                                     let b = tracker;
 

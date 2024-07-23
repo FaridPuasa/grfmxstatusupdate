@@ -291,24 +291,35 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <!-- <option value="IR">|FMX only| Info Received</option> -->
-                        <option value="CP">|FMX only| Custom Clearance In Progress</option>
-                        <option value="DC">|FMX only| Detained by Customs</option>
-                        <option value="38">|FMX only| Custom Clearance Release</option>
-                        <option value="12">|All| Item In Warehouse</option>
-                        <!-- <option value="NC">|All| Notify Customer Delivery Tomorrow</option> -->
-                        <option value="35">|All| Out for Delivery</option>
-                        <option value="SD">|All| Swap Dispatchers</option>
-                        <option value="CSSC">|All| Self Collect</option>
-                        <option value="SJ">|All| *Success/Complete Job*</option>
-                        <option value="FJ">|All| *Failed/Return to Warehouse*</option>
-                        <option value="CD">|All| Cancelled Job</option>
-                        <option value="AJ">|All| Cancelled -> Reactivate Job</option>
-                        <option value="47">|FMX only| Dispose Job</option>
-                        <!-- <option value="AJN">|FMX & EWE/SHEIN| Cancelled -> Reactivate Job with new tracking number</option> -->
-                        <option value="SFJ">|All| For CS Only</option>
-                        <!-- <option value="FA">|All| Fix Attempt</option> -->
-                        <option value="UW">|All| Update Weight</option>
+                        <optgroup label="FMX Flow">
+                            <!-- <option value="IR">|FMX only| Info Received</option> -->
+                            <option value="CP">1. Custom Clearance In Progress</option>
+                            <option value="DC">2. Detained by Customs</option>
+                            <option value="38">3. Custom Clearance Release</option>
+                        </optgroup>
+                        <optgroup label="Standard Flow">
+                            <option value="12">1. Item In Warehouse</option>
+                            <!-- <option value="NC">|All| Notify Customer Delivery Tomorrow</option> -->
+                            <option value="35">2.1. Out for Delivery</option>
+                            <option value="CSSC">2.2. Self Collect</option>
+                        </optgroup>
+                        <optgroup label="Success/Fail">
+                            <option value="SJ">Success/Complete Job</option>
+                            <option value="FJ">Failed/Return to Warehouse</option>
+                            <option value="SFJ">For CS Only</option>
+                        </optgroup>
+                        <optgroup label="Danger Zone!!!">
+                            <option value="CD">1. Cancelled Job</option>
+                            <option value="AJ">2. Cancelled -> Reactivate Job</option>
+                            <option value="47">3. |FMX only| Dispose Job</option>
+                            <!-- <option value="AJN">|FMX & EWE/SHEIN| Cancelled -> Reactivate Job with new tracking number</option> -->
+                            <!-- <option value="FA">|All| Fix Attempt</option> -->
+                        </optgroup>
+                        <optgroup label="Change Details">
+                            <option value="SD">Swap Dispatchers</option>
+                            <option value="UW">Update Weight</option>
+                            <option value="UP">Update Price</option>
+                        </optgroup>
                     </select>
                 </div>
             </div>
@@ -327,7 +338,8 @@
                         <option value="Safwan">Safwan</option>
                         <option value="Hazri">Hazri</option>
                         <option value="Aziz">Aziz</option>
-                        <option value="Syahmi">Syahmi</option>
+                        <option value="Jerat">Jerat</option>
+                        <!-- <option value="Syahmi">Syahmi</option> -->
                         <option value="FL1">FL1</option>
                     </select>
                 </div>
@@ -342,14 +354,8 @@
                 <div class="field-wrapper" id="additionalReasonWrapper">
                     <label for="additionalReason" class="form-label">Additional Reason / Rescheduled Date:</label>
                     <input type="text" id="additionalReason" name="additionalReason" class="form-control" disabled>
-                    <small>*For Customer Declined/Refused Delivery, fill in the reason why the customer declined. (FMX
-                        only)</small><br>
-                    <small>**For Reschedule Delivery or Reschedule to Self Pick up, fill in the date of
-                        reschedule. (FMX only)</small><br>
-                    <small>***For Cancelled Delivery, fill in the reason why the delivery is cancelled. (All except
-                        FMX)</small><br>
-                    <small>****For FMX Cancelled Delivery, fill in the reason "Customer cancel order" (required) with
-                        the reason (optional) why the delivery is cancelled. (FMX only)</small>
+                    <strong><small>*For Detained by Customs or Cancelled Delivery, fill in the
+                            reason.</small></strong><br>
                 </div>
             </div>
             <div class="mb-3">
@@ -362,13 +368,39 @@
                     </select>
                     <small>K1 > Go Rush Kiulap</small><br>
                     <small>K2 > Simpang 14-9</small><br>
-                    <small>*If no failed job, pick K1*</small><br>
+                    <strong><small>*If no failed job, pick K1</small></strong><br>
                 </div>
             </div>
             <div class="mb-3">
                 <div class="field-wrapper" id="weightWrapper">
                     <label for="weight" class="form-label">New Weight:</label>
                     <input type="text" id="weight" name="weight" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with same
+                            weight.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="paymentMethodWrapper">
+                    <label for="paymentMethod" class="form-label">Payment Method:</label>
+                    <select id="paymentMethod" name="paymentMethod" class="form-select" disabled>
+                        <option value="" selected>Please select payment method</option>
+                        <optgroup label="NON COD">
+                            <option value="NON COD">NON COD</option>
+                        </optgroup>
+                        <optgroup label="COD">
+                            <option value="Cash">Cash</option>
+                            <option value="Bill Payment (BIBD)">Bill Payment (BIBD)</option>
+                            <option value="Bank Transfer (BIBD)">Bank Transfer (BIBD)</option>
+                            <option value="Bank Transfer (Baiduri)">Bank Transfer (Baiduri)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="field-wrapper" id="priceWrapper">
+                    <br>
+                    <label for="price" class="form-label">New Price:</label>
+                    <input type="text" id="price" name="price" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with same
+                            price and payment method.</small></strong>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -431,16 +463,12 @@
                     <td>0ee3718703976077</td>
                 </tr>
                 <tr>
-                    <td>Syahmi's Phone</td>
-                    <td>ee863cee903503d9</td>
+                    <td>Jerat's Phone</td>
+                    <td>812dfd3092f7c09d</td>
                 </tr>
                 <tr>
                     <td>Ipad for Self Collect</td>
                     <td>827db6d20832f29a</td>
-                </tr>
-                <tr>
-                    <td>Asma's Phone</td>
-                    <td>f77ae7612b5953f2</td>
                 </tr>
             </tbody>
         </table>
@@ -449,7 +477,6 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
-
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             $("#assignDateWrapper").hide();
@@ -457,6 +484,9 @@
             $("#freelancerNameWrapper").hide();
             $("#additionalReasonWrapper").hide();
             $("#warehouseWrapper").hide();
+            $("#weightWrapper").hide();
+            $("#paymentMethodWrapper").hide();
+            $("#priceWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
@@ -464,6 +494,8 @@
             const additionalReasonField = document.getElementById('additionalReason');
             const warehouseField = document.getElementById('warehouse');
             const weightField = document.getElementById('weight');
+            const paymentMethodField = document.getElementById('paymentMethod');
+            const priceField = document.getElementById('price');
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -510,6 +542,32 @@
                 }
             });
 
+            priceField.addEventListener('input', function (e) {
+                const value = e.target.value;
+
+                // Regular expression to match numbers with up to 2 decimal places
+                const validNumber = /^\d*\.?\d{0,2}$/;
+
+                // If the value does not match the pattern, remove the last character
+                if (!validNumber.test(value)) {
+                    e.target.value = value.slice(0, -1);
+                }
+            });
+
+            function updatePriceWrapper() {
+                const selectedPaymentMethod = paymentMethodField.value;
+                if (selectedPaymentMethod === 'NON COD') {
+                    $("#priceWrapper").hide();
+                    priceField.disabled = true;
+                    priceField.required = false;
+                    priceField.value = ''; // Clear the field's value
+                } else {
+                    $("#priceWrapper").fadeIn();
+                    priceField.disabled = false;
+                    priceField.required = true;
+                }
+            }
+
             // Function to enable/disable fields and set them as required based on the selected status code
             function updateFieldStatus() {
                 const selectedStatusCode = statusCodeSelect.value;
@@ -521,6 +579,8 @@
                 freelancerNameField.value = ''; // Clear the field's value
                 warehouseField.value = '';
                 weightField.value = '';
+                paymentMethodField.value = '';
+                priceField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
@@ -528,6 +588,8 @@
                 $("#freelancerNameWrapper").hide();
                 $("#warehouseWrapper").hide();
                 $("#weightWrapper").hide();
+                $("#paymentMethodWrapper").hide();
+                $("#priceWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -542,6 +604,8 @@
                     $("#freelancerNameWrapper").hide();
                     $("#warehouseWrapper").hide();
                     $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -551,6 +615,12 @@
 
                     weightField.disabled = true;
                     weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
 
                 } else if (selectedStatusCode === 'CSSC') {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -565,6 +635,8 @@
                     $("#freelancerNameWrapper").hide();
                     $("#warehouseWrapper").hide();
                     $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -574,6 +646,41 @@
 
                     weightField.disabled = true;
                     weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                } else if (selectedStatusCode === 'UP') {
+                    assignDateField.disabled = false;
+                    dispatchersField.disabled = true;
+                    additionalReasonField.disabled = true;
+                    warehouseField.disabled = true;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").fadeIn();
+                    $("#priceWrapper").hide();
+
+                    assignDateField.required = true;
+                    dispatchersField.required = false;
+                    additionalReasonField.required = false;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = false;
+                    paymentMethodField.required = true;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
 
                 } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'FJ') || (selectedStatusCode === 'SFJ')) {
                     assignDateField.disabled = true;
@@ -587,6 +694,8 @@
                     $("#freelancerNameWrapper").hide();
                     $("#warehouseWrapper").fadeIn();
                     $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = false;
@@ -596,6 +705,12 @@
 
                     weightField.disabled = true;
                     weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -615,12 +730,20 @@
                     weightField.disabled = true;
                     weightField.required = false;
 
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
                     $("#freelancerNameWrapper").hide();
                     $("#warehouseWrapper").hide();
                     $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
 
                 } else if (selectedStatusCode === 'UW') {
                     // Enable the "Additional Reason" field and make it required
@@ -640,12 +763,20 @@
                     weightField.disabled = false;
                     weightField.required = true;
 
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
                     $("#freelancerNameWrapper").hide();
                     $("#warehouseWrapper").hide();
                     $("#weightWrapper").fadeIn();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
                 } else {
                     // Disable the fields for other status codes
                     assignDateField.disabled = true;
@@ -661,6 +792,12 @@
                     warehouseField.required = false;
                     weightField.required = false;
 
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
@@ -668,6 +805,8 @@
                     $("#freelancerNameWrapper").hide();
                     $("#warehouseWrapper").hide();
                     $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;
@@ -679,6 +818,7 @@
 
             // Attach the updateFieldStatus function to the "change" event of the status code select element
             statusCodeSelect.addEventListener('change', updateFieldStatus);
+            paymentMethodField.addEventListener('change', updatePriceWrapper);
 
             // Initialize field status based on the initial selected status code
             updateFieldStatus();
