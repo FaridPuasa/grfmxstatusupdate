@@ -4033,6 +4033,7 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
                     jobType: data.job_type || '',
                     totalPrice: data.total_price || '',
                     paymentMode: data.payment_mode || '',
+                    remarks: data.remarks || '',
                 });
             } catch (error) {
                 console.error(`Error for tracking number ${trackingNumber}:`, error);
@@ -8632,6 +8633,87 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                     completeRun = 1;
                 }
+
+                if (req.body.statusCode == 'UP') {
+                    if (req.body.paymentMethod == 'NON COD') {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Payment method updated to " + req.body.paymentMethod + ".",
+                            latestReason: "Payment method updated to " + req.body.paymentMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            paymentMethod: req.body.paymentMethod,
+                            totalPrice: 0,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Payment method updated to " + req.body.paymentMethod + ".",
+                                }
+                            }
+                        }
+    
+                        var detrackUpdateData = {
+                            payment_mode: "NON COD",
+                            total_price: 0,
+                            payment_amount: 0
+                        };
+    
+                    } else {
+                        if (req.body.paymentMethod == 'Cash') {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                lastUpdatedBy: req.user.name,
+                                paymentMethod: req.body.paymentMethod,
+                                totalPrice: req.body.price,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                    }
+                                }
+                            }
+    
+                            var detrackUpdateData = {
+                                payment_mode: req.body.paymentMethod,
+                                total_price: req.body.price,
+                                payment_amount: req.body.price
+                            };
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                lastUpdatedBy: req.user.name,
+                                paymentMethod: req.body.paymentMethod,
+                                totalPrice: req.body.price,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
+                                    }
+                                }
+                            }
+    
+                            var detrackUpdateData = {
+                                payment_mode: req.body.paymentMethod,
+                                total_price: req.body.price,
+                                payment_amount: 0
+                            };
+                        }
+                    }
+    
+                    portalUpdate = "Mongo and Detrack payment method and price updated. ";
+                    appliedStatus = "Payment Method and Price Update"
+    
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+    
+                    completeRun = 1;
+                }
             }
 
             if (product != 'FMX') {
@@ -8668,13 +8750,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         receiverAddress: data.data.address,
                         receiverPhoneNumber: data.data.phone_number,
                         doTrackingNumber: consignmentID,
-                        instructions: data.data.instructions,
                         latestReason: "N/A",
                         lastUpdateDateTime: moment().format(),
                         creationDate: data.data.created_at,
                         jobDate: "N/A",
                         lastUpdatedBy: req.user.name,
                         receiverPostalCode: postalCode,
+                        remarks: data.data.remarks,
+                        instructions: data.data.remarks,
                     });
 
                     portalUpdate = "Portal status updated to Info Received. ";
@@ -9358,7 +9441,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             update = {
                                 currentStatus: "Out for Delivery",
                                 lastUpdateDateTime: moment().format(),
-                                instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                instructions: data.data.remarks,
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
@@ -9384,8 +9467,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched", // Use the calculated dStatus
-                                    instructions: "Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
+                                    status: "dispatched"
                                 }
                             };
 
@@ -9395,7 +9477,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             update = {
                                 currentStatus: "Out for Delivery",
                                 lastUpdateDateTime: moment().format(),
-                                instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                instructions: data.data.remarks,
                                 assignedTo: req.body.dispatchers,
                                 attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
@@ -9421,8 +9503,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched", // Use the calculated dStatus
-                                    instructions: "Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + "."
+                                    status: "dispatched"
                                 }
                             };
 
@@ -9440,7 +9521,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                            instructions: data.data.remarks,
                             assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                             jobDate: req.body.assignDate,
                             attempt: data.data.attempt,
@@ -9466,7 +9547,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + "."
                             }
                         };
 
@@ -9475,7 +9555,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                            instructions: data.data.remarks,
                             assignedTo: req.body.dispatchers,
                             jobDate: req.body.assignDate,
                             attempt: data.data.attempt,
@@ -9500,8 +9580,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                assign_to: req.body.dispatchers
                             }
                         };
 
@@ -9519,7 +9598,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             update = {
                                 currentStatus: "Return to Warehouse",
                                 lastUpdateDateTime: moment().format(),
-                                instructions: "Failed delivery due to " + data.data.reason,
+                                instructions: data.data.remarks,
                                 assignedTo: "N/A",
                                 latestReason: data.data.reason,
                                 attempt: data.data.attempt,
@@ -9568,7 +9647,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             update = {
                                 currentStatus: "Return to Warehouse",
                                 lastUpdateDateTime: moment().format(),
-                                instructions: "Failed delivery due to " + data.data.reason,
+                                instructions: data.data.remarks,
                                 assignedTo: "N/A",
                                 latestReason: data.data.reason,
                                 attempt: data.data.attempt,
@@ -9701,7 +9780,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         update = {
                             currentStatus: "Return to Warehouse",
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Failed delivery due to " + data.data.reason,
+                            instructions: data.data.remarks,
                             assignedTo: "N/A",
                             latestReason: data.data.reason,
                             attempt: data.data.attempt,
@@ -9750,7 +9829,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         update = {
                             currentStatus: "Return to Warehouse",
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Failed delivery due to " + data.data.reason,
+                            instructions: data.data.remarks,
                             assignedTo: "N/A",
                             latestReason: data.data.reason,
                             attempt: data.data.attempt,
@@ -9882,7 +9961,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     update = {
                         currentStatus: "Self Collect",
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Assigned for Self Collect.",
+                        instructions: data.data.remarks,
                         assignedTo: "Selfcollect",
                         attempt: data.data.attempt,
                         jobDate: req.body.assignDate,
@@ -9925,7 +10004,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     update = {
                         currentStatus: "Cancelled",
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Cancelled Delivery",
+                        instructions: data.data.remarks,
                         assignedTo: "N/A",
                         latestReason: detrackReason,
                         attempt: data.data.attempt,
@@ -9950,7 +10029,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
-                            instructions: "Cancelled Delivery",
                         }
                     };
 
@@ -9967,7 +10045,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     update = {
                         currentStatus: "Return to Warehouse",
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Return to Warehouse from Cancelled.",
+                        instructions: data.data.remarks,
                         assignedTo: "N/A",
                         latestReason: detrackReason,
                         attempt: data.data.attempt,
@@ -9992,7 +10070,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         do_number: consignmentID,
                         data: {
                             status: "at_warehouse",
-                            instructions: "Return to Warehouse from Cancelled."
                         }
                     };
 
@@ -10227,7 +10304,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.weight != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
                         latestReason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
                         lastUpdatedBy: req.user.name,
                         parcelWeight: req.body.weight,
@@ -10242,7 +10318,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Weight updated to " + req.body.weight + " kg.",
                         latestReason: "Weight updated to " + req.body.weight + " kg.",
                         lastUpdatedBy: req.user.name,
                         parcelWeight: req.body.weight,
@@ -10276,7 +10351,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (req.body.paymentMethod == 'NON COD') {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        instructions: "Payment method updated to " + req.body.paymentMethod + ".",
                         latestReason: "Payment method updated to " + req.body.paymentMethod + ".",
                         lastUpdatedBy: req.user.name,
                         paymentMethod: req.body.paymentMethod,
@@ -10300,7 +10374,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.paymentMethod == 'Cash') {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                             latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                             lastUpdatedBy: req.user.name,
                             paymentMethod: req.body.paymentMethod,
@@ -10322,7 +10395,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                             latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                             lastUpdatedBy: req.user.name,
                             paymentMethod: req.body.paymentMethod,

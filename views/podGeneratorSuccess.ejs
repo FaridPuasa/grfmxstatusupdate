@@ -364,7 +364,7 @@
     <table>
         <tr>
             <!-- Logo cell without borders -->
-            <td colspan="4" rowspan="2" class="logo-cell"><img src="/images/logo.png" alt="Logo"></td>
+            <td colspan="3" rowspan="2" class="logo-cell"><img src="/images/logo.png" alt="Logo"></td>
             <th>Product:</th>
             <td><%= product %></td>
             <th>POD Date Created:</th>
@@ -382,7 +382,6 @@
         </tr>
         <tr>
             <th>No.</th>
-            <th>Item with me</th>
             <th>Fridge</th>
             <th>Tracking No.</th>
             <th>Contact Name</th>
@@ -391,15 +390,14 @@
             <th>Delivery Type</th>
             <th>Price</th>
             <th>Payment Method</th>
-            <th>Amount Collected</th>
-            <th>Remarks</th>
+            <th>Remarks (Customer)</th>
+            <th>Remarks (Office Use)</th>
             <th>Checked and Received By Finance</th>
             <th>Task Completed</th>
         </tr>
         <% trackingNumbers.forEach(function(item, index) { %>
             <tr>
                 <td><%= index + 1 %></td>
-                <td></td>
                 <td contenteditable="true"></td>
                 <td>
                     <div class="barcode-container">
@@ -420,9 +418,9 @@
                 <td><%= item.address %></td>
                 <td><%= item.phoneNumber %></td>
                 <td><%= item.jobType %></td>
-                <td contenteditable="true"><%= item.totalPrice %></td>
-                <td contenteditable="true"><%= item.paymentMode %></td>
-                <td></td>
+                <td><%= item.totalPrice %></td>
+                <td><%= item.paymentMode %></td>
+                <td><%= item.remarks %></td>
                 <td contenteditable="true"></td>
                 <td contenteditable="true"></td>
                 <td></td>
