@@ -654,7 +654,7 @@
                     priceField.required = false;
 
                 } else if (selectedStatusCode === 'UP') {
-                    assignDateField.disabled = false;
+                    assignDateField.disabled = true;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
                     warehouseField.disabled = true;
@@ -668,7 +668,7 @@
                     $("#paymentMethodWrapper").fadeIn();
                     $("#priceWrapper").hide();
 
-                    assignDateField.required = true;
+                    assignDateField.required = false;
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
                     warehouseField.required = false;
