@@ -11419,7 +11419,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -11836,7 +11836,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
