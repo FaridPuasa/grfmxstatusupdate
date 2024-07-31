@@ -8626,7 +8626,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     };
 
-                    portalUpdate = "Mongo and Detrack weight updated. ";
+                    portalUpdate = "Portal and Detrack weight updated. ";
                     appliedStatus = "Weight Update"
 
                     DetrackAPIrun = 1;
@@ -8710,7 +8710,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
 
-                    portalUpdate = "Mongo and Detrack payment method and price updated. ";
+                    portalUpdate = "Portal and Detrack payment method and price updated. ";
                     appliedStatus = "Payment Method and Price Update"
 
                     DetrackAPIrun = 1;
@@ -10298,7 +10298,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 mongoDBrun = 2;
 
-                portalUpdate = "Mongo updated. Add Postal Code. ";
+                portalUpdate = "Portal updated. Add Postal Code. ";
                 appliedStatus = "Postal Code Fix"
 
                 completeRun = 1;
@@ -10342,7 +10342,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 };
 
-                portalUpdate = "Mongo and Detrack weight updated. ";
+                portalUpdate = "Portal and Detrack weight updated. ";
                 appliedStatus = "Weight Update"
 
                 DetrackAPIrun = 1;
@@ -10429,7 +10429,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                portalUpdate = "Mongo and Detrack payment method and price updated. ";
+                portalUpdate = "Portal and Detrack payment method and price updated. ";
                 appliedStatus = "Payment Method and Price Update"
 
                 DetrackAPIrun = 1;
