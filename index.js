@@ -194,28 +194,9 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         // Fetch EWE Orders
         const eweOrders = await ORDERS.aggregate([
-            { $match: { product: 'ewe' } },
             {
-                $group: {
-                    _id: '$mawbNo',
-                    mawbNo: { $first: '$mawbNo' },
-                    flightDate: { $first: '$flightDate' },
-                    total: { $sum: 1 },
-                    atWarehouse: { $sum: { $cond: [{ $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }, 1, 0] } },
-                    k1: { $sum: { $cond: [{ $eq: ['$latestLocation', 'Warehouse K1'] }, 1, 0] } },
-                    k2: { $sum: { $cond: [{ $eq: ['$latestLocation', 'Warehouse K2'] }, 1, 0] } },
-                    outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
-                    selfCollect: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Self Collect'] }, 1, 0] } },
-                    completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
-                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
-                }
+                $match: { product: { $in: ['ewe', 'ewens'] } }
             },
-            { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
-        ]);
-
-        // Fetch EWE Orders
-        const ewensOrders = await ORDERS.aggregate([
-            { $match: { product: 'ewens' } },
             {
                 $group: {
                     _id: '$mawbNo',
@@ -228,7 +209,23 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                     outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
                     selfCollect: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Self Collect'] }, 1, 0] } },
                     completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
-                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
+                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } },
+                    eweTotal: { $sum: { $cond: [{ $eq: ['$product', 'ewe'] }, 1, 0] } },
+                    ewensTotal: { $sum: { $cond: [{ $eq: ['$product', 'ewens'] }, 1, 0] } },
+                    eweAtWarehouse: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }] }, 1, 0] } },
+                    ewensAtWarehouse: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }] }, 1, 0] } },
+                    eweK1: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $eq: ['$latestLocation', 'Warehouse K1'] }] }, 1, 0] } },
+                    ewensK1: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $eq: ['$latestLocation', 'Warehouse K1'] }] }, 1, 0] } },
+                    eweK2: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $eq: ['$latestLocation', 'Warehouse K2'] }] }, 1, 0] } },
+                    ewensK2: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $eq: ['$latestLocation', 'Warehouse K2'] }] }, 1, 0] } },
+                    eweOutForDelivery: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $eq: ['$currentStatus', 'Out for Delivery'] }] }, 1, 0] } },
+                    ewensOutForDelivery: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $eq: ['$currentStatus', 'Out for Delivery'] }] }, 1, 0] } },
+                    eweSelfCollect: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $eq: ['$currentStatus', 'Self Collect'] }] }, 1, 0] } },
+                    ewensSelfCollect: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $eq: ['$currentStatus', 'Self Collect'] }] }, 1, 0] } },
+                    eweCompleted: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $eq: ['$currentStatus', 'Completed'] }] }, 1, 0] } },
+                    ewensCompleted: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $eq: ['$currentStatus', 'Completed'] }] }, 1, 0] } },
+                    eweCancelled: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewe'] }, { $eq: ['$currentStatus', 'Cancelled'] }] }, 1, 0] } },
+                    ewensCancelled: { $sum: { $cond: [{ $and: [{ $eq: ['$product', 'ewens'] }, { $eq: ['$currentStatus', 'Cancelled'] }] }, 1, 0] } }
                 }
             },
             { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
@@ -346,7 +343,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
 
         // Render the dashboard view with both sets of orders
-        res.render('dashboard', { mohOrders, eweOrders, ewensOrders, fmxOrders, moment, user: req.user, orders: [] });
+        res.render('dashboard', { mohOrders, eweOrders, fmxOrders, moment, user: req.user, orders: [] });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3246,7 +3243,7 @@ app.get('/listoffmxPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
-app.get('/listofewePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/listofEwePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await EWEPOD.find({})
@@ -3264,7 +3261,7 @@ app.get('/listofewePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofewePod', { pods, user: req.user });
+        res.render('listofEwePod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -3272,7 +3269,7 @@ app.get('/listofewePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
-app.get('/listofewensPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/listofEweNSPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await EWENSPOD.find({})
@@ -3290,7 +3287,7 @@ app.get('/listofewensPod', ensureAuthenticated, ensureGeneratePODandUpdateDelive
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofewensPod', { pods, user: req.user });
+        res.render('listofEweNSPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -3817,7 +3814,7 @@ app.get('/deleteEWEPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
         const deletedPod = await EWEPOD.findByIdAndRemove(podId);
 
         if (deletedPod) {
-            res.redirect('/listofewePod'); // Redirect to the list view after deletion
+            res.redirect('/listofEwePod'); // Redirect to the list view after deletion
         } else {
             res.status(404).send('EWE POD not found');
         }
@@ -3835,7 +3832,7 @@ app.get('/deleteEWENSPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdat
         const deletedPod = await EWENSPOD.findByIdAndRemove(podId);
 
         if (deletedPod) {
-            res.redirect('/listofewensPod'); // Redirect to the list view after deletion
+            res.redirect('/listofEweNSPod'); // Redirect to the list view after deletion
         } else {
             res.status(404).send('EWE POD not found');
         }
@@ -4616,6 +4613,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Weight"
             }
 
+            if (req.body.statusCode == 'UP') {
+                appliedStatus = "Update Price"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -4682,7 +4683,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
                 || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
-                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW')) {
+                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')) {
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -8651,13 +8652,13 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             }
                         }
-    
+
                         var detrackUpdateData = {
                             payment_mode: "NON COD",
                             total_price: 0,
                             payment_amount: 0
                         };
-    
+
                     } else {
                         if (req.body.paymentMethod == 'Cash') {
                             update = {
@@ -8675,7 +8676,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     }
                                 }
                             }
-    
+
                             var detrackUpdateData = {
                                 payment_mode: req.body.paymentMethod,
                                 total_price: req.body.price,
@@ -8697,21 +8698,24 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     }
                                 }
                             }
-    
+
                             var detrackUpdateData = {
-                                payment_mode: req.body.paymentMethod,
-                                total_price: req.body.price,
-                                payment_amount: 0
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: req.body.paymentMethod,
+                                    total_price: req.body.price,
+                                    payment_amount: 0
+                                }
                             };
                         }
                     }
-    
+
                     portalUpdate = "Mongo and Detrack payment method and price updated. ";
                     appliedStatus = "Payment Method and Price Update"
-    
+
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
-    
+
                     completeRun = 1;
                 }
             }
@@ -10365,9 +10369,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
 
                     var detrackUpdateData = {
-                        payment_mode: "NON COD",
-                        total_price: 0,
-                        payment_amount: 0
+                        do_number: consignmentID,
+                        data: {
+                            payment_mode: "NON COD",
+                            total_price: 0,
+                            payment_amount: 0
+                        }
                     };
 
                 } else {
@@ -10388,9 +10395,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
 
                         var detrackUpdateData = {
-                            payment_mode: req.body.paymentMethod,
-                            total_price: req.body.price,
-                            payment_amount: req.body.price
+                            do_number: consignmentID,
+                            data: {
+                                payment_mode: req.body.paymentMethod,
+                                total_price: req.body.price,
+                                payment_amount: req.body.price
+                            }
                         };
                     } else {
                         update = {
@@ -10409,9 +10419,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
 
                         var detrackUpdateData = {
-                            payment_mode: req.body.paymentMethod,
-                            total_price: req.body.price,
-                            payment_amount: 0
+                            do_number: consignmentID,
+                            data: {
+                                payment_mode: req.body.paymentMethod,
+                                total_price: req.body.price,
+                                payment_amount: 0
+                            }
                         };
                     }
                 }
@@ -11406,7 +11419,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -11823,7 +11836,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

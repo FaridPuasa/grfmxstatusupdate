@@ -4,20 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit EWE POD</title>
+    <title>Edit EWE NON SHEIN POD</title>
     <!-- Add your CSS styles or include external CSS files here if needed -->
 </head>
 
 <body>
     <div>
-        <h1 class="text-center mt-4">Edit EWE POD</h1>
+        <h1 class="text-center mt-4">Edit EWE NON SHEIN POD</h1>
 
         <!-- Create a div with an ID to capture the edited content -->
         <div id="editableContent"><%- pod.htmlContent %></div>
 
         <div class="button-container text-center">
             <button id="saveChangesButton" class="btn btn-primary mt-3">Save Changes</button>
-            <a href="/listofEwePod" class="btn btn-secondary mt-3">Back to List of EWE PODs</a>
+            <a href="/listofEweNSPod" class="btn btn-secondary mt-3">Back to List of EWE NON SHEIN PODs</a>
         </div>
     </div>
 
@@ -31,7 +31,7 @@
                 var editedContent = $('#editableContent').html();
 
                 // Send the edited content to the server using an AJAX POST request
-                $.post("/updateEwePod/<%= pod._id %>", { htmlContent: editedContent }, function (data) {
+                $.post("/updateEweNSPod/<%= pod._id %>", { htmlContent: editedContent }, function (data) {
                     // Handle the response from the server, e.g., show a success message
                     alert(data);
                 });

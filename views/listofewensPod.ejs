@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List of Cross Border Service (Limbang) PODs</title>
+    <title>List of EWE NON SHEIN Delivery PODs</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -277,7 +277,7 @@
     </div>
 
     <main class="container mt-4">
-        <h1>List of Cross Border Service (Limbang) PODs</h1>
+        <h1>List of EWE NON SHEIN PODs</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="podTable">
                 <thead class="table-primary">
@@ -296,7 +296,7 @@
                     <% pods.forEach(function(pod) { %>
                         <tr>
                             <td>
-                                <a href="/podcbslDetail/<%= pod._id %>">
+                                <a href="/podewensDetail/<%= pod._id %>">
                                     <%= pod.podName %>
                                 </a>
                             </td>
@@ -319,7 +319,7 @@
                                 <%= pod.podDate %>
                             </td>
                             <td>
-                                <a href="/editCbslPod/<%= pod._id %>" class="btn btn-primary btn-sm">Edit</a>
+                                <a href="/editEweNSPod/<%= pod._id %>" class="btn btn-primary btn-sm">Edit</a>
                                 <button class="btn btn-danger btn-sm"
                                     onclick="confirmDelete('<%= pod._id %>')">Delete</button>
                             </td>
@@ -345,7 +345,7 @@
     <script>
         function confirmDelete(podId) {
             if (confirm("Are you sure you want to delete this record?")) {
-                window.location.href = "/deleteCBSLPod/" + podId; // Redirect to delete route
+                window.location.href = "/deleteEWENSPod/" + podId; // Redirect to delete route
             }
         }
     </script>

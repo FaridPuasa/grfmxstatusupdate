@@ -94,6 +94,7 @@
                                             <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
                                             <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
                                             <a class="dropdown-item" href="/listofewePod">POD EWE</a>
+                                            <a class="dropdown-item" href="/listofewensPod">POD EWE NON SHEIN</a>
                                             <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
                                                 (Limbang)</a>
                                             <% } %>
@@ -177,6 +178,7 @@
                                                         Manifest to Bill</a>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                                     <% } %>
+                                                    <div class="dropdown-header">SHEIN</div>
                                                         <a class="dropdown-item" href="/listofEWEOrders">All</a>
                                                         <a class="dropdown-item bg-yellow"
                                                             href="/listofEWEOrdersOFD">Out for
@@ -187,6 +189,18 @@
                                                         <a class="dropdown-item"
                                                             href="/listofEWEOrdersCompleted">Completed</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                        <div class="dropdown-header">NON SHEIN</div>
+                                                        <a class="dropdown-item" href="/listofEWENSOrders">All</a>
+                                                        <a class="dropdown-item bg-yellow"
+                                                            href="/listofEWENSOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item bg-blue" href="/listofEWENSOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWENSOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -460,88 +474,111 @@
                                                 </thead>
                                                 <tbody>
                                                     <% eweOrders.forEach(function(order) { %>
-                                                        <tr
-                                                            class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                            <td>
-                                                                <%= order.mawbNo %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.flightDate %>
-                                                            </td>
+                                                        <tr class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                            <td><%= order.mawbNo %></td>
+                                                            <td><%= order.flightDate %></td>
                                                             <td>
                                                                 <%= order.total %>
+                                                                <% if (order.eweTotal || order.ewensTotal) { %>
+                                                                    <div>
+                                                                        <% if (order.eweTotal) { %><span class="label label-info">S: <%= order.eweTotal %></span><% } %>
+                                                                        <% if (order.ewensTotal) { %><span class="label label-info">NS: <%= order.ewensTotal %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.atWarehouse %>
+                                                                <% if (order.eweAtWarehouse || order.ewensAtWarehouse) { %>
+                                                                    <div>
+                                                                        <% if (order.eweAtWarehouse) { %><span class="label label-info">S: <%= order.eweAtWarehouse %></span><% } %>
+                                                                        <% if (order.ewensAtWarehouse) { %><span class="label label-info">NS: <%= order.ewensAtWarehouse %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.k1 %>
+                                                                <% if (order.eweK1 || order.ewensK1) { %>
+                                                                    <div>
+                                                                        <% if (order.eweK1) { %><span class="label label-info">S: <%= order.eweK1 %></span><% } %>
+                                                                        <% if (order.ewensK1) { %><span class="label label-info">NS: <%= order.ewensK1 %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.k2 %>
+                                                                <% if (order.eweK2 || order.ewensK2) { %>
+                                                                    <div>
+                                                                        <% if (order.eweK2) { %><span class="label label-info">S: <%= order.eweK2 %></span><% } %>
+                                                                        <% if (order.ewensK2) { %><span class="label label-info">NS: <%= order.ewensK2 %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.outForDelivery %>
+                                                                <% if (order.eweOutForDelivery || order.ewensOutForDelivery) { %>
+                                                                    <div>
+                                                                        <% if (order.eweOutForDelivery) { %><span class="label label-info">S: <%= order.eweOutForDelivery %></span><% } %>
+                                                                        <% if (order.ewensOutForDelivery) { %><span class="label label-info">NS: <%= order.ewensOutForDelivery %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.selfCollect %>
+                                                                <% if (order.eweSelfCollect || order.ewensSelfCollect) { %>
+                                                                    <div>
+                                                                        <% if (order.eweSelfCollect) { %><span class="label label-info">S: <%= order.eweSelfCollect %></span><% } %>
+                                                                        <% if (order.ewensSelfCollect) { %><span class="label label-info">NS: <%= order.ewensSelfCollect %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.completed %>
+                                                                <% if (order.eweCompleted || order.ewensCompleted) { %>
+                                                                    <div>
+                                                                        <% if (order.eweCompleted) { %><span class="label label-info">S: <%= order.eweCompleted %></span><% } %>
+                                                                        <% if (order.ewensCompleted) { %><span class="label label-info">NS: <%= order.ewensCompleted %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                             <td>
                                                                 <%= order.cancelled %>
+                                                                <% if (order.eweCancelled || order.ewensCancelled) { %>
+                                                                    <div>
+                                                                        <% if (order.eweCancelled) { %><span class="label label-info">S: <%= order.eweCancelled %></span><% } %>
+                                                                        <% if (order.ewensCancelled) { %><span class="label label-info">NS: <%= order.ewensCancelled %></span><% } %>
+                                                                    </div>
+                                                                <% } %>
                                                             </td>
                                                         </tr>
-                                                        <% }); %>
-                                                            <!-- Calculate totals -->
-                                                            <% const totalEWE=eweOrders.reduce((acc, order)=> {
-                                                                acc.total += order.total;
-                                                                acc.atWarehouse += order.atWarehouse;
-                                                                acc.k1 += order.k1;
-                                                                acc.k2 += order.k2;
-                                                                acc.outForDelivery += order.outForDelivery;
-                                                                acc.selfCollect += order.selfCollect;
-                                                                acc.completed += order.completed;
-                                                                acc.cancelled += order.cancelled;
-                                                                return acc;
-                                                                }, { total: 0, atWarehouse: 0, k1: 0, k2: 0,
-                                                                outForDelivery: 0, selfCollect: 0, completed: 0,
-                                                                cancelled: 0 }); %>
-                                                                <!-- Append totals row -->
-                                                                <tr
-                                                                    class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                                    <td><strong>Total</strong></td>
-                                                                    <td></td>
-                                                                    <td>
-                                                                        <%= totalEWE.total %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.atWarehouse %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.k1 %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.k2 %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.outForDelivery %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.selfCollect %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.completed %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.cancelled %>
-                                                                    </td>
-                                                                </tr>
+                                                    <% }); %>
+                                                    <!-- Calculate totals -->
+                                                    <% const totalEWE = orders.reduce((acc, order) => {
+                                                        acc.total += order.total;
+                                                        acc.atWarehouse += order.atWarehouse;
+                                                        acc.k1 += order.k1;
+                                                        acc.k2 += order.k2;
+                                                        acc.outForDelivery += order.outForDelivery;
+                                                        acc.selfCollect += order.selfCollect;
+                                                        acc.completed += order.completed;
+                                                        acc.cancelled += order.cancelled;
+                                                        return acc;
+                                                    }, { total: 0, atWarehouse: 0, k1: 0, k2: 0, outForDelivery: 0, selfCollect: 0, completed: 0, cancelled: 0 }); %>
+                                                    <!-- Append totals row -->
+                                                    <tr class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                        <td><strong>Total</strong></td>
+                                                        <td></td>
+                                                        <td><%= totalEWE.total %></td>
+                                                        <td><%= totalEWE.atWarehouse %></td>
+                                                        <td><%= totalEWE.k1 %></td>
+                                                        <td><%= totalEWE.k2 %></td>
+                                                        <td><%= totalEWE.outForDelivery %></td>
+                                                        <td><%= totalEWE.selfCollect %></td>
+                                                        <td><%= totalEWE.completed %></td>
+                                                        <td><%= totalEWE.cancelled %></td>
+                                                    </tr>
                                                 </tbody>
                                             </table>
                                         </div>
-
 
                                         <% } %>
 
