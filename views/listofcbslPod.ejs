@@ -91,6 +91,7 @@
                                                 <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out for
                                                     Delivery</a>
                                                 <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self Collect</a>
+                                                <a class="dropdown-item bg-blue" href="/listofAllOrdersAW">All Warehouse</a>
                                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                                     ].includes(user.role)) { %>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -183,7 +184,7 @@
                                                                 Manifest to Bill</a>
                                                             <div class="dropdown-divider"></div> <!-- Divider here -->
                                                             <% } %>
-                                                            <div class="dropdown-header">SHEIN</div>
+                                                                <div class="dropdown-header">SHEIN</div>
                                                                 <a class="dropdown-item" href="/listofEWEOrders">All</a>
                                                                 <a class="dropdown-item bg-yellow"
                                                                     href="/listofEWEOrdersOFD">Out for
@@ -200,12 +201,15 @@
                                                                 <a class="dropdown-item bg-yellow"
                                                                     href="/listofEWENSOrdersOFD">Out for
                                                                     Delivery</a>
-                                                                <a class="dropdown-item bg-blue" href="/listofEWENSOrdersSC">Self
+                                                                <a class="dropdown-item bg-blue"
+                                                                    href="/listofEWENSOrdersSC">Self
                                                                     Collect</a>
-                                                                <a class="dropdown-item" href="/listofEWENSOrdersAW">Warehouse</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersAW">Warehouse</a>
                                                                 <a class="dropdown-item"
                                                                     href="/listofEWENSOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item" href="/listofEWENSOrdersCD">Cancelled</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
         

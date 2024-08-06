@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Self Collect EWE NON SHEIN Orders</title>
+    <title>Orders in Warehouse</title>
     <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
     <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
@@ -58,6 +58,46 @@
             /* Center the table horizontally */
             vertical-align: middle;
             /* Center-align table contents vertically */
+        }
+
+        .active-filter {
+            background-color: #28a745 !important;
+            /* Change to the desired color */
+            border-color: #28a745 !important;
+        }
+
+        /* Container for area filter buttons */
+        #filterButtons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            /* Adjust the margin as needed */
+        }
+
+        /* Container for product filter buttons */
+        #productFilterButtons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            /* Adjust the margin as needed */
+        }
+
+        /* Style for individual filter buttons */
+        .filter-btn,
+        .product-filter-btn {
+            margin: 5px;
+            /* Adjust spacing between buttons */
+            padding: 10px 20px;
+            /* Adjust padding inside buttons */
+        }
+
+        /* Optional: Add some style for active buttons */
+        .active-filter {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
         }
     </style>
 </head>
@@ -277,46 +317,162 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>Self Collect EWE NON SHEIN Orders</h1>
+        <h1 style="text-align: center;">Orders in Warehouse (<%= totalRecords %>)</h1>
+
+        <!-- Filter Buttons -->
+        <div id="filterButtons" class="mb-3">
+            <% if (counts.B> 0) { %>
+                <button class="btn btn-primary filter-btn" data-filter="B">B (<%= counts.B %>)</button>
+                <% } %>
+                    <% if (counts.G> 0) { %>
+                        <button class="btn btn-primary filter-btn" data-filter="G">G (<%= counts.G %>)</button>
+                        <% } %>
+                            <% if (counts.JT> 0) { %>
+                                <button class="btn btn-primary filter-btn" data-filter="JT">JT (<%= counts.JT %>
+                                        )</button>
+                                <% } %>
+                                    <% if (counts.KB> 0) { %>
+                                        <button class="btn btn-primary filter-btn" data-filter="KB">KB (<%= counts.KB %>
+                                                )</button>
+                                        <% } %>
+                                            <% if (counts.TUT> 0) { %>
+                                                <button class="btn btn-primary filter-btn" data-filter="TUT">TUT (<%=
+                                                        counts.TUT %>)</button>
+                                                <% } %>
+                                                    <% if (counts.TEMB> 0) { %>
+                                                        <button class="btn btn-primary filter-btn"
+                                                            data-filter="TEMB">TEMB (<%= counts.TEMB %>)</button>
+                                                        <% } %>
+                                                            <% if (counts["N/A"]> 0) { %>
+                                                                <button class="btn btn-primary filter-btn"
+                                                                    data-filter="N/A">N/A (<%= counts["N/A"] %>
+                                                                        )</button>
+                                                                <% } %>
+        </div>
+
+        <!-- Product Filter Buttons -->
+        <div id="productFilterButtons" class="mb-3" style="display: none;">
+            <% if (productCounts.MOH> 0) { %>
+                <button class="btn btn-secondary product-filter-btn" data-product="MOH">MOH (<%= productCounts.MOH %>
+                        )</button>
+                <% } %>
+                    <% if (productCounts.JPMC> 0) { %>
+                        <button class="btn btn-secondary product-filter-btn" data-product="JPMC">JPMC (<%=
+                                productCounts.JPMC %>)</button>
+                        <% } %>
+                            <% if (productCounts.PHC> 0) { %>
+                                <button class="btn btn-secondary product-filter-btn" data-product="PHC">PHC (<%=
+                                        productCounts.PHC %>)</button>
+                                <% } %>
+                                    <% if (productCounts.LD> 0) { %>
+                                        <button class="btn btn-secondary product-filter-btn" data-product="LD">LD (<%=
+                                                productCounts.LD %>)</button>
+                                        <% } %>
+                                            <% if (productCounts.CBSL> 0) { %>
+                                                <button class="btn btn-secondary product-filter-btn"
+                                                    data-product="CBSL">CBSL (<%= productCounts.CBSL %>)</button>
+                                                <% } %>
+                                                    <% if (productCounts.EWE> 0) { %>
+                                                        <button class="btn btn-secondary product-filter-btn"
+                                                            data-product="EWE">EWE (<%= productCounts.EWE %>)</button>
+                                                        <% } %>
+                                                            <% if (productCounts.EWENS> 0) { %>
+                                                                <button class="btn btn-secondary product-filter-btn"
+                                                                    data-product="EWENS">EWENS (<%= productCounts.EWENS
+                                                                        %>)</button>
+                                                                <% } %>
+                                                                    <% if (productCounts.FMX> 0) { %>
+                                                                        <button
+                                                                            class="btn btn-secondary product-filter-btn"
+                                                                            data-product="FMX">FMX (<%=
+                                                                                productCounts.FMX %>)</button>
+                                                                        <% } %>
+                                                                            <% if (productCounts.ICARUS> 0) { %>
+                                                                                <button
+                                                                                    class="btn btn-secondary product-filter-btn"
+                                                                                    data-product="ICARUS">ICARUS (<%=
+                                                                                        productCounts.ICARUS %>
+                                                                                        )</button>
+                                                                                <% } %>
+                                                                                    <% if (productCounts.JOYBEAN> 0) {
+                                                                                        %>
+                                                                                        <button
+                                                                                            class="btn btn-secondary product-filter-btn"
+                                                                                            data-product="JOYBEAN">JOYBEAN
+                                                                                            (<%= productCounts.JOYBEAN
+                                                                                                %>)</button>
+                                                                                        <% } %>
+                                                                                            <% if
+                                                                                                (productCounts.BAIDURI>
+                                                                                                0) { %>
+                                                                                                <button
+                                                                                                    class="btn btn-secondary product-filter-btn"
+                                                                                                    data-product="BAIDURI">BAIDURI
+                                                                                                    (<%= productCounts.BAIDURI
+                                                                                                        %>)</button>
+                                                                                                <% } %>
+                                                                                                    <% if
+                                                                                                        (productCounts.FATHAN>
+                                                                                                        0) { %>
+                                                                                                        <button
+                                                                                                            class="btn btn-secondary product-filter-btn"
+                                                                                                            data-product="FATHAN">FATHAN
+                                                                                                            (<%= productCounts.FATHAN
+                                                                                                                %>
+                                                                                                                )</button>
+                                                                                                        <% } %>
+                                                                                                            <% if
+                                                                                                                (productCounts.GRP>
+                                                                                                                0) { %>
+                                                                                                                <button
+                                                                                                                    class="btn btn-secondary product-filter-btn"
+                                                                                                                    data-product="GRP">GRP
+                                                                                                                    (<%= productCounts.GRP
+                                                                                                                        %>
+                                                                                                                        )</button>
+                                                                                                                <% } %>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
                     <tr>
                         <th class="header">Tracking No.</th>
+                        <th class="header">Product</th>
                         <th class="header">Receiver Name</th>
-                        <th class="header">Current Status</th>
-                        <th class="header">Assigned To</th>
-                        <th class="header">Job Date</th>
+                        <th class="header">Last Assigned To</th>
+                        <th class="header">Last Job Date</th>
                         <th class="header">Attempt No.</th>
-                        <th class="header">Flight Date</th>
-                        <th class="header">MAWB No.</th>
+                        <th class="header">Latest Reason</th>
+                        <th class="header">Warehouse Entry Date</th>
+                        <th class="header">Age in Warehouse</th>
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
-                        <th class="header">Job Created</th>
                         <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
                         <th class="header">Item Description</th>
+                        <th class="header">Job Type</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
+                        <th class="header">Remarks</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    <!-- Iterate through the orders and display the data -->
                     <% orders.forEach(function(order) { %>
                         <tr>
                             <td>
                                 <%= order.doTrackingNumber %>
                             </td>
                             <td>
+                                <%= order.product %>
+                            </td>
+                            <td>
                                 <%= order.receiverName %>
                             </td>
                             <td>
-                                <%= order.currentStatus %>
-                            </td>
-                            <td>
-                                <%= order.assignedTo %>
+                                <%= order.lastAssignedTo %>
                             </td>
                             <td>
                                 <%= order.jobDate %>
@@ -325,19 +481,28 @@
                                 <%= order.attempt %>
                             </td>
                             <td>
-                                <%= order.flightDate %>
+                                <%= order.latestReason %>
                             </td>
                             <td>
-                                <%= order.mawbNo %>
+                                <%= moment(order.warehouseEntryDateTime).format('DD-MM-YYYY') %>
+                            </td>
+                            <td>
+                                <% if (order.warehouseEntry==="No" ) { %>
+                                    0
+                                    <% } else { %>
+                                        <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                            <% const currentDate=new Date(); %>
+                                                <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                    <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 * 60 *
+                                                        24)); %>
+                                                        <%= ageInDays %>
+                                                            <% } %>
                             </td>
                             <td>
                                 <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
                             </td>
                             <td>
                                 <%= order.lastUpdatedBy %>
-                            </td>
-                            <td>
-                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
                             </td>
                             <td>
                                 <%= order.receiverPhoneNumber %>
@@ -352,10 +517,16 @@
                                 <%= order.items[0].description %>
                             </td>
                             <td>
+                                <%= order.deliveryType %>
+                            </td>
+                            <td>
                                 <%= order.paymentMethod %>
                             </td>
                             <td>
-                                <%= order.totalPrice %>
+                                <%= order.paymentAmount %>
+                            </td>
+                            <td>
+                                <%= order.remarks %>
                             </td>
                         </tr>
                         <% }); %>
@@ -374,18 +545,111 @@
 
     <script>
         $(document).ready(function () {
-            // Initialize DataTable for the order table
             const table = $('#orderTable').DataTable({
-                "ordering": false,  // Disable client-side sorting
-                "iDisplayLength": 100,  // Set the default number of entries to 100
-                "dom": 'Bfrtip', // Add buttons to the DOM
+                "ordering": false,
+                "iDisplayLength": 100,
+                "dom": 'Bfrtip',
                 "buttons": [
-                    'copy', 'csv', 'excel', 'pdf', 'print' // Buttons for copy, CSV, Excel, PDF, and print
+                    'copy', 'csv', 'excel', 'pdf', 'print'
                 ]
             });
+
+            const areaFilters = {
+                "B": ["B", "B1", "B2"],
+                "G": ["G", "G1", "G2"],
+                "JT": ["JT", "JT1", "JT2", "JT3"],
+                "KB": ["KB", "KB / SERIA", "LUMUT", "SERIA"],
+                "TUT": ["TUTONG"],
+                "TEMB": ["TEMBURONG"],
+                "N/A": ["N/A", "", null]
+            };
+
+            const productFilters = {
+                "MOH": "pharmacymoh",
+                "JPMC": "pharmacyjpmc",
+                "PHC": "pharmacyphc",
+                "LD": "localdelivery",
+                "CBSL": "cbsl",
+                "EWE": "ewe",
+                "EWENS": "ewens",
+                "FMX": "fmx",
+                "ICARUS": "icarus",
+                "JOYBEAN": "localdeliveryjb",
+                "BAIDURI": "bb",
+                "FATHAN": "fcas",
+                "GRP": "grp"
+            };
+
+            let activeAreaFilter = null;
+            let activeProductFilter = null;
+
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                const area = data[13]; // The column index for the 'area' column in the table
+                const product = data[1]; // The column index for the 'product' column in the table
+
+                if (activeAreaFilter && !areaFilters[activeAreaFilter].includes(area)) {
+                    return false;
+                }
+
+                if (activeProductFilter && productFilters[activeProductFilter] !== product) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            $('.filter-btn').click(function () {
+                const filter = $(this).data('filter');
+                if ($(this).hasClass('active-filter')) {
+                    $(this).removeClass('active-filter');
+                    activeAreaFilter = null;
+                    $('#productFilterButtons').hide();
+                } else {
+                    $('.filter-btn').removeClass('active-filter');
+                    $(this).addClass('active-filter');
+                    activeAreaFilter = filter;
+                    $('#productFilterButtons').show();
+                    updateProductButtons(filter);
+                }
+                activeProductFilter = null;
+                $('.product-filter-btn').removeClass('active-filter');
+                table.draw();
+            });
+
+            $(document).on('click', '.product-filter-btn', function () {
+                if ($(this).hasClass('active-filter')) {
+                    $(this).removeClass('active-filter');
+                    activeProductFilter = null;
+                } else {
+                    $('.product-filter-btn').removeClass('active-filter');
+                    $(this).addClass('active-filter');
+                    activeProductFilter = $(this).data('product');
+                }
+                table.draw();
+            });
+
+            function updateProductButtons(area) {
+                const counts = {
+                    "B": { "MOH": 50, "JPMC": 1, "PHC": 1, "LD": 1, "CBSL": 120, "EWE": 2, "EWENS": 0, "FMX": 52, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 21, "GRP": 3 },
+                    "G": { "MOH": 12, "JPMC": 0, "PHC": 0, "LD": 2, "CBSL": 20, "EWE": 1, "EWENS": 0, "FMX": 35, "ICARUS": 1, "JOYBEAN": 0, "BAIDURI": 1, "FATHAN": 18, "GRP": 1 },
+                    "JT": { "MOH": 21, "JPMC": 1, "PHC": 0, "LD": 0, "CBSL": 9, "EWE": 22, "EWENS": 0, "FMX": 30, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 44, "GRP": 0 },
+                    "KB": { "MOH": 5, "JPMC": 0, "PHC": 0, "LD": 1, "CBSL": 1, "EWE": 4, "EWENS": 0, "FMX": 37, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 32, "GRP": 2 },
+                    "TUT": { "MOH": 4, "JPMC": 1, "PHC": 0, "LD": 1, "CBSL": 14, "EWE": 8, "EWENS": 0, "FMX": 43, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 26, "GRP": 12 },
+                    "TEMB": { "MOH": 1, "JPMC": 0, "PHC": 0, "LD": 0, "CBSL": 0, "EWE": 1, "EWENS": 0, "FMX": 3, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 3, "GRP": 0 },
+                    "N/A": { "MOH": 0, "JPMC": 0, "PHC": 0, "LD": 0, "CBSL": 0, "EWE": 1, "EWENS": 0, "FMX": 24, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 1, "FATHAN": 59, "GRP": 0 }
+                }[area];
+
+                $('#productFilterButtons').empty();
+                for (const product in counts) {
+                    if (counts[product] > 0) {
+                        $('#productFilterButtons').append(
+                            `<button class="btn btn-secondary product-filter-btn" data-product="${product}">${product} (${counts[product]})</button>`
+                        );
+                    }
+                }
+            }
         });
     </script>
-
 </body>
 
 </html>

@@ -644,6 +644,98 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
     }
 });
 
+app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+        
+        const areaFilters = {
+            "B": ["B", "B1", "B2"],
+            "G": ["G", "G1", "G2"],
+            "JT": ["JT", "JT1", "JT2", "JT3"],
+            "KB": ["KB", "KB / SERIA", "LUMUT", "SERIA"],
+            "TUT": ["TUTONG"],
+            "TEMB": ["TEMBURONG"],
+            "N/A": ["N/A", "", null]
+        };
+
+        const productFilters = {
+            "MOH": "pharmacymoh",
+            "JPMC": "pharmacyjpmc",
+            "PHC": "pharmacyphc",
+            "LD": "localdelivery",
+            "CBSL": "cbsl",
+            "EWE": "ewe",
+            "EWENS": "ewens",
+            "FMX": "fmx",
+            "ICARUS": "icarus",
+            "JOYBEAN": "localdeliveryjb",
+            "BAIDURI": "bb",
+            "FATHAN": "fcas",
+            "GRP": "grp"
+        };
+
+        const counts = {};
+        const productCounts = {};
+
+        for (const key in areaFilters) {
+            counts[key] = await ORDERS.countDocuments({
+                area: { $in: areaFilters[key] },
+                currentStatus: { $in: statusValues }
+            });
+
+            productCounts[key] = {};
+            for (const productKey in productFilters) {
+                productCounts[key][productKey] = await ORDERS.countDocuments({
+                    area: { $in: areaFilters[key] },
+                    product: productFilters[productKey],
+                    currentStatus: { $in: statusValues }
+                });
+            }
+        }
+
+        const orders = await ORDERS.find({
+            currentStatus: { $in: statusValues }
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'paymentAmount',
+                'deliveryType',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo'
+            ])
+            .sort({ warehouseEntryDateTime: 1 });
+
+        const totalRecords = orders.length;
+
+        res.render('listofAllOrdersAW', { orders, counts, productCounts, moment, user: req.user, totalRecords });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+
 app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
