@@ -629,15 +629,7 @@
             });
 
             function updateProductButtons(area) {
-                const counts = {
-                    "B": { "MOH": 50, "JPMC": 1, "PHC": 1, "LD": 1, "CBSL": 120, "EWE": 2, "EWENS": 0, "FMX": 52, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 21, "GRP": 3 },
-                    "G": { "MOH": 12, "JPMC": 0, "PHC": 0, "LD": 2, "CBSL": 20, "EWE": 1, "EWENS": 0, "FMX": 35, "ICARUS": 1, "JOYBEAN": 0, "BAIDURI": 1, "FATHAN": 18, "GRP": 1 },
-                    "JT": { "MOH": 21, "JPMC": 1, "PHC": 0, "LD": 0, "CBSL": 9, "EWE": 22, "EWENS": 0, "FMX": 30, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 44, "GRP": 0 },
-                    "KB": { "MOH": 5, "JPMC": 0, "PHC": 0, "LD": 1, "CBSL": 1, "EWE": 4, "EWENS": 0, "FMX": 37, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 32, "GRP": 2 },
-                    "TUT": { "MOH": 4, "JPMC": 1, "PHC": 0, "LD": 1, "CBSL": 14, "EWE": 8, "EWENS": 0, "FMX": 43, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 26, "GRP": 12 },
-                    "TEMB": { "MOH": 1, "JPMC": 0, "PHC": 0, "LD": 0, "CBSL": 0, "EWE": 1, "EWENS": 0, "FMX": 3, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 0, "FATHAN": 3, "GRP": 0 },
-                    "N/A": { "MOH": 0, "JPMC": 0, "PHC": 0, "LD": 0, "CBSL": 0, "EWE": 1, "EWENS": 0, "FMX": 24, "ICARUS": 0, "JOYBEAN": 0, "BAIDURI": 1, "FATHAN": 59, "GRP": 0 }
-                }[area];
+                const counts = <%- JSON.stringify(productCounts) %>[area];
 
                 $('#productFilterButtons').empty();
                 for (const product in counts) {
@@ -648,6 +640,7 @@
                     }
                 }
             }
+
         });
     </script>
 </body>

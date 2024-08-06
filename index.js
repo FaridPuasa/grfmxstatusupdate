@@ -647,7 +647,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
 app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const statusValues = ["At Warehouse", "Return to Warehouse"];
-        
+
         const areaFilters = {
             "B": ["B", "B1", "B2"],
             "G": ["G", "G1", "G2"],
@@ -734,7 +734,6 @@ app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
         res.status(500).send('Failed to fetch orders');
     }
 });
-
 
 app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
