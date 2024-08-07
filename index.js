@@ -4708,6 +4708,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Price"
             }
 
+            if (req.body.statusCode == 'UAR') {
+                appliedStatus = "Update Area"
+            }
+
+            if (req.body.statusCode == 'UAS') {
+                appliedStatus = "Update Address"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -4774,7 +4782,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
                 || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
-                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')) {
+                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
+                || (req.body.statusCode == 'UAR')|| (req.body.statusCode == 'UAS')) {
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -10522,6 +10531,100 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 portalUpdate = "Portal and Detrack payment method and price updated. ";
                 appliedStatus = "Payment Method and Price Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UAR') {
+                if (data.data.weight != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
+                        lastUpdatedBy: req.user.name,
+                        area: req.body.area,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Area updated to " + req.body.area + ".",
+                        lastUpdatedBy: req.user.name,
+                        area: req.body.area,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Area updated to " + req.body.area + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        zone: req.body.area,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack area updated. ";
+                appliedStatus = "Area Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UAS') {
+                if (data.data.address != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Address updated from " + data.data.address + " to " + req.body.address + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverAddress: req.body.address,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Address updated from " + data.data.address + " to " + req.body.address + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Address updated to " + req.body.address + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverAddress: req.body.address,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Address updated to " + req.body.address + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        address: req.body.address,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack address updated. ";
+                appliedStatus = "Address Update"
 
                 DetrackAPIrun = 1;
                 mongoDBrun = 2;

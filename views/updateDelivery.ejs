@@ -71,13 +71,17 @@
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
                                             <% } %>
                                                 <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                                <a class="dropdown-item" href="/addressAreaCheck">Address Area
+                                                    Checker</a>
                                                 <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out for
+                                                <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out
+                                                    for
                                                     Delivery</a>
-                                                <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self Collect</a>
-                                                <a class="dropdown-item bg-blue" href="/listofAllOrdersAW">All Warehouse</a>
+                                                <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self
+                                                    Collect</a>
+                                                <a class="dropdown-item bg-blue" href="/listofAllOrdersAW">All
+                                                    Warehouse</a>
                                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                                     ].includes(user.role)) { %>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -86,18 +90,21 @@
                                                     <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
                                                     <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
                                                     <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                                    <a class="dropdown-item" href="/listofewensPod">POD EWE NON SHEIN</a>
-                                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                                    <a class="dropdown-item" href="/listofewensPod">POD EWE NON
+                                                        SHEIN</a>
+                                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border
+                                                        Service
                                                         (Limbang)</a>
                                                     <% } %>
                                     </div>
                                 </li>
                                 <% } %>
-                                    <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
-                                        {%>
+                                    <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin'
+                                        ].includes(user.role)) {%>
                                         <li class="nav-item dropdown">
-                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
                                                 MOH
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
@@ -110,34 +117,46 @@
                                                         <a class="dropdown-item bg-yellow"
                                                             href="/listofpharmacyMOHOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item bg-blue" href="/listofpharmacyMOHOrdersSC">Self
+                                                        <a class="dropdown-item bg-blue"
+                                                            href="/listofpharmacyMOHOrdersSC">Self
                                                             Collect</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofpharmacyMOHOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofpharmacyMOHOrdersIRCC">New</a>
                                                         <a class="dropdown-item"
                                                             href="/listofpharmacyMOHOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofpharmacyMOHOrdersCD">Cancelled</a>
                                                         <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
+                                                            STD</a>
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH
+                                                            EXP</a>
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH
+                                                            IMM</a>
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH
+                                                            TTG</a>
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
+                                                            KB</a>
                                                         <% } %>
-                                                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                                <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                                <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
+                                                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) {
+                                                                %>
+                                                                <div class="dropdown-divider"></div>
+                                                                <!-- Divider here -->
+                                                                <a class="dropdown-item"
+                                                                    href="/listofpharmacyMOHForms">Pharmacy
                                                                     Form
                                                                     List</a>
                                                                 <% } %>
-                                                                    <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
-                                                                        ].includes(user.role)) { %>
+                                                                    <% if (['moh', 'finance' , 'cs' , 'manager'
+                                                                        , 'admin' ].includes(user.role)) { %>
                                             </div>
                                         </li>
                                         <% } %>
-        
-                                            <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
-                                                %>
+
+                                            <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
+                                                ].includes(user.role)) { %>
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -146,18 +165,20 @@
                                                     </a>
                                                     <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
                                                         <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                                                        <a class="dropdown-item bg-yellow" href="/listofFMXOrdersOFD">Out for
+                                                        <a class="dropdown-item bg-yellow"
+                                                            href="/listofFMXOrdersOFD">Out for
                                                             Delivery</a>
                                                         <a class="dropdown-item bg-blue" href="/listofFMXOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofFMXOrdersCompleted">Completed</a>
                                                         <a class="dropdown-item"
                                                             href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                                     </div>
                                                 </li>
-        
+
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -165,8 +186,10 @@
                                                         EWE
                                                     </a>
                                                     <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                            <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
+                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
+                                                            %>
+                                                            <a class="dropdown-item"
+                                                                href="/ewemanifesttobillsearch">Search
                                                                 Manifest to Bill</a>
                                                             <div class="dropdown-divider"></div> <!-- Divider here -->
                                                             <% } %>
@@ -175,15 +198,20 @@
                                                                 <a class="dropdown-item bg-yellow"
                                                                     href="/listofEWEOrdersOFD">Out for
                                                                     Delivery</a>
-                                                                <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
+                                                                <a class="dropdown-item bg-blue"
+                                                                    href="/listofEWEOrdersSC">Self
                                                                     Collect</a>
-                                                                <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWEOrdersAW">Warehouse</a>
                                                                 <a class="dropdown-item"
                                                                     href="/listofEWEOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
-                                                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWEOrdersCD">Cancelled</a>
+                                                                <div class="dropdown-divider"></div>
+                                                                <!-- Divider here -->
                                                                 <div class="dropdown-header">NON SHEIN</div>
-                                                                <a class="dropdown-item" href="/listofEWENSOrders">All</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrders">All</a>
                                                                 <a class="dropdown-item bg-yellow"
                                                                     href="/listofEWENSOrdersOFD">Out for
                                                                     Delivery</a>
@@ -198,7 +226,7 @@
                                                                     href="/listofEWENSOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-        
+
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -207,15 +235,19 @@
                                                     </a>
                                                     <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                                         <a class="dropdown-item" href="/listofOrders">All</a>
-                                                        <a class="dropdown-item bg-yellow" href="/listofOrdersOFD">Out for
+                                                        <a class="dropdown-item bg-yellow" href="/listofOrdersOFD">Out
+                                                            for
                                                             Delivery</a>
-                                                        <a class="dropdown-item bg-blue" href="/listofOrdersSC">Self Collect</a>
+                                                        <a class="dropdown-item bg-blue" href="/listofOrdersSC">Self
+                                                            Collect</a>
                                                         <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                                                        <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofOrdersCompleted">Completed</a>
                                                         <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
                                                         <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofpharmacyJPMCOrders">JPMC</a>
                                                         <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                                                         <a class="dropdown-item" href="/listofLDOrders">Local
                                                             Delivery</a>
@@ -231,7 +263,7 @@
                                                     </div>
                                                 </li>
                                                 <% } %>
-        
+
                                                     <!-- Add conditional rendering for login/logout buttons -->
                                                     <% if (user) { %>
                                                         <li class="nav-item dropdown">
@@ -251,7 +283,8 @@
                                                                     <% } %>
                                                                         <!-- <a class="dropdown-item" href="#">Edit
                                                                             Profile</a> -->
-                                                                        <a class="dropdown-item" href="/logout">Logout</a>
+                                                                        <a class="dropdown-item"
+                                                                            href="/logout">Logout</a>
                                                             </div>
                                                         </li>
                                                         <% } else { %>
@@ -308,8 +341,8 @@
                             <option value="SD">Swap Dispatchers</option>
                             <option value="UW">Update Weight</option>
                             <option value="UP">Update Price</option>
-                            <!-- <option value="UAR">Update Area</option>
-                            <option value="UAS">Update Address</option> -->
+                            <option value="UAR">Update Area</option>
+                            <option value="UAS">Update Address</option>
                         </optgroup>
                     </select>
                 </div>
@@ -392,6 +425,32 @@
                     <input type="text" id="price" name="price" class="form-control" disabled>
                     <strong><small>*1 tracking number per update recommended unless multiple tracking number with same
                             price and payment method.</small></strong>
+                </div>
+                <div class="mb-3">
+                    <div class="field-wrapper" id="areaWrapper">
+                        <label for="area" class="form-label">New Area:</label>
+                        <select id="area" name="area" class="form-select" disabled>
+                            <option value="" selected>Please select area</option>
+                            <option value="B">B</option>
+                            <option value="G">G</option>
+                            <option value="JT">JT</option>
+                            <option value="KB">KB</option>
+                            <option value="TUTONG">TUTONG</option>
+                            <option value="TEMBURONG">TEMBURONG</option>
+                        </select>
+                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                                same
+                                area.</small></strong>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="field-wrapper" id="addressWrapper">
+                        <label for="address" class="form-label">New Address:</label>
+                        <input type="text" id="address" name="address" class="form-control" disabled>
+                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                                same
+                                address.</small></strong>
+                    </div>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -478,6 +537,8 @@
             $("#weightWrapper").hide();
             $("#paymentMethodWrapper").hide();
             $("#priceWrapper").hide();
+            $("#areaWrapper").hide();
+            $("#addressWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
@@ -487,6 +548,8 @@
             const weightField = document.getElementById('weight');
             const paymentMethodField = document.getElementById('paymentMethod');
             const priceField = document.getElementById('price');
+            const areaField = document.getElementById('area');
+            const addressField = document.getElementById('address');
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -572,6 +635,8 @@
                 weightField.value = '';
                 paymentMethodField.value = '';
                 priceField.value = '';
+                areaField.value = '';
+                addressField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
@@ -581,6 +646,8 @@
                 $("#weightWrapper").hide();
                 $("#paymentMethodWrapper").hide();
                 $("#priceWrapper").hide();
+                $("#areaWrapper").hide();
+                $("#addressWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -597,6 +664,8 @@
                     $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").hide();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -613,6 +682,12 @@
                     priceField.disabled = true;
                     priceField.required = false;
 
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
                 } else if (selectedStatusCode === 'CSSC') {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
@@ -628,6 +703,8 @@
                     $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").hide();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -644,6 +721,12 @@
                     priceField.disabled = true;
                     priceField.required = false;
 
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
                 } else if (selectedStatusCode === 'UP') {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -658,6 +741,8 @@
                     $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").fadeIn();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
 
                     assignDateField.required = false;
                     dispatchersField.required = false;
@@ -673,6 +758,12 @@
                     priceField.disabled = true;
                     priceField.required = false;
 
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
                 } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'FJ') || (selectedStatusCode === 'SFJ')) {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -687,6 +778,8 @@
                     $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").hide();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = false;
@@ -702,6 +795,12 @@
 
                     priceField.disabled = true;
                     priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -727,6 +826,12 @@
                     priceField.disabled = true;
                     priceField.required = false;
 
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
@@ -735,6 +840,8 @@
                     $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").hide();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
 
                 } else if (selectedStatusCode === 'UW') {
                     // Enable the "Additional Reason" field and make it required
@@ -760,6 +867,12 @@
                     priceField.disabled = true;
                     priceField.required = false;
 
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -768,6 +881,88 @@
                     $("#weightWrapper").fadeIn();
                     $("#paymentMethodWrapper").hide();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                } else if (selectedStatusCode === 'UAR') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = false;
+                    areaField.required = true;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").fadeIn();
+                    $("#addressWrapper").hide();
+                } else if (selectedStatusCode === 'UAS') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = false;
+                    addressField.required = true;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").fadeIn();
                 } else {
                     // Disable the fields for other status codes
                     assignDateField.disabled = true;
@@ -789,6 +984,12 @@
                     priceField.disabled = true;
                     priceField.required = false;
 
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
@@ -798,6 +999,8 @@
                     $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").hide();
                     $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;
