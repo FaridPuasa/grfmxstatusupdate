@@ -4716,6 +4716,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Address"
             }
 
+            if (req.body.statusCode == 'UPN') {
+                appliedStatus = "Update Phone Number"
+            }
+
+            if (req.body.statusCode == 'URN') {
+                appliedStatus = "Update Customer Name"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -4783,7 +4791,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
                 || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
                 || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
-                || (req.body.statusCode == 'UAR')|| (req.body.statusCode == 'UAS')) {
+                || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN') || (req.body.statusCode == 'URN')) {
                 filter = { doTrackingNumber: consignmentID };
 
                 // Determine if there's an existing document in MongoDB
@@ -8818,6 +8826,194 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                     completeRun = 1;
                 }
+
+                if (req.body.statusCode == 'UAR') {
+                    if (data.data.zone != null) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
+                            lastUpdatedBy: req.user.name,
+                            area: req.body.area,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Area updated to " + req.body.area + ".",
+                            lastUpdatedBy: req.user.name,
+                            area: req.body.area,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Area updated to " + req.body.area + ".",
+                                }
+                            }
+                        }
+                    }
+    
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            zone: req.body.area,
+                        }
+                    };
+    
+                    portalUpdate = "Portal and Detrack area updated. ";
+                    appliedStatus = "Area Update"
+    
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+    
+                    completeRun = 1;
+                }
+    
+                if (req.body.statusCode == 'UAS') {
+                    if (data.data.address != null) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Address updated from " + data.data.address + " to " + req.body.address + ".",
+                            lastUpdatedBy: req.user.name,
+                            receiverAddress: req.body.address,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Address updated from " + data.data.address + " to " + req.body.address + ".",
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Address updated to " + req.body.address + ".",
+                            lastUpdatedBy: req.user.name,
+                            receiverAddress: req.body.address,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Address updated to " + req.body.address + ".",
+                                }
+                            }
+                        }
+                    }
+    
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            address: req.body.address,
+                        }
+                    };
+    
+                    portalUpdate = "Portal and Detrack address updated. ";
+                    appliedStatus = "Address Update"
+    
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+    
+                    completeRun = 1;
+                }
+
+                if (req.body.statusCode == 'UPN') {
+                    if (data.data.phone_number != null) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Phone number updated from " + data.data.phone_number + " to " + req.body.phoneNum + ".",
+                            lastUpdatedBy: req.user.name,
+                            receiverPhoneNumber: req.body.phoneNum,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Phone number updated from " + data.data.phone_number + " to " + req.body.phoneNum + ".",
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Phone number updated to " + req.body.phoneNum + ".",
+                            lastUpdatedBy: req.user.name,
+                            receiverPhoneNumber: req.body.phoneNum,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Phone number updated to " + req.body.phoneNum + ".",
+                                }
+                            }
+                        }
+                    }
+    
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            phone_number: "+" + req.body.phoneNum,
+                        }
+                    };
+    
+                    portalUpdate = "Portal and Detrack phone number updated. ";
+                    appliedStatus = "Phone number Update"
+    
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+    
+                    completeRun = 1;
+                }
+    
+                if (req.body.statusCode == 'URN') {
+                    if (data.data.deliver_to_collect_from != null) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
+                            lastUpdatedBy: req.user.name,
+                            receiverName: req.body.phoneNum,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Customer Name updated to " + req.body.name + ".",
+                            lastUpdatedBy: req.user.name,
+                            receiverName: req.body.name,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Customer Name updated to " + req.body.name + ".",
+                                }
+                            }
+                        }
+                    }
+    
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            deliver_to_collect_from: req.body.name,
+                        }
+                    };
+    
+                    portalUpdate = "Portal and Detrack Customer Name updated. ";
+                    appliedStatus = "Customer Name Update"
+    
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+    
+                    completeRun = 1;
+                }
             }
 
             if (product != 'FMX') {
@@ -10539,7 +10735,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UAR') {
-                if (data.data.weight != null) {
+                if (data.data.zone != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
                         latestReason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
@@ -10625,6 +10821,100 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 portalUpdate = "Portal and Detrack address updated. ";
                 appliedStatus = "Address Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UPN') {
+                if (data.data.phone_number != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Phone number updated from " + data.data.phone_number + " to " + req.body.phoneNum + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverPhoneNumber: req.body.phoneNum,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Phone number updated from " + data.data.phone_number + " to " + req.body.phoneNum + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Phone number updated to " + req.body.phoneNum + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverPhoneNumber: req.body.phoneNum,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Phone number updated to " + req.body.phoneNum + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        phone_number: "+" + req.body.phoneNum,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack phone number updated. ";
+                appliedStatus = "Phone number Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'URN') {
+                if (data.data.deliver_to_collect_from != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverName: req.body.phoneNum,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Customer Name updated to " + req.body.name + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverName: req.body.name,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Customer Name updated to " + req.body.name + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        deliver_to_collect_from: req.body.name,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack Customer Name updated. ";
+                appliedStatus = "Customer Name Update"
 
                 DetrackAPIrun = 1;
                 mongoDBrun = 2;
@@ -11938,7 +12228,7 @@ orderWatch.on('change', change => {
                         .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                    && (result[0].product != "ewens")&& (result[0].product != "shein")) {
+                                    && (result[0].product != "ewens") && (result[0].product != "shein")) {
                                     let a = whatsappName;
                                     let b = tracker;
 

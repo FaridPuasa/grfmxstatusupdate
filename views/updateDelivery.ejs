@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Update Delivery</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
-
+    <script src="https://unpkg.com/imask"></script>
     <style>
         /* Custom CSS for your page */
         .navbar-nav.flex-row {
@@ -343,6 +343,8 @@
                             <option value="UP">Update Price</option>
                             <option value="UAR">Update Area</option>
                             <option value="UAS">Update Address</option>
+                            <option value="UPN">Update Phone Number</option>
+                            <option value="URN">Update Customer Name</option>
                         </optgroup>
                     </select>
                 </div>
@@ -452,6 +454,24 @@
                                 address.</small></strong>
                     </div>
                 </div>
+                <div class="mb-3">
+                    <div class="field-wrapper" id="phoneNumWrapper">
+                        <label for="phoneNum" class="form-label">New Phone Number:</label>
+                        <input type="text" id="phoneNum" name="phoneNum" class="form-control" disabled>
+                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                                same
+                                phone number.</small></strong><br>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="field-wrapper" id="nameWrapper">
+                        <label for="name" class="form-label">New Name:</label>
+                        <input type="text" id="name" name="name" class="form-control" disabled>
+                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                                same
+                                name.</small></strong>
+                    </div>
+                </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
         </form>
@@ -539,6 +559,8 @@
             $("#priceWrapper").hide();
             $("#areaWrapper").hide();
             $("#addressWrapper").hide();
+            $("#phoneNumWrapper").hide();
+            $("#nameWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
@@ -550,6 +572,8 @@
             const priceField = document.getElementById('price');
             const areaField = document.getElementById('area');
             const addressField = document.getElementById('address');
+            const phoneNumField = document.getElementById('phoneNum');
+            const nameField = document.getElementById('name');
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -637,6 +661,8 @@
                 priceField.value = '';
                 areaField.value = '';
                 addressField.value = '';
+                phoneNumField.value = '';
+                nameField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
@@ -648,6 +674,8 @@
                 $("#priceWrapper").hide();
                 $("#areaWrapper").hide();
                 $("#addressWrapper").hide();
+                $("#phoneNumWrapper").hide();
+                $("#nameWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -666,6 +694,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -688,6 +718,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                 } else if (selectedStatusCode === 'CSSC') {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
@@ -705,6 +741,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -727,6 +765,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                 } else if (selectedStatusCode === 'UP') {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -743,6 +787,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
 
                     assignDateField.required = false;
                     dispatchersField.required = false;
@@ -764,6 +810,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                 } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'FJ') || (selectedStatusCode === 'SFJ')) {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -780,6 +832,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = false;
@@ -801,6 +855,12 @@
 
                     addressField.disabled = true;
                     addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -832,6 +892,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
@@ -842,6 +908,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
 
                 } else if (selectedStatusCode === 'UW') {
                     // Enable the "Additional Reason" field and make it required
@@ -873,6 +941,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -883,6 +957,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
                 } else if (selectedStatusCode === 'UAR') {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = true;
@@ -913,6 +989,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -923,6 +1005,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").fadeIn();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
                 } else if (selectedStatusCode === 'UAS') {
                     // Enable the "Additional Reason" field and make it required
                     additionalReasonField.disabled = true;
@@ -953,6 +1037,12 @@
                     addressField.disabled = false;
                     addressField.required = true;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -963,6 +1053,104 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").fadeIn();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
+                } else if (selectedStatusCode === 'UPN') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = false;
+                    phoneNumField.required = true;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").fadeIn();
+                    $("#nameWrapper").hide();
+                } else if (selectedStatusCode === 'UPN') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = false;
+                    nameField.required = true;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").fadeIn();
                 } else {
                     // Disable the fields for other status codes
                     assignDateField.disabled = true;
@@ -990,6 +1178,12 @@
                     addressField.disabled = true;
                     addressField.required = false;
 
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
@@ -1001,6 +1195,8 @@
                     $("#priceWrapper").hide();
                     $("#areaWrapper").hide();
                     $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;
@@ -1022,6 +1218,13 @@
 
             // Initialize the "Freelancer Name" field based on the initial selected dispatcher
             updateFreelancerNameField();
+        });
+    </script>
+    <script>
+        let inputElement1 = document.getElementById('phoneNum');
+
+        var patternMask = IMask(inputElement1, {
+            mask: '{673}0000000',
         });
     </script>
 </body>
