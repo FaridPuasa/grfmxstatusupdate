@@ -483,7 +483,9 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 })
             .limit(1000);
@@ -568,7 +570,9 @@ app.post('/mohsearch', ensureAuthenticated, ensureSearchMOHJob, async (req, res)
                 'currentStatus',
                 'latestReason',
                 'lastUpdateDateTime',
-                'lastUpdatedBy'
+                'lastUpdatedBy',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 })
             .limit(1000);
@@ -603,7 +607,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
         })
             .select([
                 '_id',
@@ -619,7 +623,6 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -631,7 +634,10 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -710,7 +716,6 @@ app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -722,7 +727,10 @@ app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ warehouseEntryDateTime: 1 });
 
@@ -739,7 +747,7 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
             currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -756,7 +764,6 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -768,7 +775,10 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -784,7 +794,7 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -801,7 +811,6 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -813,7 +822,10 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -827,9 +839,9 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
 
 app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
-        // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
+        // Query the database to find orders with currentStatus equal to "Out for Delivery" or "Out for Collection"
         const orders = await ORDERS.find({
-            currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
+            currentStatus: { $in: ["Out for Delivery", "Out for Collection"] } // Include both statuses
         })
             .select([
                 '_id',
@@ -845,7 +857,6 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -857,7 +868,10 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -873,7 +887,7 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
             currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -890,7 +904,6 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -902,7 +915,10 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -918,7 +934,7 @@ app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
+            currentStatus: { $in: ["Self Collect", "Drop Off"] } // Include both statuses
         })
             .select([
                 '_id',
@@ -934,7 +950,6 @@ app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -946,7 +961,10 @@ app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -963,7 +981,7 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["At Warehouse", "Return to Warehouse"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -980,7 +998,6 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -992,7 +1009,10 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1009,7 +1029,7 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1026,7 +1046,6 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -1038,7 +1057,10 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1055,7 +1077,7 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["Cancelled", "Disposed"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1072,7 +1094,6 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'senderName',
                 'totalPrice',
                 'paymentAmount',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -1084,7 +1105,10 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1132,7 +1156,10 @@ app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (r
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -1182,7 +1209,10 @@ app.get('/listofpharmacyMOHOrdersCompleted', ensureAuthenticated, ensureViewJob,
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1231,7 +1261,10 @@ app.get('/listofpharmacyMOHOrdersOFD', ensureAuthenticated, ensureViewJob, async
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1280,7 +1313,10 @@ app.get('/listofpharmacyMOHOrdersSC', ensureAuthenticated, ensureViewJob, async 
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1330,7 +1366,10 @@ app.get('/listofpharmacyMOHOrdersAW', ensureAuthenticated, ensureViewJob, async 
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1380,7 +1419,10 @@ app.get('/listofpharmacyMOHOrdersIRCC', ensureAuthenticated, ensureViewJob, asyn
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1430,7 +1472,10 @@ app.get('/listofpharmacyMOHOrdersCD', ensureAuthenticated, ensureViewJob, async 
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1476,7 +1521,10 @@ app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -1523,7 +1571,10 @@ app.get('/listofpharmacyMOHSTDOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(1000);
@@ -1639,7 +1690,10 @@ app.get('/listofpharmacyMOHTTGOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1685,7 +1739,10 @@ app.get('/listofpharmacyMOHKBOrders', ensureAuthenticated, ensureViewMOHJob, asy
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1731,7 +1788,10 @@ app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, as
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1776,7 +1836,10 @@ app.get('/listofpharmacyJPMCOrders', ensureAuthenticated, ensureViewJob, async (
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1803,7 +1866,6 @@ app.get('/listofpharmacyPHCOrders', ensureAuthenticated, ensureViewJob, async (r
                 'icPassNum',
                 'receiverPhoneNumber',
                 'additionalPhoneNumber',
-                'deliveryType',
                 'remarks',
                 'paymentMethod',
                 'dateTimeSubmission',
@@ -1819,7 +1881,10 @@ app.get('/listofpharmacyPHCOrders', ensureAuthenticated, ensureViewJob, async (r
                 'attempt',
                 'paymentAmount',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1845,7 +1910,6 @@ app.get('/listofLDOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'receiverPhoneNumber',
                 'receiverAddress',
                 'area',
-                'deliveryType',
                 'ldPickupOrDelivery',
                 'items',
                 'ldProductType',
@@ -1868,7 +1932,10 @@ app.get('/listofLDOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1894,7 +1961,6 @@ app.get('/listofLDJBOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'receiverPhoneNumber',
                 'receiverAddress',
                 'area',
-                'deliveryType',
                 'ldPickupOrDelivery',
                 'items',
                 'ldProductType',
@@ -1917,7 +1983,10 @@ app.get('/listofLDJBOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1943,7 +2012,6 @@ app.get('/listofICARUSOrders', ensureAuthenticated, ensureViewJob, async (req, r
                 'receiverPhoneNumber',
                 'receiverAddress',
                 'area',
-                'deliveryType',
                 'ldPickupOrDelivery',
                 'items',
                 'ldProductType',
@@ -1966,7 +2034,10 @@ app.get('/listofICARUSOrders', ensureAuthenticated, ensureViewJob, async (req, r
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -1992,7 +2063,6 @@ app.get('/listofFCASOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'receiverPhoneNumber',
                 'receiverAddress',
                 'area',
-                'deliveryType',
                 'ldPickupOrDelivery',
                 'items',
                 'ldProductType',
@@ -2015,7 +2085,10 @@ app.get('/listofFCASOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -2041,7 +2114,6 @@ app.get('/listofBBOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'receiverPhoneNumber',
                 'receiverAddress',
                 'area',
-                'deliveryType',
                 'ldPickupOrDelivery',
                 'items',
                 'ldProductType',
@@ -2063,7 +2135,10 @@ app.get('/listofBBOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -2096,7 +2171,6 @@ app.get('/listofGRPOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'currency',
                 'items',
                 'parcelWeight',
-                'deliveryType',
                 'paymentMethod',
                 'paymentAmount',
                 'remarks',
@@ -2112,7 +2186,10 @@ app.get('/listofGRPOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -2141,7 +2218,6 @@ app.get('/listofCBSLOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'items',
                 'cargoPrice',
                 'screenshotInvoice',
-                'deliveryType',
                 'paymentMethod',
                 'paymentAmount',
                 'remarks',
@@ -2157,7 +2233,10 @@ app.get('/listofCBSLOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'assignedTo',
                 'attempt',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 });
 
@@ -2188,7 +2267,6 @@ app.get('/listofFMXOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2204,7 +2282,10 @@ app.get('/listofFMXOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -2237,7 +2318,6 @@ app.get('/listofFMXOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2253,7 +2333,10 @@ app.get('/listofFMXOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2285,7 +2368,6 @@ app.get('/listofFMXOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2302,7 +2384,10 @@ app.get('/listofFMXOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2334,7 +2419,6 @@ app.get('/listofFMXOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2351,7 +2435,10 @@ app.get('/listofFMXOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2386,7 +2473,6 @@ app.get('/listofFMXOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2403,7 +2489,10 @@ app.get('/listofFMXOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2438,7 +2527,6 @@ app.get('/listofFMXOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, 
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2455,7 +2543,10 @@ app.get('/listofFMXOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, 
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2490,7 +2581,6 @@ app.get('/listofFMXOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2507,7 +2597,10 @@ app.get('/listofFMXOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2538,7 +2631,6 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2555,7 +2647,10 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'creationDate',
                 'latestLocation',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -2588,7 +2683,6 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'latestLocation',
@@ -2605,7 +2699,10 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2637,7 +2734,6 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'latestLocation',
@@ -2655,7 +2751,10 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2687,7 +2786,6 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'latestLocation',
@@ -2705,7 +2803,10 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2740,7 +2841,6 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2758,7 +2858,10 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'instructions',
                 'latestLocation',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2793,7 +2896,6 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2811,7 +2913,10 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'instructions',
                 'latestLocation',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2842,7 +2947,6 @@ app.get('/listofEWENSOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -2859,7 +2963,10 @@ app.get('/listofEWENSOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'creationDate',
                 'latestLocation',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -2892,7 +2999,6 @@ app.get('/listofEWENSOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'latestLocation',
@@ -2909,7 +3015,10 @@ app.get('/listofEWENSOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'lastUpdateDateTime',
                 'creationDate',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2941,7 +3050,6 @@ app.get('/listofEWENSOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'latestLocation',
@@ -2959,7 +3067,10 @@ app.get('/listofEWENSOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -2991,7 +3102,6 @@ app.get('/listofEWENSOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'latestLocation',
@@ -3009,7 +3119,10 @@ app.get('/listofEWENSOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
                 'creationDate',
                 'instructions',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3044,7 +3157,6 @@ app.get('/listofEWENSOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -3062,7 +3174,10 @@ app.get('/listofEWENSOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
                 'instructions',
                 'latestLocation',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3097,7 +3212,6 @@ app.get('/listofEWENSOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
                 'items',
                 'senderName',
                 'totalPrice',
-                'deliveryType',
                 'jobDate',
                 'currentStatus',
                 'warehouseEntry',
@@ -3115,7 +3229,10 @@ app.get('/listofEWENSOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
                 'instructions',
                 'latestLocation',
                 'lastUpdatedBy',
-                'lastAssignedTo'
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -4065,7 +4182,7 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
 app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Parse input data from the form
-        const { podCreatedBy, product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
+        const { product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
 
         if ((dispatchers == "FL1") || (dispatchers == "FL2") || (dispatchers == "FL3") || (dispatchers == "FL4") || (dispatchers == "FL5")) {
             var finalDispatcherName = dispatchers.toUpperCase() + " " + freelancerName.toUpperCase()
@@ -4073,7 +4190,7 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
             var finalDispatcherName = dispatchers.toUpperCase()
         }
 
-        const podCreatedByCaps = podCreatedBy.toUpperCase()
+        const userNameCaps = req.user.name.toUpperCase()
 
         // Check if areas is a string or an array
         let areasArray = [];
@@ -4131,7 +4248,7 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
         }
         // Render the runsheet EJS template with data
         res.render('podGeneratorSuccess', {
-            podCreatedBy: podCreatedByCaps,
+            podCreatedBy: userNameCaps,
             product,
             deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
             areas: areasJoined, // Use the joined string instead of the original variable
@@ -4157,124 +4274,124 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
 
         address = address.toUpperCase();
 
-        if (address.includes("MANGGIS") == true) { area = "B1", kampong = "MANGGIS" }
-        else if (address.includes("DELIMA") == true) { area = "B1", kampong = "DELIMA" }
-        else if (address.includes("ANGGREK DESA") == true) { area = "B1", kampong = "ANGGREK DESA" }
-        else if (address.includes("ANGGREK") == true) { area = "B1", kampong = "ANGGREK DESA" }
-        else if (address.includes("PULAIE") == true) { area = "B1", kampong = "PULAIE" }
-        else if (address.includes("LAMBAK") == true) { area = "B1", kampong = "LAMBAK" }
-        else if (address.includes("TERUNJING") == true) { area = "B1", kampong = "TERUNJING" }
-        else if (address.includes("MADANG") == true) { area = "B1", kampong = "MADANG" }
-        else if (address.includes("AIRPORT") == true) { area = "B1", kampong = "AIRPORT" }
-        else if (address.includes("ORANG KAYA BESAR IMAS") == true) { area = "B1", kampong = "OKBI" }
-        else if (address.includes("OKBI") == true) { area = "B1", kampong = "OKBI" }
-        else if (address.includes("SERUSOP") == true) { area = "B1", kampong = "SERUSOP" }
-        else if (address.includes("BURONG PINGAI") == true) { area = "B1", kampong = "BURONG PINGAI" }
-        else if (address.includes("SETIA NEGARA") == true) { area = "B1", kampong = "SETIA NEGARA" }
-        else if (address.includes("PASIR BERAKAS") == true) { area = "B1", kampong = "PASIR BERAKAS" }
-        else if (address.includes("MENTERI BESAR") == true) { area = "B1", kampong = "MENTERI BESAR" }
-        else if (address.includes("KEBANGSAAN LAMA") == true) { area = "B1", kampong = "KEBANGSAAN LAMA" }
-        else if (address.includes("BATU MARANG") == true) { area = "B2", kampong = "BATU MARANG" }
-        else if (address.includes("DATO GANDI") == true) { area = "B2", kampong = "DATO GANDI" }
-        else if (address.includes("KAPOK") == true) { area = "B2", kampong = "KAPOK" }
-        else if (address.includes("KOTA BATU") == true) { area = "B2", kampong = "KOTA BATU" }
-        else if (address.includes("MENTIRI") == true) { area = "B2", kampong = "MENTIRI" }
-        else if (address.includes("MERAGANG") == true) { area = "B2", kampong = "MERAGANG" }
-        else if (address.includes("PELAMBAIAN") == true) { area = "B2", kampong = "PELAMBAIAN" }
-        else if (address.includes("PINTU MALIM") == true) { area = "B2", kampong = "PINTU MALIM" }
-        else if (address.includes("SALAMBIGAR") == true) { area = "B2", kampong = "SALAMBIGAR" }
-        else if (address.includes("SALAR") == true) { area = "B2", kampong = "SALAR" }
-        else if (address.includes("SERASA") == true) { area = "B2", kampong = "SERASA" }
-        else if (address.includes("SERDANG") == true) { area = "B2", kampong = "SERDANG" }
-        else if (address.includes("SUNGAI BASAR") == true) { area = "B2", kampong = "SUNGAI BASAR" }
-        else if (address.includes("SG BASAR") == true) { area = "B2", kampong = "SUNGAI BASAR" }
-        else if (address.includes("SUNGAI BELUKUT") == true) { area = "B2", kampong = "SUNGAI BELUKUT" }
-        else if (address.includes("SG BELUKUT") == true) { area = "B2", kampong = "SUNGAI BELUKUT" }
-        else if (address.includes("SUNGAI HANCHING") == true) { area = "B2", kampong = "SUNGAI HANCHING" }
-        else if (address.includes("SG HANCHING") == true) { area = "B2", kampong = "SUNGAI HANCHING" }
-        else if (address.includes("SUNGAI TILONG") == true) { area = "B2", kampong = "SUNGAI TILONG" }
-        else if (address.includes("SG TILONG") == true) { area = "B2", kampong = "SUNGAI TILONG" }
-        else if (address.includes("SUBOK") == true) { area = "B2", kampong = "SUBOK" }
-        else if (address.includes("SUNGAI AKAR") == true) { area = "B2", kampong = "SUNGAI AKAR" }
-        else if (address.includes("SG AKAR") == true) { area = "B2", kampong = "SUNGAI AKAR" }
-        else if (address.includes("SUNGAI BULOH") == true) { area = "B2", kampong = "SUNGAI BULOH" }
-        else if (address.includes("SG BULOH") == true) { area = "B2", kampong = "SUNGAI BULOH" }
-        else if (address.includes("TANAH JAMBU") == true) { area = "B2", kampong = "TANAH JAMBU" }
-        else if (address.includes("SUNGAI OROK") == true) { area = "B2", kampong = "SUNGAI OROK" }
-        else if (address.includes("SG OROK") == true) { area = "B2", kampong = "SUNGAI OROK" }
-        else if (address.includes("KATOK") == true) { area = "G1", kampong = "KATOK" }
-        else if (address.includes("MATA-MATA") == true) { area = "G1", kampong = "MATA-MATA" }
-        else if (address.includes("MATA MATA") == true) { area = "G1", kampong = "MATA-MATA" }
-        else if (address.includes("RIMBA") == true) { area = "G1", kampong = "RIMBA" }
-        else if (address.includes("TUNGKU") == true) { area = "G1", kampong = "TUNGKU" }
-        else if (address.includes("UBD") == true) { area = "G1", kampong = "UBD" }
-        else if (address.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G1", kampong = "UBD" }
-        else if (address.includes("JIS") == true) { area = "G1" }
-        else if (address.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G1", kampong = "JIS" }
-        else if (address.includes("BERANGAN") == true) { area = "G2", kampong = "BERANGAN" }
-        else if (address.includes("BERIBI") == true) { area = "G2", kampong = "BERIBI" }
-        else if (address.includes("KIULAP") == true) { area = "G2", kampong = "KIULAP" }
-        else if (address.includes("RIPAS") == true) { area = "G2", kampong = "RIPAS" }
-        else if (address.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G2", kampong = "RIPAS" }
-        else if (address.includes("KIARONG") == true) { area = "G2", kampong = "KIARONG" }
-        else if (address.includes("PUSAR ULAK") == true) { area = "G2", kampong = "PUSAR ULAK" }
-        else if (address.includes("KUMBANG PASANG") == true) { area = "G2", kampong = "KUMBANG PASANG" }
-        else if (address.includes("MENGLAIT") == true) { area = "G2", kampong = "MENGLAIT" }
-        else if (address.includes("MABOHAI") == true) { area = "G2", kampong = "MABOHAI" }
-        else if (address.includes("ONG SUM PING") == true) { area = "G2", kampong = "ONG SUM PING" }
-        else if (address.includes("GADONG") == true) { area = "G2", kampong = "GADONG" }
-        else if (address.includes("TASEK LAMA") == true) { area = "G2", kampong = "TASEK LAMA" }
-        else if (address.includes("BANDAR TOWN") == true) { area = "G2", kampong = "BANDAR TOWN" }
-        else if (address.includes("BATU SATU") == true) { area = "JT1", kampong = "BATU SATU" }
-        else if (address.includes("BENGKURONG") == true) { area = "JT1", kampong = "BENGKURONG" }
-        else if (address.includes("BUNUT") == true) { area = "JT1", kampong = "BUNUT" }
-        else if (address.includes("JALAN BABU RAJA") == true) { area = "JT1", kampong = "JALAN BABU RAJA" }
-        else if (address.includes("JALAN ISTANA") == true) { area = "JT1", kampong = "JALAN ISTANA" }
-        else if (address.includes("JUNJONGAN") == true) { area = "JT1", kampong = "JUNJONGAN" }
-        else if (address.includes("KASAT") == true) { area = "JT1", kampong = "KASAT" }
-        else if (address.includes("LUMAPAS") == true) { area = "JT1", kampong = "LUMAPAS" }
-        else if (address.includes("JALAN HALUS") == true) { area = "JT1", kampong = "JALAN HALUS" }
-        else if (address.includes("MADEWA") == true) { area = "JT1", kampong = "MADEWA" }
-        else if (address.includes("PUTAT") == true) { area = "JT1", kampong = "PUTAT" }
-        else if (address.includes("SINARUBAI") == true) { area = "JT1", kampong = "SINARUBAI" }
-        else if (address.includes("TASEK MERADUN") == true) { area = "JT1", kampong = "TASEK MERADUN" }
-        else if (address.includes("TELANAI") == true) { area = "JT1", kampong = "TELANAI" }
-        else if (address.includes("BAN 1") == true) { area = "JT2", kampong = "BAN" }
-        else if (address.includes("BAN 2") == true) { area = "JT2", kampong = "BAN" }
-        else if (address.includes("BAN 3") == true) { area = "JT2", kampong = "BAN" }
-        else if (address.includes("BAN 4") == true) { area = "JT2", kampong = "BAN" }
-        else if (address.includes("BAN 5") == true) { area = "JT2", kampong = "BAN" }
-        else if (address.includes("BAN 6") == true) { area = "JT2", kampong = "BAN" }
-        else if (address.includes("BATONG") == true) { area = "JT2", kampong = "BATONG" }
-        else if (address.includes("BATU AMPAR") == true) { area = "JT2", kampong = "BATU AMPAR" }
-        else if (address.includes("BEBATIK") == true) { area = "JT2", kampong = "BEBATIK KILANAS" }
-        else if (address.includes("BEBULOH") == true) { area = "JT2", kampong = "BEBULOH" }
-        else if (address.includes("BEBATIK KILANAS") == true) { area = "JT2", kampong = "BEBATIK KILANAS" }
-        else if (address.includes("KILANAS") == true) { area = "JT2", kampong = "BEBATIK KILANAS" }
-        else if (address.includes("DADAP") == true) { area = "JT2", kampong = "DADAP" }
-        else if (address.includes("KUALA LURAH") == true) { area = "JT2", kampong = "KUALA LURAH" }
-        else if (address.includes("KULAPIS") == true) { area = "JT2", kampong = "KULAPIS" }
-        else if (address.includes("LIMAU MANIS") == true) { area = "JT2", kampong = "LIMAU MANIS" }
-        else if (address.includes("MASIN") == true) { area = "JT2", kampong = "MASIN" }
-        else if (address.includes("MULAUT") == true) { area = "JT2", kampong = "MULAUT" }
-        else if (address.includes("PANCHOR MURAI") == true) { area = "JT2", kampong = "PANCHOR MURAI" }
-        else if (address.includes("PANCHUR MURAI") == true) { area = "JT2", kampong = "PANCHOR MURAI" }
-        else if (address.includes("PANGKALAN BATU") == true) { area = "JT2", kampong = "PANGKALAN BATU" }
-        else if (address.includes("PASAI") == true) { area = "JT2", kampong = "PASAI" }
-        else if (address.includes("WASAN") == true) { area = "JT2", kampong = "WASAN" }
-        else if (address.includes("PARIT") == true) { area = "JT2", kampong = "PARIT" }
-        else if (address.includes("EMPIRE") == true) { area = "JT3", kampong = "EMPIRE" }
-        else if (address.includes("JANGSAK") == true) { area = "JT3", kampong = "JANGSAK" }
-        else if (address.includes("JERUDONG") == true) { area = "JT3", kampong = "JERUDONG" }
-        else if (address.includes("KATIMAHAR") == true) { area = "JT3", kampong = "KATIMAHAR" }
-        else if (address.includes("LUGU") == true) { area = "JT3", kampong = "LUGU" }
-        else if (address.includes("SENGKURONG") == true) { area = "JT3", kampong = "SENGKURONG" }
-        else if (address.includes("TANJONG NANGKA") == true) { area = "JT3", kampong = "TANJONG NANGKA" }
-        else if (address.includes("TANJONG BUNUT") == true) { area = "JT3", kampong = "TANJONG BUNUT" }
-        else if (address.includes("TANJUNG BUNUT") == true) { area = "JT3", kampong = "TANJONG BUNUT" }
-        else if (address.includes("SUNGAI TAMPOI") == true) { area = "JT3", kampung = "SUNGAI TAMPOI" }
-        else if (address.includes("SG TAMPOI") == true) { area = "JT3", kampong = "SUNGAI TAMPOI" }
-        else if (address.includes("MUARA") == true) { area = "B2", kampong = "MUARA" }
+        if (address.includes("MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
+        else if (address.includes("DELIMA") == true) { area = "B", kampong = "DELIMA" }
+        else if (address.includes("ANGGREK DESA") == true) { area = "B", kampong = "ANGGREK DESA" }
+        else if (address.includes("ANGGREK") == true) { area = "B", kampong = "ANGGREK DESA" }
+        else if (address.includes("PULAIE") == true) { area = "B", kampong = "PULAIE" }
+        else if (address.includes("LAMBAK") == true) { area = "B", kampong = "LAMBAK" }
+        else if (address.includes("TERUNJING") == true) { area = "B", kampong = "TERUNJING" }
+        else if (address.includes("MADANG") == true) { area = "B", kampong = "MADANG" }
+        else if (address.includes("AIRPORT") == true) { area = "B", kampong = "AIRPORT" }
+        else if (address.includes("ORANG KAYA BESAR IMAS") == true) { area = "B", kampong = "OKBI" }
+        else if (address.includes("OKBI") == true) { area = "B", kampong = "OKBI" }
+        else if (address.includes("SERUSOP") == true) { area = "B", kampong = "SERUSOP" }
+        else if (address.includes("BURONG PINGAI") == true) { area = "B", kampong = "BURONG PINGAI" }
+        else if (address.includes("SETIA NEGARA") == true) { area = "B", kampong = "SETIA NEGARA" }
+        else if (address.includes("PASIR BERAKAS") == true) { area = "B", kampong = "PASIR BERAKAS" }
+        else if (address.includes("MENTERI BESAR") == true) { area = "B", kampong = "MENTERI BESAR" }
+        else if (address.includes("KEBANGSAAN LAMA") == true) { area = "B", kampong = "KEBANGSAAN LAMA" }
+        else if (address.includes("BATU MARANG") == true) { area = "B", kampong = "BATU MARANG" }
+        else if (address.includes("DATO GANDI") == true) { area = "B", kampong = "DATO GANDI" }
+        else if (address.includes("KAPOK") == true) { area = "B", kampong = "KAPOK" }
+        else if (address.includes("KOTA BATU") == true) { area = "B", kampong = "KOTA BATU" }
+        else if (address.includes("MENTIRI") == true) { area = "B", kampong = "MENTIRI" }
+        else if (address.includes("MERAGANG") == true) { area = "B", kampong = "MERAGANG" }
+        else if (address.includes("PELAMBAIAN") == true) { area = "B", kampong = "PELAMBAIAN" }
+        else if (address.includes("PINTU MALIM") == true) { area = "B", kampong = "PINTU MALIM" }
+        else if (address.includes("SALAMBIGAR") == true) { area = "B", kampong = "SALAMBIGAR" }
+        else if (address.includes("SALAR") == true) { area = "B", kampong = "SALAR" }
+        else if (address.includes("SERASA") == true) { area = "B", kampong = "SERASA" }
+        else if (address.includes("SERDANG") == true) { area = "B", kampong = "SERDANG" }
+        else if (address.includes("SUNGAI BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+        else if (address.includes("SG BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+        else if (address.includes("SUNGAI BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+        else if (address.includes("SG BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+        else if (address.includes("SUNGAI HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+        else if (address.includes("SG HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+        else if (address.includes("SUNGAI TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+        else if (address.includes("SG TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+        else if (address.includes("SUBOK") == true) { area = "B", kampong = "SUBOK" }
+        else if (address.includes("SUNGAI AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+        else if (address.includes("SG AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+        else if (address.includes("SUNGAI BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+        else if (address.includes("SG BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+        else if (address.includes("TANAH JAMBU") == true) { area = "B", kampong = "TANAH JAMBU" }
+        else if (address.includes("SUNGAI OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+        else if (address.includes("SG OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+        else if (address.includes("KATOK") == true) { area = "G", kampong = "KATOK" }
+        else if (address.includes("MATA-MATA") == true) { area = "G", kampong = "MATA-MATA" }
+        else if (address.includes("MATA MATA") == true) { area = "G", kampong = "MATA-MATA" }
+        else if (address.includes("RIMBA") == true) { area = "G", kampong = "RIMBA" }
+        else if (address.includes("TUNGKU") == true) { area = "G", kampong = "TUNGKU" }
+        else if (address.includes("UBD") == true) { area = "G", kampong = "UBD" }
+        else if (address.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G", kampong = "UBD" }
+        else if (address.includes("JIS") == true) { area = "G" }
+        else if (address.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G", kampong = "JIS" }
+        else if (address.includes("BERANGAN") == true) { area = "G", kampong = "BERANGAN" }
+        else if (address.includes("BERIBI") == true) { area = "G", kampong = "BERIBI" }
+        else if (address.includes("KIULAP") == true) { area = "G", kampong = "KIULAP" }
+        else if (address.includes("RIPAS") == true) { area = "G", kampong = "RIPAS" }
+        else if (address.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G", kampong = "RIPAS" }
+        else if (address.includes("KIARONG") == true) { area = "G", kampong = "KIARONG" }
+        else if (address.includes("PUSAR ULAK") == true) { area = "G", kampong = "PUSAR ULAK" }
+        else if (address.includes("KUMBANG PASANG") == true) { area = "G", kampong = "KUMBANG PASANG" }
+        else if (address.includes("MENGLAIT") == true) { area = "G", kampong = "MENGLAIT" }
+        else if (address.includes("MABOHAI") == true) { area = "G", kampong = "MABOHAI" }
+        else if (address.includes("ONG SUM PING") == true) { area = "G", kampong = "ONG SUM PING" }
+        else if (address.includes("GADONG") == true) { area = "G", kampong = "GADONG" }
+        else if (address.includes("TASEK LAMA") == true) { area = "G", kampong = "TASEK LAMA" }
+        else if (address.includes("BANDAR TOWN") == true) { area = "G", kampong = "BANDAR TOWN" }
+        else if (address.includes("BATU SATU") == true) { area = "JT", kampong = "BATU SATU" }
+        else if (address.includes("BENGKURONG") == true) { area = "JT", kampong = "BENGKURONG" }
+        else if (address.includes("BUNUT") == true) { area = "JT", kampong = "BUNUT" }
+        else if (address.includes("JALAN BABU RAJA") == true) { area = "JT", kampong = "JALAN BABU RAJA" }
+        else if (address.includes("JALAN ISTANA") == true) { area = "JT", kampong = "JALAN ISTANA" }
+        else if (address.includes("JUNJONGAN") == true) { area = "JT", kampong = "JUNJONGAN" }
+        else if (address.includes("KASAT") == true) { area = "JT", kampong = "KASAT" }
+        else if (address.includes("LUMAPAS") == true) { area = "JT", kampong = "LUMAPAS" }
+        else if (address.includes("JALAN HALUS") == true) { area = "JT", kampong = "JALAN HALUS" }
+        else if (address.includes("MADEWA") == true) { area = "JT", kampong = "MADEWA" }
+        else if (address.includes("PUTAT") == true) { area = "JT", kampong = "PUTAT" }
+        else if (address.includes("SINARUBAI") == true) { area = "JT", kampong = "SINARUBAI" }
+        else if (address.includes("TASEK MERADUN") == true) { area = "JT", kampong = "TASEK MERADUN" }
+        else if (address.includes("TELANAI") == true) { area = "JT", kampong = "TELANAI" }
+        else if (address.includes("BAN 1") == true) { area = "JT", kampong = "BAN" }
+        else if (address.includes("BAN 2") == true) { area = "JT", kampong = "BAN" }
+        else if (address.includes("BAN 3") == true) { area = "JT", kampong = "BAN" }
+        else if (address.includes("BAN 4") == true) { area = "JT", kampong = "BAN" }
+        else if (address.includes("BAN 5") == true) { area = "JT", kampong = "BAN" }
+        else if (address.includes("BAN 6") == true) { area = "JT", kampong = "BAN" }
+        else if (address.includes("BATONG") == true) { area = "JT", kampong = "BATONG" }
+        else if (address.includes("BATU AMPAR") == true) { area = "JT", kampong = "BATU AMPAR" }
+        else if (address.includes("BEBATIK") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+        else if (address.includes("BEBULOH") == true) { area = "JT", kampong = "BEBULOH" }
+        else if (address.includes("BEBATIK KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+        else if (address.includes("KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+        else if (address.includes("DADAP") == true) { area = "JT", kampong = "DADAP" }
+        else if (address.includes("KUALA LURAH") == true) { area = "JT", kampong = "KUALA LURAH" }
+        else if (address.includes("KULAPIS") == true) { area = "JT", kampong = "KULAPIS" }
+        else if (address.includes("LIMAU MANIS") == true) { area = "JT", kampong = "LIMAU MANIS" }
+        else if (address.includes("MASIN") == true) { area = "JT", kampong = "MASIN" }
+        else if (address.includes("MULAUT") == true) { area = "JT", kampong = "MULAUT" }
+        else if (address.includes("PANCHOR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+        else if (address.includes("PANCHUR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+        else if (address.includes("PANGKALAN BATU") == true) { area = "JT", kampong = "PANGKALAN BATU" }
+        else if (address.includes("PASAI") == true) { area = "JT", kampong = "PASAI" }
+        else if (address.includes("WASAN") == true) { area = "JT", kampong = "WASAN" }
+        else if (address.includes("PARIT") == true) { area = "JT", kampong = "PARIT" }
+        else if (address.includes("EMPIRE") == true) { area = "JT", kampong = "EMPIRE" }
+        else if (address.includes("JANGSAK") == true) { area = "JT", kampong = "JANGSAK" }
+        else if (address.includes("JERUDONG") == true) { area = "JT", kampong = "JERUDONG" }
+        else if (address.includes("KATIMAHAR") == true) { area = "JT", kampong = "KATIMAHAR" }
+        else if (address.includes("LUGU") == true) { area = "JT", kampong = "LUGU" }
+        else if (address.includes("SENGKURONG") == true) { area = "JT", kampong = "SENGKURONG" }
+        else if (address.includes("TANJONG NANGKA") == true) { area = "JT", kampong = "TANJONG NANGKA" }
+        else if (address.includes("TANJONG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+        else if (address.includes("TANJUNG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+        else if (address.includes("SUNGAI TAMPOI") == true) { area = "JT", kampung = "SUNGAI TAMPOI" }
+        else if (address.includes("SG TAMPOI") == true) { area = "JT", kampong = "SUNGAI TAMPOI" }
+        else if (address.includes("MUARA") == true) { area = "B", kampong = "MUARA" }
         //TU
         else if (address.includes("SENGKARAI") == true) { area = "TUTONG", kampong = "SENGKARAI" }
         else if (address.includes("PANCHOR") == true) { area = "TUTONG", kampong = "PANCHOR" }
@@ -4677,7 +4794,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (data.data.status == 'dispatched') {
-                currentDetrackStatus = "In Progress/Out for Delivery"
+                currentDetrackStatus = "In Progress/Out for Delivery/Out for Collection"
             }
 
             if (data.data.status == 'completed') {
@@ -4706,6 +4823,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (req.body.statusCode == 'UP') {
                 appliedStatus = "Update Price"
+            }
+
+            if (req.body.statusCode == 'UD') {
+                appliedStatus = "Update Job Date"
             }
 
             if (req.body.statusCode == 'UAR') {
@@ -4757,15 +4878,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'CSSC') {
-                appliedStatus = "Self Collect"
-            }
-
-            if (req.body.statusCode == 'SJ') {
-                appliedStatus = "Completed"
-            }
-
-            if (req.body.statusCode == 'FJ') {
-                appliedStatus = "Failed Delivery"
+                appliedStatus = "Self Collect/Drop Off"
             }
 
             if (req.body.statusCode == 'CD') {
@@ -4785,12 +4898,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'SFJ') {
-                appliedStatus = "Completed/Failed Delivery"
+                appliedStatus = "Clear Job"
             }
 
-            if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
-                || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'SJ') || (req.body.statusCode == 'FJ') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
-                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
+            if ((req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
+                || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
+                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP') || (req.body.statusCode == 'UD')
                 || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN') || (req.body.statusCode == 'URN')) {
                 filter = { doTrackingNumber: consignmentID };
 
@@ -4864,287 +4977,232 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 currentProduct = 'ewens'
             }
 
-            if (product == 'EWED') {
-                currentProduct = 'ewed'
+            if (product == 'TEMU') {
+                currentProduct = 'temu'
             }
 
-            if (product == 'FMXD') {
-                currentProduct = 'fmxd'
-            }
-
-            if (product == 'FMX') {
-                /* if (req.body.statusCode == 'FA') {
-                    update = {
-                        currentStatus: "Return to Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: "Failed delivery due to Safwan MC",
-                        assignedTo: "N/A",
-                        latestReason: "Failed delivery due to Safwan MC",
-                        attempt: data.data.attempt,
-                        $push: {
-                            history: {
-                                statusHistory: "Failed Delivery",
-                                dateUpdated: moment().format(),
-                                updatedBy:  req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "Failed delivery due to Safwan MC",
-                            },
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy:  req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
+            if (req.body.statusCode == 'FA') {
+                /* update = {
+                    currentStatus: "Return to Warehouse",
+                    lastUpdateDateTime: moment().format(),
+                    instructions: "Failed delivery due to Safwan MC",
+                    assignedTo: "N/A",
+                    latestReason: "Failed delivery due to Safwan MC",
+                    attempt: data.data.attempt,
+                    $push: {
+                        history: {
+                            statusHistory: "Failed Delivery",
+                            dateUpdated: moment().format(),
+                            updatedBy:  req.user.name,
+                            lastAssignedTo: data.data.assign_to,
+                            reason: "Failed delivery due to Safwan MC",
+                        },
+                        history: {
+                            statusHistory: "Return to Warehouse",
+                            dateUpdated: moment().format(),
+                            updatedBy:  req.user.name,
+                            lastAssignedTo: "N/A",
+                            reason: "N/A",
+                        }
+                    }
+                }
+    
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "at_warehouse" // Use the calculated dStatus
+                    }
+                };
+    
+                if (data.data.payment_mode == null) {
+                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "NON COD",
+                                totalPrice: 0
+                            }
+    
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD",
+                                    total_price: data.data.payment_amount,
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "COD",
+                                totalPrice: data.data.payment_amount
+                            }
+                        }
+                    } else {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "BT",
+                                    payment_amount: 0
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "BT",
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD"
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "COD",
                             }
                         }
                     }
-
+    
+                } else if (((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("CASH")))
+                    || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("Cash")))
+                    || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("COD")))) {
+    
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "at_warehouse" // Use the calculated dStatus
+                            payment_mode: "COD, BT",
                         }
                     };
-
-                    if (data.data.payment_mode == null) {
-                        if ((data.data.total_price == null) || (data.data.total_price == 0)) {
-                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "NON COD",
-                                        total_price: 0,
-                                        payment_amount: 0
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "NON COD",
-                                    totalPrice: 0
+    
+                    update = {
+                        paymentMethod: "COD, BT",
+                    }
+    
+                } else if (data.data.payment_mode.includes("Bill")) {
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            payment_mode: "BT",
+                        }
+                    };
+    
+                    update = {
+                        paymentMethod: "BT",
+                    }
+    
+                } else if ((data.data.payment_mode == "Cash") || (data.data.payment_mode == "CASH") || (data.data.payment_mode == "COD")) {
+                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0
                                 }
-
-                            } else {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "COD",
-                                        total_price: data.data.payment_amount,
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "COD",
-                                    totalPrice: data.data.payment_amount
-                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "NON COD",
+                                totalPrice: 0
                             }
                         } else {
-                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "BT",
-                                        payment_amount: 0
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "BT",
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD",
+                                    total_price: data.data.payment_amount,
                                 }
-                            } else {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "COD"
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "COD",
-                                }
-                            }
-                        }
-
-                    } else if (((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("CASH")))
-                        || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("Cash")))
-                        || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("COD")))) {
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                payment_mode: "COD, BT",
-                            }
-                        };
-
-                        update = {
-                            paymentMethod: "COD, BT",
-                        }
-
-                    } else if (data.data.payment_mode.includes("Bill")) {
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                payment_mode: "BT",
-                            }
-                        };
-
-                        update = {
-                            paymentMethod: "BT",
-                        }
-
-                    } else if ((data.data.payment_mode == "Cash") || (data.data.payment_mode == "CASH") || (data.data.payment_mode == "COD")) {
-                        if ((data.data.total_price == null) || (data.data.total_price == 0)) {
-                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "NON COD",
-                                        total_price: 0,
-                                        payment_amount: 0
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "NON COD",
-                                    totalPrice: 0
-                                }
-                            } else {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "COD",
-                                        total_price: data.data.payment_amount,
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "COD",
-                                    totalPrice: data.data.payment_amount
-                                }
-                            }
-                        }
-
-                    } else if (data.data.payment_mode == "BT") {
-                        if ((data.data.total_price == null) || (data.data.total_price == 0)) {
-                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "NON COD",
-                                        total_price: 0,
-                                        payment_amount: 0
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "NON COD",
-                                    totalPrice: 0
-                                }
-                            } else {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "COD",
-                                        total_price: data.data.payment_amount,
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "COD",
-                                    totalPrice: data.data.payment_amount
-                                }
-                            }
-                        } else {
-                            if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "BT",
-                                        payment_amount: 0
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "BT",
-                                }
-                            } else {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        payment_mode: "COD"
-                                    }
-                                };
-
-                                update = {
-                                    paymentMethod: "COD",
-                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "COD",
+                                totalPrice: data.data.payment_amount
                             }
                         }
                     }
-
-                    DetrackAPIrun = 1;
-                    mongoDBrun = 2;
-
-                    portalUpdate = "Detrack/Mongo updated. Attempt is fixed. Detrack no. of attempt are ";
-                    appliedStatus = "Attempt and Payment Method Fix"
-
-                    completeRun = 1;
+    
+                } else if (data.data.payment_mode == "BT") {
+                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "NON COD",
+                                totalPrice: 0
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD",
+                                    total_price: data.data.payment_amount,
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "COD",
+                                totalPrice: data.data.payment_amount
+                            }
+                        }
+                    } else {
+                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "BT",
+                                    payment_amount: 0
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "BT",
+                            }
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    payment_mode: "COD"
+                                }
+                            };
+    
+                            update = {
+                                paymentMethod: "COD",
+                            }
+                        }
+                    }
                 } */
 
-                if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
-                    newOrder = new ORDERS({
-                        area: data.data.zone,
-                        items: [{
-                            quantity: data.data.items[0].quantity,
-                            description: data.data.items[0].description,
-                            totalItemPrice: data.data.total_price
-                        }],
-                        attempt: wmsAttempt,
-                        history: [{
-                            updatedBy: req.user.name,
-                            dateUpdated: moment().format(),
-                            statusHistory: "Info Received",
-                            lastAssignedTo: "N/A",
-                            reason: "N/A",
-                            lastLocation: "N/A"
-                        }],
-                        lastAssignedTo: "N/A",
-                        latestLocation: "N/A",
-                        product: "fmx",
-                        assignedTo: "N/A",
-                        senderName: data.data.job_owner,
-                        totalPrice: data.data.total_price,
-                        deliveryType: data.data.type,
-                        parcelWeight: data.data.weight,
-                        receiverName: data.data.deliver_to_collect_from,
-                        trackingLink: data.data.tracking_link,
-                        currentStatus: "Info Received",
-                        paymentMethod: data.data.payment_mode,
-                        warehouseEntry: "No",
-                        warehouseEntryDateTime: "N/A",
-                        receiverAddress: data.data.address,
-                        receiverPhoneNumber: data.data.phone_number,
-                        doTrackingNumber: consignmentID,
-                        remarks: data.data.remarks,
-                        cargoPrice: data.data.insurance_price,
-                        instructions: data.data.instructions,
-                        flightDate: data.data.job_received_date,
-                        mawbNo: data.data.run_number,
-                        fmxMilestoneStatus: "N/A",
-                        fmxMilestoneStatusCode: "N/A",
-                        latestReason: "N/A",
-                        lastUpdateDateTime: moment().format(),
-                        creationDate: data.data.created_at,
-                        jobDate: "N/A",
-                        lastUpdatedBy: req.user.name,
-                        receiverPostalCode: postalCode,
-                    });
-
-                    portalUpdate = "Portal status updated to Info Received. ";
-                    appliedStatus = "Info Received"
-                    mongoDBrun = 1;
-                    completeRun = 1;
+                update = {
+                    jobType: data.data.type,
+                    jobMethod: data.data.job_type,
                 }
 
+                mongoDBrun = 2;
+
+                portalUpdate = "Portal updated. Fixed job types and methods. ";
+                appliedStatus = "Job type/method Fix"
+
+                completeRun = 1;
+            }
+
+            if (product == 'FMX') {
                 if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
@@ -5154,7 +5212,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Custom Clearing",
                                 dateUpdated: moment().format(),
@@ -5169,7 +5227,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: data.data.type,
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -5193,6 +5250,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -5203,7 +5262,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatus: "Customs Clearance in Progress",
                             fmxMilestoneStatusCode: "CP",
                             instructions: "FMX Milestone ID CP",
-                            attempt: wmsAttempt,
                             latestLocation: "Brunei Custom Clearance",
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -5254,7 +5312,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Detained by Customs",
                                 dateUpdated: moment().format(),
@@ -5269,7 +5327,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: "Delivery",
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -5293,6 +5350,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -5304,7 +5363,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatusCode: "DC",
                             instructions: "FMX Milestone ID DC",
                             latestReason: detrackReason,
-                            attempt: wmsAttempt,
                             latestLocation: "Brunei Custom Clearance",
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -5350,7 +5408,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Custom Clearance Release",
                                 dateUpdated: moment().format(),
@@ -5365,7 +5423,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: "Delivery",
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -5389,6 +5446,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -5399,7 +5458,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatus: "Custom Clearance Release",
                             fmxMilestoneStatusCode: "38",
                             instructions: "FMX Milestone ID 38",
-                            attempt: wmsAttempt,
                             latestLocation: "Brunei Custom Clearance",
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -5445,7 +5503,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
@@ -5460,7 +5518,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: "Delivery",
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -5484,6 +5541,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -5496,7 +5555,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             instructions: "FMX Milestone ID 12",
                             warehouseEntry: "Yes",
                             warehouseEntryDateTime: moment().format(),
-                            attempt: wmsAttempt,
                             latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -5552,7 +5610,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: wmsAttempt,
+                                attempt: data.data.attempt,
                                 history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
@@ -5567,7 +5625,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
                                 parcelWeight: data.data.weight,
                                 receiverName: data.data.deliver_to_collect_from,
                                 trackingLink: data.data.tracking_link,
@@ -5591,6 +5648,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
                                 receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
                             });
 
                             mongoDBrun = 1;
@@ -5602,7 +5661,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "35",
                                 instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                attempt: wmsAttempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 lastUpdatedBy: req.user.name,
@@ -5644,7 +5702,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: wmsAttempt,
+                                attempt: data.data.attempt,
                                 history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
@@ -5659,7 +5717,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
                                 parcelWeight: data.data.weight,
                                 receiverName: data.data.deliver_to_collect_from,
                                 trackingLink: data.data.tracking_link,
@@ -5683,6 +5740,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
                                 receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
                             });
 
                             mongoDBrun = 1;
@@ -5694,7 +5753,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatusCode: "35",
                                 instructions: "FMX Milestone ID 35. Assigned to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers,
-                                attempt: wmsAttempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
@@ -5748,7 +5806,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: wmsAttempt,
+                                attempt: data.data.attempt,
                                 history: [{
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
                                     dateUpdated: moment().format(),
@@ -5763,7 +5821,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
                                 parcelWeight: data.data.weight,
                                 receiverName: data.data.deliver_to_collect_from,
                                 trackingLink: data.data.tracking_link,
@@ -5787,6 +5844,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
                                 receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
                             });
 
                             mongoDBrun = 1;
@@ -5796,7 +5855,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
-                                attempt: wmsAttempt,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
@@ -5836,7 +5894,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     description: data.data.items[0].description,
                                     totalItemPrice: data.data.total_price
                                 }],
-                                attempt: wmsAttempt,
+                                attempt: data.data.attempt,
                                 history: [{
                                     statusHistory: "Out for Delivery (Switched Dispatchers)",
                                     dateUpdated: moment().format(),
@@ -5851,7 +5909,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
                                 parcelWeight: data.data.weight,
                                 receiverName: data.data.deliver_to_collect_from,
                                 trackingLink: data.data.tracking_link,
@@ -5875,6 +5932,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
                                 receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
                             });
 
                             mongoDBrun = 1;
@@ -5884,7 +5943,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 assignedTo: req.body.dispatchers,
                                 jobDate: req.body.assignDate,
-                                attempt: wmsAttempt,
                                 latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers,
@@ -5937,7 +5995,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -5962,7 +6020,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -5986,6 +6043,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -5998,7 +6057,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
                                     fmxMilestoneStatusCode: "MD, 44",
                                     latestReason: "Unattempted Delivery",
-                                    attempt: wmsAttempt,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -6056,7 +6114,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6081,7 +6139,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6105,6 +6162,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6117,10 +6176,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + data.data.note + ". Return to Warehouse.",
                                     fmxMilestoneStatusCode: "FD, 44",
                                     latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                    attempt: wmsAttempt,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
+                                    attempt: data.data.attempt + 1,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -6177,7 +6236,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6202,7 +6261,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6226,6 +6284,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6238,10 +6298,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + data.data.note + ". Return to Warehouse",
                                     fmxMilestoneStatusCode: "SC, 44",
                                     latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                    attempt: wmsAttempt,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
+                                    attempt: data.data.attempt + 1,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Delivery",
@@ -6298,7 +6358,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6323,7 +6383,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6347,6 +6406,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6359,7 +6420,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse",
                                     fmxMilestoneStatusCode: "DU, 44",
                                     latestReason: "Cash/Duty Not Ready",
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -6419,7 +6480,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6444,7 +6505,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6468,6 +6528,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6480,7 +6542,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone. Return to Warehouse",
                                     fmxMilestoneStatusCode: "NA, 44",
                                     latestReason: "Customer not available / cannot be contacted",
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -6540,7 +6602,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6565,7 +6627,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6589,6 +6650,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6601,7 +6664,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery due to No Such Person. Return to Warehouse",
                                     fmxMilestoneStatusCode: "NP, 44",
                                     latestReason: "No Such Person",
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -6661,7 +6724,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6686,7 +6749,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6710,6 +6772,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6722,7 +6786,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery. Shipment Refused by Consignee due to " + data.data.note + ". Return to Warehouse",
                                     fmxMilestoneStatusCode: "RF, 44",
                                     latestReason: "Shipment Refused by Consignee due to " + data.data.note,
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -6782,7 +6846,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6807,7 +6871,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6831,6 +6894,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6843,7 +6908,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse",
                                     fmxMilestoneStatusCode: "UL, 44",
                                     latestReason: "Unable to Locate Receiver Address",
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -6903,7 +6968,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         description: data.data.items[0].description,
                                         totalItemPrice: data.data.total_price
                                     }],
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     history: [
                                         {
                                             statusHistory: "Failed Delivery",
@@ -6928,7 +6993,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: "Delivery",
                                     parcelWeight: data.data.weight,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
@@ -6952,6 +7016,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: data.data.date,
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
 
                                 mongoDBrun = 1;
@@ -6964,7 +7030,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     fmxMilestoneStatus: "Failed Delivery due to Incorrect Address. Return to Warehouse",
                                     fmxMilestoneStatusCode: "WA, 44",
                                     latestReason: "Incorrect Address",
-                                    attempt: wmsAttempt,
+                                    attempt: data.data.attempt + 1,
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
@@ -7039,7 +7105,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: data.data.assign_to,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
-                                deliveryType: data.data.type,
                                 parcelWeight: data.data.weight,
                                 receiverName: data.data.deliver_to_collect_from,
                                 trackingLink: data.data.tracking_link,
@@ -7063,6 +7128,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
                                 receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
                             });
 
                             mongoDBrun = 1;
@@ -7073,7 +7140,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneStatus: "Parcel Delivered",
                                 fmxMilestoneStatusCode: "50",
                                 instructions: "FMX Milestone ID 50.",
-                                attempt: wmsAttempt,
                                 latestLocation: "Customer",
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
@@ -7114,1193 +7180,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                if ((req.body.statusCode == 'FJ') && (data.data.status == 'failed')) {
-                    if (data.data.reason == "Unattempted Delivery") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery due to Unattempted Delivery (MD). Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Unattempted Delivery.";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Unattempted Delivery",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID MD, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
-                                fmxMilestoneStatusCode: "MD, 44",
-                                latestReason: "Unattempted Delivery",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID MD, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery due to Unattempted Delivery. Return to Warehouse",
-                                fmxMilestoneStatusCode: "MD, 44",
-                                latestReason: "Unattempted Delivery",
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Unattempted Delivery",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID MD, 44. Unattempted Delivery.",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        DetrackAPIrun = 1;
-                        fmxMilestoneCode = "MD"
-                        appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Reschedule delivery requested by customer") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule Delivery Requested By Customer (FD) to " + data.data.note + ". Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Reschedule Delivery Requested By Customer to " + data.data.note + ".";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID RF, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + data.data.note + ". Return to Warehouse.",
-                                fmxMilestoneStatusCode: "FD, 44",
-                                latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID FD, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery. Reschedule Delivery Requested By Customer to " + data.data.note + ". Return to Warehouse.",
-                                fmxMilestoneStatusCode: "FD, 44",
-                                latestReason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Reschedule Delivery Requested By Customer to " + data.data.note,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID FD, 44. Customer Declined Delivery due to " + data.data.note,
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "FD"
-                        appliedStatus = "Failed Delivery due to Reschedule Delivery Requested By Customer. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Reschedule to self collect requested by customer") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery. Reschedule to Self Collect Requested By Customer (SC) to " + data.data.note + ". Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Reschedule to Self Collect Requested By Customer to " + data.data.note + ".";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID SC, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + data.data.note + ". Return to Warehouse",
-                                fmxMilestoneStatusCode: "SC, 44",
-                                latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID SC, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery. Reschedule to Self Collect Requested By Customer to " + data.data.note + ". Return to Warehouse",
-                                fmxMilestoneStatusCode: "SC, 44",
-                                latestReason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID SC, 44. Reschedule to Self Collect Requested By Customer to " + data.data.note,
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "SC"
-                        appliedStatus = "Failed Delivery due to Reschedule to Self Collect Requested By Customer. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Cash/Duty Not Ready") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery due to Cash/Duty Not Ready (DU). Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Cash/Duty Not Ready.";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Cash/Duty Not Ready",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID DU, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse",
-                                fmxMilestoneStatusCode: "DU, 44",
-                                latestReason: "Cash/Duty Not Ready",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID DU, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse",
-                                fmxMilestoneStatusCode: "DU, 44",
-                                latestReason: "Cash/Duty Not Ready",
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Cash/Duty Not Ready",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID DU, 44. Cash/Duty Not Ready.",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "DU"
-                        appliedStatus = "Failed Delivery due to Cash/Duty Not Ready. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Customer not available / cannot be contacted") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone (NA). Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Consignee Not In, Business Closed/Customer not pickup phone.";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Customer not available / cannot be contacted",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID NA, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone. Return to Warehouse",
-                                fmxMilestoneStatusCode: "NA, 44",
-                                latestReason: "Customer not available / cannot be contacted",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID NA, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery due to Consignee Not In, Business Closed/Customer not pickup phone. Return to Warehouse",
-                                fmxMilestoneStatusCode: "NA, 44",
-                                latestReason: "Customer not available / cannot be contacted",
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Customer not available / cannot be contacted",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID NA, 44. Customer not available / cannot be contacted.",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "NA"
-                        appliedStatus = "Failed Delivery due to Customer not available / cannot be contacted. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "No Such Person") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery due to No Such Person (NP). Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "No Such Person.";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "No Such Person",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID NP, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery due to No Such Person. Return to Warehouse",
-                                fmxMilestoneStatusCode: "NP, 44",
-                                latestReason: "No Such Person",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID NP, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery due to No Such Person. Return to Warehouse",
-                                fmxMilestoneStatusCode: "NP, 44",
-                                latestReason: "No Such Person",
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "No Such Person",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID NP, 44. No Such Person.",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "NP"
-                        appliedStatus = "Failed Delivery due to No Such Person. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Customer declined delivery") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery. Shipment Refused by Consignee (RF) due to " + data.data.note + ". Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Shipment Refused by Consignee due to " + data.data.note + ".";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Shipment Refused by Consignee due to " + data.data.note,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID RF, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery. Shipment Refused by Consignee due to " + data.data.note + ". Return to Warehouse",
-                                fmxMilestoneStatusCode: "RF, 44",
-                                latestReason: "Shipment Refused by Consignee due to " + data.data.note,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID RF, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery. Shipment Refused by Consignee due to " + data.data.note + ". Return to Warehouse",
-                                fmxMilestoneStatusCode: "RF, 44",
-                                latestReason: "Shipment Refused by Consignee due to " + data.data.note,
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Shipment Refused by Consignee due to " + data.data.note,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID RF, 44. Shipment Refused by Consignee due to " + data.data.note + ".",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "RF"
-                        appliedStatus = "Failed Delivery due to Customer Declined Delivery / Shipment Refused by Consignee. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Unable to Locate Address") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery due to Unable to Locate Receiver Address (UL). Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Unable to Locate Address";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Unable to Locate Address",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID UL, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse",
-                                fmxMilestoneStatusCode: "UL, 44",
-                                latestReason: "Unable to Locate Receiver Address",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID UL, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse",
-                                fmxMilestoneStatusCode: "UL, 44",
-                                latestReason: "Unable to Locate Receiver Address",
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Unable to Locate Receiver Address",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID UL, 44. Unable to Locate Receiver Address.",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "UL"
-                        appliedStatus = "Failed Delivery due to Unable to Locate Receiver Address. Return to Warehouse (FMX)"
-                    }
-
-                    if (data.data.reason == "Incorrect Address") {
-                        fmxUpdate = "FMX milestone updated to Failed Delivery due to Incorrect Address (WA). Return to Warehouse (44).";
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        detrackReason = "Incorrect Address";
-
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: wmsAttempt,
-                                history: [
-                                    {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Incorrect Address",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                ],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: req.body.warehouse,
-                                product: "fmx",
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: "Delivery",
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Return to Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID WA, 44",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Failed Delivery due to Incorrect Address. Return to Warehouse",
-                                fmxMilestoneStatusCode: "WA, 44",
-                                latestReason: "Incorrect Address",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID WA, 44",
-                                assignedTo: "N/A",
-                                fmxMilestoneStatus: "Failed Delivery due to Incorrect Address. Return to Warehouse",
-                                fmxMilestoneStatusCode: "WA, 44",
-                                latestReason: "Incorrect Address",
-                                attempt: wmsAttempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Incorrect Address",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse", // Use the calculated dStatus
-                                instructions: "FMX Milestone ID WA, 44. Incorrect Address.",
-                                job_type: "Delivery"
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        fmxMilestoneCode = "WA"
-                        appliedStatus = "Failed Delivery due to Unable to Incorrect Address. Return to Warehouse (FMX)"
-                    }
-
-                    FMXAPIrun = 3;
-                    completeRun = 1;
-                }
-
-                if ((req.body.statusCode == 'SJ') && (data.data.status == 'completed')) {
-                    if (existingOrder === null) {
-                        newOrder = new ORDERS({
-                            area: data.data.zone,
-                            items: [{
-                                quantity: data.data.items[0].quantity,
-                                description: data.data.items[0].description,
-                                totalItemPrice: data.data.total_price
-                            }],
-                            attempt: wmsAttempt,
-                            history: [{
-                                statusHistory: "Completed",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "N/A",
-                                lastLocation: "Customer",
-                            }],
-                            lastAssignedTo: data.data.assign_to,
-                            latestLocation: "Customer",
-                            product: "fmx",
-                            assignedTo: data.data.assign_to,
-                            senderName: data.data.job_owner,
-                            totalPrice: data.data.total_price,
-                            deliveryType: data.data.type,
-                            parcelWeight: data.data.weight,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Completed",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: data.data.phone_number,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            cargoPrice: data.data.insurance_price,
-                            instructions: "FMX Milestone ID 50.",
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number,
-                            fmxMilestoneStatus: "Parcel Delivered",
-                            fmxMilestoneStatusCode: "50",
-                            latestReason: detrackReason,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            jobDate: req.body.assignDate,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                        });
-
-                        mongoDBrun = 1;
-                    } else {
-                        update = {
-                            currentStatus: "Completed",
-                            lastUpdateDateTime: moment().format(),
-                            fmxMilestoneStatus: "Parcel Delivered",
-                            fmxMilestoneStatusCode: "50",
-                            instructions: "FMX Milestone ID 50.",
-                            attempt: wmsAttempt,
-                            latestLocation: "Customer",
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: data.data.assign_to,
-                            $push: {
-                                history: {
-                                    statusHistory: "Completed",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
-                                    reason: "N/A",
-                                    lastLocation: "Customer",
-                                }
-                            }
-                        }
-
-                        mongoDBrun = 2;
-                    }
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            instructions: "FMX Milestone ID 50"
-                        }
-                    };
-
-                    fmxUpdate = "FMX milestone updated to Parcel Delivered. ";
-                    portalUpdate = "Portal status updated to Completed. ";
-                    fmxMilestoneCode = "50"
-                    appliedStatus = "Completed"
-
-                    DetrackAPIrun = 1;
-                    FMXAPIrun = 5;
-                    completeRun = 1;
-
-                    if (data.data.phone_number != null) {
-                        waOrderCompletedFeedback = 1;
-                    }
-                }
-
-
                 if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
@@ -8310,7 +7189,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "Self Collect",
                                 dateUpdated: moment().format(),
@@ -8325,7 +7204,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "Selfcollect",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: "Pickup",
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -8349,6 +7227,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: req.body.assignDate,
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -8358,7 +7238,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdateDateTime: moment().format(),
                             instructions: "Assigned for Self Collect.",
                             assignedTo: "Selfcollect",
-                            attempt: wmsAttempt,
                             jobDate: req.body.assignDate,
                             latestLocation: "Go Rush Office",
                             lastUpdatedBy: req.user.name,
@@ -8409,7 +7288,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [
                                 {
                                     statusHistory: "Cancelled",
@@ -8426,7 +7305,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: data.data.job_type,
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -8450,6 +7328,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -8462,7 +7342,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatus: "Customer Declined Delivery (RF). Reason: Cancelled",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
-                            attempt: wmsAttempt,
                             latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -8509,7 +7388,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [
                                 {
                                     statusHistory: "Return to Warehouse",
@@ -8526,7 +7405,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: data.data.job_type,
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -8550,6 +7428,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -8562,7 +7442,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatus: "Return to Warehouse (44).",
                             fmxMilestoneStatusCode: "44",
                             latestReason: detrackReason,
-                            attempt: wmsAttempt,
                             latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -8609,7 +7488,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 description: data.data.items[0].description,
                                 totalItemPrice: data.data.total_price,
                             }],
-                            attempt: wmsAttempt,
+                            attempt: data.data.attempt,
                             history: [
                                 {
                                     statusHistory: "Disposed",
@@ -8626,7 +7505,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             assignedTo: "N/A",
                             senderName: data.data.job_owner,
                             totalPrice: data.data.total_price,
-                            deliveryType: data.data.job_type,
                             parcelWeight: data.data.weight,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
@@ -8650,6 +7528,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: data.data.date,
                             lastUpdatedBy: req.user.name,
                             receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
                         });
 
                         mongoDBrun = 1;
@@ -8662,7 +7542,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             fmxMilestoneStatus: "Shipment Destroyed (47).",
                             fmxMilestoneStatusCode: "RF",
                             latestReason: detrackReason,
-                            attempt: wmsAttempt,
                             latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
@@ -8684,7 +7563,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            instructions: "FMX Milestone ID 47. Shipment Destroyed"
+                            instructions: "FMX Milestone ID 47. Shipment Destroyed",
+                            status: "disposed",
                         }
                     };
 
@@ -8700,7 +7580,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (data.data.weight != null) {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
                             latestReason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
                             lastUpdatedBy: req.user.name,
                             $push: {
@@ -8714,7 +7593,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Weight updated to " + req.body.weight + " kg.",
                             latestReason: "Weight updated to " + req.body.weight + " kg.",
                             lastUpdatedBy: req.user.name,
                             $push: {
@@ -8747,7 +7625,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.paymentMethod == 'NON COD') {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            instructions: "Payment method updated to " + req.body.paymentMethod + ".",
                             latestReason: "Payment method updated to " + req.body.paymentMethod + ".",
                             lastUpdatedBy: req.user.name,
                             paymentMethod: req.body.paymentMethod,
@@ -8771,7 +7648,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if (req.body.paymentMethod == 'Cash') {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                                 latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                                 lastUpdatedBy: req.user.name,
                                 paymentMethod: req.body.paymentMethod,
@@ -8793,7 +7669,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         } else {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                instructions: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                                 latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
                                 lastUpdatedBy: req.user.name,
                                 paymentMethod: req.body.paymentMethod,
@@ -8857,23 +7732,23 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         }
                     }
-    
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             zone: req.body.area,
                         }
                     };
-    
+
                     portalUpdate = "Portal and Detrack area updated. ";
                     appliedStatus = "Area Update"
-    
+
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
-    
+
                     completeRun = 1;
                 }
-    
+
                 if (req.body.statusCode == 'UAS') {
                     if (data.data.address != null) {
                         update = {
@@ -8904,20 +7779,20 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         }
                     }
-    
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             address: req.body.address,
                         }
                     };
-    
+
                     portalUpdate = "Portal and Detrack address updated. ";
                     appliedStatus = "Address Update"
-    
+
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
-    
+
                     completeRun = 1;
                 }
 
@@ -8951,30 +7826,30 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         }
                     }
-    
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             phone_number: "+" + req.body.phoneNum,
                         }
                     };
-    
+
                     portalUpdate = "Portal and Detrack phone number updated. ";
                     appliedStatus = "Phone number Update"
-    
+
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
-    
+
                     completeRun = 1;
                 }
-    
+
                 if (req.body.statusCode == 'URN') {
                     if (data.data.deliver_to_collect_from != null) {
                         update = {
                             lastUpdateDateTime: moment().format(),
                             latestReason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
                             lastUpdatedBy: req.user.name,
-                            receiverName: req.body.phoneNum,
+                            receiverName: req.body.name,
                             $push: {
                                 history: {
                                     dateUpdated: moment().format(),
@@ -8998,74 +7873,72 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         }
                     }
-    
+
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
                             deliver_to_collect_from: req.body.name,
                         }
                     };
-    
+
                     portalUpdate = "Portal and Detrack Customer Name updated. ";
                     appliedStatus = "Customer Name Update"
-    
+
                     DetrackAPIrun = 1;
                     mongoDBrun = 2;
-    
+
+                    completeRun = 1;
+                }
+
+                if (req.body.statusCode == 'UD') {
+                    if (data.data.date != null) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                            lastUpdatedBy: req.user.name,
+                            jobDate: req.body.assignDate,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Date updated to " + req.body.assignDate + ".",
+                            lastUpdatedBy: req.user.name,
+                            jobDate: req.body.assignDate,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Date updated to " + req.body.assignDate + ".",
+                                }
+                            }
+                        }
+                    }
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            date: req.body.assignDate,
+                        }
+                    };
+
+                    portalUpdate = "Portal and Detrack Job Date updated. ";
+                    appliedStatus = "Job Date Update"
+
+                    DetrackAPIrun = 1;
+                    mongoDBrun = 2;
+
                     completeRun = 1;
                 }
             }
 
             if (product != 'FMX') {
-                if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
-                    newOrder = new ORDERS({
-                        area: data.data.zone,
-                        items: [{
-                            quantity: data.data.items[0].quantity,
-                            description: data.data.items[0].description,
-                            totalItemPrice: data.data.total_price
-                        }],
-                        attempt: data.data.attempt,
-                        history: [{
-                            updatedBy: req.user.name,
-                            dateUpdated: moment().format(),
-                            statusHistory: "Info Received",
-                            lastAssignedTo: "N/A",
-                            reason: "N/A",
-                            lastLocation: "N/A",
-                        }],
-                        lastAssignedTo: "N/A",
-                        latestLocation: "N/A",
-                        product: currentProduct,
-                        assignedTo: "N/A",
-                        senderName: data.data.job_owner,
-                        totalPrice: data.data.total_price,
-                        deliveryType: data.data.job_type,
-                        receiverName: data.data.deliver_to_collect_from,
-                        trackingLink: data.data.tracking_link,
-                        currentStatus: "Info Received",
-                        paymentMethod: data.data.payment_mode,
-                        warehouseEntry: "No",
-                        warehouseEntryDateTime: "N/A",
-                        receiverAddress: data.data.address,
-                        receiverPhoneNumber: data.data.phone_number,
-                        doTrackingNumber: consignmentID,
-                        latestReason: "N/A",
-                        lastUpdateDateTime: moment().format(),
-                        creationDate: data.data.created_at,
-                        jobDate: "N/A",
-                        lastUpdatedBy: req.user.name,
-                        receiverPostalCode: postalCode,
-                        remarks: data.data.remarks,
-                        instructions: data.data.remarks,
-                    });
-
-                    portalUpdate = "Portal status updated to Info Received. ";
-                    appliedStatus = "Info Received"
-                    mongoDBrun = 1;
-                    completeRun = 1;
-                }
-
                 if ((req.body.statusCode == 12) && (data.data.status == 'info_recv') && (product == 'GRP')) {
                     update = {
                         currentStatus: "At Warehouse",
@@ -9160,130 +8033,130 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                if ((req.body.statusCode == 12) && (product != 'GRP') && (product != 'CBSL')) {
+                if ((req.body.statusCode == 12) && (product != 'GRP') && (product != 'CBSL') && (product != 'TEMU')) {
                     if ((data.data.status == 'info_recv')) {
                         if (existingOrder === null) {
                             if ((product == 'EWE') || (product == 'EWENS')) {
                                 address = data.data.address.toUpperCase();
 
-                                if (address.includes("MANGGIS") == true) { area = "B1", kampong = "MANGGIS" }
-                                else if (address.includes("DELIMA") == true) { area = "B1", kampong = "DELIMA" }
-                                else if (address.includes("ANGGREK DESA") == true) { area = "B1", kampong = "ANGGREK DESA" }
-                                else if (address.includes("ANGGREK") == true) { area = "B1", kampong = "ANGGREK DESA" }
-                                else if (address.includes("PULAIE") == true) { area = "B1", kampong = "PULAIE" }
-                                else if (address.includes("LAMBAK") == true) { area = "B1", kampong = "LAMBAK" }
-                                else if (address.includes("TERUNJING") == true) { area = "B1", kampong = "TERUNJING" }
-                                else if (address.includes("MADANG") == true) { area = "B1", kampong = "MADANG" }
-                                else if (address.includes("AIRPORT") == true) { area = "B1", kampong = "AIRPORT" }
-                                else if (address.includes("ORANG KAYA BESAR IMAS") == true) { area = "B1", kampong = "OKBI" }
-                                else if (address.includes("OKBI") == true) { area = "B1", kampong = "OKBI" }
-                                else if (address.includes("SERUSOP") == true) { area = "B1", kampong = "SERUSOP" }
-                                else if (address.includes("BURONG PINGAI") == true) { area = "B1", kampong = "BURONG PINGAI" }
-                                else if (address.includes("SETIA NEGARA") == true) { area = "B1", kampong = "SETIA NEGARA" }
-                                else if (address.includes("PASIR BERAKAS") == true) { area = "B1", kampong = "PASIR BERAKAS" }
-                                else if (address.includes("MENTERI BESAR") == true) { area = "B1", kampong = "MENTERI BESAR" }
-                                else if (address.includes("KEBANGSAAN LAMA") == true) { area = "B1", kampong = "KEBANGSAAN LAMA" }
-                                else if (address.includes("BATU MARANG") == true) { area = "B2", kampong = "BATU MARANG" }
-                                else if (address.includes("DATO GANDI") == true) { area = "B2", kampong = "DATO GANDI" }
-                                else if (address.includes("KAPOK") == true) { area = "B2", kampong = "KAPOK" }
-                                else if (address.includes("KOTA BATU") == true) { area = "B2", kampong = "KOTA BATU" }
-                                else if (address.includes("MENTIRI") == true) { area = "B2", kampong = "MENTIRI" }
-                                else if (address.includes("MERAGANG") == true) { area = "B2", kampong = "MERAGANG" }
-                                else if (address.includes("PELAMBAIAN") == true) { area = "B2", kampong = "PELAMBAIAN" }
-                                else if (address.includes("PINTU MALIM") == true) { area = "B2", kampong = "PINTU MALIM" }
-                                else if (address.includes("SALAMBIGAR") == true) { area = "B2", kampong = "SALAMBIGAR" }
-                                else if (address.includes("SALAR") == true) { area = "B2", kampong = "SALAR" }
-                                else if (address.includes("SERASA") == true) { area = "B2", kampong = "SERASA" }
-                                else if (address.includes("SERDANG") == true) { area = "B2", kampong = "SERDANG" }
-                                else if (address.includes("SUNGAI BASAR") == true) { area = "B2", kampong = "SUNGAI BASAR" }
-                                else if (address.includes("SG BASAR") == true) { area = "B2", kampong = "SUNGAI BASAR" }
-                                else if (address.includes("SUNGAI BELUKUT") == true) { area = "B2", kampong = "SUNGAI BELUKUT" }
-                                else if (address.includes("SG BELUKUT") == true) { area = "B2", kampong = "SUNGAI BELUKUT" }
-                                else if (address.includes("SUNGAI HANCHING") == true) { area = "B2", kampong = "SUNGAI HANCHING" }
-                                else if (address.includes("SG HANCHING") == true) { area = "B2", kampong = "SUNGAI HANCHING" }
-                                else if (address.includes("SUNGAI TILONG") == true) { area = "B2", kampong = "SUNGAI TILONG" }
-                                else if (address.includes("SG TILONG") == true) { area = "B2", kampong = "SUNGAI TILONG" }
-                                else if (address.includes("SUBOK") == true) { area = "B2", kampong = "SUBOK" }
-                                else if (address.includes("SUNGAI AKAR") == true) { area = "B2", kampong = "SUNGAI AKAR" }
-                                else if (address.includes("SG AKAR") == true) { area = "B2", kampong = "SUNGAI AKAR" }
-                                else if (address.includes("SUNGAI BULOH") == true) { area = "B2", kampong = "SUNGAI BULOH" }
-                                else if (address.includes("SG BULOH") == true) { area = "B2", kampong = "SUNGAI BULOH" }
-                                else if (address.includes("TANAH JAMBU") == true) { area = "B2", kampong = "TANAH JAMBU" }
-                                else if (address.includes("SUNGAI OROK") == true) { area = "B2", kampong = "SUNGAI OROK" }
-                                else if (address.includes("SG OROK") == true) { area = "B2", kampong = "SUNGAI OROK" }
-                                else if (address.includes("KATOK") == true) { area = "G1", kampong = "KATOK" }
-                                else if (address.includes("MATA-MATA") == true) { area = "G1", kampong = "MATA-MATA" }
-                                else if (address.includes("MATA MATA") == true) { area = "G1", kampong = "MATA-MATA" }
-                                else if (address.includes("RIMBA") == true) { area = "G1", kampong = "RIMBA" }
-                                else if (address.includes("TUNGKU") == true) { area = "G1", kampong = "TUNGKU" }
-                                else if (address.includes("UBD") == true) { area = "G1", kampong = "UBD" }
-                                else if (address.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G1", kampong = "UBD" }
-                                else if (address.includes("JIS") == true) { area = "G1" }
-                                else if (address.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G1", kampong = "JIS" }
-                                else if (address.includes("BERANGAN") == true) { area = "G2", kampong = "BERANGAN" }
-                                else if (address.includes("BERIBI") == true) { area = "G2", kampong = "BERIBI" }
-                                else if (address.includes("KIULAP") == true) { area = "G2", kampong = "KIULAP" }
-                                else if (address.includes("RIPAS") == true) { area = "G2", kampong = "RIPAS" }
-                                else if (address.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G2", kampong = "RIPAS" }
-                                else if (address.includes("KIARONG") == true) { area = "G2", kampong = "KIARONG" }
-                                else if (address.includes("PUSAR ULAK") == true) { area = "G2", kampong = "PUSAR ULAK" }
-                                else if (address.includes("KUMBANG PASANG") == true) { area = "G2", kampong = "KUMBANG PASANG" }
-                                else if (address.includes("MENGLAIT") == true) { area = "G2", kampong = "MENGLAIT" }
-                                else if (address.includes("MABOHAI") == true) { area = "G2", kampong = "MABOHAI" }
-                                else if (address.includes("ONG SUM PING") == true) { area = "G2", kampong = "ONG SUM PING" }
-                                else if (address.includes("GADONG") == true) { area = "G2", kampong = "GADONG" }
-                                else if (address.includes("TASEK LAMA") == true) { area = "G2", kampong = "TASEK LAMA" }
-                                else if (address.includes("BANDAR TOWN") == true) { area = "G2", kampong = "BANDAR TOWN" }
-                                else if (address.includes("BATU SATU") == true) { area = "JT1", kampong = "BATU SATU" }
-                                else if (address.includes("BENGKURONG") == true) { area = "JT1", kampong = "BENGKURONG" }
-                                else if (address.includes("BUNUT") == true) { area = "JT1", kampong = "BUNUT" }
-                                else if (address.includes("JALAN BABU RAJA") == true) { area = "JT1", kampong = "JALAN BABU RAJA" }
-                                else if (address.includes("JALAN ISTANA") == true) { area = "JT1", kampong = "JALAN ISTANA" }
-                                else if (address.includes("JUNJONGAN") == true) { area = "JT1", kampong = "JUNJONGAN" }
-                                else if (address.includes("KASAT") == true) { area = "JT1", kampong = "KASAT" }
-                                else if (address.includes("LUMAPAS") == true) { area = "JT1", kampong = "LUMAPAS" }
-                                else if (address.includes("JALAN HALUS") == true) { area = "JT1", kampong = "JALAN HALUS" }
-                                else if (address.includes("MADEWA") == true) { area = "JT1", kampong = "MADEWA" }
-                                else if (address.includes("PUTAT") == true) { area = "JT1", kampong = "PUTAT" }
-                                else if (address.includes("SINARUBAI") == true) { area = "JT1", kampong = "SINARUBAI" }
-                                else if (address.includes("TASEK MERADUN") == true) { area = "JT1", kampong = "TASEK MERADUN" }
-                                else if (address.includes("TELANAI") == true) { area = "JT1", kampong = "TELANAI" }
-                                else if (address.includes("BAN 1") == true) { area = "JT2", kampong = "BAN" }
-                                else if (address.includes("BAN 2") == true) { area = "JT2", kampong = "BAN" }
-                                else if (address.includes("BAN 3") == true) { area = "JT2", kampong = "BAN" }
-                                else if (address.includes("BAN 4") == true) { area = "JT2", kampong = "BAN" }
-                                else if (address.includes("BAN 5") == true) { area = "JT2", kampong = "BAN" }
-                                else if (address.includes("BAN 6") == true) { area = "JT2", kampong = "BAN" }
-                                else if (address.includes("BATONG") == true) { area = "JT2", kampong = "BATONG" }
-                                else if (address.includes("BATU AMPAR") == true) { area = "JT2", kampong = "BATU AMPAR" }
-                                else if (address.includes("BEBATIK") == true) { area = "JT2", kampong = "BEBATIK KILANAS" }
-                                else if (address.includes("BEBULOH") == true) { area = "JT2", kampong = "BEBULOH" }
-                                else if (address.includes("BEBATIK KILANAS") == true) { area = "JT2", kampong = "BEBATIK KILANAS" }
-                                else if (address.includes("KILANAS") == true) { area = "JT2", kampong = "BEBATIK KILANAS" }
-                                else if (address.includes("DADAP") == true) { area = "JT2", kampong = "DADAP" }
-                                else if (address.includes("KUALA LURAH") == true) { area = "JT2", kampong = "KUALA LURAH" }
-                                else if (address.includes("KULAPIS") == true) { area = "JT2", kampong = "KULAPIS" }
-                                else if (address.includes("LIMAU MANIS") == true) { area = "JT2", kampong = "LIMAU MANIS" }
-                                else if (address.includes("MASIN") == true) { area = "JT2", kampong = "MASIN" }
-                                else if (address.includes("MULAUT") == true) { area = "JT2", kampong = "MULAUT" }
-                                else if (address.includes("PANCHOR MURAI") == true) { area = "JT2", kampong = "PANCHOR MURAI" }
-                                else if (address.includes("PANCHUR MURAI") == true) { area = "JT2", kampong = "PANCHOR MURAI" }
-                                else if (address.includes("PANGKALAN BATU") == true) { area = "JT2", kampong = "PANGKALAN BATU" }
-                                else if (address.includes("PASAI") == true) { area = "JT2", kampong = "PASAI" }
-                                else if (address.includes("WASAN") == true) { area = "JT2", kampong = "WASAN" }
-                                else if (address.includes("PARIT") == true) { area = "JT2", kampong = "PARIT" }
-                                else if (address.includes("EMPIRE") == true) { area = "JT3", kampong = "EMPIRE" }
-                                else if (address.includes("JANGSAK") == true) { area = "JT3", kampong = "JANGSAK" }
-                                else if (address.includes("JERUDONG") == true) { area = "JT3", kampong = "JERUDONG" }
-                                else if (address.includes("KATIMAHAR") == true) { area = "JT3", kampong = "KATIMAHAR" }
-                                else if (address.includes("LUGU") == true) { area = "JT3", kampong = "LUGU" }
-                                else if (address.includes("SENGKURONG") == true) { area = "JT3", kampong = "SENGKURONG" }
-                                else if (address.includes("TANJONG NANGKA") == true) { area = "JT3", kampong = "TANJONG NANGKA" }
-                                else if (address.includes("TANJONG BUNUT") == true) { area = "JT3", kampong = "TANJONG BUNUT" }
-                                else if (address.includes("TANJUNG BUNUT") == true) { area = "JT3", kampong = "TANJONG BUNUT" }
-                                else if (address.includes("SUNGAI TAMPOI") == true) { area = "JT3", kampung = "SUNGAI TAMPOI" }
-                                else if (address.includes("SG TAMPOI") == true) { area = "JT3", kampong = "SUNGAI TAMPOI" }
-                                else if (address.includes("MUARA") == true) { area = "B2", kampong = "MUARA" }
+                                if (address.includes("MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
+                                else if (address.includes("DELIMA") == true) { area = "B", kampong = "DELIMA" }
+                                else if (address.includes("ANGGREK DESA") == true) { area = "B", kampong = "ANGGREK DESA" }
+                                else if (address.includes("ANGGREK") == true) { area = "B", kampong = "ANGGREK DESA" }
+                                else if (address.includes("PULAIE") == true) { area = "B", kampong = "PULAIE" }
+                                else if (address.includes("LAMBAK") == true) { area = "B", kampong = "LAMBAK" }
+                                else if (address.includes("TERUNJING") == true) { area = "B", kampong = "TERUNJING" }
+                                else if (address.includes("MADANG") == true) { area = "B", kampong = "MADANG" }
+                                else if (address.includes("AIRPORT") == true) { area = "B", kampong = "AIRPORT" }
+                                else if (address.includes("ORANG KAYA BESAR IMAS") == true) { area = "B", kampong = "OKBI" }
+                                else if (address.includes("OKBI") == true) { area = "B", kampong = "OKBI" }
+                                else if (address.includes("SERUSOP") == true) { area = "B", kampong = "SERUSOP" }
+                                else if (address.includes("BURONG PINGAI") == true) { area = "B", kampong = "BURONG PINGAI" }
+                                else if (address.includes("SETIA NEGARA") == true) { area = "B", kampong = "SETIA NEGARA" }
+                                else if (address.includes("PASIR BERAKAS") == true) { area = "B", kampong = "PASIR BERAKAS" }
+                                else if (address.includes("MENTERI BESAR") == true) { area = "B", kampong = "MENTERI BESAR" }
+                                else if (address.includes("KEBANGSAAN LAMA") == true) { area = "B", kampong = "KEBANGSAAN LAMA" }
+                                else if (address.includes("BATU MARANG") == true) { area = "B", kampong = "BATU MARANG" }
+                                else if (address.includes("DATO GANDI") == true) { area = "B", kampong = "DATO GANDI" }
+                                else if (address.includes("KAPOK") == true) { area = "B", kampong = "KAPOK" }
+                                else if (address.includes("KOTA BATU") == true) { area = "B", kampong = "KOTA BATU" }
+                                else if (address.includes("MENTIRI") == true) { area = "B", kampong = "MENTIRI" }
+                                else if (address.includes("MERAGANG") == true) { area = "B", kampong = "MERAGANG" }
+                                else if (address.includes("PELAMBAIAN") == true) { area = "B", kampong = "PELAMBAIAN" }
+                                else if (address.includes("PINTU MALIM") == true) { area = "B", kampong = "PINTU MALIM" }
+                                else if (address.includes("SALAMBIGAR") == true) { area = "B", kampong = "SALAMBIGAR" }
+                                else if (address.includes("SALAR") == true) { area = "B", kampong = "SALAR" }
+                                else if (address.includes("SERASA") == true) { area = "B", kampong = "SERASA" }
+                                else if (address.includes("SERDANG") == true) { area = "B", kampong = "SERDANG" }
+                                else if (address.includes("SUNGAI BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+                                else if (address.includes("SG BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+                                else if (address.includes("SUNGAI BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+                                else if (address.includes("SG BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+                                else if (address.includes("SUNGAI HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+                                else if (address.includes("SG HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+                                else if (address.includes("SUNGAI TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+                                else if (address.includes("SG TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+                                else if (address.includes("SUBOK") == true) { area = "B", kampong = "SUBOK" }
+                                else if (address.includes("SUNGAI AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+                                else if (address.includes("SG AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+                                else if (address.includes("SUNGAI BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+                                else if (address.includes("SG BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+                                else if (address.includes("TANAH JAMBU") == true) { area = "B", kampong = "TANAH JAMBU" }
+                                else if (address.includes("SUNGAI OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+                                else if (address.includes("SG OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+                                else if (address.includes("KATOK") == true) { area = "G", kampong = "KATOK" }
+                                else if (address.includes("MATA-MATA") == true) { area = "G", kampong = "MATA-MATA" }
+                                else if (address.includes("MATA MATA") == true) { area = "G", kampong = "MATA-MATA" }
+                                else if (address.includes("RIMBA") == true) { area = "G", kampong = "RIMBA" }
+                                else if (address.includes("TUNGKU") == true) { area = "G", kampong = "TUNGKU" }
+                                else if (address.includes("UBD") == true) { area = "G", kampong = "UBD" }
+                                else if (address.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G", kampong = "UBD" }
+                                else if (address.includes("JIS") == true) { area = "G" }
+                                else if (address.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G", kampong = "JIS" }
+                                else if (address.includes("BERANGAN") == true) { area = "G", kampong = "BERANGAN" }
+                                else if (address.includes("BERIBI") == true) { area = "G", kampong = "BERIBI" }
+                                else if (address.includes("KIULAP") == true) { area = "G", kampong = "KIULAP" }
+                                else if (address.includes("RIPAS") == true) { area = "G", kampong = "RIPAS" }
+                                else if (address.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G", kampong = "RIPAS" }
+                                else if (address.includes("KIARONG") == true) { area = "G", kampong = "KIARONG" }
+                                else if (address.includes("PUSAR ULAK") == true) { area = "G", kampong = "PUSAR ULAK" }
+                                else if (address.includes("KUMBANG PASANG") == true) { area = "G", kampong = "KUMBANG PASANG" }
+                                else if (address.includes("MENGLAIT") == true) { area = "G", kampong = "MENGLAIT" }
+                                else if (address.includes("MABOHAI") == true) { area = "G", kampong = "MABOHAI" }
+                                else if (address.includes("ONG SUM PING") == true) { area = "G", kampong = "ONG SUM PING" }
+                                else if (address.includes("GADONG") == true) { area = "G", kampong = "GADONG" }
+                                else if (address.includes("TASEK LAMA") == true) { area = "G", kampong = "TASEK LAMA" }
+                                else if (address.includes("BANDAR TOWN") == true) { area = "G", kampong = "BANDAR TOWN" }
+                                else if (address.includes("BATU SATU") == true) { area = "JT", kampong = "BATU SATU" }
+                                else if (address.includes("BENGKURONG") == true) { area = "JT", kampong = "BENGKURONG" }
+                                else if (address.includes("BUNUT") == true) { area = "JT", kampong = "BUNUT" }
+                                else if (address.includes("JALAN BABU RAJA") == true) { area = "JT", kampong = "JALAN BABU RAJA" }
+                                else if (address.includes("JALAN ISTANA") == true) { area = "JT", kampong = "JALAN ISTANA" }
+                                else if (address.includes("JUNJONGAN") == true) { area = "JT", kampong = "JUNJONGAN" }
+                                else if (address.includes("KASAT") == true) { area = "JT", kampong = "KASAT" }
+                                else if (address.includes("LUMAPAS") == true) { area = "JT", kampong = "LUMAPAS" }
+                                else if (address.includes("JALAN HALUS") == true) { area = "JT", kampong = "JALAN HALUS" }
+                                else if (address.includes("MADEWA") == true) { area = "JT", kampong = "MADEWA" }
+                                else if (address.includes("PUTAT") == true) { area = "JT", kampong = "PUTAT" }
+                                else if (address.includes("SINARUBAI") == true) { area = "JT", kampong = "SINARUBAI" }
+                                else if (address.includes("TASEK MERADUN") == true) { area = "JT", kampong = "TASEK MERADUN" }
+                                else if (address.includes("TELANAI") == true) { area = "JT", kampong = "TELANAI" }
+                                else if (address.includes("BAN 1") == true) { area = "JT", kampong = "BAN" }
+                                else if (address.includes("BAN 2") == true) { area = "JT", kampong = "BAN" }
+                                else if (address.includes("BAN 3") == true) { area = "JT", kampong = "BAN" }
+                                else if (address.includes("BAN 4") == true) { area = "JT", kampong = "BAN" }
+                                else if (address.includes("BAN 5") == true) { area = "JT", kampong = "BAN" }
+                                else if (address.includes("BAN 6") == true) { area = "JT", kampong = "BAN" }
+                                else if (address.includes("BATONG") == true) { area = "JT", kampong = "BATONG" }
+                                else if (address.includes("BATU AMPAR") == true) { area = "JT", kampong = "BATU AMPAR" }
+                                else if (address.includes("BEBATIK") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+                                else if (address.includes("BEBULOH") == true) { area = "JT", kampong = "BEBULOH" }
+                                else if (address.includes("BEBATIK KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+                                else if (address.includes("KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+                                else if (address.includes("DADAP") == true) { area = "JT", kampong = "DADAP" }
+                                else if (address.includes("KUALA LURAH") == true) { area = "JT", kampong = "KUALA LURAH" }
+                                else if (address.includes("KULAPIS") == true) { area = "JT", kampong = "KULAPIS" }
+                                else if (address.includes("LIMAU MANIS") == true) { area = "JT", kampong = "LIMAU MANIS" }
+                                else if (address.includes("MASIN") == true) { area = "JT", kampong = "MASIN" }
+                                else if (address.includes("MULAUT") == true) { area = "JT", kampong = "MULAUT" }
+                                else if (address.includes("PANCHOR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+                                else if (address.includes("PANCHUR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+                                else if (address.includes("PANGKALAN BATU") == true) { area = "JT", kampong = "PANGKALAN BATU" }
+                                else if (address.includes("PASAI") == true) { area = "JT", kampong = "PASAI" }
+                                else if (address.includes("WASAN") == true) { area = "JT", kampong = "WASAN" }
+                                else if (address.includes("PARIT") == true) { area = "JT", kampong = "PARIT" }
+                                else if (address.includes("EMPIRE") == true) { area = "JT", kampong = "EMPIRE" }
+                                else if (address.includes("JANGSAK") == true) { area = "JT", kampong = "JANGSAK" }
+                                else if (address.includes("JERUDONG") == true) { area = "JT", kampong = "JERUDONG" }
+                                else if (address.includes("KATIMAHAR") == true) { area = "JT", kampong = "KATIMAHAR" }
+                                else if (address.includes("LUGU") == true) { area = "JT", kampong = "LUGU" }
+                                else if (address.includes("SENGKURONG") == true) { area = "JT", kampong = "SENGKURONG" }
+                                else if (address.includes("TANJONG NANGKA") == true) { area = "JT", kampong = "TANJONG NANGKA" }
+                                else if (address.includes("TANJONG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+                                else if (address.includes("TANJUNG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+                                else if (address.includes("SUNGAI TAMPOI") == true) { area = "JT", kampung = "SUNGAI TAMPOI" }
+                                else if (address.includes("SG TAMPOI") == true) { area = "JT", kampong = "SUNGAI TAMPOI" }
+                                else if (address.includes("MUARA") == true) { area = "B", kampong = "MUARA" }
                                 //TU
                                 else if (address.includes("SENGKARAI") == true) { area = "TUTONG", kampong = "SENGKARAI" }
                                 else if (address.includes("PANCHOR") == true) { area = "TUTONG", kampong = "PANCHOR" }
@@ -9544,7 +8417,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: data.data.job_type,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
                                     currentStatus: "At Warehouse",
@@ -9564,6 +8436,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     lastUpdatedBy: req.user.name,
                                     parcelWeight: data.data.weight,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
                             } else {
                                 newOrder = new ORDERS({
@@ -9588,7 +8462,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     assignedTo: "N/A",
                                     senderName: data.data.job_owner,
                                     totalPrice: data.data.total_price,
-                                    deliveryType: data.data.job_type,
                                     receiverName: data.data.deliver_to_collect_from,
                                     trackingLink: data.data.tracking_link,
                                     currentStatus: "At Warehouse",
@@ -9605,6 +8478,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     jobDate: "N/A",
                                     lastUpdatedBy: req.user.name,
                                     receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
                                 });
                             }
 
@@ -9641,116 +8516,740 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         };
 
-                        if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        } else {
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                            if (data.data.phone_number != null) {
-                                if (data.data.job_type.includes("Standard")) {
-                                    waOrderArrivedDeliverStandard = 1;
-                                }
-
-                                if (data.data.job_type.includes("Drop off")) {
-                                    waOrderArrivedDeliverExpressNonMedicine = 1;
-                                }
-
-                                if (data.data.job_type.includes("Express")) {
-                                    if (currentProduct.includes("pharmacy")) {
-                                        waOrderArrivedDeliverExpressMedicine = 1;
-                                    } else {
-                                        waOrderArrivedDeliverExpressNonMedicine = 1;
-                                    }
-                                }
-
-                                if (data.data.job_type.includes("Immediate")) {
-                                    waOrderArrivedDeliverImmediate = 1
-                                }
-                            }
-                        }
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                         appliedStatus = "Item in Warehouse"
 
                         DetrackAPIrun = 1;
                         completeRun = 1;
                     }
-                    /* if ((data.data.status == 'cancelled')) {
-                        if (product == 'EWE') {
+                }
 
+                if (req.body.statusCode == 35) {
+                    if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (data.data.status == 'failed'))) {
+                        if (existingOrder === null) {
+                            address = data.data.address.toUpperCase();
 
+                            if (address.includes("MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
+                            else if (address.includes("DELIMA") == true) { area = "B", kampong = "DELIMA" }
+                            else if (address.includes("ANGGREK DESA") == true) { area = "B", kampong = "ANGGREK DESA" }
+                            else if (address.includes("ANGGREK") == true) { area = "B", kampong = "ANGGREK DESA" }
+                            else if (address.includes("PULAIE") == true) { area = "B", kampong = "PULAIE" }
+                            else if (address.includes("LAMBAK") == true) { area = "B", kampong = "LAMBAK" }
+                            else if (address.includes("TERUNJING") == true) { area = "B", kampong = "TERUNJING" }
+                            else if (address.includes("MADANG") == true) { area = "B", kampong = "MADANG" }
+                            else if (address.includes("AIRPORT") == true) { area = "B", kampong = "AIRPORT" }
+                            else if (address.includes("ORANG KAYA BESAR IMAS") == true) { area = "B", kampong = "OKBI" }
+                            else if (address.includes("OKBI") == true) { area = "B", kampong = "OKBI" }
+                            else if (address.includes("SERUSOP") == true) { area = "B", kampong = "SERUSOP" }
+                            else if (address.includes("BURONG PINGAI") == true) { area = "B", kampong = "BURONG PINGAI" }
+                            else if (address.includes("SETIA NEGARA") == true) { area = "B", kampong = "SETIA NEGARA" }
+                            else if (address.includes("PASIR BERAKAS") == true) { area = "B", kampong = "PASIR BERAKAS" }
+                            else if (address.includes("MENTERI BESAR") == true) { area = "B", kampong = "MENTERI BESAR" }
+                            else if (address.includes("KEBANGSAAN LAMA") == true) { area = "B", kampong = "KEBANGSAAN LAMA" }
+                            else if (address.includes("BATU MARANG") == true) { area = "B", kampong = "BATU MARANG" }
+                            else if (address.includes("DATO GANDI") == true) { area = "B", kampong = "DATO GANDI" }
+                            else if (address.includes("KAPOK") == true) { area = "B", kampong = "KAPOK" }
+                            else if (address.includes("KOTA BATU") == true) { area = "B", kampong = "KOTA BATU" }
+                            else if (address.includes("MENTIRI") == true) { area = "B", kampong = "MENTIRI" }
+                            else if (address.includes("MERAGANG") == true) { area = "B", kampong = "MERAGANG" }
+                            else if (address.includes("PELAMBAIAN") == true) { area = "B", kampong = "PELAMBAIAN" }
+                            else if (address.includes("PINTU MALIM") == true) { area = "B", kampong = "PINTU MALIM" }
+                            else if (address.includes("SALAMBIGAR") == true) { area = "B", kampong = "SALAMBIGAR" }
+                            else if (address.includes("SALAR") == true) { area = "B", kampong = "SALAR" }
+                            else if (address.includes("SERASA") == true) { area = "B", kampong = "SERASA" }
+                            else if (address.includes("SERDANG") == true) { area = "B", kampong = "SERDANG" }
+                            else if (address.includes("SUNGAI BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+                            else if (address.includes("SG BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+                            else if (address.includes("SUNGAI BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+                            else if (address.includes("SG BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+                            else if (address.includes("SUNGAI HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+                            else if (address.includes("SG HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+                            else if (address.includes("SUNGAI TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+                            else if (address.includes("SG TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+                            else if (address.includes("SUBOK") == true) { area = "B", kampong = "SUBOK" }
+                            else if (address.includes("SUNGAI AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+                            else if (address.includes("SG AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+                            else if (address.includes("SUNGAI BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+                            else if (address.includes("SG BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+                            else if (address.includes("TANAH JAMBU") == true) { area = "B", kampong = "TANAH JAMBU" }
+                            else if (address.includes("SUNGAI OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+                            else if (address.includes("SG OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+                            else if (address.includes("KATOK") == true) { area = "G", kampong = "KATOK" }
+                            else if (address.includes("MATA-MATA") == true) { area = "G", kampong = "MATA-MATA" }
+                            else if (address.includes("MATA MATA") == true) { area = "G", kampong = "MATA-MATA" }
+                            else if (address.includes("RIMBA") == true) { area = "G", kampong = "RIMBA" }
+                            else if (address.includes("TUNGKU") == true) { area = "G", kampong = "TUNGKU" }
+                            else if (address.includes("UBD") == true) { area = "G", kampong = "UBD" }
+                            else if (address.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G", kampong = "UBD" }
+                            else if (address.includes("JIS") == true) { area = "G" }
+                            else if (address.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G", kampong = "JIS" }
+                            else if (address.includes("BERANGAN") == true) { area = "G", kampong = "BERANGAN" }
+                            else if (address.includes("BERIBI") == true) { area = "G", kampong = "BERIBI" }
+                            else if (address.includes("KIULAP") == true) { area = "G", kampong = "KIULAP" }
+                            else if (address.includes("RIPAS") == true) { area = "G", kampong = "RIPAS" }
+                            else if (address.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G", kampong = "RIPAS" }
+                            else if (address.includes("KIARONG") == true) { area = "G", kampong = "KIARONG" }
+                            else if (address.includes("PUSAR ULAK") == true) { area = "G", kampong = "PUSAR ULAK" }
+                            else if (address.includes("KUMBANG PASANG") == true) { area = "G", kampong = "KUMBANG PASANG" }
+                            else if (address.includes("MENGLAIT") == true) { area = "G", kampong = "MENGLAIT" }
+                            else if (address.includes("MABOHAI") == true) { area = "G", kampong = "MABOHAI" }
+                            else if (address.includes("ONG SUM PING") == true) { area = "G", kampong = "ONG SUM PING" }
+                            else if (address.includes("GADONG") == true) { area = "G", kampong = "GADONG" }
+                            else if (address.includes("TASEK LAMA") == true) { area = "G", kampong = "TASEK LAMA" }
+                            else if (address.includes("BANDAR TOWN") == true) { area = "G", kampong = "BANDAR TOWN" }
+                            else if (address.includes("BATU SATU") == true) { area = "JT", kampong = "BATU SATU" }
+                            else if (address.includes("BENGKURONG") == true) { area = "JT", kampong = "BENGKURONG" }
+                            else if (address.includes("BUNUT") == true) { area = "JT", kampong = "BUNUT" }
+                            else if (address.includes("JALAN BABU RAJA") == true) { area = "JT", kampong = "JALAN BABU RAJA" }
+                            else if (address.includes("JALAN ISTANA") == true) { area = "JT", kampong = "JALAN ISTANA" }
+                            else if (address.includes("JUNJONGAN") == true) { area = "JT", kampong = "JUNJONGAN" }
+                            else if (address.includes("KASAT") == true) { area = "JT", kampong = "KASAT" }
+                            else if (address.includes("LUMAPAS") == true) { area = "JT", kampong = "LUMAPAS" }
+                            else if (address.includes("JALAN HALUS") == true) { area = "JT", kampong = "JALAN HALUS" }
+                            else if (address.includes("MADEWA") == true) { area = "JT", kampong = "MADEWA" }
+                            else if (address.includes("PUTAT") == true) { area = "JT", kampong = "PUTAT" }
+                            else if (address.includes("SINARUBAI") == true) { area = "JT", kampong = "SINARUBAI" }
+                            else if (address.includes("TASEK MERADUN") == true) { area = "JT", kampong = "TASEK MERADUN" }
+                            else if (address.includes("TELANAI") == true) { area = "JT", kampong = "TELANAI" }
+                            else if (address.includes("BAN 1") == true) { area = "JT", kampong = "BAN" }
+                            else if (address.includes("BAN 2") == true) { area = "JT", kampong = "BAN" }
+                            else if (address.includes("BAN 3") == true) { area = "JT", kampong = "BAN" }
+                            else if (address.includes("BAN 4") == true) { area = "JT", kampong = "BAN" }
+                            else if (address.includes("BAN 5") == true) { area = "JT", kampong = "BAN" }
+                            else if (address.includes("BAN 6") == true) { area = "JT", kampong = "BAN" }
+                            else if (address.includes("BATONG") == true) { area = "JT", kampong = "BATONG" }
+                            else if (address.includes("BATU AMPAR") == true) { area = "JT", kampong = "BATU AMPAR" }
+                            else if (address.includes("BEBATIK") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+                            else if (address.includes("BEBULOH") == true) { area = "JT", kampong = "BEBULOH" }
+                            else if (address.includes("BEBATIK KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+                            else if (address.includes("KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+                            else if (address.includes("DADAP") == true) { area = "JT", kampong = "DADAP" }
+                            else if (address.includes("KUALA LURAH") == true) { area = "JT", kampong = "KUALA LURAH" }
+                            else if (address.includes("KULAPIS") == true) { area = "JT", kampong = "KULAPIS" }
+                            else if (address.includes("LIMAU MANIS") == true) { area = "JT", kampong = "LIMAU MANIS" }
+                            else if (address.includes("MASIN") == true) { area = "JT", kampong = "MASIN" }
+                            else if (address.includes("MULAUT") == true) { area = "JT", kampong = "MULAUT" }
+                            else if (address.includes("PANCHOR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+                            else if (address.includes("PANCHUR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+                            else if (address.includes("PANGKALAN BATU") == true) { area = "JT", kampong = "PANGKALAN BATU" }
+                            else if (address.includes("PASAI") == true) { area = "JT", kampong = "PASAI" }
+                            else if (address.includes("WASAN") == true) { area = "JT", kampong = "WASAN" }
+                            else if (address.includes("PARIT") == true) { area = "JT", kampong = "PARIT" }
+                            else if (address.includes("EMPIRE") == true) { area = "JT", kampong = "EMPIRE" }
+                            else if (address.includes("JANGSAK") == true) { area = "JT", kampong = "JANGSAK" }
+                            else if (address.includes("JERUDONG") == true) { area = "JT", kampong = "JERUDONG" }
+                            else if (address.includes("KATIMAHAR") == true) { area = "JT", kampong = "KATIMAHAR" }
+                            else if (address.includes("LUGU") == true) { area = "JT", kampong = "LUGU" }
+                            else if (address.includes("SENGKURONG") == true) { area = "JT", kampong = "SENGKURONG" }
+                            else if (address.includes("TANJONG NANGKA") == true) { area = "JT", kampong = "TANJONG NANGKA" }
+                            else if (address.includes("TANJONG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+                            else if (address.includes("TANJUNG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+                            else if (address.includes("SUNGAI TAMPOI") == true) { area = "JT", kampung = "SUNGAI TAMPOI" }
+                            else if (address.includes("SG TAMPOI") == true) { area = "JT", kampong = "SUNGAI TAMPOI" }
+                            else if (address.includes("MUARA") == true) { area = "B", kampong = "MUARA" }
+                            //TU
+                            else if (address.includes("SENGKARAI") == true) { area = "TUTONG", kampong = "SENGKARAI" }
+                            else if (address.includes("PANCHOR") == true) { area = "TUTONG", kampong = "PANCHOR" }
+                            else if (address.includes("PENABAI") == true) { area = "TUTONG", kampong = "PENABAI" }
+                            else if (address.includes("KUALA TUTONG") == true) { area = "TUTONG", kampong = "KUALA TUTONG" }
+                            else if (address.includes("PENANJONG") == true) { area = "TUTONG", kampong = "PENANJONG" }
+                            else if (address.includes("KERIAM") == true) { area = "TUTONG", kampong = "KERIAM" }
+                            else if (address.includes("BUKIT PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
+                            else if (address.includes("PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
+                            else if (address.includes("LUAGAN") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
+                            else if (address.includes("DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
+                            else if (address.includes("LUAGAN DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
+                            else if (address.includes("SINAUT") == true) { area = "TUTONG", kampong = "SINAUT" }
+                            else if (address.includes("SUNGAI KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
+                            else if (address.includes("KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
+                            else if (address.includes("SG KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
+                            else if (address.includes("KUPANG") == true) { area = "TUTONG", kampong = "KUPANG" }
+                            else if (address.includes("KIUDANG") == true) { area = "TUTONG", kampong = "KIUDANG" }
+                            else if (address.includes("PAD") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
+                            else if (address.includes("NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
+                            else if (address.includes("PAD NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
+                            else if (address.includes("BEKIAU") == true) { area = "TUTONG", kampong = "BEKIAU" }
+                            else if (address.includes("MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
+                            else if (address.includes("PENGKALAN MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
+                            else if (address.includes("BATANG MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
+                            else if (address.includes("MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
+                            else if (address.includes("KEBIA") == true) { area = "TUTONG", kampong = "KEBIA" }
+                            else if (address.includes("BIRAU") == true) { area = "TUTONG", kampong = "BIRAU" }
+                            else if (address.includes("LAMUNIN") == true) { area = "TUTONG", kampong = "LAMUNIN" }
+                            else if (address.includes("LAYONG") == true) { area = "TUTONG", kampong = "LAYONG" }
+                            else if (address.includes("MENENGAH") == true) { area = "TUTONG", kampong = "MENENGAH" }
+                            else if (address.includes("PANCHONG") == true) { area = "TUTONG", kampong = "PANCHONG" }
+                            else if (address.includes("PENAPAR") == true) { area = "TUTONG", kampong = "PANAPAR" }
+                            else if (address.includes("TANJONG MAYA") == true) { area = "TUTONG", kampong = "TANJONG MAYA" }
+                            else if (address.includes("MAYA") == true) { area = "TUTONG", kampong = "MAYA" }
+                            else if (address.includes("LUBOK") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
+                            else if (address.includes("PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
+                            else if (address.includes("LUBOK PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
+                            else if (address.includes("BUKIT UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
+                            else if (address.includes("UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
+                            else if (address.includes("RAMBAI") == true) { area = "TUTONG", kampong = "RAMBAI" }
+                            else if (address.includes("BENUTAN") == true) { area = "TUTONG", kampong = "BENUTAN" }
+                            else if (address.includes("MERIMBUN") == true) { area = "TUTONG", kampong = "MERIMBUN" }
+                            else if (address.includes("UKONG") == true) { area = "TUTONG", kampong = "UKONG" }
+                            else if (address.includes("LONG") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
+                            else if (address.includes("MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
+                            else if (address.includes("LONG MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
+                            else if (address.includes("TELISAI") == true) { area = "TUTONG", kampong = "TELISAI" }
+                            else if (address.includes("DANAU") == true) { area = "TUTONG", kampong = "DANAU" }
+                            else if (address.includes("BUKIT BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
+                            else if (address.includes("BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
+                            else if (address.includes("TUTONG") == true) { area = "TUTONG", kampong = "TUTONG" }
+                            //KB
+                            else if (address.includes("AGIS") == true) { area = "LUMUT", kampong = "AGIS" }
+                            else if (address.includes("ANDALAU") == true) { area = "LUMUT", kampong = "ANDALAU" }
+                            else if (address.includes("ANDUKI") == true) { area = "LUMUT", kampong = "ANDUKI" }
+                            else if (address.includes("APAK") == true) { area = "KB / SERIA", kampong = "APAK" }
+                            else if (address.includes("BADAS") == true) { area = "LUMUT", kampong = "BADAS" }
+                            else if (address.includes("BANG") == true) { area = "KB / SERIA", kampong = "BANG" }
+                            else if (address.includes("GARANG") == true) { area = "KB / SERIA", kampong = "GARANG" }
+                            else if (address.includes("PUKUL") == true) { area = "KB / SERIA", kampong = "PUKUL" }
+                            else if (address.includes("TAJUK") == true) { area = "KB / SERIA", kampong = "TAJUK" }
+                            else if (address.includes("BENGERANG") == true) { area = "KB / SERIA", kampong = "BENGERANG" }
+                            else if (address.includes("BIADONG") == true) { area = "KB / SERIA", kampong = "BIADONG" }
+                            else if (address.includes("ULU") == true) { area = "KB / SERIA", kampong = "ULU" }
+                            else if (address.includes("TENGAH") == true) { area = "KB / SERIA", kampong = "TENGAH" }
+                            else if (address.includes("BISUT") == true) { area = "KB / SERIA", kampong = "BISUT" }
+                            else if (address.includes("BUAU") == true) { area = "KB / SERIA", kampong = "BUAU" }
+                            else if (address.includes("KANDOL") == true) { area = "KB / SERIA", kampong = "KANDOL" }
+                            else if (address.includes("PUAN") == true) { area = "KB / SERIA", kampong = "PUAN" }
+                            else if (address.includes("TUDING") == true) { area = "LUMUT", kampong = "TUDING" }
+                            else if (address.includes("SAWAT") == true) { area = "KB / SERIA", kampong = "SAWAT" }
+                            else if (address.includes("SERAWONG") == true) { area = "KB / SERIA", kampong = "SERAWONG" }
+                            else if (address.includes("CHINA") == true) { area = "KB / SERIA", kampong = "CHINA" }
+                            else if (address.includes("DUGUN") == true) { area = "KB / SERIA", kampong = "DUGUN" }
+                            else if (address.includes("GATAS") == true) { area = "KB / SERIA", kampong = "GATAS" }
+                            else if (address.includes("JABANG") == true) { area = "KB / SERIA", kampong = "JABANG" }
+                            else if (address.includes("KAGU") == true) { area = "KB / SERIA", kampong = "KAGU" }
+                            else if (address.includes("KAJITAN") == true) { area = "KB / SERIA", kampong = "KAJITAN" }
+                            else if (address.includes("KELUYOH") == true) { area = "KB / SERIA", kampong = "KELUYOH" }
+                            else if (address.includes("KENAPOL") == true) { area = "KB / SERIA", kampong = "KENAPOL" }
+                            else if (address.includes("KUALA BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
+                            else if (address.includes("BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
+                            else if (address.includes("KUALA BELAIT") == true) { area = "KB", kampong = "KUALA BELAIT" }
+                            else if (address.includes("KUKUB") == true) { area = "KB / SERIA", kampong = "KUKUB" }
+                            else if (address.includes("LABI") == true) { area = "LUMUT", kampong = "LABI" }
+                            else if (address.includes("LAKANG") == true) { area = "KB / SERIA", kampong = "LAKANG" }
+                            else if (address.includes("LAONG ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
+                            else if (address.includes("ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
+                            else if (address.includes("LAONG") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
+                            else if (address.includes("LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
+                            else if (address.includes("SUNGAI LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
+                            else if (address.includes("SG LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
+                            else if (address.includes("LUMUT") == true) { area = "LUMUT", kampong = "LUMUT" }
+                            else if (address.includes("LORONG") == true) { area = "SERIA", kampong = "LORONG" }
+                            else if (address.includes("LORONG TENGAH") == true) { area = "SERIA", kampong = "LORONG TENGAH" }
+                            else if (address.includes("LORONG TIGA SELATAN") == true) { area = "SERIA", kampong = "LORONG TIGA SELATAN" }
+                            else if (address.includes("LILAS") == true) { area = "KB / SERIA", kampong = "LILAS" }
+                            else if (address.includes("LUBUK LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
+                            else if (address.includes("LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
+                            else if (address.includes("LUBUK TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
+                            else if (address.includes("TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
+                            else if (address.includes("MALA'AS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
+                            else if (address.includes("MALAAS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
+                            else if (address.includes("MALAYAN") == true) { area = "KB / SERIA", kampong = "MELAYAN" }
+                            else if (address.includes("MELAYU") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
+                            else if (address.includes("ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
+                            else if (address.includes("MELAYU ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
+                            else if (address.includes("MELILAS") == true) { area = "LUMUT", kampong = "MELILAS" }
+                            else if (address.includes("MENDARAM") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
+                            else if (address.includes("MENDARAM BESAR") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
+                            else if (address.includes("MENDARAM KECIL") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
+                            else if (address.includes("MERANGKING") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
+                            else if (address.includes("MERANGKING ULU") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
+                            else if (address.includes("MERANGKING HILIR") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
+                            else if (address.includes("MUMONG") == true) { area = "KB", kampong = "MUMONG" }
+                            else if (address.includes("PANDAN") == true) { area = "KB", kampong = "PANDAN" }
+                            else if (address.includes("PADANG") == true) { area = "KB", kampong = "PADANG" }
+                            else if (address.includes("PANAGA") == true) { area = "SERIA", kampong = "PANAGA" }
+                            else if (address.includes("PENGKALAN SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
+                            else if (address.includes("SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
+                            else if (address.includes("PENGALAYAN") == true) { area = "KB / SERIA", kampong = "PENGALAYAN" }
+                            else if (address.includes("PENYRAP") == true) { area = "KB / SERIA", kampong = "PENYRAP" }
+                            else if (address.includes("PERANGKONG") == true) { area = "KB / SERIA", kampong = "PERANGKONG" }
+                            else if (address.includes("PERUMPONG") == true) { area = "LUMUT", kampong = "PERUMPONG" }
+                            else if (address.includes("PESILIN") == true) { area = "KB / SERIA", kampong = "PESILIN" }
+                            else if (address.includes("PULAU APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
+                            else if (address.includes("APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
+                            else if (address.includes("RAMPAYOH") == true) { area = "KB / SERIA", kampong = "RAMPAYOH" }
+                            else if (address.includes("RATAN") == true) { area = "KB / SERIA", kampong = "RATAN" }
+                            else if (address.includes("SAUD") == true) { area = "KB / SERIA", kampong = "SAUD" }
+                            //else if (address.includes("SIMPANG") == true) {area = "KB / SERIA", kampong = "SIMPANG TIGA"}
+                            else if (address.includes("SIMPANG TIGA") == true) { area = "LUMUT", kampong = "SIMPANG TIGA" }
+                            else if (address.includes("SINGAP") == true) { area = "KB / SERIA", kampong = "SINGAP" }
+                            else if (address.includes("SUKANG") == true) { area = "KB / SERIA", kampong = "SUKANG" }
+                            else if (address.includes("BAKONG") == true) { area = "LUMUT", kampong = "BAKONG" }
+                            else if (address.includes("DAMIT") == true) { area = "KB / SERIA", kampong = "DAMIT" }
+                            else if (address.includes("BERA") == true) { area = "KB / SERIA", kampong = "BERA" }
+                            else if (address.includes("DUHON") == true) { area = "KB / SERIA", kampong = "DUHON" }
+                            else if (address.includes("GANA") == true) { area = "LUMUT", kampong = "GANA" }
+                            else if (address.includes("HILIR") == true) { area = "KB / SERIA", kampong = "HILIR" }
+                            else if (address.includes("KANG") == true) { area = "LUMUT", kampong = "KANG" }
+                            else if (address.includes("KURU") == true) { area = "LUMUT", kampong = "KURU" }
+                            else if (address.includes("LALIT") == true) { area = "LUMUT", kampong = "LALIT" }
+                            else if (address.includes("LUTONG") == true) { area = "KB / SERIA", kampong = "LUTONG" }
+                            else if (address.includes("MAU") == true) { area = "KB / SERIA", kampong = "MAU" }
+                            else if (address.includes("MELILIT") == true) { area = "KB / SERIA", kampong = "MELILIT" }
+                            else if (address.includes("PETAI") == true) { area = "KB / SERIA", kampong = "PETAI" }
+                            else if (address.includes("TALI") == true) { area = "LUMUT", kampong = "TALI" }
+                            else if (address.includes("TARING") == true) { area = "LUMUT", kampong = "TARING" }
+                            else if (address.includes("TERABAN") == true) { area = "KB", kampong = "TERABAN" }
+                            else if (address.includes("UBAR") == true) { area = "KB / SERIA", kampong = "UBAR" }
+                            else if (address.includes("TANAJOR") == true) { area = "KB / SERIA", kampong = "TANAJOR" }
+                            else if (address.includes("TANJONG RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
+                            else if (address.includes("RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
+                            else if (address.includes("TANJONG SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
+                            else if (address.includes("SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
+                            else if (address.includes("TAPANG LUPAK") == true) { area = "KB / SERIA", kampong = "TAPANG LUPAK" }
+                            else if (address.includes("TARAP") == true) { area = "KB / SERIA", kampong = "TARAP" }
+                            else if (address.includes("TEMPINAK") == true) { area = "KB / SERIA", kampong = "TEMPINAK" }
+                            else if (address.includes("TERAJA") == true) { area = "KB / SERIA", kampong = "TERAJA" }
+                            else if (address.includes("TERAWAN") == true) { area = "KB / SERIA", kampong = "TERAWAN" }
+                            else if (address.includes("TERUNAN") == true) { area = "KB / SERIA", kampong = "TERUNAN" }
+                            else if (address.includes("TUGONG") == true) { area = "KB / SERIA", kampong = "TUGONG" }
+                            else if (address.includes("TUNGULLIAN") == true) { area = "LUMUT", kampong = "TUNGULLIAN" }
+                            else if (address.includes("UBOK") == true) { area = "KB / SERIA", kampong = "UBOK" }
+                            else if (address.includes("BELAIT") == true) { area = "KB / SERIA", kampong = "BELAIT" }
+                            else if (address.includes("SERIA") == true) { area = "KB / SERIA", kampong = "BELAIT" }
+                            //TE
+                            else if (address.includes("AMO") == true) { area = "TEMBURONG", kampong = "AMO" }
+                            else if (address.includes("AYAM-AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
+                            else if (address.includes("AYAM AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
+                            else if (address.includes("BAKARUT") == true) { area = "TEMBURONG", kampong = "BAKARUT" }
+                            else if (address.includes("BATANG DURI") == true) { area = "TEMBURONG", kampong = "BATANG DURI" }
+                            else if (address.includes("BATANG TUAU") == true) { area = "TEMBURONG", kampong = "BATANG TUAU" }
+                            else if (address.includes("BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
+                            else if (address.includes("APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
+                            else if (address.includes("BATU BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
+                            else if (address.includes("BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
+                            else if (address.includes("BELABAN") == true) { area = "TEMBURONG", kampong = "BELABAN" }
+                            else if (address.includes("BELAIS") == true) { area = "TEMBURONG", kampong = "BELAIS" }
+                            else if (address.includes("BELINGOS") == true) { area = "TEMBURONG", kampong = "BELINGOS" }
+                            else if (address.includes("BIANG") == true) { area = "TEMBURONG", kampong = "BIANG" }
+                            else if (address.includes("BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
+                            else if (address.includes("BUDA BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
+                            else if (address.includes("BUDA-BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
+                            else if (address.includes("GADONG BARU") == true) { area = "TEMBURONG", kampong = "GADONG BARU" }
+                            else if (address.includes("KENUA") == true) { area = "TEMBURONG", kampong = "KENUA" }
+                            else if (address.includes("LABU ESTATE") == true) { area = "TEMBURONG", kampong = "LABU" }
+                            else if (address.includes("LABU") == true) { area = "TEMBURONG", kampong = "LABU" }
+                            else if (address.includes("LAGAU") == true) { area = "TEMBURONG", kampong = "LAGAU" }
+                            else if (address.includes("LAKIUN") == true) { area = "TEMBURONG", kampong = "LAKIUN" }
+                            else if (address.includes("LAMALING") == true) { area = "TEMBURONG", kampong = "LAMALING" }
+                            else if (address.includes("LEPONG") == true) { area = "TEMBURONG", kampong = "LEPONG" }
+                            else if (address.includes("LUAGAN") == true) { area = "TEMBURONG", kampong = "LUAGAN" }
+                            else if (address.includes("MANIUP") == true) { area = "TEMBURONG", kampong = "MANIUP" }
+                            else if (address.includes("MENENGAH") == true) { area = "TEMBURONG", kampong = "MENGENGAH" }
+                            else if (address.includes("NEGALANG") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
+                            else if (address.includes("NEGALANG ERING") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
+                            else if (address.includes("NEGALANG UNAT") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
+                            else if (address.includes("PARIT") == true) { area = "TEMBURONG", kampong = "PARIT" }
+                            else if (address.includes("PARIT BELAYANG") == true) { area = "TEMBURONG", kampong = "PARIT BELAYANG" }
+                            else if (address.includes("PAYAU") == true) { area = "TEMBURONG", kampong = "PAYAU" }
+                            else if (address.includes("PELIUNAN") == true) { area = "TEMBURONG", kampong = "PELIUNAN" }
+                            else if (address.includes("PERDAYAN") == true) { area = "TEMBURONG", kampong = "PERDAYAN" }
+                            else if (address.includes("PIASAU-PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
+                            else if (address.includes("PIASAU PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
+                            else if (address.includes("PIUNGAN") == true) { area = "TEMBURONG", kampong = "PIUNGAN" }
+                            else if (address.includes("PUNI") == true) { area = "TEMBURONG", kampong = "PUNI" }
+                            else if (address.includes("RATAIE") == true) { area = "TEMBURONG", kampong = "RATAIE" }
+                            else if (address.includes("REBADA") == true) { area = "TEMBURONG", kampong = "REBADA" }
+                            else if (address.includes("SEKUROP") == true) { area = "TEMBURONG", kampong = "SEKUROP" }
+                            else if (address.includes("SELANGAN") == true) { area = "TEMBURONG", kampong = "SELANGAN" }
+                            else if (address.includes("SELAPON") == true) { area = "TEMBURONG", kampong = "SELAPON" }
+                            else if (address.includes("SEMABAT") == true) { area = "TEMBURONG", kampong = "SEMABAT" }
+                            else if (address.includes("SEMAMAMNG") == true) { area = "TEMBURONG", kampong = "SEMAMANG" }
+                            else if (address.includes("SENUKOH") == true) { area = "TEMBURONG", kampong = "SENUKOH" }
+                            else if (address.includes("SERI TANJONG BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
+                            else if (address.includes("BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
+                            else if (address.includes("SIBULU") == true) { area = "TEMBURONG", kampong = "SIBULU" }
+                            else if (address.includes("SIBUT") == true) { area = "TEMBURONG", kampong = "SIBUT" }
+                            else if (address.includes("SIMBATANG BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
+                            else if (address.includes("SIMBATANG BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
+                            else if (address.includes("SUBOK") == true) { area = "TEMBURONG", kampong = "SUBOK" }
+                            else if (address.includes("SUMBILING") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
+                            else if (address.includes("SUMBILING BARU") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
+                            else if (address.includes("SUMBILING LAMA") == true) { area = "TEMBURONG", kampong = "SUMBILING LAMA" }
+                            else if (address.includes("SUNGAI RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
+                            else if (address.includes("SG RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
+                            else if (address.includes("SUNGAI SULOK") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
+                            else if (address.includes("SG SULOK ") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
+                            else if (address.includes("SUNGAI TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
+                            else if (address.includes("SG TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
+                            else if (address.includes("SUNGAI TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
+                            else if (address.includes("SG TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
+                            else if (address.includes("TANJONG BUNGAR") == true) { area = "TEMBURONG", kampong = "TANJONG BUNGAR" }
+                            else if (address.includes("TEMADA") == true) { area = "TEMBURONG", kampong = "TEMADA" }
+                            else if (address.includes("UJONG JALAN") == true) { area = "TEMBURONG", kampong = "UJONG JALAN" }
+                            else if (address.includes("BANGAR") == true) { area = "TEMBURONG", kampong = "BANGAR" }
+                            else if (address.includes("TEMBURONG") == true) { area = "TEMBURONG" }
+                            else { area = "N/A" }
 
+                            if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                                newOrder = new ORDERS({
+                                    area: area,
+                                    items: itemsArray, // Use the dynamically created items array
+                                    attempt: data.data.attempt,
+                                    history: [{
+                                        statusHistory: "Out for Collection",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "N/A",
+                                        lastLocation: "Customer",
+                                    }],
+                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    latestLocation: "Customer",
+                                    product: currentProduct,
+                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    senderName: data.data.job_owner,
+                                    totalPrice: 0,
+                                    receiverName: data.data.deliver_to_collect_from,
+                                    trackingLink: data.data.tracking_link,
+                                    currentStatus: "Out for Collection",
+                                    paymentMethod: data.data.payment_mode,
+                                    warehouseEntry: "No",
+                                    warehouseEntryDateTime: "N/A",
+                                    receiverAddress: data.data.address,
+                                    receiverPhoneNumber: data.data.phone_number,
+                                    doTrackingNumber: consignmentID,
+                                    remarks: data.data.remarks,
+                                    latestReason: "N/A",
+                                    lastUpdateDateTime: moment().format(),
+                                    creationDate: data.data.created_at,
+                                    jobDate: req.body.assignDate,
+                                    flightDate: data.data.job_received_date,
+                                    mawbNo: data.data.run_number,
+                                    lastUpdatedBy: req.user.name,
+                                    parcelWeight: data.data.weight,
+                                    receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
+                                });
 
+                                mongoDBrun = 1;
 
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: 0,
-                                history: [{
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy:  req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
-                                }],
-                                product: currentProduct,
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: data.data.job_type,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "At Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: "N/A",
-                                remarks: "previously " + consignmentID,
-                                latestReason: "N/A",
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        date: req.body.assignDate, // Get the Assign Date from the form
+                                        assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                        status: "dispatched"
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                            } else {
+                                newOrder = new ORDERS({
+                                    area: area,
+                                    items: itemsArray, // Use the dynamically created items array
+                                    attempt: data.data.attempt,
+                                    history: [{
+                                        statusHistory: "Out for Collection",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                        lastLocation: "Customer",
+                                    }],
+                                    lastAssignedTo: req.body.dispatchers,
+                                    latestLocation: "Customer",
+                                    product: currentProduct,
+                                    assignedTo: req.body.dispatchers,
+                                    senderName: data.data.job_owner,
+                                    totalPrice: 0,
+                                    receiverName: data.data.deliver_to_collect_from,
+                                    trackingLink: data.data.tracking_link,
+                                    currentStatus: "Out for Collection",
+                                    paymentMethod: data.data.payment_mode,
+                                    warehouseEntry: "No",
+                                    warehouseEntryDateTime: "N/A",
+                                    receiverAddress: data.data.address,
+                                    receiverPhoneNumber: data.data.phone_number,
+                                    doTrackingNumber: consignmentID,
+                                    remarks: data.data.remarks,
+                                    latestReason: "N/A",
+                                    lastUpdateDateTime: moment().format(),
+                                    creationDate: data.data.created_at,
+                                    jobDate: req.body.assignDate,
+                                    flightDate: data.data.job_received_date,
+                                    mawbNo: data.data.run_number,
+                                    lastUpdatedBy: req.user.name,
+                                    parcelWeight: data.data.weight,
+                                    receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
+                                });
+
+                                mongoDBrun = 1;
+
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        date: req.body.assignDate, // Get the Assign Date from the form
+                                        assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                        status: "dispatched"
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + ". ";
+                            }
+
+                            appliedStatus = "Out for Collection"
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
+                        } else {
+                            if ((data.data.attempt > 1) && (product == 'TEMU')) {
+                                maxAttempt = 2;
+                                completeRun = 1;
+                            } else {
+                                if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                                    update = {
+                                        currentStatus: "Out for Collection",
+                                        lastUpdateDateTime: moment().format(),
+                                        instructions: data.data.remarks,
+                                        assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        attempt: data.data.attempt,
+                                        jobDate: req.body.assignDate,
+                                        latestLocation: "Customer",
+                                        lastUpdatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        $push: {
+                                            history: {
+                                                statusHistory: "Out for Collection",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                                reason: "N/A",
+                                                lastLocation: "Customer",
+                                            }
+                                        }
+                                    }
+
+                                    mongoDBrun = 2;
+
+                                    var detrackUpdateData = {
+                                        do_number: consignmentID,
+                                        data: {
+                                            date: req.body.assignDate, // Get the Assign Date from the form
+                                            assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                            status: "dispatched"
+                                        }
+                                    };
+
+                                    portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                                } else {
+                                    update = {
+                                        currentStatus: "Out for Collection",
+                                        lastUpdateDateTime: moment().format(),
+                                        instructions: data.data.remarks,
+                                        assignedTo: req.body.dispatchers,
+                                        attempt: data.data.attempt,
+                                        jobDate: req.body.assignDate,
+                                        latestLocation: "Customer",
+                                        lastUpdatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        $push: {
+                                            history: {
+                                                statusHistory: "Out for Collection",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: req.body.dispatchers,
+                                                reason: "N/A",
+                                                lastLocation: "Customer",
+                                            }
+                                        }
+                                    }
+
+                                    mongoDBrun = 2;
+
+                                    var detrackUpdateData = {
+                                        do_number: consignmentID,
+                                        data: {
+                                            date: req.body.assignDate, // Get the Assign Date from the form
+                                            assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                            status: "dispatched"
+                                        }
+                                    };
+
+                                    portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + ". ";
+                                }
+                            }
+                        }
+                    }
+
+                    if ((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) {
+                        if ((data.data.attempt > 2) && ((product == 'EWE') || (product == 'EWENS'))) {
+                            maxAttempt = 1;
+                            completeRun = 1;
+                        } else {
+                            if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                                update = {
+                                    currentStatus: "Out for Delivery",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    attempt: data.data.attempt,
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Out for Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                            reason: "N/A",
+                                            lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                        }
+                                    }
+                                }
+
+                                mongoDBrun = 2;
+
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        date: req.body.assignDate, // Get the Assign Date from the form
+                                        assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                        status: "dispatched"
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                            } else {
+                                update = {
+                                    currentStatus: "Out for Delivery",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: req.body.dispatchers,
+                                    attempt: data.data.attempt,
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: req.body.dispatchers,
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: req.body.dispatchers,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Out for Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: req.body.dispatchers,
+                                            reason: "N/A",
+                                            lastLocation: req.body.dispatchers,
+                                        }
+                                    }
+                                }
+
+                                mongoDBrun = 2;
+
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        date: req.body.assignDate, // Get the Assign Date from the form
+                                        assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                        status: "dispatched"
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                            }
+
+                            appliedStatus = "Out for Delivery"
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
+                        }
+                    }
+                }
+
+                if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
+                    if (data.data.type == 'Collection') {
+                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                            update = {
                                 lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: "N/A",
-                            });
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                jobDate: req.body.assignDate,
+                                latestLocation: "Customer",
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Collection (Switched Dispatchers)",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "N/A",
+                                        lastLocation: "Customer",
+                                    }
+                                }
+                            }
 
-                            //Have to create new Detrack
+                            mongoDBrun = 2;
 
                             var detrackUpdateData = {
                                 do_number: consignmentID,
                                 data: {
-                                    status: "at_warehouse" // Use the calculated dStatus
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
                                 }
                             };
-                            
-                            DetrackAPIrun = 1;
-                           
 
-                            appliedStatus = "Item in Warehouse"
-                            mongoDBrun = 1;
-                            completeRun = 1;
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: req.body.dispatchers,
+                                jobDate: req.body.assignDate,
+                                latestLocation: "Customer",
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Collection (Switched Dispatchers)",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                        lastLocation: "Customer",
+                                    }
+                                }
+                            }
+
+                            mongoDBrun = 2;
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers
+                                }
+                            };
+
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
                         }
-                    } */
-                }
-
-                ///EWE Control Attempts
-                if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
-                    if ((wmsAttempt > 2) && ((product == 'EWE') || (product == 'EWENS'))) {
-                        maxAttempt = 1;
-                        completeRun = 1;
                     } else {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             update = {
-                                currentStatus: "Out for Delivery",
                                 lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 $push: {
                                     history: {
-                                        statusHistory: "Out for Delivery",
+                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
@@ -9767,26 +9266,22 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched"
                                 }
                             };
 
-                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                         } else {
                             update = {
-                                currentStatus: "Out for Delivery",
                                 lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
                                 assignedTo: req.body.dispatchers,
-                                attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers,
                                 $push: {
                                     history: {
-                                        statusHistory: "Out for Delivery",
+                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers,
@@ -9802,90 +9297,15 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 do_number: consignmentID,
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched"
+                                    assign_to: req.body.dispatchers
                                 }
                             };
 
-                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
                         }
 
-                        appliedStatus = "Out for Delivery"
-
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
                     }
-                }
 
-                if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        update = {
-                            lastUpdateDateTime: moment().format(),
-                            instructions: data.data.remarks,
-                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            jobDate: req.body.assignDate,
-                            attempt: data.data.attempt,
-                            latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            $push: {
-                                history: {
-                                    statusHistory: "Out for Delivery (Switched Dispatchers)",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "N/A",
-                                    lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                }
-                            }
-                        }
-
-                        mongoDBrun = 2;
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                            }
-                        };
-
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
-
-                    } else {
-                        update = {
-                            lastUpdateDateTime: moment().format(),
-                            instructions: data.data.remarks,
-                            assignedTo: req.body.dispatchers,
-                            jobDate: req.body.assignDate,
-                            attempt: data.data.attempt,
-                            latestLocation: req.body.dispatchers,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers,
-                            $push: {
-                                history: {
-                                    statusHistory: "Out for Delivery (Switched Dispatchers)",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers,
-                                    reason: "N/A",
-                                    lastLocation: req.body.dispatchers,
-                                }
-                            }
-                        }
-
-                        mongoDBrun = 2;
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers
-                            }
-                        };
-
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
-                    }
                     appliedStatus = "Swap Dispatchers"
 
                     DetrackAPIrun = 1;
@@ -9894,102 +9314,151 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 if (req.body.statusCode == 'SFJ') {
                     if (data.data.status == 'failed') {
-                        if (data.data.reason == "Unattempted Delivery") {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
+                        if (data.data.type == 'Collection') {
+                            if (data.data.reason == "Unattempted Collection") {
+                                update = {
+                                    currentStatus: "Failed Collection",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt,
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Failed Collection",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: "Customer",
+                                        }
                                     }
                                 }
+
+                            } else {
+                                update = {
+                                    currentStatus: "Failed Collection",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt + 1,
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Failed Collection",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: "Customer",
+                                        }
+                                    }
+                                }
+
+                                var detrackUpdateDataAttempt = {
+                                    data: {
+                                        do_number: consignmentID,
+                                    }
+                                };
+
+                                DetrackAPIrun = 3;
                             }
 
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "at_warehouse" // Use the calculated dStatus
+                            appliedStatus = "Failed Collection"
+                            portalUpdate = "Portal updated to Failed Collection. ";
+                        } else {
+                            if (data.data.reason == "Unattempted Delivery") {
+                                update = {
+                                    currentStatus: "Return to Warehouse",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt,
+                                    latestLocation: req.body.warehouse,
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: data.data.assign_to,
+                                        },
+                                        history: {
+                                            statusHistory: "Return to Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: "N/A",
+                                            reason: "N/A",
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    }
                                 }
-                            };
 
-                            DetrackAPIrun = 1;
-                            appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        status: "at_warehouse" // Use the calculated dStatus
+                                    }
+                                };
 
-                            if ((product == "BB") || (product == "FCAS")) {
+                                DetrackAPIrun = 1;
+                                appliedStatus = "Failed Delivery, Return to Warehouse"
+
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             } else {
-                                portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                                if (data.data.phone_number != null) {
-                                    waOrderFailedDelivery = 1;
-                                }
-                            }
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
-                                        lastLocation: req.body.warehouse,
+                                update = {
+                                    currentStatus: "Return to Warehouse",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt + 1,
+                                    latestLocation: req.body.warehouse,
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: data.data.assign_to,
+                                        },
+                                        history: {
+                                            statusHistory: "Return to Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: "N/A",
+                                            reason: "N/A",
+                                            lastLocation: req.body.warehouse,
+                                        }
                                     }
                                 }
-                            }
 
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "at_warehouse" // Use the calculated dStatus
-                                }
-                            };
-
-                            var detrackUpdateDataAttempt = {
-                                data: {
+                                var detrackUpdateData = {
                                     do_number: consignmentID,
-                                }
-                            };
+                                    data: {
+                                        status: "at_warehouse" // Use the calculated dStatus
+                                    }
+                                };
 
-                            DetrackAPIrun = 2;
-                            appliedStatus = "Failed Delivery, Return to Warehouse/Completed"
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                                var detrackUpdateDataAttempt = {
+                                    data: {
+                                        do_number: consignmentID,
+                                    }
+                                };
+
+                                DetrackAPIrun = 2;
+                                appliedStatus = "Failed Delivery, Return to Warehouse"
+                                portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                            }
                         }
 
                         mongoDBrun = 2;
@@ -9997,55 +9466,15 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
 
                     if (data.data.status == 'completed') {
-                        if (!existingOrder) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Completed",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
-                                    reason: "N/A",
-                                    lastLocation: "Customer",
-                                }],
-                                lastAssignedTo: data.data.assign_to,
-                                latestLocation: "Customer",
-                                product: currentProduct,
-                                assignedTo: data.data.assign_to,
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                deliveryType: data.data.job_type,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Completed",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: data.data.date,
-                                lastUpdatedBy: req.user.name,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
+                        if (data.data.type == 'Collection') {
                             update = {
                                 currentStatus: "Completed",
                                 lastUpdateDateTime: moment().format(),
-                                attempt: data.data.attempt,
-                                latestLocation: "Customer",
+                                latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: data.data.assign_to,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
                                 $push: {
                                     history: {
                                         statusHistory: "Completed",
@@ -10053,188 +9482,102 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
                                         reason: "N/A",
-                                        lastLocation: "Customer",
+                                        lastLocation: req.body.warehouse,
                                     }
                                 }
                             }
 
                             mongoDBrun = 2;
+                        } else {
+                            if (!existingOrder) {
+                                newOrder = new ORDERS({
+                                    area: data.data.zone,
+                                    items: [{
+                                        quantity: data.data.items[0].quantity,
+                                        description: data.data.items[0].description,
+                                        totalItemPrice: data.data.total_price
+                                    }],
+                                    attempt: data.data.attempt,
+                                    history: [{
+                                        statusHistory: "Completed",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: data.data.assign_to,
+                                        reason: "N/A",
+                                        lastLocation: "Customer",
+                                    }],
+                                    lastAssignedTo: data.data.assign_to,
+                                    latestLocation: "Customer",
+                                    product: currentProduct,
+                                    assignedTo: data.data.assign_to,
+                                    senderName: data.data.job_owner,
+                                    totalPrice: data.data.total_price,
+                                    receiverName: data.data.deliver_to_collect_from,
+                                    trackingLink: data.data.tracking_link,
+                                    currentStatus: "Completed",
+                                    paymentMethod: data.data.payment_mode,
+                                    warehouseEntry: "Yes",
+                                    warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                                    receiverAddress: data.data.address,
+                                    receiverPhoneNumber: data.data.phone_number,
+                                    doTrackingNumber: consignmentID,
+                                    remarks: data.data.remarks,
+                                    lastUpdateDateTime: moment().format(),
+                                    creationDate: data.data.created_at,
+                                    jobDate: data.data.date,
+                                    lastUpdatedBy: req.user.name,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
+                                });
+
+                                mongoDBrun = 1;
+                            } else {
+                                update = {
+                                    currentStatus: "Completed",
+                                    lastUpdateDateTime: moment().format(),
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Completed",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: "N/A",
+                                            lastLocation: "Customer",
+                                        }
+                                    }
+                                }
+
+                                mongoDBrun = 2;
+                            }
                         }
 
-                        appliedStatus = "Failed/Completed"
+                        appliedStatus = "Completed"
                         completeRun = 1;
 
-                        if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
-                            portalUpdate = "Portal status updated to Completed. ";
-                        } else {
-                            portalUpdate = "Portal status updated to Completed. ";
-                            if (data.data.phone_number != null) {
-                                waOrderCompletedFeedback = 1;
-                            }
-                        }
+                        portalUpdate = "Portal status updated to Completed. ";
                     }
                 }
 
-                if ((req.body.statusCode == 'FJ') && (data.data.status == 'failed')) {
-                    if (data.data.reason == "Unattempted Delivery") {
+                if (req.body.statusCode == 'CSSC') {
+                    if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (data.data.status == 'failed'))) {
                         update = {
-                            currentStatus: "Return to Warehouse",
+                            currentStatus: "Drop Off",
                             lastUpdateDateTime: moment().format(),
                             instructions: data.data.remarks,
-                            assignedTo: "N/A",
-                            latestReason: data.data.reason,
-                            attempt: data.data.attempt,
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: data.data.assign_to,
-                            $push: {
-                                history: {
-                                    statusHistory: "Failed Delivery",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
-                                    reason: data.data.reason,
-                                    lastLocation: data.data.assign_to,
-                                },
-                                history: {
-                                    statusHistory: "Return to Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
-                                    lastLocation: req.body.warehouse,
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse" // Use the calculated dStatus
-                            }
-                        };
-
-                        DetrackAPIrun = 1;
-                        appliedStatus = "Failed Delivery, Return to Warehouse"
-
-                        if ((product == "BB") || (product == "FCAS")) {
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                        } else {
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                            if (data.data.phone_number != null) {
-                                waOrderFailedDelivery = 1;
-                            }
-                        }
-                    } else {
-                        update = {
-                            currentStatus: "Return to Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            instructions: data.data.remarks,
-                            assignedTo: "N/A",
-                            latestReason: data.data.reason,
-                            attempt: data.data.attempt,
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: data.data.assign_to,
-                            $push: {
-                                history: {
-                                    statusHistory: "Failed Delivery",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
-                                    reason: data.data.reason,
-                                    lastLocation: data.data.assign_to,
-                                },
-                                history: {
-                                    statusHistory: "Return to Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
-                                    lastLocation: req.body.warehouse,
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse" // Use the calculated dStatus
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
-
-                        DetrackAPIrun = 2;
-                        appliedStatus = "Failed Delivery, Return to Warehouse"
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-                    }
-
-                    mongoDBrun = 2;
-                    completeRun = 1;
-                }
-
-                if ((req.body.statusCode == 'SJ') && (data.data.status == 'completed')) {
-                    if (!existingOrder) {
-                        newOrder = new ORDERS({
-                            area: data.data.zone,
-                            items: [{
-                                quantity: data.data.items[0].quantity,
-                                description: data.data.items[0].description,
-                                totalItemPrice: data.data.total_price
-                            }],
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "Completed",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                reason: "N/A",
-                                lastLocation: "Customer",
-                            }],
-                            lastAssignedTo: data.data.assign_to,
-                            latestLocation: "Customer",
-                            product: currentProduct,
-                            assignedTo: data.data.assign_to,
-                            senderName: data.data.job_owner,
-                            totalPrice: data.data.total_price,
-                            deliveryType: data.data.job_type,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Completed",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: data.data.phone_number,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            jobDate: data.data.date,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                        });
-
-                        mongoDBrun = 1;
-                    } else {
-                        update = {
-                            currentStatus: "Completed",
-                            lastUpdateDateTime: moment().format(),
-                            attempt: data.data.attempt,
+                            assignedTo: "Selfcollect",
+                            jobDate: req.body.assignDate,
                             latestLocation: "Customer",
                             lastUpdatedBy: req.user.name,
-                            lastAssignedTo: data.data.assign_to,
+                            lastAssignedTo: "Selfcollect",
                             $push: {
                                 history: {
-                                    statusHistory: "Completed",
+                                    statusHistory: "Drop Off",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
+                                    lastAssignedTo: "Selfcollect",
                                     reason: "N/A",
                                     lastLocation: "Customer",
                                 }
@@ -10242,60 +9585,62 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
 
                         mongoDBrun = 2;
-                    }
 
-                    appliedStatus = "Completed"
-                    completeRun = 1;
-
-                    if ((product == "BB") || (product == "FCAS") || (product == "ICARUS")) {
-                        portalUpdate = "Portal status updated to Completed. ";
-                    } else {
-                        portalUpdate = "Portal status updated to Completed. ";
-                        if (data.data.phone_number != null) {
-                            waOrderCompletedFeedback = 1;
-                        }
-                    }
-                }
-
-                if ((req.body.statusCode == 'CSSC') && (data.data.status == 'at_warehouse')) {
-                    update = {
-                        currentStatus: "Self Collect",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: data.data.remarks,
-                        assignedTo: "Selfcollect",
-                        attempt: data.data.attempt,
-                        jobDate: req.body.assignDate,
-                        latestLocation: "Go Rush Office",
-                        lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "Selfcollect",
-                        $push: {
-                            history: {
-                                statusHistory: "Self Collect",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastAssignedTo: "Selfcollect",
-                                reason: "N/A",
-                                lastLocation: "Go Rush Office",
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                status: "dispatched" // Use the calculated dStatus
                             }
+                        };
+
+                        portalUpdate = "Portal and Detrack status updated for Drop Off. ";
+                        appliedStatus = "Drop Off"
+
+                        DetrackAPIrun = 1;
+                        completeRun = 1;
+                    } else {
+                        if (data.data.status == 'at_warehouse') {
+                            update = {
+                                currentStatus: "Self Collect",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: "Selfcollect",
+                                jobDate: req.body.assignDate,
+                                latestLocation: "Go Rush Office",
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: "Selfcollect",
+                                $push: {
+                                    history: {
+                                        statusHistory: "Self Collect",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: "Selfcollect",
+                                        reason: "N/A",
+                                        lastLocation: "Go Rush Office",
+                                    }
+                                }
+                            }
+
+                            mongoDBrun = 2;
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                    status: "dispatched" // Use the calculated dStatus
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack status updated for Self Collect. ";
+                            appliedStatus = "Self Collect"
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
                         }
                     }
-
-                    mongoDBrun = 2;
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                            status: "dispatched" // Use the calculated dStatus
-                        }
-                    };
-
-                    portalUpdate = "Portal and Detrack status updated for Self Collect. ";
-                    appliedStatus = "Self Collect"
-
-                    DetrackAPIrun = 1;
-                    completeRun = 1;
                 }
 
                 if ((req.body.statusCode == 'CD') && (data.data.status != 'completed')) {
@@ -10307,7 +9652,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         instructions: data.data.remarks,
                         assignedTo: "N/A",
                         latestReason: detrackReason,
-                        attempt: data.data.attempt,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
                         lastAssignedTo: "N/A",
@@ -10348,7 +9692,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         instructions: data.data.remarks,
                         assignedTo: "N/A",
                         latestReason: detrackReason,
-                        attempt: data.data.attempt,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
                         lastAssignedTo: "N/A",
@@ -10380,223 +9723,41 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
-            if (req.body.statusCode == 'FA') {
-                /* update = {
-                    currentStatus: "Return to Warehouse",
-                    lastUpdateDateTime: moment().format(),
-                    instructions: "Failed delivery due to Safwan MC",
-                    assignedTo: "N/A",
-                    latestReason: "Failed delivery due to Safwan MC",
-                    attempt: data.data.attempt,
-                    $push: {
-                        history: {
-                            statusHistory: "Failed Delivery",
-                            dateUpdated: moment().format(),
-                            updatedBy:  req.user.name,
-                            lastAssignedTo: data.data.assign_to,
-                            reason: "Failed delivery due to Safwan MC",
-                        },
-                        history: {
-                            statusHistory: "Return to Warehouse",
-                            dateUpdated: moment().format(),
-                            updatedBy:  req.user.name,
-                            lastAssignedTo: "N/A",
-                            reason: "N/A",
-                        }
-                    }
-                }
-
-                var detrackUpdateData = {
-                    do_number: consignmentID,
-                    data: {
-                        status: "at_warehouse" // Use the calculated dStatus
-                    }
-                };
-
-                if (data.data.payment_mode == null) {
-                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
-                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "NON COD",
-                                    total_price: 0,
-                                    payment_amount: 0
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "NON COD",
-                                totalPrice: 0
-                            }
-
-                        } else {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "COD",
-                                    total_price: data.data.payment_amount,
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "COD",
-                                totalPrice: data.data.payment_amount
-                            }
-                        }
-                    } else {
-                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "BT",
-                                    payment_amount: 0
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "BT",
-                            }
-                        } else {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "COD"
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "COD",
-                            }
-                        }
-                    }
-
-                } else if (((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("CASH")))
-                    || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("Cash")))
-                    || ((data.data.payment_mode.includes("BT")) && (data.data.payment_mode.includes("COD")))) {
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            payment_mode: "COD, BT",
-                        }
-                    };
-
-                    update = {
-                        paymentMethod: "COD, BT",
-                    }
-
-                } else if (data.data.payment_mode.includes("Bill")) {
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            payment_mode: "BT",
-                        }
-                    };
-
-                    update = {
-                        paymentMethod: "BT",
-                    }
-
-                } else if ((data.data.payment_mode == "Cash") || (data.data.payment_mode == "CASH") || (data.data.payment_mode == "COD")) {
-                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
-                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "NON COD",
-                                    total_price: 0,
-                                    payment_amount: 0
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "NON COD",
-                                totalPrice: 0
-                            }
-                        } else {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "COD",
-                                    total_price: data.data.payment_amount,
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "COD",
-                                totalPrice: data.data.payment_amount
-                            }
-                        }
-                    }
-
-                } else if (data.data.payment_mode == "BT") {
-                    if ((data.data.total_price == null) || (data.data.total_price == 0)) {
-                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "NON COD",
-                                    total_price: 0,
-                                    payment_amount: 0
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "NON COD",
-                                totalPrice: 0
-                            }
-                        } else {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "COD",
-                                    total_price: data.data.payment_amount,
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "COD",
-                                totalPrice: data.data.payment_amount
-                            }
-                        }
-                    } else {
-                        if ((data.data.payment_amount == null) || (data.data.payment_amount == 0)) {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "BT",
-                                    payment_amount: 0
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "BT",
-                            }
-                        } else {
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    payment_mode: "COD"
-                                }
-                            };
-
-                            update = {
-                                paymentMethod: "COD",
-                            }
-                        }
-                    }
-                } */
+            if ((req.body.statusCode == 47) && (data.data.status == 'cancelled')) {
+                portalUpdate = "Portal and Detrack status updated to Disposed. ";
 
                 update = {
-                    receiverPostalCode: postalCode,
+                    currentStatus: "Disposed",
+                    lastUpdateDateTime: moment().format(),
+                    assignedTo: "N/A",
+                    latestReason: detrackReason,
+                    latestLocation: "Disposed",
+                    lastUpdatedBy: req.user.name,
+                    lastAssignedTo: "N/A",
+                    $push: {
+                        history: {
+                            statusHistory: "Disposed",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            lastAssignedTo: "N/A",
+                            reason: detrackReason,
+                            lastLocation: "Disposed",
+                        }
+                    }
                 }
 
                 mongoDBrun = 2;
 
-                portalUpdate = "Portal updated. Add Postal Code. ";
-                appliedStatus = "Postal Code Fix"
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "disposed",
+                    }
+                };
 
+                appliedStatus = "Dispose Parcel"
+
+                DetrackAPIrun = 1;
                 completeRun = 1;
             }
 
@@ -10881,7 +10042,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         lastUpdateDateTime: moment().format(),
                         latestReason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
                         lastUpdatedBy: req.user.name,
-                        receiverName: req.body.phoneNum,
+                        receiverName: req.body.name,
                         $push: {
                             history: {
                                 dateUpdated: moment().format(),
@@ -10915,6 +10076,53 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 portalUpdate = "Portal and Detrack Customer Name updated. ";
                 appliedStatus = "Customer Name Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UD') {
+                if (data.data.date != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                        lastUpdatedBy: req.user.name,
+                        jobDate: req.body.assignDate,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Job Date updated to " + req.body.assignDate + ".",
+                        lastUpdatedBy: req.user.name,
+                        jobDate: req.body.assignDate,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Job Date updated to " + req.body.assignDate + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        date: req.body.assignDate,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack Job Date updated. ";
+                appliedStatus = "Job Date Update"
 
                 DetrackAPIrun = 1;
                 mongoDBrun = 2;
@@ -10994,6 +10202,25 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                     } else {
                         console.error(`Error increase attempt by 1 for Tracking Number: ${consignmentID}`);
+                    }
+                });
+            }
+
+            if (DetrackAPIrun == 3) {
+                // Make the API request to add attempt in Detrack
+                request({
+                    method: 'POST',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(detrackUpdateDataAttempt)
+                }, function (error, response, body) {
+                    if (!error && response.statusCode === 200) {
+                        console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
+                    } else {
+                        console.error(`Error increasing attempt by 1 for Tracking Number: ${consignmentID}`);
                     }
                 });
             }
@@ -11876,6 +11103,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     status: `Error: Tracking Number have reached the max attempts. Please check with manager for next decision.`,
                 });
             }
+            else if ((ceCheck == 0) && (maxAttempt == 2)) {
+                processingResults.push({
+                    consignmentID,
+                    status: `Error: Tracking Number have reached the max attempts for collection. Only drop off will be accepted.`,
+                });
+            }
             else {
                 processingResults.push({
                     consignmentID,
@@ -12177,36 +11410,6 @@ orderWatch.on('change', change => {
                         }
                     }
 
-                    if (result[0].product == "shein") {
-                        let suffix = "GR6"
-                        let prefix = "SH"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
                     let update = { ['doTrackingNumber']: tracker, ['sequence']: sequence }
                     let option = { upsert: false, new: false }
 
@@ -12218,7 +11421,7 @@ orderWatch.on('change', change => {
                             }
 
                             if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                && (result[0].product != "ewens") && (result[0].product != "shein")) {
+                                && (result[0].product != "ewens") && (result[0].product != "temu")) {
                                 foundOrder.doTrackingNumber = tracker;
                                 foundOrder.sequence = sequence;
                             }
@@ -12228,7 +11431,7 @@ orderWatch.on('change', change => {
                         .then((updatedOrder) => {
                             if (updatedOrder) {
                                 if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                    && (result[0].product != "ewens") && (result[0].product != "shein")) {
+                                    && (result[0].product != "ewens") && (result[0].product != "temu")) {
                                     let a = whatsappName;
                                     let b = tracker;
 
