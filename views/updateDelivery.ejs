@@ -343,7 +343,7 @@
                             <option value="AJ">2. Cancelled -> Reactivate Job</option>
                             <option value="47">3. Dispose Job</option>
                             <!-- <option value="AJN">|FMX & EWE/SHEIN| Cancelled -> Reactivate Job with new tracking number</option> -->
-                            <!-- <option value="FA">|All| Fix Attempt</option> -->
+                            <!-- <option value="FA">|All| Fix Job</option> -->
                         </optgroup>
                     </select>
                 </div>
@@ -483,25 +483,39 @@
 
         <div class="mt-4 p-3 delivery-flow-box"
             style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
-            <h5>Standard Delivery Flow:</h5>
-            <p><strong>Success:</strong> At Warehouse &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent
-                App)</p>
-            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Return To
-                Warehouse</p>
-            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on
-                Agent App)
+            <h5>Delivery Flow:</h5>
+            <p><strong>Success:</strong> Item in Warehouse (By CS Team on Portal) &rarr; Out for Delivery (By CS Team on
+                Portal) &rarr; Completed / Clear Job (By Dispatcher on Agent
+                App and CS Team on Portal)</p>
+            <p><strong>Fail:</strong> Out for Delivery (By CS Team on Portal) &rarr; Failed (By Dispatcher on Agent App)
+                &rarr; Return To
+                Warehouse / Clear Job (By CS Team on Portal)</p>
+            <p><strong>Self Collect:</strong> At Warehouse (By CS Team on Portal) &rarr; Self Collect (By CS
+                Team on Portal) &rarr; Completed / Clear Job (By CS Team on
+                Agent App and Portal)
+            </p>
+        </div>
+        <div class="mt-4 p-3 delivery-flow-box"
+            style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
+            <h5>Collection Flow:</h5>
+            <p><strong>Success:</strong> Out for Collection (By CS Team on Portal) &rarr; Completed / Clear Job (By
+                Dispatcher on Agent
+                App and CS Team on Portal)</p>
+            <p><strong>Fail:</strong> Out for Collection (By CS Team on Portal) &rarr; Failed (By Dispatcher on Agent App)
+                &rarr; Clear Job (By CS Team on Portal)</p>
+            <p><strong>Drop Off:</strong> Drop Off (By CS Team on Portal) &rarr; Completed / Clear Job (By CS Team
+                on
+                Agent App and Portal)
             </p>
         </div>
         <div class="mt-4 p-3 delivery-flow-box"
             style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
             <h5>FMX Delivery Flow:</h5>
-            <p><strong>Success:</strong> Custom Clearing in Progress &rarr; Custom Clearing Release &rarr; At Warehouse
-                &rarr; Out For Delivery &rarr; Completed (By Dispatcher on Agent App and CS Team on Update Delivery
-                Page)</p>
-            <p><strong>Fail:</strong> Out For Delivery &rarr; Failed (By Dispatcher on Agent App) &rarr; Failed
-                Delivery. Return to Warehouse</p>
-            <p><strong>Self Collect:</strong> At Warehouse &rarr; Assign to Self Collect &rarr; Completed (By CS Team on
-                Agent App & Update Delivery Page)
+            <p><strong>Success:</strong> Custom Clearing in Progress (By CS Team on Portal) &rarr; Custom Clearing Release (By CS Team on Portal) &rarr; Item In Warehouse (By CS Team on Portal)
+                &rarr; Out For Delivery (By CS Team on Portal) &rarr; Completed / Clear Job (By Dispatcher on Agent App and CS Team on Portal)</p>
+            <p><strong>Fail:</strong> Out For Delivery (By CS Team on Portal) &rarr; Failed (By Dispatcher on Agent App) &rarr; Return to Warehouse / Clear Job (By CS Team on Portal)</p>
+            <p><strong>Self Collect:</strong> At Warehouse (By CS Team on Portal) &rarr; Assign to Self Collect (By CS Team on Portal) &rarr; Completed / Clear Job (By CS Team on
+                Agent App & Portal)
             </p>
         </div>
 
