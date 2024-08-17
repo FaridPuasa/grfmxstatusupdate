@@ -171,6 +171,7 @@ const FMXPOD = require('./models/FMXPOD');
 const EWEPOD = require('./models/EWEPOD');
 const EWENSPOD = require('./models/EWENSPOD');
 const CBSLPOD = require('./models/CBSLPOD');
+const TEMUCPOD = require('./models/TEMUCPOD');
 const ORDERS = require('./models/ORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 
