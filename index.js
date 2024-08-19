@@ -171,7 +171,7 @@ const FMXPOD = require('./models/FMXPOD');
 const EWEPOD = require('./models/EWEPOD');
 const EWENSPOD = require('./models/EWENSPOD');
 const CBSLPOD = require('./models/CBSLPOD');
-const TEMUCPOD = require('./models/TEMUCPOD');
+const TEMUPOC = require('./models/TEMUPOC');
 const ORDERS = require('./models/ORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 
@@ -3739,6 +3739,32 @@ app.get('/listofEwePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
+app.get('/listofTemuPoc', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await TEMUPOC.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofTemuPoc', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch TEMU POC data');
+    }
+});
+
 app.get('/listofEweNSPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -3874,6 +3900,24 @@ app.get('/podeweDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
 
         // Render the podDetail.ejs template with the HTML content
         res.render('podeweDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podtemuDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await TEMUPOC.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POC not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('poctemuDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -4081,6 +4125,26 @@ app.get('/editEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelive
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editTemuPoc/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    TEMUPOC.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POC not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editTemuPoc.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POC data');
+        });
+});
+
+// Route to render the edit page for a specific POD
 app.get('/editEweNSPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
@@ -4159,6 +4223,27 @@ app.post('/updateEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDel
         .catch((err) => {
             console.error('Error:', err);
             res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateTemuPoc/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    TEMUPOC.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POC not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POC data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POC data');
         });
 });
 
@@ -4294,6 +4379,24 @@ app.get('/deleteEWEPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
     }
 });
 
+app.get('/deleteTEMUPoc/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await TEMUPOC.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofTemuPoc'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('TEMU POC not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete TEMU POC');
+    }
+});
+
 app.get('/deleteEWENSPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -4413,6 +4516,9 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
         case 'CBSL POD':
             PodModel = CBSLPOD;
             break;
+        case 'TEMU POC':
+            PodModel = TEMUPOC;
+            break;
         default:
             return res.status(400).send('Invalid collection');
     }
@@ -4433,11 +4539,11 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
 
     newPod.save()
         .then(() => {
-            res.status(200).send('POD data saved successfully');
+            res.status(200).send('POD / POC data saved successfully');
         })
         .catch((err) => {
             console.error('Error:', err);
-            res.status(500).send('Failed to save POD data');
+            res.status(500).send('Failed to save POD / POC data');
         });
 });
 

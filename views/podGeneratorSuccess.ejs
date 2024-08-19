@@ -389,7 +389,7 @@
             <td colspan="3" rowspan="2" class="logo-cell"><img src="/images/logo.png" alt="Logo"></td>
             <th>Product:</th>
             <td><%= product %></td>
-            <th>POD Date Created:</th>
+            <th>POD / POC Date Created:</th>
             <td colspan="4"><%= podCreatedDate %></td>
             <th>Made By:</th>
             <td colspan="2"><%= podCreatedBy %></td>
@@ -451,10 +451,10 @@
     </table>
 
     <div class="button-container text-center">
-        <button id="saveButton" class="btn btn-success">Save POD</button>
+        <button id="saveButton" class="btn btn-success">Save POD / POC</button>
         <button id="printButton" class="btn btn-primary">Print</button>
         <button id="exportExcelButton" class="btn btn-success">Export Excel</button>
-        <button id="backButton" class="btn btn-primary" onclick="window.location.href = '/podGenerator'">Back to POD
+        <button id="backButton" class="btn btn-primary" onclick="window.location.href = '/podGenerator'">Back to POD / POC
             Generator</button>
     </div>
 
@@ -528,7 +528,7 @@
             });
 
             document.getElementById('saveButton').addEventListener('click', function () {
-                if (confirm('Are you sure you want to save the POD data?')) {
+                if (confirm('Are you sure you want to save the POD / POC data?')) {
                     // User confirmed the save action
 
                     // Clone the HTML content and remove the elements you don't want to save
@@ -575,7 +575,7 @@
                     } else if (product === 'CBSL Delivery') {
                         collectionName = 'CBSL POD';
                     } else if (product === 'TEMU Collection') {
-                        collectionName = 'TEMUC POD';
+                        collectionName = 'TEMU POC';
                     }
 
                     console.log(collectionName)
@@ -610,7 +610,7 @@
                                 document.getElementById('printButton').disabled = false;
                                 alert('POD data saved successfully!');
                             } else {
-                                alert('Failed to save POD data.');
+                                alert('Failed to save POD / POC data.');
                             }
                         })
                         .catch(error => {
