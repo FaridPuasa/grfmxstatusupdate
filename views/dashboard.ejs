@@ -82,14 +82,14 @@
                                         <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
                                         <a class="dropdown-item" href="/addressAreaCheck">Address Area
                                             Checker</a>
-                                        <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                        <a class="dropdown-item" href="/podGenerator">POD / POC Generator</a>
                                         <div class="dropdown-divider"></div> <!-- Divider here -->
-                                        <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out
+                                        <a class="dropdown-item" href="/listofAllOrdersOFD">All Out
                                             for
                                             Delivery</a>
-                                        <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self
+                                        <a class="dropdown-item" href="/listofAllOrdersSC">All Self
                                             Collect</a>
-                                        <a class="dropdown-item bg-blue" href="/listofAllOrdersAW">All
+                                        <a class="dropdown-item" href="/listofAllOrdersAW">All
                                             Warehouse</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
@@ -123,10 +123,9 @@
                                                 ].includes(user.role)) { %>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrders">All</a>
-                                                <a class="dropdown-item bg-yellow"
-                                                    href="/listofpharmacyMOHOrdersOFD">Out for
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersOFD">Out for
                                                     Delivery</a>
-                                                <a class="dropdown-item bg-blue" href="/listofpharmacyMOHOrdersSC">Self
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
@@ -174,10 +173,9 @@
                                                     <% } %>
                                                         <div class="dropdown-header">SHEIN</div>
                                                         <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                                        <a class="dropdown-item bg-yellow"
-                                                            href="/listofEWEOrdersOFD">Out for
+                                                        <a class="dropdown-item" href="/listofEWEOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
+                                                        <a class="dropdown-item" href="/listofEWEOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
@@ -187,11 +185,9 @@
                                                         <!-- Divider here -->
                                                         <div class="dropdown-header">NON SHEIN</div>
                                                         <a class="dropdown-item" href="/listofEWENSOrders">All</a>
-                                                        <a class="dropdown-item bg-yellow"
-                                                            href="/listofEWENSOrdersOFD">Out for
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item bg-blue"
-                                                            href="/listofEWENSOrdersSC">Self
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWENSOrdersAW">Warehouse</a>
@@ -210,9 +206,9 @@
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
                                                 <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                                                <a class="dropdown-item bg-yellow" href="/listofFMXOrdersOFD">Out for
+                                                <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for
                                                     Delivery</a>
-                                                <a class="dropdown-item bg-blue" href="/listofFMXOrdersSC">Self
+                                                <a class="dropdown-item" href="/listofFMXOrdersSC">Self
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
@@ -230,9 +226,9 @@
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="temuListDropdown">
                                                 <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
-                                                <a class="dropdown-item bg-yellow" href="/listofTEMUCOrdersOFC">Out for
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersOFC">Out for
                                                     Collection</a>
-                                                <a class="dropdown-item bg-blue" href="/listofTEMUCOrdersDO">Drop
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersDO">Drop
                                                     Off</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
@@ -248,10 +244,10 @@
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                                 <a class="dropdown-item" href="/listofOrders">All</a>
-                                                <a class="dropdown-item bg-yellow" href="/listofOrdersOFD">Out
+                                                <a class="dropdown-item" href="/listofOrdersOFD">Out
                                                     for
                                                     Delivery</a>
-                                                <a class="dropdown-item bg-blue" href="/listofOrdersSC">Self
+                                                <a class="dropdown-item" href="/listofOrdersSC">Self
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
@@ -452,7 +448,7 @@
                                                                                     <% if (order.ewensTotal) { %><span
                                                                                             class="label label-info">NS:
                                                                                             <%= order.ewensTotal %>
-                                                                                                </span>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -470,7 +466,8 @@
                                                                                         <span
                                                                                             class="label label-info">NS:
                                                                                             <%= order.ewensAtWarehouse
-                                                                                                %></span>
+                                                                                                %>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -485,7 +482,8 @@
                                                                                 <% } %>
                                                                                     <% if (order.ewensK1) { %><span
                                                                                             class="label label-info">NS:
-                                                                                            <%= order.ewensK1 %></span>
+                                                                                            <%= order.ewensK1 %>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -500,7 +498,8 @@
                                                                                 <% } %>
                                                                                     <% if (order.ewensK2) { %><span
                                                                                             class="label label-info">NS:
-                                                                                            <%= order.ewensK2 %></span>
+                                                                                            <%= order.ewensK2 %>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -513,13 +512,14 @@
                                                                             <% if (order.eweOutForDelivery) { %><span
                                                                                     class="label label-info">S: <%=
                                                                                         order.eweOutForDelivery %>
-                                                                                        </span>
+                                                                                </span>
                                                                                 <% } %>
                                                                                     <% if (order.ewensOutForDelivery) {
                                                                                         %><span
                                                                                             class="label label-info">NS:
                                                                                             <%= order.ewensOutForDelivery
-                                                                                                %></span>
+                                                                                                %>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -537,7 +537,8 @@
                                                                                         <span
                                                                                             class="label label-info">NS:
                                                                                             <%= order.ewensSelfCollect
-                                                                                                %></span>
+                                                                                                %>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -555,7 +556,7 @@
                                                                                         <span
                                                                                             class="label label-info">NS:
                                                                                             <%= order.ewensCompleted %>
-                                                                                                </span>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -573,7 +574,7 @@
                                                                                         <span
                                                                                             class="label label-info">NS:
                                                                                             <%= order.ewensCancelled %>
-                                                                                                </span>
+                                                                                        </span>
                                                                                         <% } %>
                                                                         </div>
                                                                         <% } %>
@@ -581,7 +582,7 @@
                                                         </tr>
                                                         <% }); %>
                                                             <!-- Calculate totals -->
-                                                            <% const totalEWE=orders.reduce((acc, order)=> {
+                                                            <% const totalEWE=eweOrders.reduce((acc, order)=> {
                                                                 acc.total += order.total;
                                                                 acc.atWarehouse += order.atWarehouse;
                                                                 acc.k1 += order.k1;
@@ -595,33 +596,64 @@
                                                                 outForDelivery: 0, selfCollect: 0, completed: 0,
                                                                 cancelled: 0 }); %>
                                                                 <!-- Append totals row -->
-                                                                <tr
-                                                                    class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                                <tr class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
                                                                     <td><strong>Total</strong></td>
                                                                     <td></td>
                                                                     <td>
                                                                         <%= totalEWE.total %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweTotal, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensTotal, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.atWarehouse %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweAtWarehouse, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensAtWarehouse, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.k1 %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweK1, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensK1, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.k2 %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweK2, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensK2, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.outForDelivery %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweOutForDelivery, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensOutForDelivery, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.selfCollect %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweSelfCollect, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensSelfCollect, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.completed %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweCompleted, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensCompleted, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                     <td>
                                                                         <%= totalEWE.cancelled %>
+                                                                        <div>
+                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweCancelled, 0) %></span>
+                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensCancelled, 0) %></span>
+                                                                        </div>
                                                                     </td>
                                                                 </tr>
                                                 </tbody>
