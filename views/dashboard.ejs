@@ -80,24 +80,31 @@
                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                     <% } %>
                                         <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area
+                                            Checker</a>
                                         <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                                         <div class="dropdown-divider"></div> <!-- Divider here -->
-                                        <a class="dropdown-item" href="/listofAllOrdersOFD">All Out for
+                                        <a class="dropdown-item bg-yellow" href="/listofAllOrdersOFD">All Out
+                                            for
                                             Delivery</a>
-                                        <a class="dropdown-item" href="/listofAllOrdersSC">All Self Collect</a>
-                                        <a class="dropdown-item" href="/listofAllOrdersAW">All Warehouse</a>
+                                        <a class="dropdown-item bg-blue" href="/listofAllOrdersSC">All Self
+                                            Collect</a>
+                                        <a class="dropdown-item bg-blue" href="/listofAllOrdersAW">All
+                                            Warehouse</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
                                             <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                            <a class="dropdown-item" href="/listofewePod">POD EWE</a>
                                             <a class="dropdown-item" href="/listofldPod">POD LD</a>
                                             <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
                                             <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                                            <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                            <a class="dropdown-item" href="/listofewensPod">POD EWE NON SHEIN</a>
-                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service
+                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border
+                                                Service
                                                 (Limbang)</a>
+                                            <a class="dropdown-item" href="/listofewensPod">POD EWE NON
+                                                SHEIN</a>
+                                            <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
                                             <% } %>
                             </div>
                         </li>
@@ -116,10 +123,10 @@
                                                 ].includes(user.role)) { %>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrders">All</a>
-                                                <a class="dropdown-item"
+                                                <a class="dropdown-item bg-yellow"
                                                     href="/listofpharmacyMOHOrdersOFD">Out for
                                                     Delivery</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
+                                                <a class="dropdown-item bg-blue" href="/listofpharmacyMOHOrdersSC">Self
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
@@ -127,14 +134,20 @@
                                                     href="/listofpharmacyMOHOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH STD</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH EXP</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH IMM</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH TTG</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH KB</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
+                                                    STD</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH
+                                                    EXP</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH
+                                                    IMM</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH
+                                                    TTG</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
+                                                    KB</a>
                                                 <% } %>
                                                     <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                        <div class="dropdown-divider"></div>
+                                                        <!-- Divider here -->
                                                         <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
                                                             Form
                                                             List</a>
@@ -147,26 +160,6 @@
 
                                     <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
                                         %>
-                                        <li class="nav-item dropdown">
-                                            <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
-                                                role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                FMX
-                                            </a>
-                                            <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
-                                                <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                                                <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for
-                                                    Delivery</a>
-                                                <a class="dropdown-item" href="/listofFMXOrdersSC">Self
-                                                    Collect</a>
-                                                <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
-                                                <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofFMXOrdersCD">Cancelled/Disposed</a>
-                                            </div>
-                                        </li>
-
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -181,22 +174,23 @@
                                                     <% } %>
                                                         <div class="dropdown-header">SHEIN</div>
                                                         <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                                        <a class="dropdown-item"
+                                                        <a class="dropdown-item bg-yellow"
                                                             href="/listofEWEOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item" href="/listofEWEOrdersSC">Self
+                                                        <a class="dropdown-item bg-blue" href="/listofEWEOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWEOrdersCompleted">Completed</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                        <div class="dropdown-divider"></div>
+                                                        <!-- Divider here -->
                                                         <div class="dropdown-header">NON SHEIN</div>
                                                         <a class="dropdown-item" href="/listofEWENSOrders">All</a>
-                                                        <a class="dropdown-item"
+                                                        <a class="dropdown-item bg-yellow"
                                                             href="/listofEWENSOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item"
+                                                        <a class="dropdown-item bg-blue"
                                                             href="/listofEWENSOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item"
@@ -209,6 +203,44 @@
                                         </li>
 
                                         <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                FMX
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
+                                                <a class="dropdown-item" href="/listofFMXOrders">All</a>
+                                                <a class="dropdown-item bg-yellow" href="/listofFMXOrdersOFD">Out for
+                                                    Delivery</a>
+                                                <a class="dropdown-item bg-blue" href="/listofFMXOrdersSC">Self
+                                                    Collect</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofFMXOrdersCD">Cancelled/Disposed</a>
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                TEMU
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="temuListDropdown">
+                                                <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
+                                                <a class="dropdown-item bg-yellow" href="/listofTEMUCOrdersOFC">Out for
+                                                    Collection</a>
+                                                <a class="dropdown-item bg-blue" href="/listofTEMUCOrdersDO">Drop
+                                                    Off</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofTEMUCOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
                                                 aria-expanded="false">
@@ -216,9 +248,11 @@
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                                 <a class="dropdown-item" href="/listofOrders">All</a>
-                                                <a class="dropdown-item" href="/listofOrdersOFD">Out for
+                                                <a class="dropdown-item bg-yellow" href="/listofOrdersOFD">Out
+                                                    for
                                                     Delivery</a>
-                                                <a class="dropdown-item" href="/listofOrdersSC">Self Collect</a>
+                                                <a class="dropdown-item bg-blue" href="/listofOrdersSC">Self
+                                                    Collect</a>
                                                 <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
                                                 <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
@@ -284,10 +318,10 @@
                     <div class="btn-group" role="group" aria-label="Basic example">
                         <button id="moh-btn" type="button" class="btn btn-primary active"
                             onclick="showSection('moh')">MOH</button>
-                        <button id="fmx-btn" type="button" class="btn btn-primary"
-                            onclick="showSection('fmx')">FMX</button>
                         <button id="ewe-btn" type="button" class="btn btn-primary"
                             onclick="showSection('ewe')">EWE</button>
+                        <button id="fmx-btn" type="button" class="btn btn-primary"
+                            onclick="showSection('fmx')">FMX</button>
                     </div>
                     <% } %>
 
@@ -380,6 +414,220 @@
 
                                     <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
                                         %>
+                                        <div id="ewe-section" class="content-section mt-4" style="display:none;">
+                                            <h2>EWE Orders</h2>
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>MAWB No.</th>
+                                                        <th>Flight Date</th>
+                                                        <th>Total</th>
+                                                        <th>At Warehouse</th>
+                                                        <th>K1</th>
+                                                        <th>K2</th>
+                                                        <th>Out for Delivery</th>
+                                                        <th>Self Collect</th>
+                                                        <th>Completed</th>
+                                                        <th>Cancelled</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% eweOrders.forEach(function(order) { %>
+                                                        <tr
+                                                            class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                            <td>
+                                                                <%= order.mawbNo %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.flightDate %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.total %>
+                                                                    <% if (order.eweTotal || order.ewensTotal) { %>
+                                                                        <div>
+                                                                            <% if (order.eweTotal) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweTotal %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensTotal) { %><span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensTotal %>
+                                                                                                </span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.atWarehouse %>
+                                                                    <% if (order.eweAtWarehouse ||
+                                                                        order.ewensAtWarehouse) { %>
+                                                                        <div>
+                                                                            <% if (order.eweAtWarehouse) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweAtWarehouse %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensAtWarehouse) { %>
+                                                                                        <span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensAtWarehouse
+                                                                                                %></span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.k1 %>
+                                                                    <% if (order.eweK1 || order.ewensK1) { %>
+                                                                        <div>
+                                                                            <% if (order.eweK1) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweK1 %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensK1) { %><span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensK1 %></span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.k2 %>
+                                                                    <% if (order.eweK2 || order.ewensK2) { %>
+                                                                        <div>
+                                                                            <% if (order.eweK2) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweK2 %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensK2) { %><span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensK2 %></span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.outForDelivery %>
+                                                                    <% if (order.eweOutForDelivery ||
+                                                                        order.ewensOutForDelivery) { %>
+                                                                        <div>
+                                                                            <% if (order.eweOutForDelivery) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweOutForDelivery %>
+                                                                                        </span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensOutForDelivery) {
+                                                                                        %><span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensOutForDelivery
+                                                                                                %></span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.selfCollect %>
+                                                                    <% if (order.eweSelfCollect ||
+                                                                        order.ewensSelfCollect) { %>
+                                                                        <div>
+                                                                            <% if (order.eweSelfCollect) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweSelfCollect %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensSelfCollect) { %>
+                                                                                        <span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensSelfCollect
+                                                                                                %></span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.completed %>
+                                                                    <% if (order.eweCompleted || order.ewensCompleted) {
+                                                                        %>
+                                                                        <div>
+                                                                            <% if (order.eweCompleted) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweCompleted %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensCompleted) { %>
+                                                                                        <span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensCompleted %>
+                                                                                                </span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <%= order.cancelled %>
+                                                                    <% if (order.eweCancelled || order.ewensCancelled) {
+                                                                        %>
+                                                                        <div>
+                                                                            <% if (order.eweCancelled) { %><span
+                                                                                    class="label label-info">S: <%=
+                                                                                        order.eweCancelled %></span>
+                                                                                <% } %>
+                                                                                    <% if (order.ewensCancelled) { %>
+                                                                                        <span
+                                                                                            class="label label-info">NS:
+                                                                                            <%= order.ewensCancelled %>
+                                                                                                </span>
+                                                                                        <% } %>
+                                                                        </div>
+                                                                        <% } %>
+                                                            </td>
+                                                        </tr>
+                                                        <% }); %>
+                                                            <!-- Calculate totals -->
+                                                            <% const totalEWE=orders.reduce((acc, order)=> {
+                                                                acc.total += order.total;
+                                                                acc.atWarehouse += order.atWarehouse;
+                                                                acc.k1 += order.k1;
+                                                                acc.k2 += order.k2;
+                                                                acc.outForDelivery += order.outForDelivery;
+                                                                acc.selfCollect += order.selfCollect;
+                                                                acc.completed += order.completed;
+                                                                acc.cancelled += order.cancelled;
+                                                                return acc;
+                                                                }, { total: 0, atWarehouse: 0, k1: 0, k2: 0,
+                                                                outForDelivery: 0, selfCollect: 0, completed: 0,
+                                                                cancelled: 0 }); %>
+                                                                <!-- Append totals row -->
+                                                                <tr
+                                                                    class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
+                                                                    <td><strong>Total</strong></td>
+                                                                    <td></td>
+                                                                    <td>
+                                                                        <%= totalEWE.total %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.atWarehouse %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.k1 %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.k2 %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.outForDelivery %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.selfCollect %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.completed %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= totalEWE.cancelled %>
+                                                                    </td>
+                                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
                                         <div id="fmx-section" class="content-section mt-4" style="display:none;">
                                             <h2>FMX Orders</h2>
                                             <table class="table">
@@ -455,131 +703,6 @@
                                                                         <%= totalFMX.cancelled %>
                                                                     </td>
                                                                 </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <div id="ewe-section" class="content-section mt-4" style="display:none;">
-                                            <h2>EWE Orders</h2>
-                                            <table class="table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>MAWB No.</th>
-                                                        <th>Flight Date</th>
-                                                        <th>Total</th>
-                                                        <th>At Warehouse</th>
-                                                        <th>K1</th>
-                                                        <th>K2</th>
-                                                        <th>Out for Delivery</th>
-                                                        <th>Self Collect</th>
-                                                        <th>Completed</th>
-                                                        <th>Cancelled</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% eweOrders.forEach(function(order) { %>
-                                                        <tr class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                            <td><%= order.mawbNo %></td>
-                                                            <td><%= order.flightDate %></td>
-                                                            <td>
-                                                                <%= order.total %>
-                                                                <% if (order.eweTotal || order.ewensTotal) { %>
-                                                                    <div>
-                                                                        <% if (order.eweTotal) { %><span class="label label-info">S: <%= order.eweTotal %></span><% } %>
-                                                                        <% if (order.ewensTotal) { %><span class="label label-info">NS: <%= order.ewensTotal %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.atWarehouse %>
-                                                                <% if (order.eweAtWarehouse || order.ewensAtWarehouse) { %>
-                                                                    <div>
-                                                                        <% if (order.eweAtWarehouse) { %><span class="label label-info">S: <%= order.eweAtWarehouse %></span><% } %>
-                                                                        <% if (order.ewensAtWarehouse) { %><span class="label label-info">NS: <%= order.ewensAtWarehouse %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.k1 %>
-                                                                <% if (order.eweK1 || order.ewensK1) { %>
-                                                                    <div>
-                                                                        <% if (order.eweK1) { %><span class="label label-info">S: <%= order.eweK1 %></span><% } %>
-                                                                        <% if (order.ewensK1) { %><span class="label label-info">NS: <%= order.ewensK1 %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.k2 %>
-                                                                <% if (order.eweK2 || order.ewensK2) { %>
-                                                                    <div>
-                                                                        <% if (order.eweK2) { %><span class="label label-info">S: <%= order.eweK2 %></span><% } %>
-                                                                        <% if (order.ewensK2) { %><span class="label label-info">NS: <%= order.ewensK2 %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.outForDelivery %>
-                                                                <% if (order.eweOutForDelivery || order.ewensOutForDelivery) { %>
-                                                                    <div>
-                                                                        <% if (order.eweOutForDelivery) { %><span class="label label-info">S: <%= order.eweOutForDelivery %></span><% } %>
-                                                                        <% if (order.ewensOutForDelivery) { %><span class="label label-info">NS: <%= order.ewensOutForDelivery %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.selfCollect %>
-                                                                <% if (order.eweSelfCollect || order.ewensSelfCollect) { %>
-                                                                    <div>
-                                                                        <% if (order.eweSelfCollect) { %><span class="label label-info">S: <%= order.eweSelfCollect %></span><% } %>
-                                                                        <% if (order.ewensSelfCollect) { %><span class="label label-info">NS: <%= order.ewensSelfCollect %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.completed %>
-                                                                <% if (order.eweCompleted || order.ewensCompleted) { %>
-                                                                    <div>
-                                                                        <% if (order.eweCompleted) { %><span class="label label-info">S: <%= order.eweCompleted %></span><% } %>
-                                                                        <% if (order.ewensCompleted) { %><span class="label label-info">NS: <%= order.ewensCompleted %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.cancelled %>
-                                                                <% if (order.eweCancelled || order.ewensCancelled) { %>
-                                                                    <div>
-                                                                        <% if (order.eweCancelled) { %><span class="label label-info">S: <%= order.eweCancelled %></span><% } %>
-                                                                        <% if (order.ewensCancelled) { %><span class="label label-info">NS: <%= order.ewensCancelled %></span><% } %>
-                                                                    </div>
-                                                                <% } %>
-                                                            </td>
-                                                        </tr>
-                                                    <% }); %>
-                                                    <!-- Calculate totals -->
-                                                    <% const totalEWE = orders.reduce((acc, order) => {
-                                                        acc.total += order.total;
-                                                        acc.atWarehouse += order.atWarehouse;
-                                                        acc.k1 += order.k1;
-                                                        acc.k2 += order.k2;
-                                                        acc.outForDelivery += order.outForDelivery;
-                                                        acc.selfCollect += order.selfCollect;
-                                                        acc.completed += order.completed;
-                                                        acc.cancelled += order.cancelled;
-                                                        return acc;
-                                                    }, { total: 0, atWarehouse: 0, k1: 0, k2: 0, outForDelivery: 0, selfCollect: 0, completed: 0, cancelled: 0 }); %>
-                                                    <!-- Append totals row -->
-                                                    <tr class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                        <td><strong>Total</strong></td>
-                                                        <td></td>
-                                                        <td><%= totalEWE.total %></td>
-                                                        <td><%= totalEWE.atWarehouse %></td>
-                                                        <td><%= totalEWE.k1 %></td>
-                                                        <td><%= totalEWE.k2 %></td>
-                                                        <td><%= totalEWE.outForDelivery %></td>
-                                                        <td><%= totalEWE.selfCollect %></td>
-                                                        <td><%= totalEWE.completed %></td>
-                                                        <td><%= totalEWE.cancelled %></td>
-                                                    </tr>
                                                 </tbody>
                                             </table>
                                         </div>

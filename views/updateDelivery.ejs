@@ -86,15 +86,16 @@
                                                     ].includes(user.role)) { %>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                                     <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                                    <a class="dropdown-item" href="/listofewePod">POD EWE</a>
                                                     <a class="dropdown-item" href="/listofldPod">POD LD</a>
                                                     <a class="dropdown-item" href="/listofgrpPod">POD GRP</a>
                                                     <a class="dropdown-item" href="/listoffmxPod">POD FMX</a>
-                                                    <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                                    <a class="dropdown-item" href="/listofewensPod">POD EWE NON
-                                                        SHEIN</a>
                                                     <a class="dropdown-item" href="/listofcbslPod">POD Cross Border
                                                         Service
                                                         (Limbang)</a>
+                                                    <a class="dropdown-item" href="/listofewensPod">POD EWE NON
+                                                        SHEIN</a>
+                                                    <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
                                                     <% } %>
                                     </div>
                                 </li>
@@ -154,31 +155,9 @@
                                             </div>
                                         </li>
                                         <% } %>
-
+        
                                             <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
                                                 ].includes(user.role)) { %>
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        FMX
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
-                                                        <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                                                        <a class="dropdown-item bg-yellow"
-                                                            href="/listofFMXOrdersOFD">Out for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item bg-blue" href="/listofFMXOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofFMXOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofFMXOrdersCD">Cancelled/Disposed</a>
-                                                    </div>
-                                                </li>
-
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -226,7 +205,47 @@
                                                                     href="/listofEWENSOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-
+        
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        FMX
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
+                                                        <a class="dropdown-item" href="/listofFMXOrders">All</a>
+                                                        <a class="dropdown-item bg-yellow"
+                                                            href="/listofFMXOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item bg-blue" href="/listofFMXOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofFMXOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofFMXOrdersCD">Cancelled/Disposed</a>
+                                                    </div>
+                                                </li>
+        
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        TEMU
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="temuListDropdown">
+                                                        <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
+                                                        <a class="dropdown-item bg-yellow"
+                                                            href="/listofTEMUCOrdersOFC">Out for
+                                                            Collection</a>
+                                                        <a class="dropdown-item bg-blue" href="/listofTEMUCOrdersDO">Drop Off</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUCOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                    </div>
+                                                </li>
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -263,7 +282,7 @@
                                                     </div>
                                                 </li>
                                                 <% } %>
-
+        
                                                     <!-- Add conditional rendering for login/logout buttons -->
                                                     <% if (user) { %>
                                                         <li class="nav-item dropdown">

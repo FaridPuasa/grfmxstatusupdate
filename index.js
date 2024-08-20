@@ -3908,7 +3908,7 @@ app.get('/podeweDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
 });
 
 // Add a new route in your Express application
-app.get('/podtemuDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/poctemuDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await TEMUPOC.findById(req.params.podId);
 
