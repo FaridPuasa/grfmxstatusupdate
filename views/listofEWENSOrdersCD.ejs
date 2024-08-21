@@ -383,7 +383,13 @@
                                 <%= order.area %>
                             </td>
                             <td>
-                                <%= order.items[0].description %>
+                                <% const fullDescription=order.items.map(item=> item.description).join(', '); %>
+                                    <% const shortDescription=fullDescription.length> 50 ? fullDescription.substring(0,
+                                        50) + '...' : fullDescription; %>
+                                        <span class="description" onclick="toggleDescription(this)"
+                                            data-full="<%= fullDescription %>" data-short="<%= shortDescription %>">
+                                            <%= shortDescription %>
+                                        </span>
                             </td>
                             <td>
                                 <%= order.paymentMethod %>
@@ -420,6 +426,19 @@
         });
     </script>
 
+    <script>
+        function toggleDescription(element) {
+            const isShort = element.textContent.endsWith('...');
+            const fullDescription = element.getAttribute('data-full');
+            const shortDescription = element.getAttribute('data-short');
+
+            if (isShort) {
+                element.textContent = fullDescription;
+            } else {
+                element.textContent = shortDescription;
+            }
+        }
+    </script>
 </body>
 
 </html>

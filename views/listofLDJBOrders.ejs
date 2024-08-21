@@ -357,7 +357,7 @@
                                 <%= order.attempt %>
                             </td>
                             <td>
-                                <%= moment(order.warehouseEntryDateTime).format('DD-MM-YYYY') %>
+                                <%= moment(order.warehouseEntryDateTime).isValid() ? moment(order.warehouseEntryDateTime).utcOffset(8).format('DD-MM-YYYY') : "N/A" %>
                             </td>
                             <td>
                                 <% if (order.currentStatus !== "Completed") { %>

@@ -481,7 +481,6 @@
                         <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Item Description</th>
                         <th class="header">Job Type</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
@@ -514,7 +513,7 @@
                                 <%= order.latestReason %>
                             </td>
                             <td>
-                                <%= moment(order.warehouseEntryDateTime).format('DD-MM-YYYY') %>
+                                <%= moment(order.warehouseEntryDateTime).isValid() ? moment(order.warehouseEntryDateTime).utcOffset(8).format('DD-MM-YYYY') : "N/A" %>
                             </td>
                             <td>
                                 <% if (order.warehouseEntry==="No" ) { %>
@@ -542,9 +541,6 @@
                             </td>
                             <td>
                                 <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.items[0].description %>
                             </td>
                             <td>
                                 <%= order.deliveryType %>

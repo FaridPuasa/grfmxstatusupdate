@@ -357,7 +357,7 @@
                                 <%= order.latestReason %>
                             </td>
                             <td>
-                                <%= order.warehouseEntryDateTime %>
+                                <%= moment(order.warehouseEntryDateTime).isValid() ? moment(order.warehouseEntryDateTime).utcOffset(8).format('DD-MM-YYYY') : "N/A" %>
                             </td>
                             <td>
                                 <% if (order.currentStatus !=="Completed" ) { %>

@@ -325,7 +325,7 @@
                         <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Item Description</th> 
+                        <th class="header">Item Description</th>
                     </tr>
                 </thead>
 
@@ -373,7 +373,13 @@
                                 <%= order.area %>
                             </td>
                             <td>
-                                <%= order.items.map(item => item.description).join(', ') %>
+                                <% const fullDescription=order.items.map(item=> item.description).join(', '); %>
+                                    <% const shortDescription=fullDescription.length> 50 ? fullDescription.substring(0,
+                                        50) + '...' : fullDescription; %>
+                                        <span class="description" onclick="toggleDescription(this)"
+                                            data-full="<%= fullDescription %>" data-short="<%= shortDescription %>">
+                                            <%= shortDescription %>
+                                        </span>
                             </td>
                         </tr>
                         <% }); %>
@@ -402,6 +408,20 @@
                 ]
             });
         });
+    </script>
+
+    <script>
+        function toggleDescription(element) {
+            const isShort = element.textContent.endsWith('...');
+            const fullDescription = element.getAttribute('data-full');
+            const shortDescription = element.getAttribute('data-short');
+
+            if (isShort) {
+                element.textContent = fullDescription;
+            } else {
+                element.textContent = shortDescription;
+            }
+        }
     </script>
 
 </body>
