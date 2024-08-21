@@ -381,7 +381,7 @@
                                 <%= order.area %>
                             </td>
                             <td>
-                                <%= order.items[0].description %>
+                                <%= order.items.map(item => item.description).join(', ') %>
                             </td>
                         </tr>
                         <% }); %>

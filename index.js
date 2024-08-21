@@ -5269,22 +5269,36 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Clear Job"
             }
 
-            if ((req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD') || (req.body.statusCode == 'NC')
-                || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47) || (req.body.statusCode == 'SFJ')
-                || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP') || (req.body.statusCode == 'UD')
-                || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN') || (req.body.statusCode == 'URN')) {
-                filter = { doTrackingNumber: consignmentID };
+            if ((req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
+                || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
+                || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
+                || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN') || (req.body.statusCode == 'URN')) {
 
+                filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
                 existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
             }
 
-            if (req.body.statusCode == 12) {
-                if ((product == 'CBSL')) {
-                    filter = { doTrackingNumber: data.data.tracking_number };
+            if (req.body.statusCode == 'CD') {
+                if ((product == 'CBSL') || (product == 'GRP')) {
+                    if (data.data.status == 'info_recv') {
+                        filter = { doTrackingNumber: data.data.tracking_number };
+                        // Determine if there's an existing document in MongoDB
+                        existingOrder = await ORDERS.findOne({ doTrackingNumber: data.data.tracking_number });
+                    } else {
+                        filter = { doTrackingNumber: consignmentID };
+                        // Determine if there's an existing document in MongoDB
+                        existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+                    }
+                } else {
+                    filter = { doTrackingNumber: consignmentID };
                     // Determine if there's an existing document in MongoDB
-                    existingOrder = await ORDERS.findOne({ doTrackingNumber: data.data.tracking_number });
-                } else if ((product == 'GRP')) {
+                    existingOrder = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+                }
+            }
+
+            if (req.body.statusCode == 12) {
+                if ((product == 'CBSL') || (product == 'GRP')) {
                     filter = { doTrackingNumber: data.data.tracking_number };
                     // Determine if there's an existing document in MongoDB
                     existingOrder = await ORDERS.findOne({ doTrackingNumber: data.data.tracking_number });
@@ -10405,18 +10419,26 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
 
-                    mongoDBrun = 2
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "cancelled",
-                        }
-                    };
+                    if ((product == 'CBSL') && (data.data.status == 'info_recv')) {
+                        var detrackUpdateData = {
+                            do_number: data.data.tracking_number,
+                            data: {
+                                status: "cancelled",
+                            }
+                        };
+                    } else {
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "cancelled",
+                            }
+                        };
+                    }
 
                     portalUpdate = "Portal and Detrack status updated to Cancelled. ";
                     appliedStatus = "Cancelled"
 
+                    mongoDBrun = 2
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
