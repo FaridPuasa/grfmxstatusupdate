@@ -6548,178 +6548,68 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     /* } */
                 }
 
-                if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
+                if (req.body.statusCode == 'SD') {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Out for Delivery (Switched Dispatchers)",
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                            jobDate: req.body.assignDate,
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                            $push: {
+                                history: {
+                                    statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "N/A",
-                                    lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                }],
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                product: "fmx",
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Out for Delivery",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Out for Delivery",
-                                fmxMilestoneStatusCode: "35",
-                                latestReason: "N/A",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: req.body.assignDate,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                jobDate: req.body.assignDate,
-                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "N/A",
-                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                    }
+                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 }
                             }
-
-                            mongoDBrun = 2;
                         }
+
+                        mongoDBrun = 2;
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                job_type: "Delivery"
+                                instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                             }
                         };
 
                         portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ". ";
 
                     } else {
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: data.data.zone,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Out for Delivery (Switched Dispatchers)",
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                            assignedTo: req.body.dispatchers,
+                            jobDate: req.body.assignDate,
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: req.body.dispatchers,
+                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                            $push: {
+                                history: {
+                                    statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "N/A",
-                                    lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                }],
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                product: "fmx",
-                                assignedTo: req.body.dispatchers,
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                parcelWeight: data.data.weight,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Out for Delivery",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                cargoPrice: data.data.insurance_price,
-                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                fmxMilestoneStatus: "Out for Delivery",
-                                fmxMilestoneStatusCode: "35",
-                                latestReason: "N/A",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: req.body.assignDate,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                lastUpdateDateTime: moment().format(),
-                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                assignedTo: req.body.dispatchers,
-                                jobDate: req.body.assignDate,
-                                latestLocation: req.body.dispatchers,
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers,
-                                        reason: "N/A",
-                                        lastLocation: req.body.dispatchers,
-                                    }
+                                    lastAssignedTo: req.body.dispatchers,
+                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 }
                             }
-
-                            mongoDBrun = 2;
                         }
+
+                        mongoDBrun = 2;
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                instructions: "FMX Milestone ID 35. Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                job_type: "Delivery"
+                                instructions: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                             }
                         };
 
@@ -9924,24 +9814,23 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                if ((req.body.statusCode == 'SD') && (data.data.status == 'dispatched')) {
+                if (req.body.statusCode == 'SD') {
                     if (data.data.type == 'Collection') {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
-                                latestLocation: "Customer",
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Out for Collection (Switched Dispatchers)",
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "N/A",
-                                        lastLocation: "Customer",
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                     }
                                 }
                             }
@@ -9956,24 +9845,23 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             };
 
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
 
                         } else {
                             update = {
                                 lastUpdateDateTime: moment().format(),
                                 assignedTo: req.body.dispatchers,
                                 jobDate: req.body.assignDate,
-                                latestLocation: "Customer",
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Out for Collection (Switched Dispatchers)",
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers,
-                                        reason: "N/A",
-                                        lastLocation: "Customer",
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                     }
                                 }
                             }
@@ -9988,7 +9876,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             };
 
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
                         }
                     } else {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
@@ -9996,17 +9884,16 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
-                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "N/A",
-                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                     }
                                 }
                             }
@@ -10021,7 +9908,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             };
 
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
 
                         } else {
                             update = {
@@ -10031,14 +9918,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
                                 lastAssignedTo: req.body.dispatchers,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Out for Delivery (Switched Dispatchers)",
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers,
-                                        reason: "N/A",
-                                        lastLocation: req.body.dispatchers,
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                     }
                                 }
                             }
@@ -10053,7 +9940,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             };
 
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + ". ";
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
                         }
 
                     }
@@ -10844,6 +10731,89 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UD') {
+                if (data.data.date != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                        lastUpdatedBy: req.user.name,
+                        jobDate: req.body.assignDate,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Job Date updated to " + req.body.assignDate + ".",
+                        lastUpdatedBy: req.user.name,
+                        jobDate: req.body.assignDate,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Job Date updated to " + req.body.assignDate + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        date: req.body.assignDate,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack Job Date updated. ";
+                appliedStatus = "Job Date Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UJM') {
+                if (product == 'CBSL') {
+                    if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+
+                    }
+                    if ((data.data.address.includes("Tutong")) || (data.data.address.includes("tutong"))) {
+
+                    }
+                    if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
+
+                    }
+                    if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
+
+                    }
+                }
+
+                if (product == 'JPMC') {
+                }
+
+                if (product == 'LD') {
+                }
+
+                if (product == 'MOH') {
+                }
+
+                if (product == 'PHC') {
+                }
+
+                if (product == 'EWENS') {
+                }
+
+                if (product == 'TEMU') {
+                }
+
+                if (product == 'FMX') {
+                }
+
                 if (data.data.date != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
