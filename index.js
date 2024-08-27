@@ -5074,7 +5074,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var address = '';
             var kampong = '';
             var area = '';
-            var postalCode = 'N/A'
+            var postalCode = 'N/A';
+            var wrongPick = 0;
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -5954,7 +5955,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (product == 'FMX') {
-                console.log("")
                 if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
@@ -10779,22 +10779,559 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (req.body.statusCode == 'UJM') {
                 if (product == 'CBSL') {
-                    if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                    if (req.body.jobMethod == "Drop Off") {
+                        if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 4,
+                                paymentAmount: 4,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 4
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
 
-                    }
-                    if ((data.data.address.includes("Tutong")) || (data.data.address.includes("tutong"))) {
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 4,
+                                        payment_amount: 4,
+                                    }
+                                };
 
-                    }
-                    if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
 
-                    }
-                    if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
 
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 4,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                        if (((data.data.address.includes("Tutong")) || (data.data.address.includes("tutong")))
+                            && (!data.data.address.includes("Brunei Muara")) && (!data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 6,
+                                paymentAmount: 6,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 6
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 6,
+                                        payment_amount: 6,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 6,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                        if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 8,
+                                paymentAmount: 8,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 8
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 8,
+                                        payment_amount: 8,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 8,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                        if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
+                            wrongPick = 1;
+                        }
+                    } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            totalPrice: 0,
+                            paymentAmount: 0,
+                            jobMethod: req.body.jobMethod,
+                            items: [{
+                                totalItemPrice: 0
+                            }],
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                job_type: req.body.jobMethod,
+                                total_price: 0,
+                                payment_amount: 0,
+                            }
+                        };
+
+                        portalUpdate = "Portal and Detrack Job Method updated. ";
+                        appliedStatus = "Job Method Update"
+
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+                    } else {
+                        wrongPick = 1;
                     }
                 }
 
                 if (product == 'JPMC') {
+                    if (req.body.jobMethod == "Standard") {
+                        if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 4,
+                                paymentAmount: 4,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 4
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 4,
+                                        payment_amount: 4,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 4,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+
+                        if (((data.data.address.includes("Tutong")) || (data.data.address.includes("tutong")))
+                            && (!data.data.address.includes("Brunei Muara")) && (!data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 8,
+                                paymentAmount: 8,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 8
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 8,
+                                        payment_amount: 8,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 8,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+
+                        }
+                        if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 8,
+                                paymentAmount: 8,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 8
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 8,
+                                        payment_amount: 8,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 8,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                        if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 11,
+                                paymentAmount: 11,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 11
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 11,
+                                        payment_amount: 11,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 11,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                    } else if (req.body.jobMethod == "Express") {
+                        if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 5.5,
+                                paymentAmount: 5.5,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 5.5
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 5.5,
+                                        payment_amount: 5.5,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 5.5,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                    } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            totalPrice: 4,
+                            paymentAmount: 4,
+                            jobMethod: req.body.jobMethod,
+                            items: [{
+                                totalItemPrice: 4
+                            }],
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                job_type: req.body.jobMethod,
+                                total_price: 4,
+                                payment_amount: 4,
+                            }
+                        };
+
+                        portalUpdate = "Portal and Detrack Job Method updated. ";
+                        appliedStatus = "Job Method Update"
+
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+                    } else {
+                        wrongPick = 1;
+                    }
                 }
+
+                //fix still here
 
                 if (product == 'LD') {
                 }
@@ -11837,6 +12374,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 processingResults.push({
                     consignmentID,
                     status: `Error: Tracking Number have reached the max attempts for collection. Only drop off will be accepted.`,
+                });
+            }
+            else if ((ceCheck == 0) && (wrongPick == 1)) {
+                processingResults.push({
+                    consignmentID,
+                    status: `Error: Your selection earlier is not available for the product type of the Tracking Number.`,
                 });
             }
             else {
