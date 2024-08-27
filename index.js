@@ -5010,15 +5010,6 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
 
 // Handle form submission for /scanFMX route
 app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    // Step 1: Authenticate and get accessToken
-    const authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
-        userNameOrEmailAddress: username,
-        password: password,
-        source: 'string'
-    });
-
-    const accessToken = authResponse.data.result.accessToken;
-
     // Split the tracking numbers by newlines
     const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
 
@@ -5955,6 +5946,15 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (product == 'FMX') {
+                // Step 1: Authenticate and get accessToken
+                var authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
+                    userNameOrEmailAddress: username,
+                    password: password,
+                    source: 'string'
+                });
+
+                var accessToken = authResponse.data.result.accessToken;
+                
                 if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
