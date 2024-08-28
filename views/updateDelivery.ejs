@@ -77,9 +77,9 @@
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofAllOrdersOFD">All Out
                                                     for
-                                                    Delivery</a>
+                                                    Delivery / Collection</a>
                                                 <a class="dropdown-item" href="/listofAllOrdersSC">All Self
-                                                    Collect</a>
+                                                    Collect / Drop Off</a>
                                                 <a class="dropdown-item" href="/listofAllOrdersAW">All
                                                     Warehouse</a>
                                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
@@ -95,6 +95,7 @@
                                                         (Limbang)</a>
                                                     <a class="dropdown-item" href="/listofewensPod">POD EWE NON
                                                         SHEIN</a>
+                                                    <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a>
                                                     <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
                                                     <% } %>
                                     </div>
@@ -232,6 +233,20 @@
                                                         TEMU
                                                     </a>
                                                     <div class="dropdown-menu" aria-labelledby="temuListDropdown">
+                                                        <div class="dropdown-header">Delivery</div>
+                                                        <a class="dropdown-item" href="/listofTEMUDOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofTEMUDOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofTEMUDOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUDOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUCOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                        <div class="dropdown-header">Collection</div>
                                                         <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
                                                         <a class="dropdown-item" href="/listofTEMUCOrdersOFC">Out for
                                                             Collection</a>

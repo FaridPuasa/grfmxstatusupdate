@@ -172,6 +172,7 @@ const EWEPOD = require('./models/EWEPOD');
 const EWENSPOD = require('./models/EWENSPOD');
 const CBSLPOD = require('./models/CBSLPOD');
 const TEMUPOC = require('./models/TEMUPOC');
+const TEMUPOD = require('./models/TEMUPOD');
 const ORDERS = require('./models/ORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 
@@ -2664,11 +2665,64 @@ app.get('/listofTEMUCOrders', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofTEMUDOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "temu",
+            jobType: "Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ _id: -1 })
+            .limit(500);
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofTEMUDOrders', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofTEMUCOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
             product: "temu",
+            jobType: "Collection",
             currentStatus: "Completed" // Equal to "Out for Delivery"
         })
             .select([
@@ -2715,11 +2769,120 @@ app.get('/listofTEMUCOrdersCompleted', ensureAuthenticated, ensureViewJob, async
     }
 });
 
+app.get('/listofTEMUDOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "temu",
+            jobType: "Delivery",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofTEMUDOrdersCompleted', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofTEMUDOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "temu",
+            jobType: "Delivery",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofTEMUDOrdersAW', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofTEMUCOrdersOFC', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
         const orders = await ORDERS.find({
             product: "temu",
+            jobType: "Collection",
             currentStatus: "Out for Collection" // Equal to "Out for Delivery"
         })
             .select([
@@ -2767,11 +2930,65 @@ app.get('/listofTEMUCOrdersOFC', ensureAuthenticated, ensureViewJob, async (req,
     }
 });
 
+app.get('/listofTEMUDOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "temu",
+            jobType: "Delivery",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofTEMUCOrdersOFD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofTEMUCOrdersDO', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
         const orders = await ORDERS.find({
             product: "temu",
+            jobType: "Collection",
             currentStatus: "Drop Off" // Equal to "Self Collect"
         })
             .select([
@@ -2819,6 +3036,59 @@ app.get('/listofTEMUCOrdersDO', ensureAuthenticated, ensureViewJob, async (req, 
     }
 });
 
+app.get('/listofTEMUDOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "temu",
+            jobType: "Delivery",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofEWEOrdersSC', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofTEMUCOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
@@ -2827,6 +3097,7 @@ app.get('/listofTEMUCOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
         const orders = await ORDERS.find({
             product: "temu",
+            jobType: "Collection",
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -2868,6 +3139,62 @@ app.get('/listofTEMUCOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofTEMUCOrdersCD', { orders, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofTEMUDOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "temu",
+            jobType: "Delivery",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'fmxMilestoneStatus',
+                'fmxMilestoneStatusCode',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofTEMUDOrdersCD', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3765,6 +4092,32 @@ app.get('/listofTemuPoc', ensureAuthenticated, ensureGeneratePODandUpdateDeliver
     }
 });
 
+app.get('/listofTemuPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await TEMUPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofTemuPod', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch TEMU POD data');
+    }
+});
+
 app.get('/listofEweNSPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -3918,6 +4271,24 @@ app.get('/poctemuDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdate
 
         // Render the podDetail.ejs template with the HTML content
         res.render('poctemuDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POC data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podtemuDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await TEMUPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podtemuDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -4145,6 +4516,26 @@ app.get('/editTemuPoc/:id', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editTemuPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    TEMUPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editTemuPod.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
 app.get('/editEweNSPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
@@ -4244,6 +4635,27 @@ app.post('/updateTemuPoc/:id', ensureAuthenticated, ensureGeneratePODandUpdateDe
         .catch((err) => {
             console.error('Error:', err);
             res.status(500).send('Failed to update POC data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateTemuPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    TEMUPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
         });
 });
 
@@ -4397,6 +4809,24 @@ app.get('/deleteTEMUPoc/:podId', ensureAuthenticated, ensureGeneratePODandUpdate
     }
 });
 
+app.get('/deleteTEMUPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await TEMUPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofTemuPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('TEMU POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete TEMU POD');
+    }
+});
+
 app.get('/deleteEWENSPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -4518,6 +4948,9 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
             break;
         case 'TEMU POC':
             PodModel = TEMUPOC;
+            break;
+        case 'TEMU POD':
+            PodModel = TEMUPOD;
             break;
         default:
             return res.status(400).send('Invalid collection');
@@ -8578,6 +9011,73 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                     completeRun = 1;
                 }
+
+                if (req.body.statusCode == 'UJM') {
+                    if (product == 'FMX') {
+                        if (req.body.jobMethod == "Standard") {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                jobMethod: req.body.jobMethod,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    job_type: req.body.jobMethod,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack Job Method updated. ";
+                            appliedStatus = "Job Method Update"
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+
+                            completeRun = 1;
+
+                        } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                jobMethod: req.body.jobMethod,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    job_type: req.body.jobMethod,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack Job Method updated. ";
+                            appliedStatus = "Job Method Update"
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+
+                            completeRun = 1;
+                        } else {
+                            wrongPick = 1;
+                        }
+                    }
+                }
             }
 
             if (product != 'FMX') {
@@ -9648,10 +10148,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             DetrackAPIrun = 1;
                             completeRun = 1;
                         } else {
-                            if ((data.data.attempt > 1) && (product == 'TEMU')) {
+                            /* if ((data.data.attempt > 1) && (product == 'TEMU')) {
                                 maxAttempt = 2;
                                 completeRun = 1;
-                            } else {
+                            } else { */
                                 if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                                     update = {
                                         currentStatus: "Out for Collection",
@@ -9724,93 +10224,93 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                                     portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + ". ";
                                 }
-                            }
+                            /* } */
                         }
                     }
 
                     if ((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) {
-                        if ((data.data.attempt > 2) && ((product == 'EWE') || (product == 'EWENS'))) {
+                        /* if ((data.data.attempt > 2) && ((product == 'EWE') || (product == 'EWENS'))) {
                             maxAttempt = 1;
                             completeRun = 1;
-                        } else {
-                            if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                                update = {
-                                    currentStatus: "Out for Delivery",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    attempt: data.data.attempt,
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                    lastUpdatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Out for Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                            reason: "N/A",
-                                            lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                        }
+                        } else { */
+                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                            update = {
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                attempt: data.data.attempt,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "N/A",
+                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                     }
                                 }
-
-                                mongoDBrun = 2;
-
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        date: req.body.assignDate, // Get the Assign Date from the form
-                                        assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                        status: "dispatched"
-                                    }
-                                };
-
-                                portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
-
-                            } else {
-                                update = {
-                                    currentStatus: "Out for Delivery",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: req.body.dispatchers,
-                                    attempt: data.data.attempt,
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: req.body.dispatchers,
-                                    lastUpdatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Out for Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: req.body.dispatchers,
-                                            reason: "N/A",
-                                            lastLocation: req.body.dispatchers,
-                                        }
-                                    }
-                                }
-
-                                mongoDBrun = 2;
-
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        date: req.body.assignDate, // Get the Assign Date from the form
-                                        assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                        status: "dispatched"
-                                    }
-                                };
-
-                                portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                             }
 
-                            appliedStatus = "Out for Delivery"
+                            mongoDBrun = 2;
 
-                            DetrackAPIrun = 1;
-                            completeRun = 1;
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                    status: "dispatched"
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
+
+                        } else {
+                            update = {
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers,
+                                attempt: data.data.attempt,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                        lastLocation: req.body.dispatchers,
+                                    }
+                                }
+                            }
+
+                            mongoDBrun = 2;
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                    status: "dispatched"
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                         }
+
+                        appliedStatus = "Out for Delivery"
+
+                        DetrackAPIrun = 1;
+                        completeRun = 1;
+                        /* } */
                     }
                 }
 
@@ -11337,64 +11837,596 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
 
                 if (product == 'MOH') {
+                    if (req.body.jobMethod == "Standard") {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            totalPrice: 4,
+                            paymentAmount: 4,
+                            jobMethod: req.body.jobMethod,
+                            items: [{
+                                totalItemPrice: 4
+                            }],
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                }
+                            }
+                        }
+
+                        if (data.data.payment_mode == "Cash") {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    job_type: req.body.jobMethod,
+                                    total_price: 4,
+                                    payment_amount: 4,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack Job Method updated. ";
+                            appliedStatus = "Job Method Update"
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+
+                            completeRun = 1;
+                        } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    job_type: req.body.jobMethod,
+                                    total_price: 4,
+                                    payment_amount: 0,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack Job Method updated. ";
+                            appliedStatus = "Job Method Update"
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+
+                            completeRun = 1;
+                        } else {
+                            wrongPick = 1;
+                        }
+                    } else if (req.body.jobMethod == "Express") {
+                        if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 5.5,
+                                paymentAmount: 5.5,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 5.5
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 5.5,
+                                        payment_amount: 5.5,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 5.5,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                    } else if (req.body.jobMethod == "Immediate") {
+                        if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 20,
+                                paymentAmount: 20,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 20
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 20,
+                                        payment_amount: 20,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 20,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                    } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            totalPrice: 4,
+                            paymentAmount: 4,
+                            jobMethod: req.body.jobMethod,
+                            items: [{
+                                totalItemPrice: 4
+                            }],
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                job_type: req.body.jobMethod,
+                                total_price: 4,
+                                payment_amount: 4,
+                            }
+                        };
+
+                        portalUpdate = "Portal and Detrack Job Method updated. ";
+                        appliedStatus = "Job Method Update"
+
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+                    } else {
+                        wrongPick = 1;
+                    }
                 }
 
                 if (product == 'PHC') {
+                    if (req.body.jobMethod == "Standard") {
+                        if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 7,
+                                paymentAmount: 7,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 7
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 7,
+                                        payment_amount: 7,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 7,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+
+                        if (((data.data.address.includes("Tutong")) || (data.data.address.includes("tutong")))
+                            && (!data.data.address.includes("Brunei Muara")) && (!data.data.address.includes("brunei-muara"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 5,
+                                paymentAmount: 5,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 5
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 5,
+                                        payment_amount: 5,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 5,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+
+                        }
+                        if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 3,
+                                paymentAmount: 3,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 3
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 3,
+                                        payment_amount: 3,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 3,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        }
+                        if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                totalPrice: 10,
+                                paymentAmount: 10,
+                                jobMethod: req.body.jobMethod,
+                                items: [{
+                                    totalItemPrice: 10
+                                }],
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
+                            }
+                            if (data.data.payment_mode == "Cash") {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 10,
+                                        payment_amount: 10,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        job_type: req.body.jobMethod,
+                                        total_price: 10,
+                                        payment_amount: 0,
+                                    }
+                                };
+
+                                portalUpdate = "Portal and Detrack Job Method updated. ";
+                                appliedStatus = "Job Method Update"
+
+                                DetrackAPIrun = 1;
+                                mongoDBrun = 2;
+
+                                completeRun = 1;
+                            } else {
+                                wrongPick = 1;
+                            }
+                        } else {
+                            wrongPick = 1;
+                        }
+                    } else {
+                        wrongPick = 1;
+                    }
                 }
 
                 if (product == 'EWENS') {
+                    if (req.body.jobMethod == "Standard") {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            jobMethod: req.body.jobMethod,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                job_type: req.body.jobMethod,
+                            }
+                        };
+
+                        portalUpdate = "Portal and Detrack Job Method updated. ";
+                        appliedStatus = "Job Method Update"
+
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+
+                    } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                            lastUpdatedBy: req.user.name,
+                            jobMethod: req.body.jobMethod,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                job_type: req.body.jobMethod,
+                            }
+                        };
+
+                        portalUpdate = "Portal and Detrack Job Method updated. ";
+                        appliedStatus = "Job Method Update"
+
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+                    } else {
+                        wrongPick = 1;
+                    }
                 }
 
                 if (product == 'TEMU') {
-                }
-
-                if (product == 'FMX') {
-                }
-
-                if (data.data.date != null) {
-                    update = {
-                        lastUpdateDateTime: moment().format(),
-                        latestReason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
-                        lastUpdatedBy: req.user.name,
-                        jobDate: req.body.assignDate,
-                        $push: {
-                            history: {
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                reason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
+                    if (data.data.type == "Delivery") {
+                        if (req.body.jobMethod == "Standard") {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                jobMethod: req.body.jobMethod,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
                             }
-                        }
-                    }
-                } else {
-                    update = {
-                        lastUpdateDateTime: moment().format(),
-                        latestReason: "Job Date updated to " + req.body.assignDate + ".",
-                        lastUpdatedBy: req.user.name,
-                        jobDate: req.body.assignDate,
-                        $push: {
-                            history: {
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                reason: "Job Date updated to " + req.body.assignDate + ".",
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    job_type: req.body.jobMethod,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack Job Method updated. ";
+                            appliedStatus = "Job Method Update"
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+
+                            completeRun = 1;
+
+                        } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                lastUpdatedBy: req.user.name,
+                                jobMethod: req.body.jobMethod,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
+                                    }
+                                }
                             }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    job_type: req.body.jobMethod,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack Job Method updated. ";
+                            appliedStatus = "Job Method Update"
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+
+                            completeRun = 1;
+                        } else {
+                            wrongPick = 1;
                         }
+                    } else {
+                        wrongPick = 1;
                     }
                 }
-
-                var detrackUpdateData = {
-                    do_number: consignmentID,
-                    data: {
-                        date: req.body.assignDate,
-                    }
-                };
-
-                portalUpdate = "Portal and Detrack Job Date updated. ";
-                appliedStatus = "Job Date Update"
-
-                DetrackAPIrun = 1;
-                mongoDBrun = 2;
-
-                completeRun = 1;
             }
 
             if (completeRun == 0) {
