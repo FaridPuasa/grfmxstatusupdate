@@ -364,8 +364,8 @@
                         <th class="header">Job Created</th>
                         <th class="header">Receiver Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Job Type</th>
                         <th class="header">Delivery or Pickup</th>
+                        <th class="header">Job Method</th>
                         <th class="header">Item Description</th>
                         <th class="header">Item Type</th>
                         <th class="header">Weight</th>
@@ -448,10 +448,10 @@
                                 <%= order.area %>
                             </td>
                             <td>
-                                <%= order.deliveryType %>
+                                <%= order.ldPickupOrDelivery %>
                             </td>
                             <td>
-                                <%= order.ldPickupOrDelivery %>
+                                <%= order.jobMethod %>
                             </td>
                             <td>
                                 <%= order.items[0].description %>

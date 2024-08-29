@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Out for Delivery Orders</title>
+    <title>All Out for Delivery / Collection Orders</title>
     <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
     <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
@@ -342,7 +342,7 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>All Out for Delivery Orders</h1>
+        <h1>All Out for Delivery / Collection Orders</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
@@ -357,10 +357,11 @@
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
                         <th class="header">Job Created</th>
+                        <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Phone No.</th>
                         <th class="header">Job Type</th>
+                        <th class="header">Job Method</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
                         <th class="header">Remarks</th>
@@ -399,8 +400,20 @@
                                 <%= order.lastUpdatedBy %>
                             </td>
                             <td>
-                                <%= order.creationDate %>
-                            </td>
+                                <%= (() => {
+                                  const dateStr = order.creationDate;
+                                  
+                                  // Check if the date is in YYYY-MM-DD format
+                                  const isDateOnly = moment(dateStr, "YYYY-MM-DD", true).isValid();
+                                  
+                                  if (isDateOnly) {
+                                    return dateStr; // Return the date as it is
+                                  } else {
+                                    // Convert the date from any other format to YYYY-MM-DD
+                                    return moment(dateStr).format("YYYY-MM-DD");
+                                  }
+                                })() %>
+                              </td>
                             <td>
                                 <%= order.receiverPhoneNumber %>
                             </td>
@@ -411,7 +424,10 @@
                                 <%= order.area %>
                             </td>
                             <td>
-                                <%= order.deliveryType %>
+                                <%= order.jobType %>
+                            </td>
+                            <td>
+                                <%= order.jobMethod %>
                             </td>
                             <td>
                                 <%= order.paymentMethod %>

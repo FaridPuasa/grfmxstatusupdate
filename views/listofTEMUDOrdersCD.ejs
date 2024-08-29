@@ -363,6 +363,7 @@
                         <th class="header">Address</th>
                         <th class="header">Area</th>
                         <th class="header">Item Description</th>
+                        <th class="header">Job Method</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
                     </tr>
@@ -425,6 +426,9 @@
                                             data-full="<%= fullDescription %>" data-short="<%= shortDescription %>">
                                             <%= shortDescription %>
                                         </span>
+                            </td>
+                            <td>
+                                <%= order.jobMethod %>
                             </td>
                             <td>
                                 <%= order.paymentMethod %>
