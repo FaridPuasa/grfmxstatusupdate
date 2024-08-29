@@ -383,6 +383,9 @@
                                 <%= order.currentStatus %>
                             </td>
                             <td>
+                                <%= order.latestReason %>
+                            </td>
+                            <td>
                                 <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
                             </td>
                             <td>
