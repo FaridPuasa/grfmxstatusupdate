@@ -10411,6 +10411,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 4,
                                 paymentAmount: 4,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 4
                                 }],
@@ -10471,6 +10472,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 8,
                                 paymentAmount: 8,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 8
                                 }],
@@ -10529,6 +10531,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 8,
                                 paymentAmount: 8,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 8
                                 }],
@@ -10586,6 +10589,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 11,
                                 paymentAmount: 11,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 11
                                 }],
@@ -10644,6 +10648,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 5.5,
                                 paymentAmount: 5.5,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "EXP",
                                 items: [{
                                     totalItemPrice: 5.5
                                 }],
@@ -10702,6 +10707,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             totalPrice: 4,
                             paymentAmount: 4,
                             jobMethod: req.body.jobMethod,
+                            deliveryTypeCode: "STD",
                             items: [{
                                 totalItemPrice: 4
                             }],
@@ -11205,6 +11211,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             totalPrice: 4,
                             paymentAmount: 4,
                             jobMethod: req.body.jobMethod,
+                            deliveryTypeCode: "STD",
                             items: [{
                                 totalItemPrice: 4
                             }],
@@ -11263,6 +11270,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 5.5,
                                 paymentAmount: 5.5,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "EXP",
                                 items: [{
                                     totalItemPrice: 5.5
                                 }],
@@ -11322,6 +11330,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 20,
                                 paymentAmount: 20,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "IMM",
                                 items: [{
                                     totalItemPrice: 20
                                 }],
@@ -11380,6 +11389,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             totalPrice: 4,
                             paymentAmount: 4,
                             jobMethod: req.body.jobMethod,
+                            deliveryTypeCode: "STD",
                             items: [{
                                 totalItemPrice: 4
                             }],
@@ -11434,6 +11444,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 7,
                                 paymentAmount: 7,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 7
                                 }],
@@ -11494,6 +11505,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 5,
                                 paymentAmount: 5,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 5
                                 }],
@@ -11552,6 +11564,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 3,
                                 paymentAmount: 3,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 3
                                 }],
@@ -11609,6 +11622,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 totalPrice: 10,
                                 paymentAmount: 10,
                                 jobMethod: req.body.jobMethod,
+                                deliveryTypeCode: "STD",
                                 items: [{
                                     totalItemPrice: 10
                                 }],
@@ -12812,7 +12826,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-/* orderWatch.on('change', change => {
+orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -13199,7 +13213,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
         )
     }
-}) */
+})
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
