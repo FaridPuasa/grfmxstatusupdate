@@ -679,7 +679,7 @@
             function updateProductButtons(area) {
                 const counts = <%- JSON.stringify(productCounts) %> [area];
 
-                $('#productFilterButtons').emp);
+                $('#productFilterButtons').empty();
                 for (const product in counts) {
                     if (counts[product] > 0) {
                         $('#productFilterButtons').append(
