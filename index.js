@@ -5647,6 +5647,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Customer Name"
             }
 
+            if (req.body.statusCode == 'UJM') {
+                appliedStatus = "Update Job Method"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -5706,7 +5710,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if ((req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
                 || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
-                || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN') || (req.body.statusCode == 'URN')) {
+                || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
+                || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UJM')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -12807,7 +12812,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-orderWatch.on('change', change => {
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -13194,7 +13199,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
