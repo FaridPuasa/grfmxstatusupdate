@@ -673,7 +673,6 @@ app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
             "LD": "localdelivery",
             "CBSL": "cbsl",
             "EWE": "ewe",
-            "TEMU": "temu",
             "EWENS": "ewens",
             "FMX": "fmx",
             "ICARUS": "icarus",

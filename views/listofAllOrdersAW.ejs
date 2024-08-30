@@ -421,74 +421,67 @@
                                                         <button class="btn btn-secondary product-filter-btn"
                                                             data-product="EWE">EWE (<%= productCounts.EWE %>)</button>
                                                         <% } %>
-                                                            <% if (productCounts.TEMU> 0) { %>
+                                                            <% if (productCounts.EWENS> 0) { %>
                                                                 <button class="btn btn-secondary product-filter-btn"
-                                                                    data-product="TEMU">TEMU (<%= productCounts.TEMU %>
-                                                                        )</button>
+                                                                    data-product="EWENS">EWENS (<%= productCounts.EWENS
+                                                                        %>)</button>
                                                                 <% } %>
-                                                                    <% if (productCounts.EWENS> 0) { %>
+                                                                    <% if (productCounts.FMX> 0) { %>
                                                                         <button
                                                                             class="btn btn-secondary product-filter-btn"
-                                                                            data-product="EWENS">EWENS (<%=
-                                                                                productCounts.EWENS %>)</button>
+                                                                            data-product="FMX">FMX (<%=
+                                                                                productCounts.FMX %>)</button>
                                                                         <% } %>
-                                                                            <% if (productCounts.FMX> 0) { %>
+                                                                            <% if (productCounts.ICARUS> 0) { %>
                                                                                 <button
                                                                                     class="btn btn-secondary product-filter-btn"
-                                                                                    data-product="FMX">FMX (<%=
-                                                                                        productCounts.FMX %>)</button>
+                                                                                    data-product="ICARUS">ICARUS
+                                                                                    (<%= productCounts.ICARUS %>
+                                                                                        )</button>
                                                                                 <% } %>
-                                                                                    <% if (productCounts.ICARUS> 0) { %>
+                                                                                    <% if (productCounts.JOYBEAN>
+                                                                                        0) {
+                                                                                        %>
                                                                                         <button
                                                                                             class="btn btn-secondary product-filter-btn"
-                                                                                            data-product="ICARUS">ICARUS
-                                                                                            (<%= productCounts.ICARUS %>
-                                                                                                )</button>
+                                                                                            data-product="JOYBEAN">JOYBEAN
+                                                                                            (<%= productCounts.JOYBEAN
+                                                                                                %>)</button>
                                                                                         <% } %>
                                                                                             <% if
-                                                                                                (productCounts.JOYBEAN>
-                                                                                                0) {
-                                                                                                %>
+                                                                                                (productCounts.BAIDURI>
+                                                                                                0) { %>
                                                                                                 <button
                                                                                                     class="btn btn-secondary product-filter-btn"
-                                                                                                    data-product="JOYBEAN">JOYBEAN
-                                                                                                    (<%= productCounts.JOYBEAN
-                                                                                                        %>)</button>
+                                                                                                    data-product="BAIDURI">BAIDURI
+                                                                                                    (<%= productCounts.BAIDURI
+                                                                                                        %>
+                                                                                                        )</button>
                                                                                                 <% } %>
                                                                                                     <% if
-                                                                                                        (productCounts.BAIDURI>
+                                                                                                        (productCounts.FATHAN>
                                                                                                         0) { %>
                                                                                                         <button
                                                                                                             class="btn btn-secondary product-filter-btn"
-                                                                                                            data-product="BAIDURI">BAIDURI
-                                                                                                            (<%= productCounts.BAIDURI
+                                                                                                            data-product="FATHAN">FATHAN
+                                                                                                            (<%= productCounts.FATHAN
                                                                                                                 %>
                                                                                                                 )</button>
                                                                                                         <% } %>
                                                                                                             <% if
-                                                                                                                (productCounts.FATHAN>
-                                                                                                                0) { %>
+                                                                                                                (productCounts.GRP>
+                                                                                                                0)
+                                                                                                                {
+                                                                                                                %>
                                                                                                                 <button
                                                                                                                     class="btn btn-secondary product-filter-btn"
-                                                                                                                    data-product="FATHAN">FATHAN
-                                                                                                                    (<%= productCounts.FATHAN
+                                                                                                                    data-product="GRP">GRP
+                                                                                                                    (
+                                                                                                                    <%= productCounts.GRP
                                                                                                                         %>
-                                                                                                                        )</button>
+                                                                                                                        )
+                                                                                                                </button>
                                                                                                                 <% } %>
-                                                                                                                    <% if
-                                                                                                                        (productCounts.GRP>
-                                                                                                                        0)
-                                                                                                                        {
-                                                                                                                        %>
-                                                                                                                        <button
-                                                                                                                            class="btn btn-secondary product-filter-btn"
-                                                                                                                            data-product="GRP">GRP
-                                                                                                                            (
-                                                                                                                            <%= productCounts.GRP
-                                                                                                                                %>
-                                                                                                                                )</button>
-                                                                                                                        <% }
-                                                                                                                            %>
         </div>
 
         <div class="table-responsive">
@@ -626,7 +619,6 @@
                 "LD": "localdelivery",
                 "CBSL": "cbsl",
                 "EWE": "ewe",
-                "TEMU": "temu",
                 "EWENS": "ewens",
                 "FMX": "fmx",
                 "ICARUS": "icarus",
@@ -685,9 +677,9 @@
             });
 
             function updateProductButtons(area) {
-                const counts = <% - JSON.stringify(productCounts) %> [area];
+                const counts = <%- JSON.stringify(productCounts) %> [area];
 
-                $('#productFilterButtons').empty();
+                $('#productFilterButtons').emp);
                 for (const product in counts) {
                     if (counts[product] > 0) {
                         $('#productFilterButtons').append(
