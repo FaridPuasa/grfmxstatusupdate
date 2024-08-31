@@ -489,7 +489,7 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 })
+            .sort({ _id: -1 })
             .limit(1000);
 
         res.render('search', { moment: moment, user: req.user, orders, searchQuery: req.body });
@@ -576,7 +576,7 @@ app.post('/mohsearch', ensureAuthenticated, ensureSearchMOHJob, async (req, res)
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 })
+            .sort({ _id: -1 })
             .limit(1000);
 
         res.render('mohsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
@@ -1064,7 +1064,7 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ _id: -1 })
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofOrdersIRCC', { orders, moment: moment, user: req.user });
@@ -1426,7 +1426,7 @@ app.get('/listofpharmacyMOHOrdersIRCC', ensureAuthenticated, ensureViewJob, asyn
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ _id: -1 })
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofpharmacyMOHOrdersIRCC', { orders, moment: moment, user: req.user });
@@ -9522,25 +9522,71 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                             mongoDBrun = 2;
                         } else {
-                            update = {
-                                currentStatus: "Completed",
-                                lastUpdateDateTime: moment().format(),
-                                latestLocation: "Customer",
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
+                            if (existingOrder === null) {
+                                newOrder = new ORDERS({
+                                    area: area,
+                                    items: itemsArray, // Use the dynamically created items array
+                                    attempt: data.data.attempt,
+                                    history: [{
                                         statusHistory: "Completed",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
                                         reason: "N/A",
                                         lastLocation: "Customer",
+                                    }],
+                                    lastAssignedTo: data.data.assign_to,
+                                    latestLocation: "Customer",
+                                    product: currentProduct,
+                                    assignedTo: "N/A",
+                                    senderName: data.data.job_owner,
+                                    totalPrice: data.data.total_price,
+                                    receiverName: data.data.deliver_to_collect_from,
+                                    trackingLink: data.data.tracking_link,
+                                    currentStatus: "Completed",
+                                    paymentMethod: data.data.payment_mode,
+                                    warehouseEntry: "Yes",
+                                    warehouseEntryDateTime: moment().format(),
+                                    receiverAddress: data.data.address,
+                                    receiverPhoneNumber: data.data.phone_number,
+                                    doTrackingNumber: consignmentID,
+                                    remarks: data.data.remarks,
+                                    latestReason: "N/A",
+                                    lastUpdateDateTime: moment().format(),
+                                    creationDate: data.data.created_at,
+                                    jobDate: data.data.date,
+                                    flightDate: data.data.job_received_date,
+                                    mawbNo: data.data.run_number,
+                                    lastUpdatedBy: req.user.name,
+                                    parcelWeight: data.data.weight,
+                                    receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
+                                });
+
+                                mongoDBrun = 1;
+                            } else {
+                                update = {
+                                    currentStatus: "Completed",
+                                    lastUpdateDateTime: moment().format(),
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Completed",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: "N/A",
+                                            lastLocation: "Customer",
+                                        }
                                     }
                                 }
+
+                                mongoDBrun = 2;
                             }
 
-                            mongoDBrun = 2;
                         }
 
                         appliedStatus = "Completed"
