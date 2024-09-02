@@ -839,16 +839,17 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     }
 });
 
-app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
-        // Query the database to find orders with currentStatus equal to "Out for Delivery" or "Out for Collection"
         const orders = await ORDERS.find({
-            currentStatus: { $in: ["Out for Delivery", "Out for Collection"] } // Include both statuses
+            product: { $nin: ["fmx", "ewe", "ewens", "temu"] },
+            currentStatus: "Info Received"
         })
             .select([
                 '_id',
                 'product',
                 'doTrackingNumber',
+                'parcelTrackingNum',
                 'receiverName',
                 'receiverAddress',
                 'receiverPhoneNumber',
@@ -878,7 +879,7 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofAllOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofAllOrdersIR', { orders, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3846,7 +3847,8 @@ app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (re
                 'endNo',
                 'creationDate',
                 'mohForm',
-                'numberOfForms'
+                'numberOfForms',
+                'formCreator'
             ])
             .sort({ _id: -1 });
 
@@ -4868,6 +4870,8 @@ app.get('/deleteCBSLPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdate
 app.post('/save-form', ensureAuthenticated, ensureMOHForm, (req, res) => {
     const { formName, formDate, batchNo, startNo, endNo, htmlContent, mohForm, numberOfForms } = req.body;
 
+    const userNameCaps = req.user.name.toUpperCase()
+
     // Create a new document and save it to the MongoDB collection
     const newForm = new PharmacyFORM({
         formName: formName,
@@ -4878,7 +4882,8 @@ app.post('/save-form', ensureAuthenticated, ensureMOHForm, (req, res) => {
         htmlContent: htmlContent,
         creationDate: moment().format(),
         mohForm: mohForm,
-        numberOfForms: numberOfForms
+        numberOfForms: numberOfForms,
+        formCreator: userNameCaps,
     });
 
     newForm.save()
@@ -4915,8 +4920,6 @@ function updateOrdersCollection(trackingNumbers) {
     // Return a Promise that resolves when all updates are complete.
     return Promise.all(promises);
 }
-
-
 
 // Route to save POD data
 app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {

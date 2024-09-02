@@ -104,6 +104,8 @@
                                             Collect / Drop Off</a>
                                         <a class="dropdown-item" href="/listofAllOrdersAW">All
                                             Warehouse</a>
+                                            <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                                New Orders from Website</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -366,7 +368,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="batchChoice">Batch 1 or 2:</label>
+                                <label for="batchChoice">Batch No:</label>
                                 <select class="form-control" id="batchChoice" name="batchChoice" required>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
@@ -375,7 +377,7 @@
                         </div>
                         <div class="col-md-3" id="b2StartField" style="display: none;">
                             <div class="form-group">
-                                <label for="b2Start">B2 Start:</label>
+                                <label for="b2Start">Next Form Number Start:</label>
                                 <input type="number" class="form-control" id="b2Start" name="b2Start" placeholder="Enter B2 Start">
                             </div>
                         </div>

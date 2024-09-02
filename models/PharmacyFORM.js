@@ -9,7 +9,8 @@ const formSchema = new mongoose.Schema({
     htmlContent: String,
     creationDate: String,
     mohForm: String,
-    numberOfForms: String
+    numberOfForms: String,
+    formCreator: String,
 });
 
 module.exports = mongoose.model('FORMS', formSchema);

@@ -183,6 +183,8 @@
                                                     Collect / Drop Off</a>
                                                 <a class="dropdown-item" href="/listofAllOrdersAW">All
                                                     Warehouse</a>
+                                                    <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                                        New Orders from Website</a>
                                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                                     ].includes(user.role)) { %>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -457,7 +459,7 @@
                         <% if (batchChoice==='1' ) { %>
                             <% var startCounter=1; %>
                                 <% } %>
-                                    <% if (batchChoice==='2' ) { %>
+                                    <% if (batchChoice>='2' ) { %>
                                         <% var startCounter=parseInt(b2Start); %>
                                             <% } %>
                                                 <% } %>
