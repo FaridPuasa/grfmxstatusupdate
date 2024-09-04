@@ -644,8 +644,10 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
             .sort({ _id: -1 })
             .limit(500);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrders', { orders, moment: moment, user: req.user });
+        res.render('listofOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -784,8 +786,10 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -831,8 +835,10 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -878,8 +884,10 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofAllOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofAllOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -925,8 +933,10 @@ app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofAllOrdersIR', { orders, moment: moment, user: req.user });
+        res.render('listofAllOrdersIR', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -972,8 +982,10 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1018,8 +1030,10 @@ app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofAllOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofAllOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1066,8 +1080,10 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersAW', { orders, moment: moment, user: req.user });
+        res.render('listofOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1114,8 +1130,10 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
             ])
             .sort({ _id: -1 })
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersIRCC', { orders, moment: moment, user: req.user });
+        res.render('listofOrdersIRCC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1162,8 +1180,10 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1214,8 +1234,10 @@ app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (r
             .sort({ _id: -1 })
             .limit(1000);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1266,8 +1288,10 @@ app.get('/listofpharmacyMOHOrdersCompleted', ensureAuthenticated, ensureViewJob,
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1318,8 +1342,10 @@ app.get('/listofpharmacyMOHOrdersOFD', ensureAuthenticated, ensureViewJob, async
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1370,8 +1396,10 @@ app.get('/listofpharmacyMOHOrdersSC', ensureAuthenticated, ensureViewJob, async 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1423,8 +1451,10 @@ app.get('/listofpharmacyMOHOrdersAW', ensureAuthenticated, ensureViewJob, async 
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrdersAW', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1476,8 +1506,10 @@ app.get('/listofpharmacyMOHOrdersIRCC', ensureAuthenticated, ensureViewJob, asyn
             ])
             .sort({ _id: -1 })
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrdersIRCC', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrdersIRCC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1529,8 +1561,10 @@ app.get('/listofpharmacyMOHOrdersCD', ensureAuthenticated, ensureViewJob, async 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1579,8 +1613,10 @@ app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureViewMOHJob, as
             .sort({ _id: -1 })
             .limit(1000);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHEXPOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHEXPOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1629,8 +1665,10 @@ app.get('/listofpharmacyMOHSTDOrders', ensureAuthenticated, ensureViewMOHJob, as
             .sort({ _id: -1 })
             .limit(1000);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHSTDOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHSTDOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1747,8 +1785,10 @@ app.get('/listofpharmacyMOHTTGOrders', ensureAuthenticated, ensureViewMOHJob, as
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHTTGOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHTTGOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1796,8 +1836,10 @@ app.get('/listofpharmacyMOHKBOrders', ensureAuthenticated, ensureViewMOHJob, asy
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHKBOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHKBOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1845,8 +1887,10 @@ app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, as
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHIMMOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyMOHIMMOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1893,8 +1937,10 @@ app.get('/listofpharmacyJPMCOrders', ensureAuthenticated, ensureViewJob, async (
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyJPMCOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyJPMCOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1938,8 +1984,10 @@ app.get('/listofpharmacyPHCOrders', ensureAuthenticated, ensureViewJob, async (r
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyPHCOrders', { orders, moment: moment, user: req.user });
+        res.render('listofpharmacyPHCOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -1989,8 +2037,10 @@ app.get('/listofLDOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofLDOrders', { orders, moment: moment, user: req.user });
+        res.render('listofLDOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2040,8 +2090,10 @@ app.get('/listofLDJBOrders', ensureAuthenticated, ensureViewJob, async (req, res
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofLDJBOrders', { orders, moment: moment, user: req.user });
+        res.render('listofLDJBOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2091,8 +2143,10 @@ app.get('/listofICARUSOrders', ensureAuthenticated, ensureViewJob, async (req, r
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofICARUSOrders', { orders, moment: moment, user: req.user });
+        res.render('listofICARUSOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2142,8 +2196,10 @@ app.get('/listofFCASOrders', ensureAuthenticated, ensureViewJob, async (req, res
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFCASOrders', { orders, moment: moment, user: req.user });
+        res.render('listofFCASOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2192,8 +2248,10 @@ app.get('/listofBBOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofBBOrders', { orders, moment: moment, user: req.user });
+        res.render('listofBBOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2243,8 +2301,10 @@ app.get('/listofGRPOrders', ensureAuthenticated, ensureViewJob, async (req, res)
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofGRPOrders', { orders, moment: moment, user: req.user });
+        res.render('listofGRPOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2290,8 +2350,10 @@ app.get('/listofCBSLOrders', ensureAuthenticated, ensureViewJob, async (req, res
             ])
             .sort({ _id: -1 });
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofCBSLOrders', { orders, moment: moment, user: req.user });
+        res.render('listofCBSLOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2340,8 +2402,10 @@ app.get('/listofFMXOrders', ensureAuthenticated, ensureViewJob, async (req, res)
             .sort({ _id: -1 })
             .limit(500);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrders', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2390,8 +2454,10 @@ app.get('/listofFMXOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2441,8 +2507,10 @@ app.get('/listofFMXOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2492,8 +2560,10 @@ app.get('/listofFMXOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2546,8 +2616,10 @@ app.get('/listofFMXOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersAW', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2600,8 +2672,10 @@ app.get('/listofFMXOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersIRCC', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrdersIRCC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2654,8 +2728,10 @@ app.get('/listofFMXOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofFMXOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofFMXOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2705,8 +2781,10 @@ app.get('/listofTEMUCOrders', ensureAuthenticated, ensureViewJob, async (req, re
             .sort({ _id: -1 })
             .limit(500);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUCOrders', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUCOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2757,8 +2835,10 @@ app.get('/listofTEMUDOrders', ensureAuthenticated, ensureViewJob, async (req, re
             .sort({ _id: -1 })
             .limit(500);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUDOrders', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUDOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2809,8 +2889,10 @@ app.get('/listofTEMUCOrdersCompleted', ensureAuthenticated, ensureViewJob, async
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUCOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUCOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2861,8 +2943,10 @@ app.get('/listofTEMUDOrdersCompleted', ensureAuthenticated, ensureViewJob, async
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUDOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUDOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2917,8 +3001,10 @@ app.get('/listofTEMUDOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUDOrdersAW', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUDOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -2970,8 +3056,10 @@ app.get('/listofTEMUCOrdersOFC', ensureAuthenticated, ensureViewJob, async (req,
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUCOrdersOFC', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUCOrdersOFC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3023,8 +3111,10 @@ app.get('/listofTEMUDOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUCOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUCOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3076,8 +3166,10 @@ app.get('/listofTEMUCOrdersDO', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUCOrdersDO', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUCOrdersDO', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3129,8 +3221,10 @@ app.get('/listofTEMUDOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3185,8 +3279,10 @@ app.get('/listofTEMUCOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUCOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUCOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3241,8 +3337,10 @@ app.get('/listofTEMUDOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofTEMUDOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofTEMUDOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3292,8 +3390,10 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
             .sort({ _id: -1 })
             .limit(500);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrders', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3343,8 +3443,10 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3395,8 +3497,10 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3447,8 +3551,10 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3502,8 +3608,10 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersAW', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3557,8 +3665,10 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWEOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofEWEOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3608,8 +3718,10 @@ app.get('/listofEWENSOrders', ensureAuthenticated, ensureViewJob, async (req, re
             .sort({ _id: -1 })
             .limit(500);
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWENSOrders', { orders, moment: moment, user: req.user });
+        res.render('listofEWENSOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3659,8 +3771,10 @@ app.get('/listofEWENSOrdersCompleted', ensureAuthenticated, ensureViewJob, async
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWENSOrdersCompleted', { orders, moment: moment, user: req.user });
+        res.render('listofEWENSOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3711,8 +3825,10 @@ app.get('/listofEWENSOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWENSOrdersOFD', { orders, moment: moment, user: req.user });
+        res.render('listofEWENSOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3763,8 +3879,10 @@ app.get('/listofEWENSOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWENSOrdersSC', { orders, moment: moment, user: req.user });
+        res.render('listofEWENSOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3818,8 +3936,10 @@ app.get('/listofEWENSOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWENSOrdersAW', { orders, moment: moment, user: req.user });
+        res.render('listofEWENSOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3873,8 +3993,10 @@ app.get('/listofEWENSOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
+            const totalRecords = orders.length;
+
         // Render the EJS template with the filtered and sorted orders
-        res.render('listofEWENSOrdersCD', { orders, moment: moment, user: req.user });
+        res.render('listofEWENSOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');

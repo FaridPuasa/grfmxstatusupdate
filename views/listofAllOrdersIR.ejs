@@ -344,7 +344,7 @@
     </div>
 
     <main class="mt-4" style="width: 100%;">
-        <h1>New Orders from Website</h1>
+        <h1 class="text-center mt-4">New Orders from Website (<%= totalRecords %>)</h1>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="orderTable">
                 <thead class="table-primary">
@@ -357,7 +357,6 @@
                         <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
-                        <th class="header">Job Type</th>
                         <th class="header">Job Method</th>
                         <th class="header">Payment Method</th>
                         <th class="header">Price</th>
@@ -404,9 +403,6 @@
                             </td>
                             <td>
                                 <%= order.area %>
-                            </td>
-                            <td>
-                                <%= order.jobType %>
                             </td>
                             <td>
                                 <%= order.jobMethod %>
