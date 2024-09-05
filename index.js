@@ -931,7 +931,7 @@ app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, re
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ _id: -1 });
 
             const totalRecords = orders.length;
 
