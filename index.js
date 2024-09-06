@@ -848,7 +848,6 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
 app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "ewens", "temu"] },
             currentStatus: { $in: ["Out for Delivery", "Out for Collection"] } // Include both statuses
         })
             .select([
