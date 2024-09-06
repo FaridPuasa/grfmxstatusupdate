@@ -336,7 +336,7 @@
     <main class="mt-4" style="width: 100%;">
         <h1 class="text-center mt-4">List of MOH Orders (IMM) (<%= totalRecords %>)</h1>
         <div class="table-responsive">
-            <div class="container">
+            <div class="container" id="pharmacyFormBox" style="display: none;">
                 <form action="/createPharmacyFormSuccess" method="post" class="custom-form">
                     <input type="hidden" name="mohForm" id="mohForm" value="IMM">
                     <div class="row">
@@ -522,8 +522,8 @@
             const currentDay = moment().day(); // Returns the day of the week (0 for Sunday, 1 for Monday, etc.)
 
             // Hide the container div if the day is Friday (5) or Sunday (0)
-            if (currentDay === 5 || currentDay === 0) {
-                $('.container').hide();
+            if (currentDay != 5 && currentDay != 0) {
+                $('#pharmacyFormBox').fadeIn();
             }
 
             // Initialize DataTable for the order table
