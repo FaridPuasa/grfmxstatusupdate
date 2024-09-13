@@ -13089,10 +13089,10 @@ async function handleOrderChange(change) {
     try {
         const result = await ORDERS.find().sort({ $natural: -1 }).limit(1000);
         let filter = new mongoose.Types.ObjectId(result[0]._id);
-        
+
         if (result[0].product != null) {
             let products = result[0].product;
-            
+
             if (products.includes("pharmacy") == true) {
                 products = "pharmacy";
             }
@@ -13104,22 +13104,40 @@ async function handleOrderChange(change) {
 
             let checkProduct = 0;
 
-            if (result.length >= 2 && checkProduct == 0) {
+            if ((result.length >= 2) && (checkProduct == 0)) {
                 for (let i = 1; i < result.length; i++) {
-                    let productMatch = result[i].product.includes(products) || (result[i].product.includes("localdelivery") && products === "localdelivery");
-                    if (productMatch) {
-                        sequence = result[i].sequence == "N/A" ? 1 : parseInt(result[i].sequence) + 1;
-                        checkProduct = 1;
-                        break;
+                    if (result[i].product.includes("localdelivery")) {
+                        if (products == result[i].product) {
+                            if (result[i].sequence == "N/A") {
+                                sequence = 1
+                                checkProduct = 1
+                                i = result.length
+                            }
+                            else {
+                                sequence = parseInt(result[i].sequence) + 1
+                                checkProduct = 1
+                                i = result.length
+                            }
+                        }
+                    } else {
+                        if (result[i].product.includes(products)) {
+                            if (result[i].sequence == "N/A") {
+                                sequence = 1
+                                checkProduct = 1
+                                i = result.length
+                            }
+                            else {
+                                sequence = parseInt(result[i].sequence) + 1
+                                checkProduct = 1
+                                i = result.length
+                            }
+                        }
                     }
                 }
                 if (checkProduct == 0) {
-                    sequence = 1;
-                    checkProduct = 1;
+                    sequence = 1
+                    checkProduct = 1
                 }
-            } else if (result.length == 1 && checkProduct == 0) {
-                sequence = 1;
-                checkProduct = 1;
             }
 
             if (!sequence) {
@@ -13170,7 +13188,7 @@ async function handleOrderChange(change) {
             // Logic to send WhatsApp message using axios
             if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
                 result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" && result[0].product != "temu") {
-                
+
                 await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
             }
         }
@@ -13207,8 +13225,8 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
                 name: "order_received",
                 components: [
                     { type: "header", format: "text", text: "Order Received" },
-                    { 
-                        type: "body", 
+                    {
+                        type: "body",
                         parameters: [
                             { type: "text", text: name },
                             { type: "text", text: trackingNumber }
@@ -13246,395 +13264,6 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
         console.error('Error sending WhatsApp message:', error.response.data);
     }
 }
-
-/* orderWatch.on('change', change => {
-    if (change.operationType == "insert") {
-        ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
-            (result) => {
-                let filter = new mongoose.Types.ObjectId(result[0]._id);
-                if (result[0].product != null) {
-                    let products = result[0].product
-
-                    if (products.includes("pharmacy") == true) {
-                        products = "pharmacy"
-                    }
-
-                    let tracker
-                    let sequence
-
-                    if (result[0].receiverPhoneNumber != null) {
-                        var phoneNumber = "+" + result[0].receiverPhoneNumber.trim();
-                    }
-
-                    let whatsappName = result[0].receiverName;
-
-                    let checkProduct = 0;
-
-                    if ((result.length >= 2) && (checkProduct == 0)) {
-                        for (let i = 1; i < result.length; i++) {
-                            if (result[i].product.includes("localdelivery")) {
-                                if (products == result[i].product) {
-                                    if (result[i].sequence == "N/A") {
-                                        sequence = 1
-                                        checkProduct = 1
-                                        i = result.length
-                                    }
-                                    else {
-                                        sequence = parseInt(result[i].sequence) + 1
-                                        checkProduct = 1
-                                        i = result.length
-                                    }
-                                }
-                            } else {
-                                if (result[i].product.includes(products)) {
-                                    if (result[i].sequence == "N/A") {
-                                        sequence = 1
-                                        checkProduct = 1
-                                        i = result.length
-                                    }
-                                    else {
-                                        sequence = parseInt(result[i].sequence) + 1
-                                        checkProduct = 1
-                                        i = result.length
-                                    }
-                                }
-                            }
-                        }
-                        if (checkProduct == 0) {
-                            sequence = 1
-                            checkProduct = 1
-                        }
-                    }
-
-                    if (((result.length == 1) || (result.length == undefined)) && checkProduct == 0) {
-                        sequence = 1
-                        checkProduct = 1
-                    }
-
-                    if (result[0].product == "pharmacymoh") {
-                        let suffix = "GR2"
-                        let prefix = "MH"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    if (result[0].product == "pharmacyjpmc") {
-                        let suffix = "GR2"
-                        let prefix = "JP"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    if (result[0].product == "pharmacyphc") {
-                        let suffix = "GR2"
-                        let prefix = "PN"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    if (result[0].product == "grp") {
-                        let suffix = "GR4"
-                        let prefix = "GP"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    if (result[0].product == "localdelivery") {
-                        let suffix = "GR3"
-                        let prefix = "LD"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    if (result[0].product == "localdeliveryjb") {
-                        let suffix = "GR3"
-                        let prefix = "JB"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    if (result[0].product == "cbsl") {
-                        let suffix = "GR5"
-                        let prefix = "CB"
-
-                        if (sequence >= 0 && sequence <= 9) {
-                            tracker = suffix + "0000000" + sequence + prefix
-                        }
-                        if (sequence >= 10 && sequence <= 99) {
-                            tracker = suffix + "000000" + sequence + prefix
-                        }
-                        if (sequence >= 100 && sequence <= 999) {
-                            tracker = suffix + "00000" + sequence + prefix
-                        }
-                        if (sequence >= 1000 && sequence <= 9999) {
-                            tracker = suffix + "0000" + sequence + prefix
-                        }
-                        if (sequence >= 10000 && sequence <= 99999) {
-                            tracker = suffix + "000" + sequence + prefix
-                        }
-                        if (sequence >= 100000 && sequence <= 999999) {
-                            tracker = suffix + "00" + sequence + prefix
-                        }
-                        if (sequence >= 1000000 && sequence <= 9999999) {
-                            tracker = suffix + "0" + sequence + prefix
-                        }
-                        if (sequence >= 10000000 && sequence <= 99999999) {
-                            tracker = suffix + sequence + prefix
-                        }
-                    }
-
-                    let update = { ['doTrackingNumber']: tracker, ['sequence']: sequence }
-                    let option = { upsert: false, new: false }
-
-                    ORDERS.findById(filter)
-                        .then((foundOrder) => {
-                            if (!foundOrder) {
-                                console.log("Order not found.");
-                                return;
-                            }
-
-                            if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                && (result[0].product != "ewens") && (result[0].product != "temu")) {
-                                foundOrder.doTrackingNumber = tracker;
-                                foundOrder.sequence = sequence;
-                            }
-
-                            return foundOrder.save();
-                        })
-                        .then((updatedOrder) => {
-                            if (updatedOrder) {
-                                if ((result[0].product != "fmx") && (result[0].product != "bb") && (result[0].product != "fcas") && (result[0].product != "icarus") && (result[0].product != "ewe")
-                                    && (result[0].product != "ewens") && (result[0].product != "temu")) {
-                                    let a = whatsappName;
-                                    let b = tracker;
-
-                                    const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                                    const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                                    const createOrUpdateRequestBody = {
-                                        "firstName": a,
-                                        "phone": phoneNumber
-                                    };
-
-                                    const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                                    const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                                    const requestBody =
-                                    {
-                                        "message": {
-                                            "type": "whatsapp_template",
-                                            "template": {
-                                                "name": "order_received",
-                                                "components": [
-                                                    {
-                                                        "type": "header",
-                                                        "format": "text",
-                                                        "text": "Order Received"
-                                                    },
-                                                    {
-                                                        "text": `Hello ${a},\n\nYour order has been successfully received.\n\nYour tracking number is ${b} which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp or call us at 2332065.`,
-                                                        "type": "body",
-                                                        "parameters": [
-                                                            {
-                                                                "text": a,
-                                                                "type": "text"
-                                                            },
-                                                            {
-                                                                "text": b,
-                                                                "type": "text"
-                                                            }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "text": "Go Rush Express",
-                                                        "type": "footer"
-                                                    }
-                                                ],
-                                                "languageCode": "en"
-                                            }
-                                        },
-                                        "channelId": 209602
-                                    }
-
-                                    // Make the API call to create or update contact information
-                                    axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                                        headers: {
-                                            'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                                            'Content-Type': 'application/json'
-                                        }
-                                    })
-                                        .then(response => {
-                                            console.log('Contact information created or updated successfully:', response.data);
-
-                                            // Introduce a delay of 10 seconds before proceeding with the next API call
-                                            setTimeout(() => {
-                                                axios.post(apiUrl, requestBody, {
-                                                    headers: {
-                                                        'Authorization': `Bearer ${authToken}`,
-                                                        'Content-Type': 'application/json'
-                                                    }
-                                                })
-                                                    .then(response => {
-                                                        console.log('Message sent successfully:', response.data);
-                                                    })
-                                                    .catch(error => {
-                                                        console.error('Error sending message:', error.response.data);
-                                                    });
-                                            }, 10000); // 10 seconds delay
-                                        })
-                                        .catch(error => {
-                                            console.error('Error creating or updating contact information:', error.response.data);
-                                        });
-                                }
-                            }
-                        })
-                        .catch((err) => {
-                            console.log(err);
-                        });
-                }
-            },
-            (err) => {
-                console.log(err)
-            }
-        )
-    }
-}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
