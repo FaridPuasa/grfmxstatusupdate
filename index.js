@@ -13056,7 +13056,198 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
-orderWatch.on('change', change => {
+const queue = [];
+let isProcessing = false;
+
+orderWatch.on('change', async (change) => {
+    if (change.operationType == "insert") {
+        // Push the new change to the queue
+        queue.push(change);
+
+        // If there's no active processing, start processing the queue
+        if (!isProcessing) {
+            processQueue();
+        }
+    }
+});
+
+async function processQueue() {
+    isProcessing = true;
+
+    while (queue.length > 0) {
+        // Get the first change in the queue
+        const currentChange = queue.shift();
+
+        // Execute the logic for this change
+        await handleOrderChange(currentChange);
+    }
+
+    isProcessing = false;
+}
+
+async function handleOrderChange(change) {
+    try {
+        const result = await ORDERS.find().sort({ $natural: -1 }).limit(1000);
+        let filter = new mongoose.Types.ObjectId(result[0]._id);
+        
+        if (result[0].product != null) {
+            let products = result[0].product;
+            
+            if (products.includes("pharmacy") == true) {
+                products = "pharmacy";
+            }
+
+            let tracker;
+            let sequence;
+            let phoneNumber = result[0].receiverPhoneNumber ? "+" + result[0].receiverPhoneNumber.trim() : null;
+            let whatsappName = result[0].receiverName;
+
+            let checkProduct = 0;
+
+            if (result.length >= 2 && checkProduct == 0) {
+                for (let i = 1; i < result.length; i++) {
+                    let productMatch = result[i].product.includes(products) || (result[i].product.includes("localdelivery") && products === "localdelivery");
+                    if (productMatch) {
+                        sequence = result[i].sequence == "N/A" ? 1 : parseInt(result[i].sequence) + 1;
+                        checkProduct = 1;
+                        break;
+                    }
+                }
+                if (checkProduct == 0) {
+                    sequence = 1;
+                    checkProduct = 1;
+                }
+            } else if (result.length == 1 && checkProduct == 0) {
+                sequence = 1;
+                checkProduct = 1;
+            }
+
+            if (!sequence) {
+                sequence = 1;  // Default sequence value if not set
+            }
+
+            // Example for pharmacy MOH product
+            if (result[0].product == "pharmacymoh") {
+                let suffix = "GR2", prefix = "MH";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            if (result[0].product == "pharmacyjpmc") {
+                let suffix = "GR2", prefix = "JP";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            if (result[0].product == "pharmacyphc") {
+                let suffix = "GR2", prefix = "PN";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            if (result[0].product == "localdelivery") {
+                let suffix = "GR3", prefix = "LD";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            if (result[0].product == "localdeliveryjb") {
+                let suffix = "GR3", prefix = "JB";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            if (result[0].product == "grp") {
+                let suffix = "GR4", prefix = "GP";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            if (result[0].product == "cbsl") {
+                let suffix = "GR5", prefix = "CB";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
+
+            // Other product cases go here, similar to the above case
+
+            let update = { doTrackingNumber: tracker, sequence: sequence };
+            await ORDERS.findByIdAndUpdate(filter, update);
+
+            // Logic to send WhatsApp message using axios
+            if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
+                result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" && result[0].product != "temu") {
+                
+                await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
+            }
+        }
+    } catch (err) {
+        console.error('Error processing order change:', err);
+    }
+}
+
+function generateTracker(sequence, suffix, prefix) {
+    if (sequence >= 0 && sequence <= 9) return `${suffix}0000000${sequence}${prefix}`;
+    if (sequence >= 10 && sequence <= 99) return `${suffix}000000${sequence}${prefix}`;
+    if (sequence >= 100 && sequence <= 999) return `${suffix}00000${sequence}${prefix}`;
+    if (sequence >= 1000 && sequence <= 9999) return `${suffix}0000${sequence}${prefix}`;
+    if (sequence >= 10000 && sequence <= 99999) return `${suffix}000${sequence}${prefix}`;
+    if (sequence >= 100000 && sequence <= 999999) return `${suffix}00${sequence}${prefix}`;
+    if (sequence >= 1000000 && sequence <= 9999999) return `${suffix}0${sequence}${prefix}`;
+    return `${suffix}${sequence}${prefix}`;
+}
+
+async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
+    const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
+    const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+    const createOrUpdateRequestBody = {
+        firstName: name,
+        phone: phoneNumber
+    };
+
+    const messageUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
+    const messageAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+    const requestBody = {
+        message: {
+            type: "whatsapp_template",
+            template: {
+                name: "order_received",
+                components: [
+                    { type: "header", format: "text", text: "Order Received" },
+                    { 
+                        type: "body", 
+                        parameters: [
+                            { type: "text", text: name },
+                            { type: "text", text: trackingNumber }
+                        ],
+                        text: `Hello ${name},\n\nYour order has been received. Your tracking number is ${trackingNumber}.\n\nTrack here: www.gorushbn.com`
+                    },
+                    { type: "footer", text: "Go Rush Express" }
+                ],
+                languageCode: "en"
+            }
+        },
+        channelId: 209602
+    };
+
+    try {
+        await axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
+            headers: {
+                'Authorization': `Bearer ${createOrUpdateAuthToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Introduce a delay of 10 seconds before sending the WhatsApp message
+        await new Promise(resolve => setTimeout(resolve, 10000));
+
+        await axios.post(messageUrl, requestBody, {
+            headers: {
+                'Authorization': `Bearer ${messageAuthToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('WhatsApp message sent successfully.');
+    } catch (error) {
+        console.error('Error sending WhatsApp message:', error.response.data);
+    }
+}
+
+/* orderWatch.on('change', change => {
     if (change.operationType == "insert") {
         ORDERS.find().sort({ $natural: -1 }).limit(1000).then(
             (result) => {
@@ -13443,7 +13634,7 @@ orderWatch.on('change', change => {
             }
         )
     }
-})
+}) */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
