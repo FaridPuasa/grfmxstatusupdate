@@ -93,8 +93,8 @@
                                             Collect / Drop Off</a>
                                         <a class="dropdown-item" href="/listofAllOrdersAW">All
                                             Warehouse</a>
-                                            <a class="dropdown-item" href="/listofAllOrdersIR">All
-                                                New Orders from Website</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                            New Orders from Website</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -114,12 +114,11 @@
                             </div>
                         </li>
                         <% } %>
-                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin'
-                                ].includes(user.role)) {%>
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
+                                {%>
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
+                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                         MOH
                                     </a>
                                     <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
@@ -134,14 +133,11 @@
                                                     Delivery</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
                                                     Collect</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyMOHOrdersAW">Warehouse</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyMOHOrdersIRCC">New</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
                                                 <a class="dropdown-item"
                                                     href="/listofpharmacyMOHOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyMOHOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
                                                     STD</a>
@@ -154,23 +150,21 @@
                                                 <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
                                                     KB</a>
                                                 <% } %>
-                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) {
-                                                        %>
+                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
                                                         <div class="dropdown-divider"></div>
                                                         <!-- Divider here -->
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHForms">Pharmacy
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
                                                             Form
                                                             List</a>
                                                         <% } %>
-                                                            <% if (['moh', 'finance' , 'cs' , 'manager'
-                                                                , 'admin' ].includes(user.role)) { %>
+                                                            <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
+                                                                ].includes(user.role)) { %>
                                     </div>
                                 </li>
                                 <% } %>
 
-                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
-                                        ].includes(user.role)) { %>
+                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
+                                        %>
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -178,10 +172,8 @@
                                                 EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                    %>
-                                                    <a class="dropdown-item"
-                                                        href="/ewemanifesttobillsearch">Search
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
                                                         Manifest to Bill</a>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                                     <% } %>
@@ -192,22 +184,17 @@
                                                             Delivery</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersSC">Self
                                                             Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWEOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWEOrdersCD">Cancelled</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
                                                         <div class="dropdown-divider"></div>
                                                         <!-- Divider here -->
                                                         <div class="dropdown-header">NON SHEIN</div>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWENSOrders">All</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWENSOrdersOFD">Out for
+                                                        <a class="dropdown-item" href="/listofEWENSOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWENSOrdersSC">Self
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWENSOrdersAW">Warehouse</a>
@@ -232,8 +219,7 @@
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofFMXOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item"
                                                     href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                             </div>
@@ -252,12 +238,10 @@
                                                     Delivery</a>
                                                 <a class="dropdown-item" href="/listofTEMUDOrdersSC">Self
                                                     Collect</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofTEMUDOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofTEMUDOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <div class="dropdown-header">Collection</div>
                                                 <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
@@ -267,8 +251,7 @@
                                                     Off</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -287,12 +270,10 @@
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
                                                 <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                                                 <a class="dropdown-item" href="/listofLDOrders">Local
                                                     Delivery</a>
@@ -328,8 +309,7 @@
                                                             <% } %>
                                                                 <!-- <a class="dropdown-item" href="#">Edit
                                                                     Profile</a> -->
-                                                                <a class="dropdown-item"
-                                                                    href="/logout">Logout</a>
+                                                                <a class="dropdown-item" href="/logout">Logout</a>
                                                     </div>
                                                 </li>
                                                 <% } else { %>
@@ -362,7 +342,41 @@
             <button type="submit" class="btn btn-primary">Search</button>
         </form>
     </div>
-
+    <!-- Modal for Reorder -->
+    <div class="modal fade" id="reorderModal" tabindex="-1" role="dialog" aria-labelledby="reorderModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reorderModalLabel">Reorder</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="reorderForm">
+                        <div class="form-group">
+                            <label for="jobMethod">Job Method</label>
+                            <select id="jobMethod" class="form-control" required>
+                                <!-- Options will be dynamically added based on the address -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentMethod">Payment Method</label>
+                            <select id="paymentMethod" class="form-control" required>
+                                <option value="Cash">Cash</option>
+                                <option value="Bill Payment (BIBD)">Bill Payment (BIBD)</option>
+                                <option value="Bank Transfer (BIBD)">Bank Transfer (BIBD)</option>
+                                <option value="Bank Transfer (Baiduri)">Bank Transfer (Baiduri)</option>
+                            </select>
+                        </div>
+                        <input type="hidden" id="trackingNumber" />
+                        <button type="submit" class="btn btn-primary">Confirm</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="results" class="mt-4">
         <table class="table" id="orderTable">
             <thead>
@@ -390,6 +404,7 @@
                     <th class="header">Payment Method</th>
                     <th class="header">Price</th>
                     <th class="header">Remarks</th>
+                    <th class="header">Action</th>
                 </tr>
             </thead>
             <tbody id="results-body">
@@ -432,8 +447,8 @@
                                                 <% const entryDate=new Date(order.warehouseEntryDateTime); %>
                                                     <% const currentDate=new Date(); %>
                                                         <% const ageInMilliseconds=currentDate - entryDate; %>
-                                                            <% const ageInDays=Math.floor(ageInMilliseconds / (1000
-                                                                * 60 * 60 * 24)); %>
+                                                            <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60
+                                                                * 60 * 24)); %>
                                                                 <%= ageInDays %>
                                                                     <% } %>
                                                                         <% } else { %>
@@ -483,6 +498,11 @@
                                 <td>
                                     <%= order.remarks %>
                                 </td>
+                                <td>
+                                    <button class="btn btn-primary reorder-btn"
+                                        data-tracking="<%= order.doTrackingNumber %>"
+                                        data-address="<%= order.receiverAddress %>">Reorder</button>
+                                </td>
                             </tr>
                             <% }); %>
                                 <% } %>
@@ -510,6 +530,72 @@
             });
         });
     </script>
+
+    <script>
+        document.querySelectorAll('.reorder-btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const trackingNumber = this.getAttribute('data-tracking');
+                const address = this.getAttribute('data-address').toLowerCase();
+
+                // Populate Job Method based on the address
+                const jobMethodSelect = document.getElementById('jobMethod');
+                jobMethodSelect.innerHTML = ''; // Clear existing options
+
+                if (address.includes('brunei muara') || address.includes('brunei-muara')) {
+                    jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
+                    jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
+                    jobMethodSelect.innerHTML += '<option value="Immediate">Immediate</option>';
+                    jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
+                } else {
+                    jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
+                    jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
+                }
+
+                // Set the tracking number in a hidden input
+                document.getElementById('trackingNumber').value = trackingNumber;
+
+                // Show the modal
+                $('#reorderModal').modal('show');
+            });
+        });
+
+        // Handle form submission for reorder
+        document.getElementById('reorderForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const trackingNumber = document.getElementById('trackingNumber').value;
+            const jobMethod = document.getElementById('jobMethod').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+
+            try {
+                const response = await fetch('/reorder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        trackingNumber,
+                        jobMethod,
+                        paymentMethod
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Order is submitted');
+                } else {
+                    alert('Order submission failed');
+                }
+
+                $('#reorderModal').modal('hide');
+            } catch (error) {
+                console.error('Error submitting reorder:', error);
+                alert('An error occurred while submitting the order.');
+            }
+        });
+    </script>
+
 </body>
 
 </html>

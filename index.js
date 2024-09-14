@@ -13056,6 +13056,98 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     res.redirect('/successUpdate'); // Redirect to the successUpdate page test
 });
 
+app.post('/reorder', ensureAuthenticated, async (req, res) => {
+    try {
+        const { trackingNumber, jobMethod, paymentMethod } = req.body;
+
+        if ((jobMethod == "Standard") || (jobMethod == "Self Collect")) {
+            var deliveryTypeCode = "STD"
+        } else if (jobMethod == "Express") {
+            var deliveryTypeCode = "EXP"
+        } else if (jobMethod == "Express") {
+            var deliveryTypeCode = "IMM"
+        }
+
+        // Check if the tracking number exists
+        const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+        if (!order) {
+            return res.json({ success: false, message: 'Order not found' });
+        }
+
+        // Prepare data for Make (formerly Integromat)
+        const makeData = {
+            area: order.area,
+            icNum: order.icNum,
+            items: [
+                {
+                    quantity: 1,
+                    description: "Medicine",
+                    totalItemPrice: getPrice(jobMethod)
+                }
+            ],
+            attempt: 0,
+            jobType: order.jobType,
+            product: order.product,
+            icPassNum: order.icPassNum,
+            jobMethod,
+            totalPrice: getPrice(jobMethod),
+            dateOfBirth: order.dateOfBirth,
+            sendOrderTo: order.sendOrderTo,
+            creationDate: moment().format('YYYY-MM-DD'),
+            receiverName: order.receiverName,
+            trackingLink: "N/A",
+            currentStatus: "Info Received",
+            patientNumber: order.patientNumber,
+            payingPatient: order.payingPatient,
+            paymentamount: getPrice(jobMethod),
+            paymentMethod,
+            receiverEmail: order.receiverEmail,
+            warehouseEntry: "No",
+            receiverAddress: order.receiverAddress,
+            appointmentPlace: order.appointmentPlace,
+            deliveryTypeCode,
+            dateTimeSubmission: moment().format('YYYY-MM-DD HH:mm'),
+            lastUpdateDateTime: moment(),
+            receiverPostalCode: order.receiverPostalCode,
+            appointmentDistrict: order.appointmentDistrict,
+            pharmacyFormCreated: "No",
+            receiverPhoneNumber: order.receiverPhoneNumber,
+            additionalPhoneNumber: order.additionalPhoneNumber,
+            warehouseEntryDateTime: "N/A"
+        };
+
+        // Replace with your actual Make webhook URL
+        const makeWebhookUrl = 'https://hook.eu1.make.com/akvb1wvtd9qpe3uku983aso4ipzec2op';
+
+        // Make the request to Make using axios
+        const response = await axios.post(makeWebhookUrl, makeData, {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (response.status === 200) {
+            return res.json({ success: true, message: 'Order is submitted' });
+        } else {
+            return res.json({ success: false, message: 'Failed to submit to Make' });
+        }
+    } catch (error) {
+        console.error('Error processing reorder:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+function getPrice(jobMethod) {
+    switch (jobMethod) {
+        case 'Standard': return 4;
+        case 'Express': return 5.5;
+        case 'Immediate': return 20;
+        case 'Self Collect': return 4;
+        default: return 0;
+    }
+}
+
 const queue = [];
 let isProcessing = false;
 
