@@ -79,7 +79,7 @@
                             </a>
                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                 <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                    <a class="dropdown-item" href="/search">Search</a>
+                                    <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                     <% } %>
                                         <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
@@ -94,8 +94,8 @@
                                             Collect / Drop Off</a>
                                         <a class="dropdown-item" href="/listofAllOrdersAW">All
                                             Warehouse</a>
-                                        <a class="dropdown-item" href="/listofAllOrdersIR">All
-                                            New Orders from Website</a>
+                                            <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                                New Orders from Website</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -115,11 +115,12 @@
                             </div>
                         </li>
                         <% } %>
-                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
-                                {%>
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin'
+                                ].includes(user.role)) {%>
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
+                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                        aria-expanded="false">
                                         MOH
                                     </a>
                                     <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
@@ -134,11 +135,14 @@
                                                     Delivery</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
                                                     Collect</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofpharmacyMOHOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofpharmacyMOHOrdersIRCC">New</a>
                                                 <a class="dropdown-item"
                                                     href="/listofpharmacyMOHOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofpharmacyMOHOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
                                                     STD</a>
@@ -151,21 +155,23 @@
                                                 <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
                                                     KB</a>
                                                 <% } %>
-                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) {
+                                                        %>
                                                         <div class="dropdown-divider"></div>
                                                         <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
+                                                        <a class="dropdown-item"
+                                                            href="/listofpharmacyMOHForms">Pharmacy
                                                             Form
                                                             List</a>
                                                         <% } %>
-                                                            <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
-                                                                ].includes(user.role)) { %>
+                                                            <% if (['moh', 'finance' , 'cs' , 'manager'
+                                                                , 'admin' ].includes(user.role)) { %>
                                     </div>
                                 </li>
                                 <% } %>
 
-                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
-                                        %>
+                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
+                                        ].includes(user.role)) { %>
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -173,8 +179,10 @@
                                                 EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
+                                                    %>
+                                                    <a class="dropdown-item"
+                                                        href="/ewemanifesttobillsearch">Search
                                                         Manifest to Bill</a>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                                     <% } %>
@@ -185,17 +193,22 @@
                                                             Delivery</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersSC">Self
                                                             Collect</a>
-                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWEOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWEOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWEOrdersCD">Cancelled</a>
                                                         <div class="dropdown-divider"></div>
                                                         <!-- Divider here -->
                                                         <div class="dropdown-header">NON SHEIN</div>
-                                                        <a class="dropdown-item" href="/listofEWENSOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofEWENSOrdersOFD">Out for
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWENSOrders">All</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWENSOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item" href="/listofEWENSOrdersSC">Self
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWENSOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWENSOrdersAW">Warehouse</a>
@@ -220,7 +233,8 @@
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofFMXOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item"
                                                     href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                             </div>
@@ -239,10 +253,12 @@
                                                     Delivery</a>
                                                 <a class="dropdown-item" href="/listofTEMUDOrdersSC">Self
                                                     Collect</a>
-                                                <a class="dropdown-item" href="/listofTEMUDOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofTEMUDOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofTEMUCOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <div class="dropdown-header">Collection</div>
                                                 <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
@@ -252,7 +268,8 @@
                                                     Off</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofTEMUCOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -271,10 +288,12 @@
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                                                <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofpharmacyJPMCOrders">JPMC</a>
                                                 <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                                                 <a class="dropdown-item" href="/listofLDOrders">Local
                                                     Delivery</a>
@@ -310,7 +329,8 @@
                                                             <% } %>
                                                                 <!-- <a class="dropdown-item" href="#">Edit
                                                                     Profile</a> -->
-                                                                <a class="dropdown-item" href="/logout">Logout</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/logout">Logout</a>
                                                     </div>
                                                 </li>
                                                 <% } else { %>
