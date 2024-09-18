@@ -381,6 +381,7 @@
         <table class="table" id="orderTable">
             <thead>
                 <tr>
+                    <th class="header">Action</th>
                     <th class="header">Tracking No.</th>
                     <th class="header">Customer Name</th>
                     <th class="header">Current Status</th>
@@ -404,7 +405,6 @@
                     <th class="header">Payment Method</th>
                     <th class="header">Price</th>
                     <th class="header">Remarks</th>
-                    <th class="header">Action</th>
                 </tr>
             </thead>
             <tbody id="results-body">
@@ -415,6 +415,11 @@
                     <% } else { %>
                         <% orders.forEach(order=> { %>
                             <tr>
+                                <td>
+                                    <button class="btn btn-primary reorder-btn"
+                                        data-tracking="<%= order.doTrackingNumber %>"
+                                        data-address="<%= order.receiverAddress %>">Reorder</button>
+                                </td>
                                 <td>
                                     <%= order.doTrackingNumber %>
                                 </td>
@@ -497,11 +502,6 @@
                                 </td>
                                 <td>
                                     <%= order.remarks %>
-                                </td>
-                                <td>
-                                    <button class="btn btn-primary reorder-btn"
-                                        data-tracking="<%= order.doTrackingNumber %>"
-                                        data-address="<%= order.receiverAddress %>">Reorder</button>
                                 </td>
                             </tr>
                             <% }); %>

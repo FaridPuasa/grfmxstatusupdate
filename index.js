@@ -639,7 +639,8 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -734,7 +735,8 @@ app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ warehouseEntryDateTime: 1 });
 
@@ -831,7 +833,8 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -879,7 +882,8 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -928,7 +932,8 @@ app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ _id: -1 });
 
@@ -977,7 +982,8 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1025,7 +1031,8 @@ app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1075,7 +1082,8 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1125,7 +1133,8 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ _id: -1 })
 
@@ -2296,7 +2305,8 @@ app.get('/listofGRPOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ _id: -1 });
 
@@ -2345,7 +2355,8 @@ app.get('/listofCBSLOrders', ensureAuthenticated, ensureViewJob, async (req, res
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'additionalPhoneNumber'
             ])
             .sort({ _id: -1 });
 
@@ -13061,11 +13072,14 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
         const { trackingNumber, jobMethod, paymentMethod } = req.body;
 
         if ((jobMethod == "Standard") || (jobMethod == "Self Collect")) {
-            var deliveryTypeCode = "STD"
+            var deliveryTypeCode = "STD";
+            var startDate = moment().add(2, 'days').format('YYYY-MM-DD');  // 2 days from now
         } else if (jobMethod == "Express") {
-            var deliveryTypeCode = "EXP"
-        } else if (jobMethod == "Express") {
-            var deliveryTypeCode = "IMM"
+            var deliveryTypeCode = "EXP";
+            var startDate = moment().add(1, 'day').format('YYYY-MM-DD');   // 1 day from now
+        } else if (jobMethod == "Immediate") {
+            var deliveryTypeCode = "IMM";
+            var startDate = moment().format('YYYY-MM-DD');                 // Today
         }
 
         // Check if the tracking number exists
@@ -13086,11 +13100,14 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
                     totalItemPrice: getPrice(jobMethod)
                 }
             ],
+            passport: order.passport,
             attempt: 0,
             jobType: order.jobType,
             product: order.product,
             icPassNum: order.icPassNum,
             jobMethod,
+            startDate,  // Use the calculated start date based on jobMethod
+            jobDate: "N/A",
             totalPrice: getPrice(jobMethod),
             dateOfBirth: order.dateOfBirth,
             sendOrderTo: order.sendOrderTo,
@@ -13107,8 +13124,8 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
             receiverAddress: order.receiverAddress,
             appointmentPlace: order.appointmentPlace,
             deliveryTypeCode,
-            dateTimeSubmission: moment().format('YYYY-MM-DD HH:mm'),
-            lastUpdateDateTime: moment(),
+            dateTimeSubmission: moment().format('DD-MM-YYYY hh:mm A'),
+            lastUpdateDateTime: moment().format('DD-MM-YYYY hh:mm A'),
             receiverPostalCode: order.receiverPostalCode,
             appointmentDistrict: order.appointmentDistrict,
             pharmacyFormCreated: "No",
@@ -13116,6 +13133,8 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
             additionalPhoneNumber: order.additionalPhoneNumber,
             warehouseEntryDateTime: "N/A"
         };
+
+        console.log(makeData)
 
         // Replace with your actual Make webhook URL
         const makeWebhookUrl = 'https://hook.eu1.make.com/akvb1wvtd9qpe3uku983aso4ipzec2op';
