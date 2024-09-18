@@ -382,6 +382,7 @@
             <thead>
                 <tr>
                     <th class="header">Action</th>
+                    <th class="header">Product</th>
                     <th class="header">Tracking No.</th>
                     <th class="header">Customer Name</th>
                     <th class="header">Current Status</th>
@@ -418,7 +419,11 @@
                                 <td>
                                     <button class="btn btn-primary reorder-btn"
                                         data-tracking="<%= order.doTrackingNumber %>"
-                                        data-address="<%= order.receiverAddress %>">Reorder</button>
+                                        data-address="<%= order.receiverAddress %>"
+                                        data-product="<%= order.product %>">Reorder</button>
+                                </td>
+                                <td>
+                                    <%= order.product %>
                                 </td>
                                 <td>
                                     <%= order.doTrackingNumber %>
@@ -536,17 +541,32 @@
             button.addEventListener('click', function () {
                 const trackingNumber = this.getAttribute('data-tracking');
                 const address = this.getAttribute('data-address').toLowerCase();
+                const product = this.getAttribute('data-product'); // Get the product
 
-                // Populate Job Method based on the address
+                // Populate Job Method based on the address and product
                 const jobMethodSelect = document.getElementById('jobMethod');
                 jobMethodSelect.innerHTML = ''; // Clear existing options
 
-                if (address.includes('brunei muara') || address.includes('brunei-muara')) {
-                    jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
-                    jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
-                    jobMethodSelect.innerHTML += '<option value="Immediate">Immediate</option>';
-                    jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
-                } else {
+                if (product === 'pharmacymoh') {
+                    if (address.includes('brunei muara') || address.includes('brunei-muara')) {
+                        jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
+                        jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
+                        jobMethodSelect.innerHTML += '<option value="Immediate">Immediate</option>';
+                        jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
+                    } else {
+                        jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
+                        jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
+                    }
+                } else if (product === 'pharmacyjpmc') {
+                    if (address.includes('brunei muara') || address.includes('brunei-muara')) {
+                        jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
+                        jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
+                        jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
+                    } else {
+                        jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
+                        jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
+                    }
+                } else if (product === 'pharmacyphc') {
                     jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
                     jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
                 }

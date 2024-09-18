@@ -441,7 +441,8 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const { patientNumber, icPassNum, receiverPhoneNumber } = req.body;
 
-        let query = { product: "pharmacymoh" };
+         // Modify query to include pharmacymoh, pharmacyjpmc, and pharmacyphc
+         let query = { product: { $in: ["pharmacymoh", "pharmacyjpmc", "pharmacyphc"] } };
 
         if (patientNumber) {
             query.patientNumber = new RegExp(patientNumber, 'i'); // Case-insensitive partial match
