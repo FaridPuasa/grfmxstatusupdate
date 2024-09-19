@@ -93,8 +93,8 @@
                                             Collect / Drop Off</a>
                                         <a class="dropdown-item" href="/listofAllOrdersAW">All
                                             Warehouse</a>
-                                            <a class="dropdown-item" href="/listofAllOrdersIR">All
-                                                New Orders from Website</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                            New Orders from Website</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -114,12 +114,11 @@
                             </div>
                         </li>
                         <% } %>
-                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin'
-                                ].includes(user.role)) {%>
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
+                                {%>
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
+                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                         MOH
                                     </a>
                                     <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
@@ -134,14 +133,11 @@
                                                     Delivery</a>
                                                 <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
                                                     Collect</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyMOHOrdersAW">Warehouse</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyMOHOrdersIRCC">New</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
                                                 <a class="dropdown-item"
                                                     href="/listofpharmacyMOHOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyMOHOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
                                                     STD</a>
@@ -154,23 +150,21 @@
                                                 <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
                                                     KB</a>
                                                 <% } %>
-                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) {
-                                                        %>
+                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
                                                         <div class="dropdown-divider"></div>
                                                         <!-- Divider here -->
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHForms">Pharmacy
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
                                                             Form
                                                             List</a>
                                                         <% } %>
-                                                            <% if (['moh', 'finance' , 'cs' , 'manager'
-                                                                , 'admin' ].includes(user.role)) { %>
+                                                            <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
+                                                                ].includes(user.role)) { %>
                                     </div>
                                 </li>
                                 <% } %>
 
-                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
-                                        ].includes(user.role)) { %>
+                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
+                                        %>
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -178,10 +172,8 @@
                                                 EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                    %>
-                                                    <a class="dropdown-item"
-                                                        href="/ewemanifesttobillsearch">Search
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
                                                         Manifest to Bill</a>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
                                                     <% } %>
@@ -192,22 +184,17 @@
                                                             Delivery</a>
                                                         <a class="dropdown-item" href="/listofEWEOrdersSC">Self
                                                             Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWEOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWEOrdersCD">Cancelled</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
                                                         <div class="dropdown-divider"></div>
                                                         <!-- Divider here -->
                                                         <div class="dropdown-header">NON SHEIN</div>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWENSOrders">All</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWENSOrdersOFD">Out for
+                                                        <a class="dropdown-item" href="/listofEWENSOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersOFD">Out for
                                                             Delivery</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofEWENSOrdersSC">Self
+                                                        <a class="dropdown-item" href="/listofEWENSOrdersSC">Self
                                                             Collect</a>
                                                         <a class="dropdown-item"
                                                             href="/listofEWENSOrdersAW">Warehouse</a>
@@ -232,8 +219,7 @@
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofFMXOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofFMXOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item"
                                                     href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                             </div>
@@ -252,12 +238,10 @@
                                                     Delivery</a>
                                                 <a class="dropdown-item" href="/listofTEMUDOrdersSC">Self
                                                     Collect</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofTEMUDOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofTEMUDOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <div class="dropdown-header">Collection</div>
                                                 <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
@@ -267,8 +251,7 @@
                                                     Off</a>
                                                 <a class="dropdown-item"
                                                     href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -287,12 +270,10 @@
                                                     Collect</a>
                                                 <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
                                                 <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                                                <a class="dropdown-item"
-                                                    href="/listofOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item"
-                                                    href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
                                                 <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                                                 <a class="dropdown-item" href="/listofLDOrders">Local
                                                     Delivery</a>
@@ -328,8 +309,7 @@
                                                             <% } %>
                                                                 <!-- <a class="dropdown-item" href="#">Edit
                                                                     Profile</a> -->
-                                                                <a class="dropdown-item"
-                                                                    href="/logout">Logout</a>
+                                                                <a class="dropdown-item" href="/logout">Logout</a>
                                                     </div>
                                                 </li>
                                                 <% } else { %>
@@ -389,6 +369,11 @@
                                 <option value="Bank Transfer (BIBD)">Bank Transfer (BIBD)</option>
                                 <option value="Bank Transfer (Baiduri)">Bank Transfer (Baiduri)</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="remarks">Remarks</label>
+                            <input type="text" id="remarks" class="form-control"
+                                placeholder="Add any remarks (optional)">
                         </div>
                         <input type="hidden" id="trackingNumber" />
                         <button type="submit" class="btn btn-primary">Confirm</button>
@@ -541,6 +526,7 @@
     <script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 
     <script>
         $(document).ready(function () {
@@ -567,11 +553,42 @@
                 const jobMethodSelect = document.getElementById('jobMethod');
                 jobMethodSelect.innerHTML = ''; // Clear existing options
 
+                // Get current day and time using moment.js
+                const currentDay = moment().day(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+                const currentTime = moment().hour(); // Get the current hour in 24-hour format
+
+                // Function to check availability of Express
+                function isExpressAvailable() {
+                    // Not available on Thursday from 11am and onwards, full days on Friday and Saturday
+                    if (currentDay === 4 && currentTime >= 11) { // Thursday after 11am
+                        return false;
+                    } else if (currentDay === 5 || currentDay === 6) { // Friday and Saturday full day
+                        return false;
+                    }
+                    return true;
+                }
+
+                // Function to check availability of Immediate
+                function isImmediateAvailable() {
+                    // Not available on Friday (day 5) and Sunday (day 0), only available from 8am to 3pm on other days
+                    if (currentDay === 0 || currentDay === 5) { // Sunday or Friday
+                        return false;
+                    }
+                    return currentTime >= 8 && currentTime <= 15;
+                }
+
                 if (product === 'pharmacymoh') {
                     if (address.includes('brunei muara') || address.includes('brunei-muara')) {
                         jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
-                        jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
-                        jobMethodSelect.innerHTML += '<option value="Immediate">Immediate</option>';
+
+                        if (isExpressAvailable()) {
+                            jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
+                        }
+
+                        if (isImmediateAvailable()) {
+                            jobMethodSelect.innerHTML += '<option value="Immediate">Immediate</option>';
+                        }
+
                         jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
                     } else {
                         jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
@@ -580,7 +597,11 @@
                 } else if (product === 'pharmacyjpmc') {
                     if (address.includes('brunei muara') || address.includes('brunei-muara')) {
                         jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
-                        jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
+
+                        if (isExpressAvailable()) {
+                            jobMethodSelect.innerHTML += '<option value="Express">Express</option>';
+                        }
+
                         jobMethodSelect.innerHTML += '<option value="Self Collect">Self Collect</option>';
                     } else {
                         jobMethodSelect.innerHTML += '<option value="Standard">Standard</option>';
@@ -606,6 +627,7 @@
             const trackingNumber = document.getElementById('trackingNumber').value;
             const jobMethod = document.getElementById('jobMethod').value;
             const paymentMethod = document.getElementById('paymentMethod').value;
+            const remarks = document.getElementById('remarks').value; // Get the remarks value
 
             try {
                 const response = await fetch('/reorder', {
@@ -616,7 +638,8 @@
                     body: JSON.stringify({
                         trackingNumber,
                         jobMethod,
-                        paymentMethod
+                        paymentMethod,
+                        remarks // Include remarks in the request
                     })
                 });
 

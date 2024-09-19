@@ -13065,7 +13065,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
 app.post('/reorder', ensureAuthenticated, async (req, res) => {
     try {
-        const { trackingNumber, jobMethod, paymentMethod } = req.body;
+        const { trackingNumber, jobMethod, paymentMethod, remarks } = req.body;
 
         if ((jobMethod == "Standard") || (jobMethod == "Self Collect")) {
             var deliveryTypeCode = "STD";
@@ -13096,6 +13096,7 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
                     totalItemPrice: getPrice(jobMethod)
                 }
             ],
+            remarks,
             passport: order.passport,
             attempt: 0,
             jobType: order.jobType,
