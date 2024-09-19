@@ -441,8 +441,8 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const { patientNumber, icPassNum, receiverPhoneNumber } = req.body;
 
-         // Modify query to include pharmacymoh, pharmacyjpmc, and pharmacyphc
-         let query = { product: { $in: ["pharmacymoh", "pharmacyjpmc", "pharmacyphc"] } };
+        // Modify query to include pharmacymoh, pharmacyjpmc, and pharmacyphc
+        let query = { product: { $in: ["pharmacymoh", "pharmacyjpmc", "pharmacyphc"] } };
 
         if (patientNumber) {
             query.patientNumber = new RegExp(patientNumber, 'i'); // Case-insensitive partial match
@@ -9238,10 +9238,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             DetrackAPIrun = 1;
                             completeRun = 1;
                         } else {
-                            /* if ((data.data.attempt > 1) && (product == 'TEMU')) {
-                                maxAttempt = 2;
-                                completeRun = 1;
-                            } else { */
                             if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                                 update = {
                                     currentStatus: "Out for Collection",
@@ -9314,15 +9310,15 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                                 portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + ". ";
                             }
-                            /* } */
+
+                            appliedStatus = "Out for Collection"
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
                         }
                     }
 
                     if ((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) {
-                        /* if ((data.data.attempt > 2) && ((product == 'EWE') || (product == 'EWENS'))) {
-                            maxAttempt = 1;
-                            completeRun = 1;
-                        } else { */
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             update = {
                                 currentStatus: "Out for Delivery",
@@ -9400,7 +9396,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         DetrackAPIrun = 1;
                         completeRun = 1;
-                        /* } */
                     }
                 }
 
@@ -13134,8 +13129,6 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
             additionalPhoneNumber: order.additionalPhoneNumber,
             warehouseEntryDateTime: "N/A"
         };
-
-        console.log(makeData)
 
         // Replace with your actual Make webhook URL
         const makeWebhookUrl = 'https://hook.eu1.make.com/akvb1wvtd9qpe3uku983aso4ipzec2op';
