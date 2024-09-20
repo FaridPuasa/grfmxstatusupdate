@@ -521,6 +521,7 @@
                         <th class="header">Age in Warehouse</th>
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
+                        <th class="header">Job Created</th>
                         <th class="header">Phone No.</th>
                         <th class="header">Additional Phone No.</th>
                         <th class="header">Address</th>
@@ -577,6 +578,25 @@
                             </td>
                             <td>
                                 <%= order.lastUpdatedBy %>
+                            </td>
+                            <td>
+                                <%= order.dateTimeSubmission 
+                                    ? order.dateTimeSubmission 
+                                    : (() => {
+                                        const dateStr = order.creationDate;
+                            
+                                        // Check if the date is in YYYY-MM-DD format
+                                        const isDateOnly = moment(dateStr, "YYYY-MM-DD", true).isValid();
+                            
+                                        if (isDateOnly) {
+                                            // Return date in DD-MM-YYYY format without adding any time
+                                            return moment(dateStr, "YYYY-MM-DD").format("DD-MM-YYYY");
+                                        } else {
+                                            // Convert any other format to DD-MM-YYYY hh:mm A (keep actual time)
+                                            return moment(dateStr).format("DD-MM-YYYY hh:mm A");
+                                        }
+                                    })()
+                                %>
                             </td>
                             <td>
                                 <%= order.receiverPhoneNumber %>

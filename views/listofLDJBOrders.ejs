@@ -361,6 +361,7 @@
                         <th class="header">Latest Reason</th>
                         <th class="header">Last Update</th>
                         <th class="header">Last Update By</th>
+                        <th class="header">Job Created</th>
                         <th class="header">Receiver Address</th>
                         <th class="header">Area</th>
                         <th class="header">Item Description</th>
@@ -420,6 +421,9 @@
                             </td>
                             <td>
                                 <%= order.lastUpdatedBy %>
+                            </td>
+                            <td>
+                                <%= order.dateTimeSubmission %>
                             </td>
                             <td>
                                 <%= order.receiverAddress %>

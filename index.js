@@ -641,7 +641,8 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -737,7 +738,8 @@ app.get('/listofAllOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ warehouseEntryDateTime: 1 });
 
@@ -785,7 +787,8 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'dateTimeSubmission',
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -835,7 +838,8 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -884,7 +888,8 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -934,7 +939,8 @@ app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, re
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ _id: -1 });
 
@@ -984,7 +990,8 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1033,7 +1040,8 @@ app.get('/listofAllOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1084,7 +1092,8 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -1135,7 +1144,8 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'additionalPhoneNumber'
+                'additionalPhoneNumber',
+                'dateTimeSubmission'
             ])
             .sort({ _id: -1 })
 
@@ -1185,7 +1195,8 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'dateTimeSubmission'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
