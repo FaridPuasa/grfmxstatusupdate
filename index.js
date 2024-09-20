@@ -13337,7 +13337,8 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
                             { type: "text", text: name },
                             { type: "text", text: trackingNumber }
                         ],
-                        text: `Hello ${name},\n\nYour order has been received. Your tracking number is ${trackingNumber}.\n\nTrack here: www.gorushbn.com`
+                        text: `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}* which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp or call us at *2332065*.`
+                        
                     },
                     { type: "footer", text: "Go Rush Express" }
                 ],
