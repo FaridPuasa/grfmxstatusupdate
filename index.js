@@ -5640,7 +5640,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     // Check if it's Sunday between 3 AM and 9 AM
     const now = moment();
     const isSunday = now.day() === 0;
-    const isWithinRestrictedTime = now.hour() >= 3 && now.hour() < 9;
+    const isWithinRestrictedTime = now.hour() >= 0 && now.hour() < 12;
 
     if (!(isSunday && isWithinRestrictedTime)) {
         // Step 1: Authenticate and get accessToken
@@ -5652,7 +5652,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
         const accessToken = authResponse.data.result.accessToken;
     } else {
-        console.log("Skipping authentication because it's Sunday between 3 AM and 9 AM.");
+        console.log("Skipping authentication because it's Sunday between 12 AM and 12 PM.");
     }
     // Split the tracking numbers by newlines
     const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
