@@ -9937,23 +9937,47 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if ((req.body.statusCode == 'CD') && (data.data.status != 'completed')) {
                     detrackReason = "Cancelled";
 
-                    update = {
-                        currentStatus: "Cancelled",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: data.data.remarks,
-                        assignedTo: "N/A",
-                        latestReason: detrackReason,
-                        latestLocation: req.body.warehouse,
-                        lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
-                        $push: {
-                            history: {
-                                statusHistory: "Cancelled",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: "Cancelled Delivery",
-                                lastLocation: req.body.warehouse,
+                    if (product == 'MOH') {
+                        update = {
+                            currentStatus: "Cancelled",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: data.data.remarks,
+                            assignedTo: "N/A",
+                            latestReason: detrackReason,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: "N/A",
+                            pharmacyFormCreated: "Yes",
+                            $push: {
+                                history: {
+                                    statusHistory: "Cancelled",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: "N/A",
+                                    reason: "Cancelled Delivery",
+                                    lastLocation: req.body.warehouse,
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            currentStatus: "Cancelled",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: data.data.remarks,
+                            assignedTo: "N/A",
+                            latestReason: detrackReason,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: "N/A",
+                            $push: {
+                                history: {
+                                    statusHistory: "Cancelled",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: "N/A",
+                                    reason: "Cancelled Delivery",
+                                    lastLocation: req.body.warehouse,
+                                }
                             }
                         }
                     }
@@ -9985,23 +10009,47 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if ((req.body.statusCode == 'AJ') && (data.data.status == 'cancelled')) {
                     portalUpdate = "Portal and Detrack status updated to Return to Warehouse from Cancelled. ";
 
-                    update = {
-                        currentStatus: "Return to Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: data.data.remarks,
-                        assignedTo: "N/A",
-                        latestReason: detrackReason,
-                        latestLocation: req.body.warehouse,
-                        lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
-                        $push: {
-                            history: {
-                                statusHistory: "Return to Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: detrackReason,
-                                lastLocation: req.body.warehouse,
+                    if (product == 'MOH') {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: data.data.remarks,
+                            assignedTo: "N/A",
+                            latestReason: detrackReason,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: "N/A",
+                            pharmacyFormCreated: "No",
+                            $push: {
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: "N/A",
+                                    reason: detrackReason,
+                                    lastLocation: req.body.warehouse,
+                                }
+                            }
+                        }
+                    } else {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: data.data.remarks,
+                            assignedTo: "N/A",
+                            latestReason: detrackReason,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: "N/A",
+                            $push: {
+                                history: {
+                                    statusHistory: "Return to Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: "N/A",
+                                    reason: detrackReason,
+                                    lastLocation: req.body.warehouse,
+                                }
                             }
                         }
                     }
