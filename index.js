@@ -5642,6 +5642,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     const isSunday = now.day() === 0;
     const isWithinRestrictedTime = now.hour() >= 0 && now.hour() < 12;
 
+    let accessToken = null; // Initialize the accessToken variable
+
     if (!(isSunday && isWithinRestrictedTime)) {
         // Step 1: Authenticate and get accessToken
         const authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
@@ -5650,11 +5652,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             source: 'string'
         });
 
-        const accessToken = authResponse.data.result.accessToken;
+        accessToken = authResponse.data.result.accessToken;
     } else {
         console.log("Skipping authentication because it's Sunday between 12 AM and 12 PM.");
     }
     // Split the tracking numbers by newlines
+
     const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
 
     const uniqueConsignmentIDs = new Set(); // Use a Set to automatically remove duplicates
