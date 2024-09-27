@@ -790,7 +790,8 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
                 'jobMethod',
                 'dateTimeSubmission',
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -1306,7 +1307,8 @@ app.get('/listofpharmacyMOHOrdersCompleted', ensureAuthenticated, ensureViewJob,
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -2474,7 +2476,8 @@ app.get('/listofFMXOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -2909,7 +2912,8 @@ app.get('/listofTEMUCOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -2963,7 +2967,8 @@ app.get('/listofTEMUDOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -3463,7 +3468,8 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -3791,7 +3797,8 @@ app.get('/listofEWENSOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'jobType',
                 'jobMethod'
             ])
-            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
 
         const totalRecords = orders.length;
 

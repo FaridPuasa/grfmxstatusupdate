@@ -678,7 +678,7 @@
             let activeProductFilter = null;
 
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-                const area = data[13]; // The column index for the 'area' column in the table
+                const area = data[15]; // The column index for the 'area' column in the table
                 const product = data[1]; // The column index for the 'product' column in the table
 
                 if (activeAreaFilter && !areaFilters[activeAreaFilter].includes(area)) {
