@@ -174,6 +174,7 @@ const CBSLPOD = require('./models/CBSLPOD');
 const TEMUPOC = require('./models/TEMUPOC');
 const TEMUPOD = require('./models/TEMUPOD');
 const ORDERS = require('./models/ORDERS');
+const WAORDERS = require('./models/WAORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 
 const orderWatch = ORDERS.watch()
@@ -651,6 +652,31 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofOrders', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const waorders = await WAORDERS.find({})
+            .select([
+                '_id',
+                'icPictureFront',
+                'icPictureBack',
+                'dateTimeSubmission',
+                'receiverPhoneNumber'
+            ])
+            .sort({ _id: -1 })
+            .limit(2000);
+
+            console.log(waorders)
+
+        const totalRecords = waorders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofWargaEmasOrders', { waorders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');

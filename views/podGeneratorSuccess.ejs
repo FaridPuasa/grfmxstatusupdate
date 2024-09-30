@@ -200,8 +200,10 @@
                                                     Collect / Drop Off</a>
                                                 <a class="dropdown-item" href="/listofAllOrdersAW">All
                                                     Warehouse</a>
-                                                    <a class="dropdown-item" href="/listofAllOrdersIR">All
-                                                        New Orders from Website</a>
+                                                <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                                    New Orders from Website</a>
+                                                <a class="dropdown-item" href="/listofWargaEmasOrders">All
+                                                    Warga Emas Orders</a>
                                                 <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                                     ].includes(user.role)) { %>
                                                     <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -275,7 +277,7 @@
                                             </div>
                                         </li>
                                         <% } %>
-
+        
                                             <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
                                                 ].includes(user.role)) { %>
                                                 <li class="nav-item dropdown">
@@ -324,7 +326,7 @@
                                                                     href="/listofEWENSOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -345,7 +347,7 @@
                                                             href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                                     </div>
                                                 </li>
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -378,7 +380,7 @@
                                                             href="/listofTEMUCOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -415,7 +417,7 @@
                                                     </div>
                                                 </li>
                                                 <% } %>
-
+        
                                                     <!-- Add conditional rendering for login/logout buttons -->
                                                     <% if (user) { %>
                                                         <li class="nav-item dropdown">
