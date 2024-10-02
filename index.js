@@ -5749,6 +5749,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var postalCode = 'N/A';
             var wrongPick = 0;
             var finalLDPrice = '';
+            var lastMilestoneStatus = '';
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -5790,6 +5791,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     wmsAttempt = wmsAttempt + 1;
                 }
             }
+
+            lastMilestoneStatus = data.data.milestones[data.data.milestones.length - 1].status;
 
             if (data.data.postal_code != null) {
                 postalCode = data.data.postal_code.toUpperCase()
@@ -8805,7 +8808,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
 
                 if (req.body.statusCode == 35) {
-                    if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (data.data.status == 'failed'))) {
+                    if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
                         if (existingOrder === null) {
                             address = data.data.address.toUpperCase();
 
