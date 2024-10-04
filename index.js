@@ -2827,7 +2827,8 @@ app.get('/listofTEMUCOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -2881,7 +2882,8 @@ app.get('/listofTEMUDOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -2936,7 +2938,8 @@ app.get('/listofTEMUCOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
             .limit(5000);
@@ -2991,7 +2994,8 @@ app.get('/listofTEMUDOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
             .limit(5000);
@@ -3050,7 +3054,8 @@ app.get('/listofTEMUDOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3105,7 +3110,8 @@ app.get('/listofTEMUCOrdersOFC', ensureAuthenticated, ensureViewJob, async (req,
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3160,7 +3166,8 @@ app.get('/listofTEMUDOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3215,7 +3222,8 @@ app.get('/listofTEMUCOrdersDO', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3270,7 +3278,8 @@ app.get('/listofTEMUDOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3328,7 +3337,8 @@ app.get('/listofTEMUCOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3386,7 +3396,8 @@ app.get('/listofTEMUDOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3438,7 +3449,8 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -3492,7 +3504,8 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
             .limit(5000);
@@ -3547,7 +3560,8 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3601,7 +3615,8 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3658,7 +3673,8 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3715,7 +3731,8 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3767,7 +3784,8 @@ app.get('/listofEWENSOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -3821,7 +3839,8 @@ app.get('/listofEWENSOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
             .limit(5000);
@@ -3876,7 +3895,8 @@ app.get('/listofEWENSOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3930,7 +3950,8 @@ app.get('/listofEWENSOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3987,7 +4008,8 @@ app.get('/listofEWENSOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -4044,7 +4066,8 @@ app.get('/listofEWENSOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
                 'lastAssignedTo',
                 'deliveryType',
                 'jobType',
-                'jobMethod'
+                'jobMethod',
+                'parcelWeight'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 

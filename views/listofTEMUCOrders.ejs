@@ -366,6 +366,7 @@
                         <th class="header">Phone No.</th>
                         <th class="header">Address</th>
                         <th class="header">Area</th>
+                        <th class="header">Parcel Weight</th>
                         <!-- <th class="header">Item Description</th> -->
                     </tr>
                 </thead>
@@ -432,6 +433,9 @@
                             </td>
                             <td>
                                 <%= order.area %>
+                            </td>
+                            <td>
+                                <%= order.parcelWeight %>
                             </td>
                             <!-- <td>
                                 <% const fullDescription=order.items.map(item=> item.description).join(', '); %>
