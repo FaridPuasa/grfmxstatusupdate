@@ -9838,7 +9838,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
 
                 if (req.body.statusCode == 'CSSC') {
-                    if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (data.data.status == 'failed'))) {
+                    if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
                         update = {
                             currentStatus: "Drop Off",
                             lastUpdateDateTime: moment().format(),
