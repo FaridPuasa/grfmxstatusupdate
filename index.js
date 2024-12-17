@@ -5701,6 +5701,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     let accessToken = null; // Initialize the accessToken variable
 
     if (!(isSunday && isWithinRestrictedTime)) {
+        /*
         // Step 1: Authenticate and get accessToken
         const authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
             userNameOrEmailAddress: username,
@@ -5709,6 +5710,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
         });
 
         accessToken = authResponse.data.result.accessToken;
+        */
     } else {
         console.log("Skipping authentication because it's Sunday between 12 AM and 12 PM.");
     }
