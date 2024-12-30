@@ -5914,6 +5914,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Customer Name"
             }
 
+            if (req.body.statusCode == 'UPC') {
+                appliedStatus = "Update Postal Code"
+            }
+
+            if (req.body.statusCode == 'UAB') {
+                appliedStatus = "Update AWB Number"
+            }
+
             if (req.body.statusCode == 'UJM') {
                 appliedStatus = "Update Job Method"
             }
@@ -5978,7 +5986,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
-                || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UJM')) {
+                || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
