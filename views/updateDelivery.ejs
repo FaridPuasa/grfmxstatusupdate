@@ -159,7 +159,7 @@
                                             </div>
                                         </li>
                                         <% } %>
-        
+
                                             <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
                                                 ].includes(user.role)) { %>
                                                 <li class="nav-item dropdown">
@@ -208,7 +208,7 @@
                                                                     href="/listofEWENSOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-        
+
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -229,7 +229,7 @@
                                                             href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                                     </div>
                                                 </li>
-        
+
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -262,7 +262,7 @@
                                                             href="/listofTEMUCOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-        
+
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -299,7 +299,7 @@
                                                     </div>
                                                 </li>
                                                 <% } %>
-        
+
                                                     <!-- Add conditional rendering for login/logout buttons -->
                                                     <% if (user) { %>
                                                         <li class="nav-item dropdown">
@@ -374,6 +374,8 @@
                             <option value="UAR">Update Area</option>
                             <option value="UPN">Update Phone Number</option>
                             <option value="URN">Update Customer Name</option>
+                            <option value="UPC">Update Postal Code</option>
+                            <option value="UAB">Update AWB Number</option>
                         </optgroup>
                         <optgroup label="Danger Zone!!!">
                             <option value="CD">1. Cancelled Job</option>
@@ -464,65 +466,83 @@
                     <strong><small>*1 tracking number per update recommended unless multiple tracking number with same
                             price and payment method.</small></strong>
                 </div>
-                <div class="mb-3">
-                    <div class="field-wrapper" id="areaWrapper">
-                        <label for="area" class="form-label">New Area:</label>
-                        <select id="area" name="area" class="form-select" disabled>
-                            <option value="" selected>Please select area</option>
-                            <option value="B">B</option>
-                            <option value="G">G</option>
-                            <option value="JT">JT</option>
-                            <option value="KB">KB</option>
-                            <option value="TUTONG">TUTONG</option>
-                            <option value="TEMBURONG">TEMBURONG</option>
-                        </select>
-                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
-                                same
-                                area.</small></strong>
-                    </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="areaWrapper">
+                    <label for="area" class="form-label">New Area:</label>
+                    <select id="area" name="area" class="form-select" disabled>
+                        <option value="" selected>Please select area</option>
+                        <option value="B">B</option>
+                        <option value="G">G</option>
+                        <option value="JT">JT</option>
+                        <option value="KB">KB</option>
+                        <option value="TUTONG">TUTONG</option>
+                        <option value="TEMBURONG">TEMBURONG</option>
+                    </select>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            area.</small></strong>
                 </div>
-                <div class="mb-3">
-                    <div class="field-wrapper" id="addressWrapper">
-                        <label for="address" class="form-label">New Address:</label>
-                        <input type="text" id="address" name="address" class="form-control" disabled>
-                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
-                                same
-                                address.</small></strong>
-                    </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="addressWrapper">
+                    <label for="address" class="form-label">New Address:</label>
+                    <input type="text" id="address" name="address" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            address.</small></strong>
                 </div>
-                <div class="mb-3">
-                    <div class="field-wrapper" id="phoneNumWrapper">
-                        <label for="phoneNum" class="form-label">New Phone Number:</label>
-                        <input type="text" id="phoneNum" name="phoneNum" class="form-control" disabled>
-                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
-                                same
-                                phone number.</small></strong><br>
-                    </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="phoneNumWrapper">
+                    <label for="phoneNum" class="form-label">New Phone Number:</label>
+                    <input type="text" id="phoneNum" name="phoneNum" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            phone number.</small></strong><br>
                 </div>
-                <div class="mb-3">
-                    <div class="field-wrapper" id="nameWrapper">
-                        <label for="name" class="form-label">New Name:</label>
-                        <input type="text" id="name" name="name" class="form-control" disabled>
-                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
-                                same
-                                name.</small></strong>
-                    </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="nameWrapper">
+                    <label for="name" class="form-label">New Name:</label>
+                    <input type="text" id="name" name="name" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            name.</small></strong>
                 </div>
-                <div class="mb-3">
-                    <div class="field-wrapper" id="jobMethodWrapper">
-                        <label for="jobMethod" class="form-label">New Job Method:</label>
-                        <select id="jobMethod" name="jobMethod" class="form-select" disabled>
-                            <option value="" selected>Please select Job Method</option>
-                            <option value="Standard">Standard</option>
-                            <option value="Express">Express</option>
-                            <option value="Immediate">Immediate</option>
-                            <option value="Drop Off">Drop Off</option>
-                            <option value="Self Collect">Self Collect / Pick Up</option>
-                        </select>
-                        <strong><small>*1 tracking number per update recommended unless multiple tracking number with
-                                same
-                                job method.</small></strong>
-                    </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="jobMethodWrapper">
+                    <label for="jobMethod" class="form-label">New Job Method:</label>
+                    <select id="jobMethod" name="jobMethod" class="form-select" disabled>
+                        <option value="" selected>Please select Job Method</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Express">Express</option>
+                        <option value="Immediate">Immediate</option>
+                        <option value="Drop Off">Drop Off</option>
+                        <option value="Self Collect">Self Collect / Pick Up</option>
+                    </select>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            job method.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="postalCodeWrapper">
+                    <label for="postalCode" class="form-label">New Postal Code:</label>
+                    <input type="text" id="postalCode" name="postalCode" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            postal code.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="awbNumWrapper">
+                    <label for="awbNum" class="form-label">New MAWB No:</label>
+                    <input type="text" id="awbNum" name="awbNum" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            AWB number.</small></strong>
                 </div>
             </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
@@ -613,6 +633,8 @@
             $("#phoneNumWrapper").hide();
             $("#nameWrapper").hide();
             $("#jobMethodWrapper").hide();
+            $("#postalCodeWrapper").hide();
+            $("#awbNumWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
@@ -627,6 +649,8 @@
             const phoneNumField = document.getElementById('phoneNum');
             const nameField = document.getElementById('name');
             const jobMethodField = document.getElementById('jobMethod');
+            const postalCodeField = document.getElementById('postalCode');
+            const awbNumField = document.getElementById('awbNum');
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -717,6 +741,8 @@
                 phoneNumField.value = '';
                 nameField.value = '';
                 jobMethodField.value = '';
+                postalCodeField.value = '';
+                awbNumField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
@@ -731,6 +757,8 @@
                 $("#phoneNumWrapper").hide();
                 $("#nameWrapper").hide();
                 $("#jobMethodWrapper").hide();
+                $("#postalCodeWrapper ").hide();
+                $("#awbNumWrapper ").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -752,6 +780,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -783,6 +813,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                 } else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
@@ -803,6 +839,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -834,6 +872,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                 } else if (selectedStatusCode === 'UP') {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -853,6 +897,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                     assignDateField.required = false;
                     dispatchersField.required = false;
@@ -883,6 +929,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                 } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ')) {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -902,6 +954,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                     // Set the fields as required
                     assignDateField.required = false;
@@ -932,6 +986,12 @@
 
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
+
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -972,6 +1032,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
@@ -985,6 +1051,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                 } else if (selectedStatusCode === 'UW') {
                     // Enable the "Additional Reason" field and make it required
@@ -1025,6 +1093,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1038,6 +1112,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                 } else if (selectedStatusCode === 'UAR') {
                     // Enable the "Additional Reason" field and make it required
@@ -1078,6 +1154,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1091,6 +1173,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                 } else if (selectedStatusCode === 'UAS') {
                     // Enable the "Additional Reason" field and make it required
@@ -1131,6 +1215,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1144,6 +1234,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                 } else if (selectedStatusCode === 'UPN') {
                     // Enable the "Additional Reason" field and make it required
@@ -1184,6 +1276,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1197,6 +1295,8 @@
                     $("#phoneNumWrapper").fadeIn();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                 } else if (selectedStatusCode === 'URN') {
                     // Enable the "Additional Reason" field and make it required
@@ -1237,6 +1337,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1250,6 +1356,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").fadeIn();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                 } else if (selectedStatusCode === 'UJM') {
                     // Enable the "Additional Reason" field and make it required
@@ -1290,6 +1398,12 @@
                     jobMethodField.disabled = false;
                     jobMethodField.required = true;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1303,6 +1417,130 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").fadeIn();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
+
+                } else if (selectedStatusCode === 'UPC') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
+                    jobMethodField.disabled = true;
+                    jobMethodField.required = false;
+
+                    postalCodeField.disabled = false;
+                    postalCodeField.required = true;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
+                    $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").fadeIn();
+                    $("#awbNumWrapper ").hide();
+
+                } else if (selectedStatusCode === 'UAB') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
+                    jobMethodField.disabled = true;
+                    jobMethodField.required = false;
+
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = false;
+                    awbNumField.required = true;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
+                    $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").fadeIn();
 
                 } else {
                     // Disable the fields for other status codes
@@ -1340,6 +1578,12 @@
                     jobMethodField.disabled = true;
                     jobMethodField.required = false;
 
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
@@ -1354,6 +1598,8 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper ").hide();
+                    $("#awbNumWrapper ").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;
@@ -1382,6 +1628,24 @@
 
         var patternMask = IMask(inputElement1, {
             mask: '{673}0000000',
+        });
+
+        let inputElement2 = document.getElementById('postalCode');
+
+        var patternMask = IMask(inputElement2, {
+            mask: '{aa}0000',
+            prepare: function (value, masked) {
+                if (value.length <= 2) {
+                    return value.toUpperCase(); // Convert the 'aa' part to uppercase
+                }
+                return value;
+            },
+        });
+
+        let inputElement3 = document.getElementById('awbNum');
+
+        var patternMask = IMask(inputElement1, {
+            mask: '000{-}00000000',
         });
     </script>
 </body>

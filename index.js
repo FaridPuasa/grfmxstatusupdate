@@ -8127,6 +8127,100 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         completeRun = 1;
                     }
 
+                    if (req.body.statusCode == 'UPC') {
+                        if (data.data.postal_code != null) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Postal Code updated from " + data.data.postal_code + " to " + req.body.postalCode + ".",
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: req.body.postalCode,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Postal Code updated from " + data.data.postal_code + " to " + req.body.postalCode + ".",
+                                    }
+                                }
+                            }
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "Postal Code updated to " + req.body.postalCode + ".",
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: req.body.postalCode,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "Postal Code updated to " + req.body.postalCode + ".",
+                                    }
+                                }
+                            }
+                        }
+        
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                postal_code: req.body.postalCode,
+                            }
+                        };
+        
+                        portalUpdate = "Portal and Detrack Postal Code updated. ";
+                        appliedStatus = "Postal Code Update"
+        
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+        
+                        completeRun = 1;
+                    }
+        
+                    if (req.body.statusCode == 'UAB') {
+                        if (data.data.run_number != null) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
+                                lastUpdatedBy: req.user.name,
+                                mawbNo: req.body.awbNum,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
+                                    }
+                                }
+                            }
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                latestReason: "AWB number updated to " + req.body.awbNum + ".",
+                                lastUpdatedBy: req.user.name,
+                                mawbNo: req.body.awbNum,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "AWB number updated to " + req.body.awbNum + ".",
+                                    }
+                                }
+                            }
+                        }
+        
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                run_number: req.body.awbNum,
+                            }
+                        };
+        
+                        portalUpdate = "Portal and Detrack AWB number updated. ";
+                        appliedStatus = "AWB number Update"
+        
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+        
+                        completeRun = 1;
+                    }
+
                     if (req.body.statusCode == 'UD') {
                         if (data.data.date != null) {
                             update = {
@@ -10534,6 +10628,100 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 portalUpdate = "Portal and Detrack Job Date updated. ";
                 appliedStatus = "Job Date Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UPC') {
+                if (data.data.postal_code != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Postal Code updated from " + data.data.postal_code + " to " + req.body.postalCode + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverPostalCode: req.body.postalCode,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Postal Code updated from " + data.data.postal_code + " to " + req.body.postalCode + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Postal Code updated to " + req.body.postalCode + ".",
+                        lastUpdatedBy: req.user.name,
+                        receiverPostalCode: req.body.postalCode,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Postal Code updated to " + req.body.postalCode + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        postal_code: req.body.postalCode,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack Postal Code updated. ";
+                appliedStatus = "Postal Code Update"
+
+                DetrackAPIrun = 1;
+                mongoDBrun = 2;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UAB') {
+                if (data.data.run_number != null) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
+                        lastUpdatedBy: req.user.name,
+                        mawbNo: req.body.awbNum,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
+                            }
+                        }
+                    }
+                } else {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "AWB number updated to " + req.body.awbNum + ".",
+                        lastUpdatedBy: req.user.name,
+                        mawbNo: req.body.awbNum,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "AWB number updated to " + req.body.awbNum + ".",
+                            }
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        run_number: req.body.awbNum,
+                    }
+                };
+
+                portalUpdate = "Portal and Detrack AWB number updated. ";
+                appliedStatus = "AWB number Update"
 
                 DetrackAPIrun = 1;
                 mongoDBrun = 2;
