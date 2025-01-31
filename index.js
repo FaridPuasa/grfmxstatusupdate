@@ -173,6 +173,9 @@ const EWENSPOD = require('./models/EWENSPOD');
 const CBSLPOD = require('./models/CBSLPOD');
 const TEMUPOC = require('./models/TEMUPOC');
 const TEMUPOD = require('./models/TEMUPOD');
+const KPTDPPOD = require('./models/KPTDPPOD');
+const KPTDFPOD = require('./models/KPTDFPOD');
+const PDUPOD = require('./models/PDUPOD');
 const ORDERS = require('./models/ORDERS');
 const WAORDERS = require('./models/WAORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
@@ -671,7 +674,7 @@ app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req
             .sort({ _id: -1 })
             .limit(2000);
 
-            console.log(waorders)
+        console.log(waorders)
 
         const totalRecords = waorders.length;
 
@@ -3465,6 +3468,107 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
     }
 });
 
+app.get('/listofKPTDPOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "kptdp"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ _id: -1 })
+            .limit(500);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDPOrders', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDPOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "kptdp",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDPOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
@@ -3575,6 +3679,57 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
     }
 });
 
+app.get('/listofKPTDPOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "kptdp",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDPOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
@@ -3624,6 +3779,57 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofEWEOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDPOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "kptdp",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDPOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3688,6 +3894,60 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofKPTDPOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "kptdp",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDPOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
@@ -3740,6 +4000,60 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofEWEOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDPOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "kptdp",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDPOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4315,6 +4629,32 @@ app.get('/listofEwePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
+app.get('/listofKptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await KPTDPPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofKptdpPod', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch KPTDP POD data');
+    }
+});
+
 app.get('/listofTemuPoc', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -4502,6 +4842,24 @@ app.get('/podeweDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
 
         // Render the podDetail.ejs template with the HTML content
         res.render('podeweDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podkptdpDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await KPTDPPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podkptdpDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -4745,6 +5103,26 @@ app.get('/editEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelive
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editKptdpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    KPTDPPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editKptdpPod.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
 app.get('/editTemuPoc/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
@@ -4852,6 +5230,27 @@ app.post('/updateEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDel
 
     // Find the specific POD by ID
     EWEPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateKptdpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    KPTDPPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
         .then((pod) => {
             if (!pod) {
                 return res.status(404).send('POD not found');
@@ -5040,6 +5439,24 @@ app.get('/deleteEWEPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
     }
 });
 
+app.get('/deleteKPTDPPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await KPTDPPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofKptdpPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('KPTDP POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete KPTDP POD');
+    }
+});
+
 app.get('/deleteTEMUPoc/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -5189,6 +5606,15 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
             break;
         case 'EWE POD':
             PodModel = EWEPOD;
+            break;
+        case 'KPTDP POD':
+            PodModel = KPTDPPOD;
+            break;
+        case 'KPTDF POD':
+            PodModel = KPTDFPOD;
+            break;
+        case 'PDU POD':
+            PodModel = PDUPOD;
             break;
         case 'EWENS POD':
             PodModel = EWENSPOD;
@@ -6075,6 +6501,18 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (product == 'TEMU') {
                 currentProduct = 'temu'
+            }
+
+            if (product == 'KPTDF') {
+                currentProduct = 'kptdf'
+            }
+
+            if (product == 'KPTDP') {
+                currentProduct = 'kptdp'
+            }
+
+            if (product == 'PDU') {
+                currentProduct = 'pdu'
             }
 
             if (req.body.statusCode == 'FA') {
@@ -8165,23 +8603,23 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             }
                         }
-        
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 postal_code: req.body.postalCode,
                             }
                         };
-        
+
                         portalUpdate = "Portal and Detrack Postal Code updated. ";
                         appliedStatus = "Postal Code Update"
-        
+
                         DetrackAPIrun = 1;
                         mongoDBrun = 2;
-        
+
                         completeRun = 1;
                     }
-        
+
                     if (req.body.statusCode == 'UAB') {
                         if (data.data.run_number != null) {
                             update = {
@@ -8212,20 +8650,20 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             }
                         }
-        
+
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
                                 run_number: req.body.awbNum,
                             }
                         };
-        
+
                         portalUpdate = "Portal and Detrack AWB number updated. ";
                         appliedStatus = "AWB number Update"
-        
+
                         DetrackAPIrun = 1;
                         mongoDBrun = 2;
-        
+
                         completeRun = 1;
                     }
 
@@ -13605,6 +14043,10 @@ async function handleOrderChange(change) {
                 tracker = generateTracker(sequence, suffix, prefix);
             }
 
+            if (result[0].product == "kptdp") {
+                tracker = result[0].doTrackingNumber;
+            }
+
             // Other product cases go here, similar to the above case
 
             let update = { doTrackingNumber: tracker, sequence: sequence };
@@ -13612,7 +14054,8 @@ async function handleOrderChange(change) {
 
             // Logic to send WhatsApp message using axios
             if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
-                result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" && result[0].product != "temu") {
+                result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" &&
+                result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu") {
 
                 await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
             }
@@ -13657,7 +14100,7 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
                             { type: "text", text: trackingNumber }
                         ],
                         text: `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}* which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp or call us at *2332065*.`
-                        
+
                     },
                     { type: "footer", text: "Go Rush Express" }
                 ],
