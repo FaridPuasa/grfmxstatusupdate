@@ -785,7 +785,7 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -836,7 +836,7 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -936,7 +936,7 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: "Info Received"
         })
             .select([
@@ -988,7 +988,7 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -1090,7 +1090,7 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["At Warehouse", "Return to Warehouse"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1142,7 +1142,7 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1194,7 +1194,7 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["Cancelled", "Disposed"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -3468,6 +3468,58 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
     }
 });
 
+app.get('/listofPDUOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pdu"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ _id: -1 })
+            .limit(500);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPDUOrders', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
@@ -3503,7 +3555,8 @@ app.get('/listofKPTDPOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'parcelWeight'
+                'parcelWeight',
+                'parcelTrackingNum'
             ])
             .sort({ _id: -1 })
             .limit(500);
@@ -3512,6 +3565,57 @@ app.get('/listofKPTDPOrders', ensureAuthenticated, ensureViewJob, async (req, re
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofKPTDPOrders', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDFOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "kptdf"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight',
+                'parcelTrackingNum'
+            ])
+            .sort({ _id: -1 })
+            .limit(500);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDFOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3554,7 +3658,8 @@ app.get('/listofKPTDPOrdersCompleted', ensureAuthenticated, ensureViewJob, async
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'parcelWeight'
+                'parcelWeight',
+                'parcelTrackingNum'
             ])
             .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
             .limit(5000);
@@ -3563,6 +3668,58 @@ app.get('/listofKPTDPOrdersCompleted', ensureAuthenticated, ensureViewJob, async
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofKPTDPOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDFOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "kptdf",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight',
+                'parcelTrackingNum'
+            ])
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDFOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3624,6 +3781,59 @@ app.get('/listofEWEOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
     }
 });
 
+app.get('/listofPDUOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "pdu",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPDUOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
@@ -3679,6 +3889,59 @@ app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
     }
 });
 
+app.get('/listofPDUOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "pdu",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPDUOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
@@ -3716,7 +3979,8 @@ app.get('/listofKPTDPOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'parcelWeight'
+                'parcelWeight',
+                'parcelTrackingNum'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3724,6 +3988,58 @@ app.get('/listofKPTDPOrdersOFD', ensureAuthenticated, ensureViewJob, async (req,
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofKPTDPOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDFOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "kptdf",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight',
+                'parcelTrackingNum'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDFOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3785,6 +4101,59 @@ app.get('/listofEWEOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofPDUOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "pdu",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPDUOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
@@ -3822,7 +4191,8 @@ app.get('/listofKPTDPOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'parcelWeight'
+                'parcelWeight',
+                'parcelTrackingNum'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3830,6 +4200,58 @@ app.get('/listofKPTDPOrdersSC', ensureAuthenticated, ensureViewJob, async (req, 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofKPTDPOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDFOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "kptdf",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight',
+                'parcelTrackingNum'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDFOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -3894,6 +4316,62 @@ app.get('/listofEWEOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofPDUOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "pdu",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPDUOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
@@ -3934,7 +4412,8 @@ app.get('/listofKPTDPOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'parcelWeight'
+                'parcelWeight',
+                'parcelTrackingNum'
             ])
             .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -3942,6 +4421,61 @@ app.get('/listofKPTDPOrdersAW', ensureAuthenticated, ensureViewJob, async (req, 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofKPTDPOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDFOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "kptdf",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight',
+                'parcelTrackingNum'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDFOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4006,6 +4540,62 @@ app.get('/listofEWEOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofPDUOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "pdu",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPDUOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
@@ -4046,7 +4636,8 @@ app.get('/listofKPTDPOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
                 'deliveryType',
                 'jobType',
                 'jobMethod',
-                'parcelWeight'
+                'parcelWeight',
+                'parcelTrackingNum'
             ])
             .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
 
@@ -4054,6 +4645,61 @@ app.get('/listofKPTDPOrdersCD', ensureAuthenticated, ensureViewJob, async (req, 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofKPTDPOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofKPTDFOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "kptdf",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight',
+                'parcelTrackingNum'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofKPTDFOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4629,6 +5275,32 @@ app.get('/listofEwePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
+app.get('/listofPduPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await EWEPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofPduPod', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch PDU POD data');
+    }
+});
+
 app.get('/listofKptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -4652,6 +5324,32 @@ app.get('/listofKptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelive
         console.error('Error:', error);
         // Handle the error and send an error response
         res.status(500).send('Failed to fetch KPTDP POD data');
+    }
+});
+
+app.get('/listofKptdfPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await KPTDFPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofKptdfPod', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch KPTDF POD data');
     }
 });
 
@@ -4850,6 +5548,24 @@ app.get('/podeweDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
 });
 
 // Add a new route in your Express application
+app.get('/podpduDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await PDUPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podpduDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
 app.get('/podkptdpDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const pod = await KPTDPPOD.findById(req.params.podId);
@@ -4860,6 +5576,24 @@ app.get('/podkptdpDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdat
 
         // Render the podDetail.ejs template with the HTML content
         res.render('podkptdpDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
+// Add a new route in your Express application
+app.get('/podkptdfDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await KPTDFPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podkptdfDetail', { htmlContent: pod.htmlContent, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -5103,6 +5837,26 @@ app.get('/editEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelive
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editPduPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    PDUPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editPduPod.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
 app.get('/editKptdpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
@@ -5115,6 +5869,26 @@ app.get('/editKptdpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDeli
 
             // Render the edit page, passing the found POD data
             res.render('editKptdpPod.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+// Route to render the edit page for a specific POD
+app.get('/editKptdfPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    KPTDFPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editKptdfPod.ejs', { pod, user: req.user });
         })
         .catch((err) => {
             console.error('Error:', err);
@@ -5245,12 +6019,54 @@ app.post('/updateEwePod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDel
 });
 
 // Route to update the HTML content of a specific POD
+app.post('/updatePduPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    PDUPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
 app.post('/updateKptdpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
     const newHtmlContent = req.body.htmlContent;
 
     // Find the specific POD by ID
     KPTDPPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateKptdfPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    KPTDFPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
         .then((pod) => {
             if (!pod) {
                 return res.status(404).send('POD not found');
@@ -5439,6 +6255,24 @@ app.get('/deleteEWEPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
     }
 });
 
+app.get('/deletePDUPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await PDUPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofPduPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('PDU POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete PDU POD');
+    }
+});
+
 app.get('/deleteKPTDPPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -5454,6 +6288,24 @@ app.get('/deleteKPTDPPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdat
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to delete KPTDP POD');
+    }
+});
+
+app.get('/deleteKPTDFPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await KPTDFPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofKptdfPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('KPTDP POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete KPTDF POD');
     }
 });
 
@@ -14047,6 +14899,10 @@ async function handleOrderChange(change) {
                 tracker = result[0].doTrackingNumber;
             }
 
+            if (result[0].product == "pdu") {
+                tracker = result[0].doTrackingNumber;
+            }
+
             // Other product cases go here, similar to the above case
 
             let update = { doTrackingNumber: tracker, sequence: sequence };
@@ -14055,7 +14911,7 @@ async function handleOrderChange(change) {
             // Logic to send WhatsApp message using axios
             if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
                 result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" &&
-                result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu") {
+                result[0].product != "temu" && result[0].product != "kptdf") {
 
                 await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
             }
