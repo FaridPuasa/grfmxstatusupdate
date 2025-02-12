@@ -7160,6 +7160,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 currentDetrackStatus = "Missing Parcel"
             }
 
+            if (data.data.status == 'in_sorting_area') {
+                currentDetrackStatus = "In Sorting Area"
+            }
+
             if (req.body.statusCode == 'FA') {
                 appliedStatus = "Attempt Fix"
             }
@@ -8191,7 +8195,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
 
-                    if ((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) {
+                    if (((req.body.statusCode == 35) && (data.data.status == 'at_warehouse'))||((req.body.statusCode == 35) && (data.data.status == 'in_sorting_area'))) {
                         /* if (wmsAttempt > 3) {
                             maxAttempt = 1;
                             completeRun = 1;
@@ -8413,9 +8417,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 fmxMilestoneCode = "MD"
                                 appliedStatus = "Failed Delivery due to Unattempted Delivery. Return to Warehouse (FMX)"
 
-                                if (data.data.phone_number != null) {
-                                    waOrderFailedDelivery = 1;
-                                }
+                                /* if (data.data.phone_number != null) {
+                                    waOrderFailedDelivery = 5;
+                                } */
                             }
 
                             if (data.data.reason == "Reschedule delivery requested by customer") {
@@ -10210,16 +10214,16 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
-                                status: "at_warehouse", // Use the calculated dStatus
+                                status: "", // Use the calculated dStatus
                                 zone: area
                             }
                         };
 
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
 
                         appliedStatus = "Item in Warehouse"
 
-                        DetrackAPIrun = 1;
+                        DetrackAPIrun = 4;
                         completeRun = 1;
                     }
                 }
@@ -10785,7 +10789,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
 
-                    if ((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) {
+                    if (((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse'))||((data.data.type == 'Delivery') && (data.data.status == 'in_sorting_area'))) {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             update = {
                                 currentStatus: "Out for Delivery",
@@ -11103,6 +11107,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 appliedStatus = "Failed Delivery, Return to Warehouse"
 
                                 portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+
+                                /* if (data.data.phone_number != null) {
+                                    waOrderFailedDelivery = 5;
+                                } */
                             } else {
                                 update = {
                                     currentStatus: "Return to Warehouse",
@@ -13755,6 +13763,48 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 });
             }
 
+            if (DetrackAPIrun == 4) {
+                // First update with status "at_warehouse"
+                detrackUpdateData.data.status = "at_warehouse";
+                
+                request({
+                    method: 'PUT',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(detrackUpdateData)
+                }, function (error, response, body) {
+                    if (!error && response.statusCode === 200) {
+                        console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                        
+                        // Second update with status "in_sorting_area" (without zone)
+                        detrackUpdateData.data = {
+                            status: "in_sorting_area" // Only include status for the second run
+                        };
+                        
+                        request({
+                            method: 'PUT',
+                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-KEY': apiKey
+                            },
+                            body: JSON.stringify(detrackUpdateData)
+                        }, function (error, response, body) {
+                            if (!error && response.statusCode === 200) {
+                                console.log(`Detrack Status Updated to "In Sorting Area" for Tracking Number: ${consignmentID}`);
+                            } else {
+                                console.error(`Error updating Detrack Status to "In Sorting Area" for Tracking Number: ${consignmentID}`);
+                            }
+                        });
+                    } else {
+                        console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                    }
+                });
+            }
+
             //normal run
             if (FMXAPIrun == 1) {
                 // Step 3: Create data for the second API request
@@ -14474,7 +14524,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     "text": "Failed Delivery"
                                 },
                                 {
-                                    "text": `Hello ${a},\n\nWe apologize for the order with tracking number ${b} not delivered today due to insufficient time.\n\nWe are committed to ensuring your order will be delivered on the next business day.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nFor reschedule delivery trip to Tutong, Belait, and Temburong or any further inquiries, please reach us via WhatsApp or call us at 2332065.`,
+                                    "text": `Hello ${a},\n\nWe apologize for the order with tracking number ${b} not delivered today due to insufficient time.\n\nWe are committed to ensuring your order will be delivered on the next business day.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nFor reschedule delivery trip to Tutong, Belait and Temburong or any further inquiries, please reach us via WhatsApp at *2332065* or call us at our hotline *2353259*.`,
                                     "type": "body",
                                     "parameters": [
                                         {
@@ -14899,10 +14949,6 @@ async function handleOrderChange(change) {
                 tracker = result[0].doTrackingNumber;
             }
 
-            if (result[0].product == "pdu") {
-                tracker = result[0].doTrackingNumber;
-            }
-
             // Other product cases go here, similar to the above case
 
             let update = { doTrackingNumber: tracker, sequence: sequence };
@@ -14911,7 +14957,7 @@ async function handleOrderChange(change) {
             // Logic to send WhatsApp message using axios
             if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
                 result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" &&
-                result[0].product != "temu" && result[0].product != "kptdf") {
+                result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu") {
 
                 await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
             }
@@ -14955,7 +15001,7 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
                             { type: "text", text: name },
                             { type: "text", text: trackingNumber }
                         ],
-                        text: `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}* which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp or call us at *2332065*.`
+                        text: `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}* which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp at *2332065* or call us at our hotline *2353259*.`
 
                     },
                     { type: "footer", text: "Go Rush Express" }
