@@ -5278,7 +5278,7 @@ app.get('/listofEwePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
 app.get('/listofPduPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
-        const pods = await EWEPOD.find({})
+        const pods = await PDUPOD.find({})
             .select([
                 '_id',
                 'podName',
