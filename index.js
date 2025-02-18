@@ -7053,6 +7053,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var wrongPick = 0;
             var finalLDPrice = '';
             var lastMilestoneStatus = '';
+            var finalPhoneNum = '';
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -7070,6 +7071,22 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             const data = response1.data;
 
             const counttaskhistory = data.data.milestones.length;
+
+            // Check if data.data.phone_number is null or empty
+            if (data.data.phone_number) {
+                if (data.data.phone_number.length === 7) {
+                    finalPhoneNum = "+673" + data.data.phone_number;
+                } else if (data.data.phone_number.length === 10) {
+                    finalPhoneNum = "+" + data.data.phone_number;
+                } else {
+                    finalPhoneNum = data.data.phone_number;
+                }
+            } else {
+                // Handle the case where data.data.phone_number is null or empty
+                finalPhoneNum = "No phone number provided";
+            }
+
+            console.log(finalPhoneNum); // Output the final phone number
 
             for (let i = 0; i < counttaskhistory; i++) {
                 if (data.data.milestones[i].status == 'completed') {
@@ -8195,7 +8212,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
 
-                    if (((req.body.statusCode == 35) && (data.data.status == 'at_warehouse'))||((req.body.statusCode == 35) && (data.data.status == 'in_sorting_area'))) {
+                    if (((req.body.statusCode == 35) && (data.data.status == 'at_warehouse')) || ((req.body.statusCode == 35) && (data.data.status == 'in_sorting_area'))) {
                         /* if (wmsAttempt > 3) {
                             maxAttempt = 1;
                             completeRun = 1;
@@ -10127,7 +10144,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     warehouseEntry: "Yes",
                                     warehouseEntryDateTime: moment().format(),
                                     receiverAddress: data.data.address,
-                                    receiverPhoneNumber: data.data.phone_number,
+                                    receiverPhoneNumber: finalPhoneNum,
                                     doTrackingNumber: consignmentID,
                                     remarks: data.data.remarks,
                                     latestReason: "N/A",
@@ -10172,7 +10189,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     warehouseEntry: "Yes",
                                     warehouseEntryDateTime: moment().format(),
                                     receiverAddress: data.data.address,
-                                    receiverPhoneNumber: data.data.phone_number,
+                                    receiverPhoneNumber: finalPhoneNum,
                                     doTrackingNumber: consignmentID,
                                     remarks: data.data.remarks,
                                     latestReason: "N/A",
@@ -10789,7 +10806,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
 
-                    if (((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse'))||((data.data.type == 'Delivery') && (data.data.status == 'in_sorting_area'))) {
+                    if (((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) || ((data.data.type == 'Delivery') && (data.data.status == 'in_sorting_area'))) {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             update = {
                                 currentStatus: "Out for Delivery",
@@ -13766,7 +13783,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (DetrackAPIrun == 4) {
                 // First update with status "at_warehouse"
                 detrackUpdateData.data.status = "at_warehouse";
-                
+
                 request({
                     method: 'PUT',
                     url: 'https://app.detrack.com/api/v2/dn/jobs/update',
@@ -13778,12 +13795,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }, function (error, response, body) {
                     if (!error && response.statusCode === 200) {
                         console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
-                        
+
                         // Second update with status "in_sorting_area" (without zone)
                         detrackUpdateData.data = {
                             status: "in_sorting_area" // Only include status for the second run
                         };
-                        
+
                         request({
                             method: 'PUT',
                             url: 'https://app.detrack.com/api/v2/dn/jobs/update',
