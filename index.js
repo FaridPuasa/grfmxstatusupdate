@@ -5275,7 +5275,7 @@ app.get('/listofEwePod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
-app.get('/listofPDUPODT', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/listofpduPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await PDUPOD.find({})
@@ -5293,7 +5293,7 @@ app.get('/listofPDUPODT', ensureAuthenticated, ensureGeneratePODandUpdateDeliver
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofPDUPODT', { pods, user: req.user });
+        res.render('listofpduPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -5301,7 +5301,7 @@ app.get('/listofPDUPODT', ensureAuthenticated, ensureGeneratePODandUpdateDeliver
     }
 });
 
-app.get('/listofKPTDPPODT', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/listofkptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await KPTDPPOD.find({})
@@ -5319,7 +5319,7 @@ app.get('/listofKPTDPPODT', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofKPTDPPODT', { pods, user: req.user });
+        res.render('listofkptdpPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
@@ -5327,7 +5327,7 @@ app.get('/listofKPTDPPODT', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     }
 });
 
-app.get('/listofKPTDFPODT', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/listofkptdfPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
         const pods = await KPTDFPOD.find({})
@@ -5345,7 +5345,7 @@ app.get('/listofKPTDFPODT', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofKPTDFPODT', { pods, user: req.user });
+        res.render('listofkptdfPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
