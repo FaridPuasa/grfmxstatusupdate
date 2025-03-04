@@ -9732,6 +9732,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     };
 
                     appliedStatus = "Item in Warehouse"
+                    portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to At Warehouse. ";
 
                     DetrackAPIrun = 1;
                     completeRun = 1;
