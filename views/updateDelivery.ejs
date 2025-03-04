@@ -162,7 +162,7 @@
                                             </div>
                                         </li>
                                         <% } %>
-
+        
                                             <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
                                                 ].includes(user.role)) { %>
                                                 <li class="nav-item dropdown">
@@ -211,7 +211,7 @@
                                                                     href="/listofEWENSOrdersCD">Cancelled</a> -->
                                                     </div>
                                                 </li>
-
+        
                                                 <!-- <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -232,7 +232,7 @@
                                                             href="/listofFMXOrdersCD">Cancelled/Disposed</a>
                                                     </div>
                                                 </li> -->
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -265,7 +265,7 @@
                                                             href="/listofTEMUCOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="kptListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -300,7 +300,7 @@
                                                             href="/listofKPTDFOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -308,6 +308,13 @@
                                                         PDU
                                                     </a>
                                                     <div class="dropdown-menu" aria-labelledby="pduListDropdown">
+                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
+                                                            %>
+                                                            <a class="dropdown-item"
+                                                                href="/pdumanifesttobillsearch">Search
+                                                                Manifest to Bill</a>
+                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                            <% } %>
                                                         <a class="dropdown-item" href="/listofPDUOrders">All</a>
                                                         <a class="dropdown-item" href="/listofPDUOrdersOFD">Out for
                                                             Delivery</a>
@@ -321,7 +328,7 @@
                                                             href="/listofPDUOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
-
+        
                                                 <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -360,7 +367,7 @@
                                                     </div>
                                                 </li>
                                                 <% } %>
-
+        
                                                     <!-- Add conditional rendering for login/logout buttons -->
                                                     <% if (user) { %>
                                                         <li class="nav-item dropdown">
