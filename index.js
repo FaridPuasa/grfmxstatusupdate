@@ -15832,11 +15832,21 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
 
     const messageUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
     const messageAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
+    
+    // Get the current date
+    const currentDate = new Date();
+    const startDate = new Date(currentDate.getFullYear(), 2, 27); // March 27
+    const endDate = new Date(currentDate.getFullYear(), 3, 2); // April 2
+
+    // Check if the current date is between March 27 and April 2
+    const isRayaPeriod = currentDate >= startDate && currentDate <= endDate;
+
+    // Select the appropriate message template
     const requestBody = {
         message: {
             type: "whatsapp_template",
             template: {
-                name: "order_received",
+                name: isRayaPeriod ? "order_received_raya" : "order_received",
                 components: [
                     { type: "header", format: "text", text: "Order Received" },
                     {
@@ -15845,8 +15855,9 @@ async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
                             { type: "text", text: name },
                             { type: "text", text: trackingNumber }
                         ],
-                        text: `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}* which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp at *2332065* or call us at our hotline *2353259*.`
-
+                        text: isRayaPeriod
+                            ? `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}*, which can be tracked on the link below:\n\nwww.gorushbn.com\n\n---\n\nAs we approach the festive season, please be informed of our Raya holiday schedule and order cut-off times:\n\n- MOH Standard & Express orders will be closed on 28th March.\n- JPMC Standard & Express orders will be closed on 28th March before 10:00 AM.\n- MOH Immediate orders will be closed on 29th March before 10:00 AM.\n\nOur operations will pause starting 29th March, and orders placed after the cut-off times will be processed on the 4th day of Raya.\n\nWe appreciate your kind understanding and continued support.\n\nSelamat Hari Raya! 🌙✨`
+                            : `Hello ${name},\n\nYour order has been successfully received.\n\nYour tracking number is *${trackingNumber}* which can be tracked on the link below:\n\nwww.gorushbn.com\n\nOur team is now working on fulfilling your order. We appreciate your patience.\n\nFor any further inquiries, please reach us via WhatsApp at *2332065* or call us at our hotline *2353259*.`
                     },
                     { type: "footer", text: "Go Rush Express" }
                 ],
