@@ -12148,7 +12148,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         DetrackAPIrun = 1;
                         completeRun = 1;
                     } else {
-                        if (data.data.status == 'at_warehouse') {
+                        if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
                             if ((product == 'MOH') || (product == 'JPMC') || (product == 'PHC')) {
                                 update = {
                                     currentStatus: "Self Collect",
