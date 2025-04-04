@@ -975,7 +975,7 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: "Info Received"
         })
             .select([
