@@ -2,67 +2,70 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POD / POC Generator</title>
-  <!-- Add Bootstrap CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
-  <!-- Add your custom CSS here -->
-  <style>
-    /* Custom CSS for your page */
-    .navbar-nav.flex-row {
-      flex-direction: row !important;
-    }
-
-    /* Make the navbar background transparent */
-    .navbar {
-      background-color: transparent;
-    }
-
-    /* Add background color to the container */
-    .container-bg {
-      background-color: #333;
-      /* You can use your desired background color here */
-    }
-
-    /* Add margin to the navigation links */
-    .navbar-nav.flex-row .nav-item {
-      margin-right: 10px;
-    }
-
-    /* Add any custom styles specific to your form here */
-    .container-bg {
-      background-color: #333;
-      /* You can use your desired background color here */
-    }
-  </style>
-
-  <script>
-    function validateForm() {
-      const checkboxes = document.querySelectorAll('input[name="areas"]');
-      let atLeastOneSelected = false;
-      checkboxes.forEach((checkbox) => {
-        if (checkbox.checked) {
-          atLeastOneSelected = true;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>List of Pure51 Orders</title>
+    <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
+    <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
+    <style>
+        /* Custom CSS for your page */
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
         }
-      });
 
-      if (!atLeastOneSelected) {
-        alert('Please select at least one area.');
-        return false;
-      }
+        /* Make the navbar background transparent */
+        .navbar {
+            background-color: transparent;
+        }
 
-      // Continue with the form submission if at least one area is selected
-      return true;
-    }
-  </script>
+        /* Add background color to the container */
+        .container-bg {
+            background-color: #333;
+            /* You can use your desired background color here */
+        }
+
+        /* Add margin to the navigation links */
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        /* Add margin to the submit button */
+        .btn-submit {
+            margin-top: 10px;
+            /* Adjust the margin-top as needed */
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-size: 15px;
+            text-align: center;
+            /* Center-align table headers horizontally */
+        }
+
+        td {
+            font-size: 15px;
+            text-align: center;
+            /* Center-align table data cells horizontally */
+        }
+
+        table {
+            width: 80%;
+            /* Set the desired width for the table */
+            margin: 0 auto;
+            /* Center the table horizontally */
+            vertical-align: middle;
+            /* Center-align table contents vertically */
+        }
+    </style>
 </head>
 
-<body>
-  <div class="container-bg">
-    <div class="container">
-      <div class="row">
-        <div class="col-12">
+<body class="bg-light">
+    <div class="container-bg">
+        <div class="container">
+            <!-- Create a similar navigation bar as in listofpharmacyPod.ejs -->
             <nav class="navbar navbar-expand-lg navbar-dark">
                 <a class="navbar-brand mr-auto" href="/">
                     <h2>Go Rush</h2>
@@ -408,150 +411,125 @@
                 </ul>
             </nav>
         </div>
-      </div>
     </div>
-  </div>
 
-  <main class="container mt-4">
-    <h1 class="text-center mt-4">POD / POC Generator</h1>
-    <form action="/generatePOD" method="post" onsubmit="return validateForm()">
-      <div class="mb-3">
-        <label for="product" class="form-label">Product:</label>
-        <select class="form-select" name="product" id="product" required>
-          <option value="MOH/JPMC/PHC Pharmacy">MOH/JPMC/PHC Pharmacy</option>
-          <option value="Local Delivery">Local Delivery</option>
-          <!-- <option value="GRP Delivery">GRP Delivery</option> -->
-          <option value="EWE Delivery">EWE Delivery</option>
-          <!-- <option value="FMX Delivery">FMX Delivery</option> -->
-          <option value="CBSL Delivery">Cross Border Service (Limbang) Delivery</option>
-          <option value="TEMU Collection">TEMU Collection</option>
-          <option value="TEMU Delivery">TEMU Delivery</option>
-          <option value="KPTDP Delivery">KPTDP Delivery</option>
-          <option value="KPTDF Delivery">KPTDF Delivery</option>
-          <option value="PDU Delivery">PDU Delivery</option>
-          <!-- <option value="EWENS Delivery">EWE NON SHEIN Delivery</option> -->
-          <!-- <option value="Baiduri Bank Local Delivery">Baiduri Bank Local Delivery</option>
-          <option value="Fathan & Co Local Delivery">Fathan & Co Local Delivery</option>
-          <option value="Joybean Local Delivery">Joybean Local Delivery</option>
-          <option value="ICARUS Local Delivery">ICARUS Local Delivery</option> -->
-        </select>
-      </div>
-      <div class="mb-3">
-        <label for="deliveryDate" class="form-label">Delivery Date (DD.MM.YY):</label>
-        <input type="date" class="form-control" name="deliveryDate" id="deliveryDate" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Area (Select at least one):</label>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaB" value="B">
-          <label class="form-check-label" for="areaB">B</label>
+    <main class="mt-4" style="width: 100%;">
+        <h1 class="text-center mt-4">List of Pure51 Orders (<%= totalRecords %>)</h1>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped" id="orderTable">
+                <thead class="table-primary">
+                    <tr>
+                        <th class="header">Tracking No.</th>
+                        <th class="header">Receiver Name</th>
+                        <th class="header">Current Status</th>
+                        <th class="header">Assigned To</th>
+                        <th class="header">Job Date</th>
+                        <th class="header">Attempt No.</th>
+                        <th class="header">Latest Reason</th>
+                        <th class="header">Warehouse Entry Date</th>
+                        <th class="header">Age in Warehouse</th>
+                        <th class="header">Last Update</th>
+                        <th class="header">Last Update By</th>
+                        <th class="header">Address</th>
+                        <th class="header">Area</th>
+                        <th class="header">Item Description</th>
+                        <th class="header">Remarks</th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <!-- Iterate through the orders and display the data -->
+                    <% orders.forEach(function(order) { %>
+                        <tr>
+                            <td>
+                                <%= order.doTrackingNumber %>
+                            </td>
+                            <td>
+                                <%= order.receiverName %>
+                            </td>
+                            <td>
+                                <%= order.currentStatus %>
+                            </td>
+                            <td>
+                                <%= order.assignedTo %>
+                            </td>
+                            <td>
+                                <%= order.jobDate %>
+                            </td>
+                            <td>
+                                <%= order.attempt %>
+                            </td>
+                            <td>
+                                <%= order.latestReason %>
+                            </td>
+                            <td>
+                                <%= moment(order.warehouseEntryDateTime).isValid() ? moment(order.warehouseEntryDateTime).utcOffset(8).format('DD-MM-YYYY') : "N/A" %>
+                            </td>
+                            <td>
+                                <% if (order.currentStatus !=="Completed" ) { %>
+                                    <% if (order.warehouseEntry==="No" ) { %>
+                                        0
+                                        <% } else { %>
+                                            <% const entryDate=new Date(order.warehouseEntryDateTime); %>
+                                                <% const currentDate=new Date(); %>
+                                                    <% const ageInMilliseconds=currentDate - entryDate; %>
+                                                        <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 *
+                                                            60 * 24)); %>
+                                                            <%= ageInDays %>
+                                                                <% } %>
+                                                                    <% } else { %>
+                                                                        <!-- Add an empty cell or any placeholder when the status is "Completed" -->
+                                                                        <!-- Adjust the colspan to match the number of columns in the table -->
+                                                                        <% } %>
+                            </td>
+                            <td>
+                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
+                            </td>
+                            <td>
+                                <%= order.lastUpdatedBy %>
+                            </td>
+                            <td>
+                                <%= order.receiverAddress %>
+                            </td>
+                            <td>
+                                <%= order.area %>
+                            </td>
+                            <td>
+                                <%= order.items[0].description %>
+                            </td>
+                            <td>
+                                <%= order.remarks %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                </tbody>
+            </table>
         </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaG" value="G">
-          <label class="form-check-label" for="areaG">G</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaJT" value="JT">
-          <label class="form-check-label" for="areaJT">JT</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaTTG" value="TUT">
-          <label class="form-check-label" for="areaTTG">TUT</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaKB" value="KB">
-          <label class="form-check-label" for="areaKB">KB</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaTEMB" value="TEMB">
-          <label class="form-check-label" for="areaTEMB">TEMBURONG</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaHQ" value="HQ">
-          <label class="form-check-label" for="areaHQ">HQ</label>
-        </div>
-      </div>
-      <div class="mb-3">
-        <label for="dispatchers" class="form-label">Dispatchers:</label>
-        <select class="form-select" name="dispatchers" id="dispatchers" required>
-          <option value="Adib">Adib</option>
-          <option value="Hj Boy">Hj Boy</option>
-          <option value="Ghafar">Ghafar</option>
-          <option value="Leo">Leo</option>
-          <!-- <option value="Syahmi">Syahmi</option> -->
-          <option value="FL1">FL1</option>
-          <option value="Self-Collect">Self-Collect</option>
-        </select>
-      </div>
-      <div class="mb-3">
-        <div class="field-wrapper" id="freelancerNameWrapper">
-          <label for="freelancerName" class="form-label">Freelancer Name:</label>
-          <input type="text" id="freelancerName" name="freelancerName" class="form-control" disabled>
-        </div>
-      </div>
-      <div class="mb-3">
-        <label for="trackingNumbers" class="form-label">Tracking Number(s) (One per line):</label>
-        <textarea class="form-control" name="trackingNumbers" id="trackingNumbers" rows="5" required></textarea>
-      </div>
-      <input type="hidden" name="podCreatedDate" id="podCreatedDate" value="">
-      <input type="hidden" name="dispatcherAndDate" id="dispatcherAndDate" value="">
-      <button type="submit" id="submitButton" class="btn btn-primary">Generate POD / POC</button>
-    </form>
-    <div id="loading" class="text-center" style="display: none;">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
-      <p>Loading...</p>
-    </div>
-  </main>
+    </main>
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Include the necessary JavaScript libraries for DataTables and other custom scripts if needed -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      // Get references to the "Dispatchers" and "Freelancer Name" fields
-      const dispatchersField = document.getElementById('dispatchers');
-      const freelancerNameField = document.getElementById('freelancerName');
+    <script>
+        $(document).ready(function () {
+            // Initialize DataTable for the order table
+            const table = $('#orderTable').DataTable({
+                "ordering": false,  // Disable client-side sorting
+                "iDisplayLength": 100,  // Set the default number of entries to 100
+                "dom": 'Bfrtip', // Add buttons to the DOM
+                "buttons": [
+                    'copy', 'csv', 'excel', 'pdf', 'print' // Buttons for copy, CSV, Excel, PDF, and print
+                ]
+            });
+        });
+    </script>
 
-      // Function to show/hide the "Freelancer Name" field based on the selected dispatcher
-      function updateFreelancerNameField() {
-        const selectedDispatcher = dispatchersField.value;
-
-        if ((selectedDispatcher === 'FL1') || (selectedDispatcher === 'FL2')) {
-          // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
-          $("#freelancerNameWrapper").fadeIn();
-          freelancerNameField.disabled = false;
-          freelancerNameField.required = true;
-        } else {
-          // If other options are selected, hide and disable the "Freelancer Name" field
-          $("#freelancerNameWrapper").hide();
-          freelancerNameField.disabled = true;
-          freelancerNameField.required = false;
-          freelancerNameField.value = ''; // Clear the field's value
-        }
-      }
-
-      // Attach the updateFreelancerNameField function to the "change" event of the "Dispatchers" dropdown
-      dispatchersField.addEventListener('change', updateFreelancerNameField);
-
-      // Initialize the "Freelancer Name" field based on the initial selected dispatcher
-      updateFreelancerNameField();
-    });
-  </script>
-
-  <script>
-    // Get reference to the submit button
-    const submitButton = document.getElementById('submitButton');
-    // Function to disable the submit button when it's clicked and show the loading animation
-    function disableSubmitButton(event) {
-      submitButton.disabled = true;
-      document.getElementById('loading').style.display = 'block'; // Show the loading animation
-    }
-
-    // Attach the disableSubmitButton function to the "submit" event of the form
-    document.querySelector('form').addEventListener('submit', disableSubmitButton);
-  </script>
 </body>
 
 </html>

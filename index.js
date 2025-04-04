@@ -653,7 +653,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
         })
             .select([
                 '_id',
@@ -824,7 +824,7 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -875,7 +875,7 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -975,7 +975,7 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: "Info Received"
         })
             .select([
@@ -1027,7 +1027,7 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -1129,7 +1129,7 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["At Warehouse", "Return to Warehouse"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1181,7 +1181,7 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1233,7 +1233,7 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["Cancelled", "Disposed"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -2342,6 +2342,58 @@ app.get('/listofBBOrders', ensureAuthenticated, ensureViewJob, async (req, res) 
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofBBOrders', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofPURE51Orders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "localdelivery"
+        const orders = await ORDERS.find({ product: "pure51" })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'senderName',
+                'senderPhoneNumber',
+                'receiverName',
+                'receiverPhoneNumber',
+                'receiverAddress',
+                'area',
+                'ldPickupOrDelivery',
+                'items',
+                'ldProductType',
+                'pickupAddress',
+                'pickupDate',
+                'remarks',
+                'paymentMethod',
+                'paymentAmount',
+                'billTo',
+                'dateTimeSubmission',
+                'membership',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod'
+            ])
+            .sort({ _id: -1 });
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofPURE51Orders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -7365,6 +7417,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (product == 'BB') {
                 currentProduct = 'bb'
+            }
+
+            if (product == 'PURE51') {
+                currentProduct = 'pure51'
             }
 
             if (product == 'CBSL') {
@@ -15801,7 +15857,8 @@ async function handleOrderChange(change) {
             // Logic to send WhatsApp message using axios
             if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
                 result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" &&
-                result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu") {
+                result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu"
+                && result[0].product != "pure51") {
 
                 await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
             }
