@@ -653,7 +653,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
         })
             .select([
                 '_id',
@@ -688,7 +688,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
                 'dateTimeSubmission'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -711,7 +711,7 @@ app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req
                 'receiverPhoneNumber'
             ])
             .sort({ _id: -1 })
-            .limit(2000);
+            .limit(3000);
 
         console.log(waorders)
 
@@ -1321,7 +1321,7 @@ app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (r
                 'jobMethod'
             ])
             .sort({ _id: -1 })
-            .limit(1000);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -2925,7 +2925,7 @@ app.get('/listofTEMUCOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'parcelWeight'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -3547,7 +3547,7 @@ app.get('/listofEWEOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'parcelWeight'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -3599,7 +3599,7 @@ app.get('/listofPDUOrders', ensureAuthenticated, ensureViewJob, async (req, res)
                 'parcelWeight'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -3650,7 +3650,7 @@ app.get('/listofKPTDPOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'parcelTrackingNum'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
@@ -4839,7 +4839,7 @@ app.get('/listofEWENSOrders', ensureAuthenticated, ensureViewJob, async (req, re
                 'parcelWeight'
             ])
             .sort({ _id: -1 })
-            .limit(500);
+            .limit(5000);
 
         const totalRecords = orders.length;
 
