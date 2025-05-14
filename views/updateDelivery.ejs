@@ -446,6 +446,7 @@
                             <option value="URN">Update Customer Name</option>
                             <option value="UPC">Update Postal Code</option>
                             <option value="UAB">Update AWB Number</option>
+                            <option value="UPSBT">Update Payment Status for BT</option>
                         </optgroup>
                         <optgroup label="Danger Zone!!!">
                             <option value="CD">1. Cancelled Job</option>
@@ -468,7 +469,7 @@
                     <label for="dispatchers" class="form-label">Dispatchers:</label>
                     <select id="dispatchers" name="dispatchers" class="form-select" disabled>
                         <option value="" selected>Please select dispatcher</option>
-                        <option value="Adib">Adib</option>
+                        <option value="Wafi">Wafi</option>
                         <option value="Hj Boy">Hj Boy</option>
                         <option value="Ghafar">Ghafar</option>
                         <option value="Leo">Leo</option>
@@ -614,6 +615,16 @@
                             AWB number.</small></strong>
                 </div>
             </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="paymentStatusWrapper">
+                    <label for="paymentStatus" class="form-label">BT paid?:</label>
+                    <select id="paymentStatus" name="paymentStatus" class="form-select" disabled>
+                        <option value="" selected>Please select status</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+            </div>
             <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
         </form>
 
@@ -704,6 +715,7 @@
             $("#jobMethodWrapper").hide();
             $("#postalCodeWrapper").hide();
             $("#awbNumWrapper").hide();
+            $("#paymentStatusWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
@@ -720,6 +732,8 @@
             const jobMethodField = document.getElementById('jobMethod');
             const postalCodeField = document.getElementById('postalCode');
             const awbNumField = document.getElementById('awbNum');
+            const paymentStatusField = document.getElementById('paymentStatus');
+
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -812,6 +826,7 @@
                 jobMethodField.value = '';
                 postalCodeField.value = '';
                 awbNumField.value = '';
+                paymentStatusField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
@@ -826,8 +841,9 @@
                 $("#phoneNumWrapper").hide();
                 $("#nameWrapper").hide();
                 $("#jobMethodWrapper").hide();
-                $("#postalCodeWrapper ").hide();
-                $("#awbNumWrapper ").hide();
+                $("#postalCodeWrapper").hide();
+                $("#awbNumWrapper").hide();
+                $("#paymentStatusWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -849,8 +865,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -888,6 +905,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                 } else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
@@ -908,8 +928,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -947,6 +968,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                 } else if (selectedStatusCode === 'UP') {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -966,8 +990,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                     assignDateField.required = false;
                     dispatchersField.required = false;
@@ -1004,6 +1029,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                 } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ')) {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -1023,8 +1051,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = false;
@@ -1061,6 +1090,9 @@
 
                     awbNumField.disabled = true;
                     awbNumField.required = false;
+
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -1107,6 +1139,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
@@ -1120,8 +1155,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UW') {
                     // Enable the "Additional Reason" field and make it required
@@ -1168,6 +1204,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1181,8 +1220,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UAR') {
                     // Enable the "Additional Reason" field and make it required
@@ -1229,6 +1269,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1242,8 +1285,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UAS') {
                     // Enable the "Additional Reason" field and make it required
@@ -1290,6 +1334,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1303,8 +1350,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UPN') {
                     // Enable the "Additional Reason" field and make it required
@@ -1351,6 +1399,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1364,8 +1415,9 @@
                     $("#phoneNumWrapper").fadeIn();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'URN') {
                     // Enable the "Additional Reason" field and make it required
@@ -1412,6 +1464,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1425,8 +1480,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").fadeIn();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UJM') {
                     // Enable the "Additional Reason" field and make it required
@@ -1473,6 +1529,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1486,8 +1545,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").fadeIn();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UPC') {
                     // Enable the "Additional Reason" field and make it required
@@ -1534,6 +1594,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1547,8 +1610,74 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").fadeIn();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").fadeIn();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
+
+                } else if (selectedStatusCode === 'UPSBT') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
+                    jobMethodField.disabled = true;
+                    jobMethodField.required = false;
+
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
+                    paymentStatusField.disabled = false;
+                    paymentStatusField.required = true;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
+                    $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper").fadeIn();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                 } else if (selectedStatusCode === 'UAB') {
                     // Enable the "Additional Reason" field and make it required
@@ -1595,6 +1724,9 @@
                     awbNumField.disabled = false;
                     awbNumField.required = true;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1608,8 +1740,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").fadeIn();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").fadeIn();
+                    $("#paymentStatusWrapper").hide();
 
                 } else {
                     // Disable the fields for other status codes
@@ -1653,6 +1786,9 @@
                     awbNumField.disabled = true;
                     awbNumField.required = false;
 
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
@@ -1667,8 +1803,9 @@
                     $("#phoneNumWrapper").hide();
                     $("#nameWrapper").hide();
                     $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper ").hide();
-                    $("#awbNumWrapper ").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;
