@@ -11092,7 +11092,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 });
                             } else {
                                 newOrder = new ORDERS({
-                                    area: data.data.zone,
+                                    area: area,
                                     items: [{
                                         quantity: data.data.items[0].quantity,
                                         description: data.data.items[0].description,
