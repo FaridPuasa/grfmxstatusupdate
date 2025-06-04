@@ -330,7 +330,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
 
         // Render the dashboard view with both sets of orders
-        res.render('dashboard', { mohOrders, eweOrders, fmxOrders, moment, user: req.user, orders: [] });
+        res.render('dashboard', { mohOrders, eweOrders, moment, user: req.user, orders: [] });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
