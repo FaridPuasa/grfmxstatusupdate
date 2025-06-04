@@ -176,6 +176,7 @@ const TEMUPOD = require('./models/TEMUPOD');
 const KPTDPPOD = require('./models/KPTDPPOD');
 const KPTDFPOD = require('./models/KPTDFPOD');
 const PDUPOD = require('./models/PDUPOD');
+const MGLOBALPOD = require('./models/MGLOBALPOD');
 const ORDERS = require('./models/ORDERS');
 const WAORDERS = require('./models/WAORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
@@ -236,27 +237,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             },
             { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
         ]);
-
-        // Fetch FMX Orders
-        const fmxOrders = await ORDERS.aggregate([
-            { $match: { product: 'fmx' } },
-            {
-                $group: {
-                    _id: '$mawbNo',
-                    mawbNo: { $first: '$mawbNo' },
-                    flightDate: { $first: '$flightDate' },
-                    total: { $sum: 1 },
-                    atWarehouse: { $sum: { $cond: [{ $in: ['$currentStatus', ['At Warehouse', 'Return to Warehouse']] }, 1, 0] } },
-                    outForDelivery: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Out for Delivery'] }, 1, 0] } },
-                    selfCollect: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Self Collect'] }, 1, 0] } },
-                    completed: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Completed'] }, 1, 0] } },
-                    cancelled: { $sum: { $cond: [{ $eq: ['$currentStatus', 'Cancelled'] }, 1, 0] } }
-                }
-            },
-            { $sort: { flightDate: -1 } } // Sort by flightDate in descending order
-        ]);
-
-
+        
         // Fetch MOH Orders
         const mohOrders = await ORDERS.aggregate([
             { $match: { product: 'pharmacymoh' } },
@@ -512,6 +493,10 @@ app.get('/pdumanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, re
     res.render('pdumanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
 });
 
+app.get('/mglobalmanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
+    res.render('mglobalmanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
+});
+
 app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const { mawbNo } = req.body;
@@ -575,6 +560,41 @@ app.post('/pdumanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (
             .limit(1000);
 
         res.render('pdumanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.post('/mglobalmanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const { mawbNo } = req.body;
+
+        // Update the query to only include "pdu" as the product
+        let query = { product: "mglobal" };
+
+        if (mawbNo) {
+            query.mawbNo = new RegExp(mawbNo, 'i'); // Case-insensitive partial match
+        }
+
+        const orders = await ORDERS.find(query)
+            .select([
+                '_id',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'receiverPhoneNumber',
+                'parcelWeight',
+                'flightDate',
+                'items',
+                'mawbNo',
+                'receiverPostalCode'
+            ])
+            .sort({ _id: -1 })
+            .limit(1000);
+
+        res.render('mglobalmanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -653,7 +673,7 @@ app.get('/listofOrders', ensureAuthenticated, ensureViewJob, async (req, res) =>
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
         })
             .select([
                 '_id',
@@ -824,7 +844,7 @@ app.get('/listofOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: "Completed" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -875,7 +895,7 @@ app.get('/listofOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res)
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: "Out for Delivery" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -975,7 +995,7 @@ app.get('/listofAllOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 app.get('/listofAllOrdersIR', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: "Info Received"
         })
             .select([
@@ -1027,7 +1047,7 @@ app.get('/listofOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) 
     try {
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: "Self Collect" // Equal to "Out for Delivery" // Product not equal to "fmx"
         })
             .select([
@@ -1129,7 +1149,7 @@ app.get('/listofOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["At Warehouse", "Return to Warehouse"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1181,7 +1201,7 @@ app.get('/listofOrdersIRCC', ensureAuthenticated, ensureViewJob, async (req, res
         const statusValues = ["Info Received", "Custom Clearing", "Detained by Customs", "Custom Clearance Release"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -1233,7 +1253,7 @@ app.get('/listofOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) 
         const statusValues = ["Cancelled", "Disposed"];
         // Query the database to find orders with product not equal to "fmx" and currentStatus not equal to "complete"
         const orders = await ORDERS.find({
-            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "pure51"] },
+            product: { $nin: ["fmx", "ewe", "pharmacymoh", "ewens", "temu", "kptdp", "kptdf", "pdu", "mglobal"] },
             currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
         })
             .select([
@@ -3611,6 +3631,58 @@ app.get('/listofPDUOrders', ensureAuthenticated, ensureViewJob, async (req, res)
     }
 });
 
+app.get('/listofMGLOBALOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "mglobal"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ _id: -1 })
+            .limit(5000);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofMGLOBALOrders', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
@@ -3925,6 +3997,59 @@ app.get('/listofPDUOrdersCompleted', ensureAuthenticated, ensureViewJob, async (
     }
 });
 
+app.get('/listofMGLOBALOrdersCompleted', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
+        const orders = await ORDERS.find({
+            product: "mglobal",
+            currentStatus: "Completed" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }) // Sort by lastUpdateDateTime in descending order
+            .limit(5000);
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofMGLOBALOrdersCompleted', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofEWEOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
@@ -4027,6 +4152,59 @@ app.get('/listofPDUOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, r
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofPDUOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofMGLOBALOrdersOFD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Out for Delivery"
+        const orders = await ORDERS.find({
+            product: "mglobal",
+            currentStatus: "Out for Delivery" // Equal to "Out for Delivery"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofMGLOBALOrdersOFD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4239,6 +4417,59 @@ app.get('/listofPDUOrdersSC', ensureAuthenticated, ensureViewJob, async (req, re
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofPDUOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofMGLOBALOrdersSC', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to "Self Collect"
+        const orders = await ORDERS.find({
+            product: "mglobal",
+            currentStatus: "Self Collect" // Equal to "Self Collect"
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'latestLocation',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofMGLOBALOrdersSC', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4463,6 +4694,62 @@ app.get('/listofPDUOrdersAW', ensureAuthenticated, ensureViewJob, async (req, re
     }
 });
 
+app.get('/listofMGLOBALOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["At Warehouse", "Return to Warehouse"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "mglobal",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ warehouseEntryDateTime: 1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofMGLOBALOrdersAW', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/listofKPTDPOrdersAW', ensureAuthenticated, ensureViewJob, async (req, res) => {
     try {
         // Define an array containing the desired currentStatus values
@@ -4681,6 +4968,62 @@ app.get('/listofPDUOrdersCD', ensureAuthenticated, ensureViewJob, async (req, re
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofPDUOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
+app.get('/listofMGLOBALOrdersCD', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        // Define an array containing the desired currentStatus values
+        const statusValues = ["Cancelled", "Disposed"];
+
+        // Query the database to find orders with "product" value "fmx" and currentStatus equal to one of the values in statusValues array
+        const orders = await ORDERS.find({
+            product: "mglobal",
+            currentStatus: { $in: statusValues } // Equal to one of the values in statusValues array
+        })
+            .select([
+                '_id',
+                'product',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'receiverPhoneNumber',
+                'area',
+                'remarks',
+                'paymentMethod',
+                'items',
+                'senderName',
+                'totalPrice',
+                'jobDate',
+                'currentStatus',
+                'warehouseEntry',
+                'warehouseEntryDateTime',
+                'assignedTo',
+                'attempt',
+                'flightDate',
+                'mawbNo',
+                'latestReason',
+                'history',
+                'lastUpdateDateTime',
+                'creationDate',
+                'instructions',
+                'latestLocation',
+                'lastUpdatedBy',
+                'lastAssignedTo',
+                'deliveryType',
+                'jobType',
+                'jobMethod',
+                'parcelWeight'
+            ])
+            .sort({ lastUpdateDateTime: -1 }); // Sort by lastUpdateDateTime in descending order
+
+        const totalRecords = orders.length;
+
+        // Render the EJS template with the filtered and sorted orders
+        res.render('listofMGLOBALOrdersCD', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -5392,6 +5735,32 @@ app.get('/listofpduPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
     }
 });
 
+app.get('/listofmglobalPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        // Use the new query syntax to find documents with selected fields
+        const pods = await MGLOBALPOD.find({})
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort({ _id: -1 });
+
+        // Render the EJS template with the pods containing the selected fields
+        res.render('listofmglobalPod', { pods, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch MGLOBAL POD data');
+    }
+});
+
 app.get('/listofkptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -5655,6 +6024,25 @@ app.get('/podpduDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
         res.status(500).send('Failed to fetch POD data');
     }
 });
+
+// Add a new route in your Express application
+app.get('/podmglobalDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const pod = await MGLOBALPOD.findById(req.params.podId);
+
+        if (!pod) {
+            return res.status(404).send('POD not found');
+        }
+
+        // Render the podDetail.ejs template with the HTML content
+        res.render('podmglobalDetail', { htmlContent: pod.htmlContent, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle the error and send an error response
+        res.status(500).send('Failed to fetch POD data');
+    }
+});
+
 
 // Add a new route in your Express application
 app.get('/podkptdpDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
@@ -5948,6 +6336,27 @@ app.get('/editPduPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelive
 });
 
 // Route to render the edit page for a specific POD
+app.get('/editMglobalPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+
+    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
+    MGLOBALPOD.findById(podId)
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Render the edit page, passing the found POD data
+            res.render('editMglobalPod.ejs', { pod, user: req.user });
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to retrieve POD data');
+        });
+});
+
+
+// Route to render the edit page for a specific POD
 app.get('/editKptdpPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const podId = req.params.id;
 
@@ -6116,6 +6525,27 @@ app.post('/updatePduPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDel
 
     // Find the specific POD by ID
     PDUPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
+        .then((pod) => {
+            if (!pod) {
+                return res.status(404).send('POD not found');
+            }
+
+            // Successfully updated the HTML content
+            res.status(200).send('POD data updated successfully');
+        })
+        .catch((err) => {
+            console.error('Error:', err);
+            res.status(500).send('Failed to update POD data');
+        });
+});
+
+// Route to update the HTML content of a specific POD
+app.post('/updateMglobalPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    const podId = req.params.id;
+    const newHtmlContent = req.body.htmlContent;
+
+    // Find the specific POD by ID
+    MGLOBALPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
         .then((pod) => {
             if (!pod) {
                 return res.status(404).send('POD not found');
@@ -6364,6 +6794,24 @@ app.get('/deletePDUPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
     }
 });
 
+app.get('/deleteMGLOBALPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+
+        // Use Mongoose to find and remove the document with the given ID
+        const deletedPod = await MGLOBALPOD.findByIdAndRemove(podId);
+
+        if (deletedPod) {
+            res.redirect('/listofMglobalPod'); // Redirect to the list view after deletion
+        } else {
+            res.status(404).send('MGLOBAL POD not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete MGLOBAL POD');
+    }
+});
+
 app.get('/deleteKPTDPPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const podId = req.params.podId;
@@ -6558,6 +7006,9 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
             break;
         case 'PDU POD':
             PodModel = PDUPOD;
+            break;
+        case 'MGLOBAL POD':
+            PodModel = MGLOBALPOD;
             break;
         case 'EWENS POD':
             PodModel = EWENSPOD;
@@ -7211,7 +7662,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             product = data.data.group_name;
 
-            if ((product == 'EWE') || (product == 'EWENS') || (product == 'KPTDP') || (product == 'PDU') || (product == 'PURE51') || (product == 'TEMU')) {
+            if ((product == 'EWE') || (product == 'EWENS') || (product == 'KPTDP') || (product == 'PDU') || (product == 'PURE51') || (product == 'TEMU') || (product == 'MGLOBAL')) {
                 // Loop through each item in the data.data.items array and construct the items array
                 for (let i = 0; i < data.data.items.length; i++) {
                     itemsArray.push({
@@ -7481,6 +7932,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (product == 'PDU') {
                 currentProduct = 'pdu'
+            }
+
+            if (product == 'MGLOBAL') {
+                currentProduct = 'mglobal'
             }
 
             if (req.body.statusCode == 'FA') {

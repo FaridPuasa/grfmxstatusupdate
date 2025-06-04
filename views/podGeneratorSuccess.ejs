@@ -217,11 +217,12 @@
                                                         (Limbang)</a>
                                                     <!-- <a class="dropdown-item" href="/listofewensPod">POD EWE NON
                                                         SHEIN</a> -->
-                                                    <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a>
+                                                    <!-- <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a> -->
                                                     <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
                                                     <a class="dropdown-item" href="/listofkptdpPod">POD KPTDP</a>
                                                     <!-- <a class="dropdown-item" href="/listofkptdfPod">POD KPTDF</a> -->
                                                     <a class="dropdown-item" href="/listofpduPod">POD PDU</a>
+                                                    <a class="dropdown-item" href="/listofmglobalPod">POD MGLOBAL</a>
                                                     <% } %>
                                     </div>
                                 </li>
@@ -445,6 +446,35 @@
                                                                     href="/listofPDUOrdersCompleted">Completed</a>
                                                                 <a class="dropdown-item"
                                                                     href="/listofPDUOrdersCD">Cancelled</a>
+                                                    </div>
+                                                </li>
+
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        MGLOBAL
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="pduListDropdown">
+                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
+                                                            %>
+                                                            <a class="dropdown-item"
+                                                                href="/mglobalmanifesttobillsearch">Search
+                                                                Manifest to Bill</a>
+                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                            <% } %>
+                                                                <a class="dropdown-item" href="/listofMGLOBALOrders">All</a>
+                                                                <a class="dropdown-item" href="/listofMGLOBALOrdersOFD">Out
+                                                                    for
+                                                                    Delivery</a>
+                                                                <a class="dropdown-item" href="/listofMGLOBALOrdersSC">Self
+                                                                    Collect</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofMGLOBALOrdersAW">Warehouse</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofMGLOBALOrdersCompleted">Completed</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofMGLOBALOrdersCD">Cancelled</a>
                                                     </div>
                                                 </li>
 
