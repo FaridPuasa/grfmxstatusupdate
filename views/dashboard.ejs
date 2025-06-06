@@ -64,147 +64,138 @@
     <div class="container-bg">
         <div class="container">
             <nav class="navbar navbar-expand-lg navbar-dark">
-                        <a class="navbar-brand mr-auto" href="/">
-                            <h2>Go Rush</h2>
-                        </a>
-                        <ul class="navbar-nav flex-row">
-                            <% if (['warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                <a class="navbar-brand mr-auto" href="/">
+                    <h2>Go Rush</h2>
+                </a>
+                <ul class="navbar-nav flex-row">
+                    <% if (['warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Operation
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                    <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
+                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                    <% } %>
+                                        <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area
+                                            Checker</a>
+                                        <a class="dropdown-item" href="/podGenerator">POD / POC Generator</a>
+                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                        <a class="dropdown-item" href="/listofAllOrdersOFD">All Out
+                                            for
+                                            Delivery / Collection</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersSC">All Self
+                                            Collect / Drop Off</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersAW">All
+                                            Warehouse</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                            New Orders from Website</a>
+                                        <a class="dropdown-item" href="/listofWargaEmasOrders">All
+                                            Warga Emas Orders</a>
+                                        <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
+                                            ].includes(user.role)) { %>
+                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                            <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                            <a class="dropdown-item" href="/listofnoncodPod">POD EWE/PDU/MGLOBAL</a>
+                                            <!-- <a class="dropdown-item" href="/listofewePod">POD EWE</a> -->
+                                            <a class="dropdown-item" href="/listofldPod">POD LD</a>
+                                            <!-- <a class="dropdown-item" href="/listofgrpPod">POD GRP</a> -->
+                                            <!-- <a class="dropdown-item" href="/listoffmxPod">POD FMX</a> -->
+                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border
+                                                Service
+                                                (Limbang)</a>
+                                            <!-- <a class="dropdown-item" href="/listofewensPod">POD EWE NON
+                                                        SHEIN</a> -->
+                                            <!-- <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a> -->
+                                            <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
+                                            <a class="dropdown-item" href="/listofkptdpPod">POD KPTDP</a>
+                                            <!-- <a class="dropdown-item" href="/listofkptdfPod">POD KPTDF</a> -->
+                                            <!-- <a class="dropdown-item" href="/listofpduPod">POD PDU</a>
+                                                    <a class="dropdown-item" href="/listofmglobalPod">POD MGLOBAL</a> -->
+                                            <% } %>
+                            </div>
+                        </li>
+                        <% } %>
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
+                                {%>
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        Operation
+                                        MOH
                                     </a>
                                     <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                        <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                            <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
-                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                            <% } %>
-                                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                                <a class="dropdown-item" href="/addressAreaCheck">Address Area
-                                                    Checker</a>
-                                                <a class="dropdown-item" href="/podGenerator">POD / POC Generator</a>
+                                        <a class="dropdown-item" href="/mohsearch">Search</a>
+                                        <% } %>
+                                            <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
+                                                ].includes(user.role)) { %>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item" href="/listofAllOrdersOFD">All Out
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrders">All</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersOFD">Out
                                                     for
-                                                    Delivery / Collection</a>
-                                                <a class="dropdown-item" href="/listofAllOrdersSC">All Self
-                                                    Collect / Drop Off</a>
-                                                <a class="dropdown-item" href="/listofAllOrdersAW">All
-                                                    Warehouse</a>
-                                                <a class="dropdown-item" href="/listofAllOrdersIR">All
-                                                    New Orders from Website</a>
-                                                <a class="dropdown-item" href="/listofWargaEmasOrders">All
-                                                    Warga Emas Orders</a>
-                                                <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
-                                                    ].includes(user.role)) { %>
-                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                    <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                                                    <a class="dropdown-item" href="/listofewePod">POD EWE</a>
-                                                    <a class="dropdown-item" href="/listofldPod">POD LD</a>
-                                                    <!-- <a class="dropdown-item" href="/listofgrpPod">POD GRP</a> -->
-                                                    <!-- <a class="dropdown-item" href="/listoffmxPod">POD FMX</a> -->
-                                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border
-                                                        Service
-                                                        (Limbang)</a>
-                                                    <!-- <a class="dropdown-item" href="/listofewensPod">POD EWE NON
-                                                        SHEIN</a> -->
-                                                    <!-- <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a> -->
-                                                    <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
-                                                    <a class="dropdown-item" href="/listofkptdpPod">POD KPTDP</a>
-                                                    <!-- <a class="dropdown-item" href="/listofkptdfPod">POD KPTDF</a> -->
-                                                    <a class="dropdown-item" href="/listofpduPod">POD PDU</a>
-                                                    <a class="dropdown-item" href="/listofmglobalPod">POD MGLOBAL</a>
-                                                    <% } %>
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
+                                                    Collect</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofpharmacyMOHOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
+                                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
+                                                    STD</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH
+                                                    EXP</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH
+                                                    IMM</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH
+                                                    TTG</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
+                                                    KB</a>
+                                                <% } %>
+                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                        <div class="dropdown-divider"></div>
+                                                        <!-- Divider here -->
+                                                        <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
+                                                            Form
+                                                            List</a>
+                                                        <% } %>
+                                                            <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
+                                                                ].includes(user.role)) { %>
                                     </div>
                                 </li>
                                 <% } %>
-                                    <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin'
-                                        ].includes(user.role)) {%>
+
+                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
+                                        %>
                                         <li class="nav-item dropdown">
-                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
+                                            <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
                                                 aria-expanded="false">
-                                                MOH
+                                                EWE
                                             </a>
-                                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                                <a class="dropdown-item" href="/mohsearch">Search</a>
-                                                <% } %>
-                                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
-                                                        ].includes(user.role)) { %>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersOFD">Out
+                                            <div class="dropdown-menu" aria-labelledby="eweListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <!-- <div class="dropdown-header">SHEIN</div> -->
+                                                        <a class="dropdown-item" href="/listofEWEOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersOFD">Out
                                                             for
                                                             Delivery</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
+                                                        <a class="dropdown-item" href="/listofEWEOrdersSC">Self
                                                             Collect</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersIRCC">New</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersCD">Cancelled</a>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
-                                                            STD</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH
-                                                            EXP</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH
-                                                            IMM</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH
-                                                            TTG</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
-                                                            KB</a>
-                                                        <% } %>
-                                                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) {
-                                                                %>
-                                                                <div class="dropdown-divider"></div>
-                                                                <!-- Divider here -->
-                                                                <a class="dropdown-item"
-                                                                    href="/listofpharmacyMOHForms">Pharmacy
-                                                                    Form
-                                                                    List</a>
-                                                                <% } %>
-                                                                    <% if (['moh', 'finance' , 'cs' , 'manager'
-                                                                        , 'admin' ].includes(user.role)) { %>
-                                            </div>
-                                        </li>
-                                        <% } %>
-
-                                            <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
-                                                ].includes(user.role)) { %>
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        EWE
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                            %>
-                                                            <a class="dropdown-item"
-                                                                href="/ewemanifesttobillsearch">Search
-                                                                Manifest to Bill</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                            <% } %>
-                                                                <!-- <div class="dropdown-header">SHEIN</div> -->
-                                                                <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                                                <a class="dropdown-item" href="/listofEWEOrdersOFD">Out
-                                                                    for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item" href="/listofEWEOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWEOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWEOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWEOrdersCD">Cancelled</a>
-                                                                <div class="dropdown-divider"></div>
-                                                                <!-- Divider here -->
-                                                                <!-- <div class="dropdown-header">NON SHEIN</div>
+                                                            href="/listofEWEOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                        <div class="dropdown-divider"></div>
+                                                        <!-- Divider here -->
+                                                        <!-- <div class="dropdown-header">NON SHEIN</div>
                                                                 <a class="dropdown-item"
                                                                     href="/listofEWENSOrders">All</a>
                                                                 <a class="dropdown-item"
@@ -219,10 +210,10 @@
                                                                     href="/listofEWENSOrdersCompleted">Completed</a>
                                                                 <a class="dropdown-item"
                                                                     href="/listofEWENSOrdersCD">Cancelled</a> -->
-                                                    </div>
-                                                </li>
+                                            </div>
+                                        </li>
 
-                                                <!-- <li class="nav-item dropdown">
+                                        <!-- <li class="nav-item dropdown">
                                                     <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
                                                         role="button" data-toggle="dropdown" aria-haspopup="true"
                                                         aria-expanded="false">
@@ -243,24 +234,23 @@
                                                     </div>
                                                 </li> -->
 
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        TEMU
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="temuListDropdown">
-                                                        <div class="dropdown-header">Collection</div>
-                                                        <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofTEMUCOrdersOFC">Out for
-                                                            Collection</a>
-                                                        <a class="dropdown-item" href="/listofTEMUCOrdersDO">Drop
-                                                            Off</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUCOrdersCD">Cancelled</a>
-                                                        <!-- <div class="dropdown-divider"></div>
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                TEMU
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="temuListDropdown">
+                                                <div class="dropdown-header">Collection</div>
+                                                <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersOFC">Out for
+                                                    Collection</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersDO">Drop
+                                                    Off</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofTEMUCOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <!-- <div class="dropdown-divider"></div>
                                                         <div class="dropdown-header">Delivery</div>
                                                         <a class="dropdown-item" href="/listofTEMUDOrders">All</a>
                                                         <a class="dropdown-item" href="/listofTEMUDOrdersOFD">Out for
@@ -273,29 +263,27 @@
                                                             href="/listofTEMUCOrdersCompleted">Completed</a>
                                                         <a class="dropdown-item"
                                                             href="/listofTEMUCOrdersCD">Cancelled</a> -->
-                                                    </div>
-                                                </li>
+                                            </div>
+                                        </li>
 
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="kptListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        KPT
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="kptListDropdown">
-                                                        <div class="dropdown-header">Duty Paid</div>
-                                                        <a class="dropdown-item" href="/listofKPTDPOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofKPTDPOrdersOFD">Out for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofKPTDPOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDPOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDPOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDPOrdersCD">Cancelled</a>
-                                                        <!-- <div class="dropdown-divider"></div>
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="kptListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                KPT
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="kptListDropdown">
+                                                <div class="dropdown-header">Duty Paid</div>
+                                                <a class="dropdown-item" href="/listofKPTDPOrders">All</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersOFD">Out for
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersSC">Self
+                                                    Collect</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofKPTDPOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersCD">Cancelled</a>
+                                                <!-- <div class="dropdown-divider"></div>
                                                         <div class="dropdown-header">Duty Free</div>
                                                         <a class="dropdown-item" href="/listofKPTDFOrders">All</a>
                                                         <a class="dropdown-item" href="/listofKPTDFOrdersOFD">Out for
@@ -308,516 +296,220 @@
                                                             href="/listofKPTDFOrdersCompleted">Completed</a>
                                                         <a class="dropdown-item"
                                                             href="/listofKPTDFOrdersCD">Cancelled</a> -->
-                                                    </div>
-                                                </li>
+                                            </div>
+                                        </li>
 
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        PDU
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="pduListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                            %>
-                                                            <a class="dropdown-item"
-                                                                href="/pdumanifesttobillsearch">Search
-                                                                Manifest to Bill</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                            <% } %>
-                                                                <a class="dropdown-item" href="/listofPDUOrders">All</a>
-                                                                <a class="dropdown-item" href="/listofPDUOrdersOFD">Out
-                                                                    for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item" href="/listofPDUOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofPDUOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofPDUOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofPDUOrdersCD">Cancelled</a>
-                                                    </div>
-                                                </li>
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        MGLOBAL
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="pduListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                            %>
-                                                            <a class="dropdown-item"
-                                                                href="/mglobalmanifesttobillsearch">Search
-                                                                Manifest to Bill</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                            <% } %>
-                                                                <a class="dropdown-item" href="/listofMGLOBALOrders">All</a>
-                                                                <a class="dropdown-item" href="/listofMGLOBALOrdersOFD">Out
-                                                                    for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item" href="/listofMGLOBALOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersCD">Cancelled</a>
-                                                    </div>
-                                                </li>
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        Others
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                                        <a class="dropdown-item" href="/listofOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofOrdersOFD">Out
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                PDU
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="pduListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/pdumanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <a class="dropdown-item" href="/listofPDUOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersOFD">Out
                                                             for
                                                             Delivery</a>
-                                                        <a class="dropdown-item" href="/listofOrdersSC">Self
+                                                        <a class="dropdown-item" href="/listofPDUOrdersSC">Self
                                                             Collect</a>
-                                                        <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersAW">Warehouse</a>
                                                         <a class="dropdown-item"
-                                                            href="/listofOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyJPMCOrders">JPMC</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
-                                                        <a class="dropdown-item" href="/listofLDOrders">Local
+                                                            href="/listofPDUOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersCD">Cancelled</a>
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                MGLOBAL
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="pduListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/mglobalmanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <a class="dropdown-item" href="/listofMGLOBALOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofMGLOBALOrdersOFD">Out
+                                                            for
                                                             Delivery</a>
-                                                        <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
-                                                        <a class="dropdown-item" href="/listofCBSLOrders">Cross Border
-                                                            Service
-                                                            (Limbang)</a>
-                                                        <a class="dropdown-item" href="/listofPURE51orders">Pure51</a>
-                                                        <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
-                                                        <a class="dropdown-item" href="/listofFCASOrders">Fathan &
-                                                            Co.</a>
-                                                        <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
-                                                        <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
-                                                        <a class="dropdown-item" href="/listofEWENSOrders">EWENS</a>
+                                                        <a class="dropdown-item" href="/listofMGLOBALOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofMGLOBALOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofMGLOBALOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofMGLOBALOrdersCD">Cancelled</a>
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Others
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                                <a class="dropdown-item" href="/listofOrders">All</a>
+                                                <a class="dropdown-item" href="/listofOrdersOFD">Out
+                                                    for
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofOrdersSC">Self
+                                                    Collect</a>
+                                                <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
+                                                <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
+                                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
+                                                <a class="dropdown-item" href="/listofLDOrders">Local
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
+                                                <a class="dropdown-item" href="/listofCBSLOrders">Cross Border
+                                                    Service
+                                                    (Limbang)</a>
+                                                <a class="dropdown-item" href="/listofPURE51orders">Pure51</a>
+                                                <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
+                                                <a class="dropdown-item" href="/listofFCASOrders">Fathan &
+                                                    Co.</a>
+                                                <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
+                                                <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
+                                                <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
+                                                <a class="dropdown-item" href="/listofEWENSOrders">EWENS</a>
+                                            </div>
+                                        </li>
+                                        <% } %>
+
+                                            <!-- Add conditional rendering for login/logout buttons -->
+                                            <% if (user) { %>
+                                                <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#"
+                                                        id="accountSettingsDropdown" role="button"
+                                                        data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        <%= user.name %> (<%= user.role.toUpperCase() %>)
+                                                    </a>
+                                                    <div class="dropdown-menu"
+                                                        aria-labelledby="accountSettingsDropdown">
+                                                        <a class="dropdown-item" href="/">Dashboard</a>
+                                                        <% if (['admin'].includes(user.role)) { %>
+                                                            <a class="dropdown-item" href="/createUser">Create
+                                                                User</a>
+                                                            <!-- <a class="dropdown-item" href="#">Manage Users</a> -->
+                                                            <% } %>
+                                                                <!-- <a class="dropdown-item" href="#">Edit
+                                                                            Profile</a> -->
+                                                                <a class="dropdown-item" href="/logout">Logout</a>
                                                     </div>
                                                 </li>
-                                                <% } %>
-
-                                                    <!-- Add conditional rendering for login/logout buttons -->
-                                                    <% if (user) { %>
-                                                        <li class="nav-item dropdown">
-                                                            <a class="nav-link dropdown-toggle" href="#"
-                                                                id="accountSettingsDropdown" role="button"
-                                                                data-toggle="dropdown" aria-haspopup="true"
-                                                                aria-expanded="false">
-                                                                <%= user.name %> (<%= user.role.toUpperCase() %>)
-                                                            </a>
-                                                            <div class="dropdown-menu"
-                                                                aria-labelledby="accountSettingsDropdown">
-                                                                <a class="dropdown-item" href="/">Dashboard</a>
-                                                                <% if (['admin'].includes(user.role)) { %>
-                                                                    <a class="dropdown-item" href="/createUser">Create
-                                                                        User</a>
-                                                                    <!-- <a class="dropdown-item" href="#">Manage Users</a> -->
-                                                                    <% } %>
-                                                                        <!-- <a class="dropdown-item" href="#">Edit
-                                                                            Profile</a> -->
-                                                                        <a class="dropdown-item"
-                                                                            href="/logout">Logout</a>
-                                                            </div>
-                                                        </li>
-                                                        <% } else { %>
-                                                            <li class="nav-item">
-                                                                <a class="nav-link" href="/login">Login</a>
-                                                            </li>
-                                                            <% } %>
-                        </ul>
-                    </nav>
+                                                <% } else { %>
+                                                    <li class="nav-item">
+                                                        <a class="nav-link" href="/login">Login</a>
+                                                    </li>
+                                                    <% } %>
+                </ul>
+            </nav>
         </div>
     </div>
 
     <div class="container mt-4">
         <h1 class="text-center mt-4">Dashboard</h1>
+
         <% if (['moh', 'admin' ].includes(user.role)) { %>
             <br><a href="/mohsearch"><button class="btn btn-primary">Click here to search for patient
                     record</button></a><br><br>
             <% } %>
-                <% if (['warehouse' ,'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                    <!-- Buttons for navigation -->
-                    <div class="btn-group" role="group" aria-label="Basic example">
-                        <button id="moh-btn" type="button" class="btn btn-primary active"
-                            onclick="showSection('moh')">MOH</button>
-                        <button id="ewe-btn" type="button" class="btn btn-primary"
-                            onclick="showSection('ewe')">EWE</button>
+
+                <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                    <div class="container mt-4">
+                        <h1 class="text-center">Urgent Orders</h1>
+
+                        <% if (Object.keys(urgentMap).length===0) { %>
+                            <p class="text-center text-muted">No urgent orders found.</p>
+                            <% } %>
+
+                                <% Object.keys(urgentMap).forEach((product, index)=> { %>
+                                    <div class="card my-3">
+                                        <div class="card-header d-flex justify-content-between align-items-center toggle-header"
+                                            style="cursor: pointer;" data-bs-toggle="collapse"
+                                            data-bs-target="#collapse-<%= index %>">
+                                            <div><strong>
+                                                    <%= product.toUpperCase() %>
+                                                </strong></div>
+                                            <div class="badge bg-danger">
+                                                <%= urgentMap[product].length %> urgent
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse" id="collapse-<%= index %>">
+                                            <div class="card-body p-0">
+                                                <table class="table table-sm table-bordered mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Age</th>
+                                                            <th>Tracking Number</th>
+                                                            <th>Attempt</th>
+                                                            <th>Latest Reason</th>
+                                                            <th>Area</th>
+                                                            <th>Name</th>
+                                                            <th>Main Phone</th>
+                                                            <th>2nd Phone</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% urgentMap[product].forEach(order=> { %>
+                                                            <tr>
+                                                                <td>
+                                                                    <%= order.age %> days
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.doTrackingNumber %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.attempt %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.latestReason %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.area %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.receiverName %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.receiverPhoneNumber %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= order.additionalPhoneNumber %>
+                                                                </td>
+                                                            </tr>
+                                                            <% }) %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <% }) %>
                     </div>
                     <% } %>
 
-                        <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                            <div id="moh-section" class="content-section mt-4">
 
-                                <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                    <h2>MOH Orders</h2>
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Delivery Type / From Pharmacy</th>
-                                                <th>Total</th>
-                                                <th>At Warehouse</th>
-                                                <th>Out for Delivery</th>
-                                                <th>Self Collect</th>
-                                                <th>Completed</th>
-                                                <th>Cancelled</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <% mohOrders.forEach(function(order) { %>
-                                                <tr
-                                                    class="<%= (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                    <td>
-                                                        <%= order.deliveryType %>
-                                                    </td>
-                                                    <td>
-                                                        <%= order.total %>
-                                                    </td>
-                                                    <td>
-                                                        <%= order.atWarehouse %>
-                                                    </td>
-                                                    <td>
-                                                        <%= order.outForDelivery %>
-                                                    </td>
-                                                    <td>
-                                                        <%= order.selfCollect %>
-                                                    </td>
-                                                    <td>
-                                                        <%= order.completed %>
-                                                    </td>
-                                                    <td>
-                                                        <%= order.cancelled %>
-                                                    </td>
-                                                </tr>
-                                                <% }); %>
-                                                    <!-- Calculate totals -->
-                                                    <% const total=mohOrders.reduce((acc, order)=> {
-                                                        acc.total += order.total;
-                                                        acc.atWarehouse += order.atWarehouse;
-                                                        acc.outForDelivery += order.outForDelivery;
-                                                        acc.selfCollect += order.selfCollect;
-                                                        acc.completed += order.completed;
-                                                        acc.cancelled += order.cancelled;
-                                                        return acc;
-                                                        }, { total: 0, atWarehouse: 0, outForDelivery: 0, selfCollect:
-                                                        0,
-                                                        completed:
-                                                        0,
-                                                        cancelled: 0 }); %>
-                                                        <!-- Append totals row -->
-                                                        <tr
-                                                            class="<%= (total.outForDelivery > 0 || total.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                            <td><strong>Total</strong></td>
-                                                            <td>
-                                                                <%= total.total %>
-                                                            </td>
-                                                            <td>
-                                                                <%= total.atWarehouse %>
-                                                            </td>
-                                                            <td>
-                                                                <%= total.outForDelivery %>
-                                                            </td>
-                                                            <td>
-                                                                <%= total.selfCollect %>
-                                                            </td>
-                                                            <td>
-                                                                <%= total.completed %>
-                                                            </td>
-                                                            <td>
-                                                                <%= total.cancelled %>
-                                                            </td>
-                                                        </tr>
-                                        </tbody>
-                                    </table>
-                            </div>
-                            <% } %>
-                                <% } %>
-
-                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
-                                        %>
-                                        <div id="ewe-section" class="content-section mt-4" style="display:none;">
-                                            <h2>EWE Orders</h2>
-                                            <table class="table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>MAWB No.</th>
-                                                        <th>Flight Date</th>
-                                                        <th>Total</th>
-                                                        <th>At Warehouse</th>
-                                                        <th>K1</th>
-                                                        <th>K2</th>
-                                                        <th>Out for Delivery</th>
-                                                        <th>Self Collect</th>
-                                                        <th>Completed</th>
-                                                        <th>Cancelled</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% eweOrders.forEach(function(order) { %>
-                                                        <tr
-                                                            class="<%= (order.total == order.completed + order.cancelled) ? 'table-success' : (order.outForDelivery > 0 || order.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                            <td>
-                                                                <%= order.mawbNo %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.flightDate %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.total %>
-                                                                    <% if (order.eweTotal || order.ewensTotal) { %>
-                                                                        <div>
-                                                                            <% if (order.eweTotal) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweTotal %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensTotal) { %><span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensTotal %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.atWarehouse %>
-                                                                    <% if (order.eweAtWarehouse ||
-                                                                        order.ewensAtWarehouse) { %>
-                                                                        <div>
-                                                                            <% if (order.eweAtWarehouse) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweAtWarehouse %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensAtWarehouse) { %>
-                                                                                        <span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensAtWarehouse
-                                                                                                %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.k1 %>
-                                                                    <% if (order.eweK1 || order.ewensK1) { %>
-                                                                        <div>
-                                                                            <% if (order.eweK1) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweK1 %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensK1) { %><span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensK1 %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.k2 %>
-                                                                    <% if (order.eweK2 || order.ewensK2) { %>
-                                                                        <div>
-                                                                            <% if (order.eweK2) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweK2 %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensK2) { %><span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensK2 %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.outForDelivery %>
-                                                                    <% if (order.eweOutForDelivery ||
-                                                                        order.ewensOutForDelivery) { %>
-                                                                        <div>
-                                                                            <% if (order.eweOutForDelivery) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweOutForDelivery %>
-                                                                                </span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensOutForDelivery) {
-                                                                                        %><span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensOutForDelivery
-                                                                                                %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.selfCollect %>
-                                                                    <% if (order.eweSelfCollect ||
-                                                                        order.ewensSelfCollect) { %>
-                                                                        <div>
-                                                                            <% if (order.eweSelfCollect) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweSelfCollect %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensSelfCollect) { %>
-                                                                                        <span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensSelfCollect
-                                                                                                %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.completed %>
-                                                                    <% if (order.eweCompleted || order.ewensCompleted) {
-                                                                        %>
-                                                                        <div>
-                                                                            <% if (order.eweCompleted) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweCompleted %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensCompleted) { %>
-                                                                                        <span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensCompleted %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                            <td>
-                                                                <%= order.cancelled %>
-                                                                    <% if (order.eweCancelled || order.ewensCancelled) {
-                                                                        %>
-                                                                        <div>
-                                                                            <% if (order.eweCancelled) { %><span
-                                                                                    class="label label-info">S: <%=
-                                                                                        order.eweCancelled %></span>
-                                                                                <% } %>
-                                                                                    <% if (order.ewensCancelled) { %>
-                                                                                        <span
-                                                                                            class="label label-info">NS:
-                                                                                            <%= order.ewensCancelled %>
-                                                                                        </span>
-                                                                                        <% } %>
-                                                                        </div>
-                                                                        <% } %>
-                                                            </td>
-                                                        </tr>
-                                                        <% }); %>
-                                                            <!-- Calculate totals -->
-                                                            <% const totalEWE=eweOrders.reduce((acc, order)=> {
-                                                                acc.total += order.total;
-                                                                acc.atWarehouse += order.atWarehouse;
-                                                                acc.k1 += order.k1;
-                                                                acc.k2 += order.k2;
-                                                                acc.outForDelivery += order.outForDelivery;
-                                                                acc.selfCollect += order.selfCollect;
-                                                                acc.completed += order.completed;
-                                                                acc.cancelled += order.cancelled;
-                                                                return acc;
-                                                                }, { total: 0, atWarehouse: 0, k1: 0, k2: 0,
-                                                                outForDelivery: 0, selfCollect: 0, completed: 0,
-                                                                cancelled: 0 }); %>
-                                                                <!-- Append totals row -->
-                                                                <tr class="<%= (totalEWE.outForDelivery > 0 || totalEWE.selfCollect > 0) ? 'table-warning' : '' %>">
-                                                                    <td><strong>Total</strong></td>
-                                                                    <td></td>
-                                                                    <td>
-                                                                        <%= totalEWE.total %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweTotal, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensTotal, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.atWarehouse %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweAtWarehouse, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensAtWarehouse, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.k1 %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweK1, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensK1, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.k2 %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweK2, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensK2, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.outForDelivery %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweOutForDelivery, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensOutForDelivery, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.selfCollect %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweSelfCollect, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensSelfCollect, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.completed %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweCompleted, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensCompleted, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= totalEWE.cancelled %>
-                                                                        <div>
-                                                                            <span class="label label-info">S: <%= eweOrders.reduce((acc, order) => acc + order.eweCancelled, 0) %></span>
-                                                                            <span class="label label-info">NS: <%= eweOrders.reduce((acc, order) => acc + order.ewensCancelled, 0) %></span>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <% } %>
-
-                                            <script>
-                                                function showSection(section) {
-                                                    document.getElementById('moh-section').style.display = section === 'moh' ? 'block' : 'none';
-                                                    document.getElementById('ewe-section').style.display = section === 'ewe' ? 'block' : 'none';
-
-                                                    // Remove the 'active' class from all buttons
-                                                    document.querySelectorAll('.btn-group button').forEach(function (btn) {
-                                                        btn.classList.remove('active');
-                                                    });
-
-                                                    // Add the 'active' class to the clicked button
-                                                    document.getElementById(section + '-btn').classList.add('active');
-                                                }
-                                            </script>
-
-                                            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                                            <script
-                                                src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-                                            <script
-                                                src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
+                        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+                        <script
+                            src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
+                        <script
+                            src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
