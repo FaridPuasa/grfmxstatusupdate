@@ -445,64 +445,90 @@
                                             <div><strong>
                                                     <%= product.toUpperCase() %>
                                                 </strong></div>
-                                            <div class="badge bg-danger">
-                                                <%= urgentMap[product].length %> urgent
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <div class="badge bg-danger">
+                                                    <%= Object.values(urgentMap[product]).flat().length %> urgent
+                                                </div>
+
+                                                <% Object.keys(urgentMap[product]).forEach(method=> {
+                                                    const methodCount = urgentMap[product][method].length;
+                                                    %>
+                                                    <% if (methodCount> 0) { %>
+                                                        <span class="badge 
+                <% if (method === 'Standard') { %> bg-primary 
+                <% } else if (method === 'Express') { %> bg-warning text-dark 
+                <% } else if (method === 'Drop Off') { %> bg-info text-dark 
+                <% } else if (method === 'Immediate') { %> bg-danger 
+                <% } else if (method === 'Self Collect') { %> bg-success 
+                <% } else { %> bg-secondary 
+                <% } %>">
+                                                            <%= method %>: <%= methodCount %>
+                                                        </span>
+                                                        <% } %>
+                                                            <% }) %>
                                             </div>
+
                                         </div>
 
                                         <div class="collapse" id="collapse-<%= index %>">
                                             <div class="card-body p-0">
-                                                <table class="table table-sm table-bordered mb-0">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Age</th>
-                                                            <th>Tracking Number</th>
-                                                            <th>Attempt</th>
-                                                            <th>Latest Reason</th>
-                                                            <th>Area</th>
-                                                            <th>Name</th>
-                                                            <th>Main Phone</th>
-                                                            <th>2nd Phone</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% urgentMap[product].forEach(order=> { %>
+                                                <% Object.keys(urgentMap[product]).forEach(method=> { %>
+                                                    <div class="px-3 pt-3"><strong>
+                                                            <%= method %>
+                                                        </strong></div>
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead>
                                                             <tr>
-                                                                <td>
-                                                                    <%= order.age %> days
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.doTrackingNumber %>
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.attempt %>
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.latestReason %>
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.area %>
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.receiverName %>
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.receiverPhoneNumber %>
-                                                                </td>
-                                                                <td>
-                                                                    <%= order.additionalPhoneNumber %>
-                                                                </td>
+                                                                <th>Age</th>
+                                                                <th>Tracking Number</th>
+                                                                <th>Attempt</th>
+                                                                <th>Latest Reason</th>
+                                                                <th>Area</th>
+                                                                <th>Name</th>
+                                                                <th>Main Phone</th>
+                                                                <th>2nd Phone</th>
                                                             </tr>
-                                                            <% }) %>
-                                                    </tbody>
-                                                </table>
+                                                        </thead>
+                                                        <tbody>
+                                                            <% urgentMap[product][method].forEach(order=> { %>
+                                                                <tr>
+                                                                    <td>
+                                                                        <%= order.age %> days
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.doTrackingNumber %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.attempt %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.latestReason %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.area %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.receiverName %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.receiverPhoneNumber %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= order.additionalPhoneNumber %>
+                                                                    </td>
+                                                                </tr>
+                                                                <% }) %>
+                                                        </tbody>
+                                                    </table>
+                                                    <hr class="my-1">
+                                                    <% }) %>
                                             </div>
                                         </div>
                                     </div>
                                     <% }) %>
                     </div>
-                    <% } %>
 
+                    <% } %>
 
                         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
                         <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
