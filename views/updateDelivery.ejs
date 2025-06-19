@@ -454,26 +454,30 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <!-- <optgroup label="TEMU Flow starts here">
-                            <option value="IR">Add Temu Collection Orders</option>
-                        </optgroup> -->
-                        <optgroup label="PDU Flow starts here">
-                            <!-- <option value="IR">|FMX only| Info Received</option> -->
-                            <option value="CP">Custom Clearance In Progress</option>
-                            <!-- <option value="DC">2. Detained by Customs</option>
-                            <option value="38">3. Custom Clearance Release</option> -->
+                        <optgroup label="Standard Delivery Flow">
+                            <option value="12">1. Item In Warehouse</option>
+                            <option value="35">2.1. Out for Delivery / Collection</option>
+                            <option value="CSSC">2.2. Self Collect / Drop Off</option>
                         </optgroup>
-                        <optgroup label="Standard Delivery Flow starts here">
-                            <option value="12">Item In Warehouse</option>
+                        <optgroup label="PDU/MGLOBAL Flow">
+                            <option value="CP">1. Custom Clearance In Progress</option>
+                            <option value="12">2. Item In Warehouse</option>
+                            <option value="35">3.1. Out for Delivery</option>
+                            <option value="CSSC">3.2. Self Collect</option>
                         </optgroup>
-                        <!-- <option value="NC">|All| Notify Customer Delivery Tomorrow</option> -->
-                        <optgroup label="Standard Collection Flow starts here">
-                            <option value="35">1.1. Out for Delivery / Collection</option>
-                            <option value="CSSC">1.2. Self Collect / Drop Off</option>
-                            <option value="SFJ">2. Clear Job</option>
+                        <optgroup label="TEMU Collection Flow">
+                            <option value="IR">1. Add Temu Collection Orders</option>
+                            <option value="35">2.1. Out for Collection</option>
+                            <option value="CSSC">2.2. Drop Off</option>
+                        </optgroup>
+                        <optgroup label="After Success/Fail updated on Agent App">
+                            <option value="SFJ">Clear Job</option>
                         </optgroup>
                         <optgroup label="Change Details">
                             <option value="SD">Swap Dispatchers</option>
+                            <option value="UWL">Update Warehouse</option>
+                            <option value="UFM">Update Fridge Medicine</option>
+                            <option value="UGR">Update Go Rush Remark</option>
                             <option value="UD">Update Job Date</option>
                             <option value="UJM">Update Job Method</option>
                             <option value="UP">Update Price</option>
@@ -484,7 +488,7 @@
                             <option value="URN">Update Customer Name</option>
                             <option value="UPC">Update Postal Code</option>
                             <option value="UAB">Update AWB Number</option>
-                            <option value="UPSBT">Update Payment Status for BT</option>
+                            <!-- <option value="UPSBT">Update Payment Status for BT</option> -->
                         </optgroup>
                         <optgroup label="Danger Zone!!!">
                             <option value="CD">1. Cancelled Job</option>
@@ -507,9 +511,10 @@
                     <label for="dispatchers" class="form-label">Dispatchers:</label>
                     <select id="dispatchers" name="dispatchers" class="form-select" disabled>
                         <option value="" selected>Please select dispatcher</option>
-                        <option value="Wafi">Wafi</option>
-                        <option value="Hj Boy">Hj Boy</option>
                         <option value="Ghafar">Ghafar</option>
+                        <option value="Wafi">Wafi</option>
+                        <option value="Sowdeq">Sowdeq</option>
+                        <option value="Hj Boy">Hj Boy</option>
                         <!-- <option value="Zakwan">Zakwan</option> -->
                         <!-- <option value="Syahmi">Syahmi</option> -->
                         <option value="FL1">FL1</option>
@@ -541,6 +546,59 @@
                     <small>K1 > Go Rush Kiulap</small><br>
                     <small>K2 > Simpang 14-9</small><br>
                     <strong><small>*If no failed job, pick K1</small></strong><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="k2roomWrapper">
+                    <label for="k2room" class="form-label">Room:</label>
+                    <select id="k2room" name="k2room" class="form-select" disabled>
+                        <option value="Open Space" selected>Open Space</option>
+                        <option value="Medicine Room">Medicine Room</option>
+                        <option value="Room 1">Room 1</option>
+                    </select>
+                    <small>Open space > All parcels except medicine</small><br>
+                    <small>Medicine Room > Strictly for medicine</small><br>
+                    <small>Room 1 > Failed deliveries</small><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="fridgeWrapper">
+                    <label for="fridge" class="form-label">Fridge Item?:</label>
+                    <select id="fridge" name="fridge" class="form-select" disabled>
+                        <option value="" selected>Please select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                    <strong><small>*Strictly applicable for medicines only.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="k2rowWrapper">
+                    <label for="k2row" class="form-label">Rack row number:</label>
+                    <select id="k2row" name="k2row" class="form-select" disabled>
+                        <option value="N/A" selected>N/A</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                    <small>Rack row number from 1-5 > Single Rack</small><br>
+                    <small>Rack row number from 1-10 > Dual Rack</small><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="grRemarkWrapper">
+                    <label for="grRemark" class="form-label">New Go Rush Remark:</label>
+                    <input type="text" id="grRemark" name="grRemark" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            remark.</small></strong>
                 </div>
             </div>
             <div class="mb-3">
@@ -673,7 +731,7 @@
             <p>Loading...</p>
         </div>
 
-        <div class="mt-4 p-3 delivery-flow-box"
+        <!-- <div class="mt-4 p-3 delivery-flow-box"
             style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
             <h5>Delivery Flow:</h5>
             <p><strong>Success:</strong> Item in Warehouse (By CS Team on Portal) &rarr; Out for Delivery (By CS Team on
@@ -700,7 +758,7 @@
                 on
                 Agent App and Portal)
             </p>
-        </div>
+        </div> -->
         <!-- <div class="mt-4 p-3 delivery-flow-box"
             style="background-color: #ffffcc; border: 2px solid #333; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);">
             <h5>FMX Delivery Flow:</h5>
@@ -754,6 +812,10 @@
             $("#postalCodeWrapper").hide();
             $("#awbNumWrapper").hide();
             $("#paymentStatusWrapper").hide();
+            $("#k2roomWrapper").hide();
+            $("#k2rowWrapper").hide();
+            $("#fridgeWrapper").hide();
+            $("#grRemarkWrapper").hide();
             // Get references to the "Assign Date" and "Dispatchers" fields
             const assignDateField = document.getElementById('assignDate');
             const dispatchersField = document.getElementById('dispatchers');
@@ -771,7 +833,10 @@
             const postalCodeField = document.getElementById('postalCode');
             const awbNumField = document.getElementById('awbNum');
             const paymentStatusField = document.getElementById('paymentStatus');
-
+            const k2roomField = document.getElementById('k2room');
+            const k2rowField = document.getElementById('k2row');
+            const fridgeField = document.getElementById('fridge');
+            const grRemarkField = document.getElementById('grRemark');
 
             // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
@@ -844,6 +909,44 @@
                 }
             }
 
+            $('#warehouse').change(function () {
+                if ($(this).val().length == 0) {
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+                }
+
+                if ($(this).val() == "Warehouse K1") {
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+                }
+
+                if ($(this).val() == "Warehouse K2") {
+                    $('#k2room').val("Open Space");
+                    $('#k2row').val("N/A");
+
+                    $("#k2roomWrapper").fadeIn();
+                    $("#k2rowWrapper").fadeIn();
+
+                    k2roomField.disabled = false;
+                    k2roomField.required = true;
+
+                    k2rowField.disabled = false;
+                    k2rowField.required = false;
+                }
+            })
+
             // Function to enable/disable fields and set them as required based on the selected status code
             function updateFieldStatus() {
                 const selectedStatusCode = statusCodeSelect.value;
@@ -865,6 +968,10 @@
                 postalCodeField.value = '';
                 awbNumField.value = '';
                 paymentStatusField.value = '';
+                k2roomField.value = '';
+                k2rowField.value = '';
+                fridgeField.value = '';
+                grRemarkField.value = '';
 
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
@@ -882,6 +989,10 @@
                 $("#postalCodeWrapper").hide();
                 $("#awbNumWrapper").hide();
                 $("#paymentStatusWrapper").hide();
+                $("#k2roomWrapper").hide();
+                $("#k2rowWrapper").hide();
+                $("#grRemarkWrapper").hide();
+                $("#fridgeWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
@@ -906,6 +1017,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#grRemarkWrapper").hide();
+                    $("#fridgeWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -946,6 +1061,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                 } else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
                     // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
@@ -969,6 +1096,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#grRemarkWrapper").hide();
+                    $("#fridgeWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = true;
@@ -1009,6 +1140,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                 } else if (selectedStatusCode === 'UP') {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -1031,6 +1174,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                     assignDateField.required = false;
                     dispatchersField.required = false;
@@ -1070,7 +1217,19 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
-                } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ')) {
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
+                } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ') || (selectedStatusCode === 'UWL')) {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
@@ -1092,6 +1251,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                     // Set the fields as required
                     assignDateField.required = false;
@@ -1131,6 +1294,18 @@
 
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
+
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
 
                 } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     // Enable the "Additional Reason" field and make it required
@@ -1180,6 +1355,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
@@ -1196,6 +1383,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UW') {
                     // Enable the "Additional Reason" field and make it required
@@ -1245,6 +1436,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1261,6 +1464,91 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
+
+                } else if (selectedStatusCode === 'UFM') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = false;
+                    weightField.required = true;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
+                    jobMethodField.disabled = true;
+                    jobMethodField.required = false;
+
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = false;
+                    fridgeField.required = true;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
+                    $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").fadeIn();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UAR') {
                     // Enable the "Additional Reason" field and make it required
@@ -1310,6 +1598,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1326,6 +1626,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UAS') {
                     // Enable the "Additional Reason" field and make it required
@@ -1375,6 +1679,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1391,6 +1707,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UPN') {
                     // Enable the "Additional Reason" field and make it required
@@ -1440,6 +1760,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1456,6 +1788,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'URN') {
                     // Enable the "Additional Reason" field and make it required
@@ -1505,6 +1841,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1521,6 +1869,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UJM') {
                     // Enable the "Additional Reason" field and make it required
@@ -1570,6 +1922,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1586,6 +1950,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UPC') {
                     // Enable the "Additional Reason" field and make it required
@@ -1635,6 +2003,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1651,6 +2031,10 @@
                     $("#postalCodeWrapper").fadeIn();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UPSBT') {
                     // Enable the "Additional Reason" field and make it required
@@ -1700,6 +2084,18 @@
                     paymentStatusField.disabled = false;
                     paymentStatusField.required = true;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1716,6 +2112,10 @@
                     $("#postalCodeWrapper").fadeIn();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                 } else if (selectedStatusCode === 'UAB') {
                     // Enable the "Additional Reason" field and make it required
@@ -1765,6 +2165,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").hide();
@@ -1781,6 +2193,91 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").fadeIn();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
+
+                } else if (selectedStatusCode === 'UGR') {
+                    // Enable the "Additional Reason" field and make it required
+                    additionalReasonField.disabled = true;
+                    additionalReasonField.required = false;
+
+                    // Disable the "Dispatchers" field
+                    dispatchersField.disabled = true;
+                    dispatchersField.required = false;
+
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+
+                    warehouseField.disabled = true;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true;
+                    weightField.required = false;
+
+                    paymentMethodField.disabled = true;
+                    paymentMethodField.required = false;
+
+                    priceField.disabled = true;
+                    priceField.required = false;
+
+                    areaField.disabled = true;
+                    areaField.required = false;
+
+                    addressField.disabled = true;
+                    addressField.required = false;
+
+                    phoneNumField.disabled = true;
+                    phoneNumField.required = false;
+
+                    nameField.disabled = true;
+                    nameField.required = false;
+
+                    jobMethodField.disabled = true;
+                    jobMethodField.required = false;
+
+                    postalCodeField.disabled = true;
+                    postalCodeField.required = false;
+
+                    awbNumField.disabled = true;
+                    awbNumField.required = false;
+
+                    paymentStatusField.disabled = true;
+                    paymentStatusField.required = false;
+
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = false;
+                    grRemarkField.required = true;
+
+                    $("#assignDateWrapper").hide();
+                    $("#dispatchersWrapper").hide();
+                    $("#additionalReasonWrapper").hide();
+                    $("#freelancerNameWrapper").hide();
+                    $("#warehouseWrapper").hide();
+                    $("#weightWrapper").hide();
+                    $("#paymentMethodWrapper").hide();
+                    $("#priceWrapper").hide();
+                    $("#areaWrapper").hide();
+                    $("#addressWrapper").hide();
+                    $("#phoneNumWrapper").hide();
+                    $("#nameWrapper").hide();
+                    $("#jobMethodWrapper").hide();
+                    $("#postalCodeWrapper").hide();
+                    $("#awbNumWrapper").hide();
+                    $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").fadeIn();
 
                 } else {
                     // Disable the fields for other status codes
@@ -1827,6 +2324,18 @@
                     paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
 
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+
+                    fridgeField.disabled = true;
+                    fridgeField.required = false;
+
+                    grRemarkField.disabled = true;
+                    grRemarkField.required = false;
+
                     // Hide all wrappers
                     $("#assignDateWrapper").hide();
                     $("#dispatchersWrapper").hide();
@@ -1844,6 +2353,10 @@
                     $("#postalCodeWrapper").hide();
                     $("#awbNumWrapper").hide();
                     $("#paymentStatusWrapper").hide();
+                    $("#k2roomWrapper").hide();
+                    $("#k2rowWrapper").hide();
+                    $("#fridgeWrapper").hide();
+                    $("#grRemarkWrapper").hide();
 
                     // Enable all options in the Dispatchers dropdown
                     const dispatcherOptions = dispatchersField.options;

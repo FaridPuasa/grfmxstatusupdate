@@ -568,7 +568,7 @@
         <% trackingNumbers.forEach(function(item, index) { %>
             <tr>
                 <td><%= index + 1 %></td>
-                <td contenteditable="true"></td>
+                <td><%= item.fridge %></td>
                 <td>
                     <div class="barcode-container">
                         <svg id="barcode-<%= index %>"></svg> <!-- SVG element for the barcode -->
@@ -605,8 +605,6 @@
         <button id="backButton" class="btn btn-primary" onclick="window.location.href = '/podGenerator'">Back to POD / POC
             Generator</button>
     </div>
-
-
 
     <!-- Add Bootstrap and custom scripts here -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>

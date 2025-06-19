@@ -203,97 +203,197 @@ const processingResults = [];
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         const moment = require('moment');
+        const now = moment();
 
-        let urgentMap = urgentCache.get('urgentMap');
+        function generateLocation(order) {
+            const { latestLocation, room, rackRowNum, area, jobMethod } = order;
+            if (!latestLocation) return '-';
 
-        if (!urgentMap) {
-            const orders = await ORDERS.find(
-                { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-                {
-                    product: 1,
-                    currentStatus: 1,
-                    warehouseEntry: 1,
-                    jobMethod: 1,
-                    warehouseEntryDateTime: 1,
-                    creationDate: 1,
-                    doTrackingNumber: 1,
-                    attempt: 1,
-                    latestReason: 1,
-                    area: 1,
-                    receiverName: 1,
-                    receiverPhoneNumber: 1,
-                    additionalPhoneNumber: 1
+            let parts = [latestLocation];
+
+            if (latestLocation === 'Warehouse K1') {
+                return parts.join(', ');
+            }
+
+            if (latestLocation === 'Warehouse K2') {
+                if (room === 'Room 1') {
+                    if (room) parts.push(room);
+                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
+                } else if (room === 'Medicine Room') {
+                    if (room) parts.push(room);
+                    if (jobMethod) parts.push(jobMethod);
+                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
+                } else {
+                    if (room) parts.push(room);
+                    if (area) parts.push(area);
+                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
                 }
-            );
+            }
 
-            urgentMap = {};
+            return parts.join(', ');
+        }
 
-            const now = moment();
+        const allOrders = await ORDERS.find(
+            { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
+            {
+                product: 1,
+                currentStatus: 1,
+                warehouseEntry: 1,
+                jobMethod: 1,
+                warehouseEntryDateTime: 1,
+                creationDate: 1,
+                doTrackingNumber: 1,
+                attempt: 1,
+                latestReason: 1,
+                area: 1,
+                receiverName: 1,
+                receiverPhoneNumber: 1,
+                additionalPhoneNumber: 1,
+                fridge: 1,
+                latestLocation: 1,
+                grRemark: 1,
+                room: 1,
+                rackRowNum: 1
+            }
+        );
 
+        const categorize = (orders, filterFn) => {
+            const map = {};
             orders.forEach(order => {
-                const {
-                    product,
-                    jobMethod,
-                    warehouseEntryDateTime,
-                    creationDate,
-                    warehouseEntry,
-                    currentStatus
-                } = order;
-
+                const { product, jobMethod, warehouseEntryDateTime, creationDate } = order;
                 const method = jobMethod || 'Unknown';
                 const refDate = warehouseEntryDateTime || creationDate;
                 if (!refDate) return;
-
                 const age = now.diff(moment(refDate), 'days');
-                let valid = false;
-
-                if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) {
-                    if (warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus)) {
-                        if (method === "Standard" && age >= 3 && age <= 7) valid = true;
-                        if (method === "Express" && age >= 1 && age <= 7) valid = true;
-                    }
-                } else if (product === "temu") {
-                    if (method === "Standard" && age >= 5 && age <= 14) valid = true;
-                    if (method === "Drop Off" && age >= 7 && age <= 14) valid = true;
-                } else {
-                    if (warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus)) {
-                        if (age >= 1 && age <= 7) valid = true;
-                    }
+                if (!filterFn(order, age)) return;
+                if (!map[product]) map[product] = {};
+                if (!map[product][method]) map[product][method] = [];
+                map[product][method].push({
+                    age,
+                    doTrackingNumber: order.doTrackingNumber || '-',
+                    attempt: order.attempt || '-',
+                    latestReason: order.latestReason || '-',
+                    area: order.area || '-',
+                    receiverName: order.receiverName || '-',
+                    receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                    additionalPhoneNumber: order.additionalPhoneNumber || '-',
+                    fridge: order.fridge || '-',
+                    latestLocation: order.latestLocation || '-',
+                    grRemark: order.grRemark || '-',
+                    location: generateLocation(order)
+                });
+            });
+            for (const product in map) {
+                for (const method in map[product]) {
+                    map[product][method].sort((a, b) => b.age - a.age);
                 }
+            }
+            return map;
+        };
 
-                if (valid) {
-                    if (!urgentMap[product]) urgentMap[product] = {};
-                    if (!urgentMap[product][method]) urgentMap[product][method] = [];
+        const groupByCurrentLocation = (orders) => {
+            const map = {};
+            orders.forEach(order => {
+                if (["At Warehouse", "Return to Warehouse"].includes(order.currentStatus)) {
+                    const location = order.latestLocation || 'Unknown';
+                    const product = order.product || 'Unknown';
+                    const area = order.area || 'Unknown';
 
-                    urgentMap[product][method].push({
+                    const refDate = order.warehouseEntryDateTime || order.creationDate;
+                    const age = refDate ? now.diff(moment(refDate), 'days') : '-';
+
+                    if (age === '-' || age >= 30) return;
+
+                    if (!map[location]) map[location] = {};
+                    if (!map[location][product]) map[location][product] = {};
+                    if (!map[location][product][area]) map[location][product][area] = [];
+
+                    map[location][product][area].push({
                         age,
                         doTrackingNumber: order.doTrackingNumber || '-',
                         attempt: order.attempt || '-',
                         latestReason: order.latestReason || '-',
-                        area: order.area || '-',
+                        area,
                         receiverName: order.receiverName || '-',
                         receiverPhoneNumber: order.receiverPhoneNumber || '-',
-                        additionalPhoneNumber: order.additionalPhoneNumber || '-'
+                        additionalPhoneNumber: order.additionalPhoneNumber || '-',
+                        jobMethod: order.jobMethod || '-',
+                        fridge: order.fridge || '-',
+                        grRemark: order.grRemark || '-'
                     });
                 }
             });
 
-            // Sort each method's list by descending age
-            for (const product in urgentMap) {
-                for (const method in urgentMap[product]) {
-                    urgentMap[product][method].sort((a, b) => b.age - a.age);
+            for (const location in map) {
+                for (const product in map[location]) {
+                    for (const area in map[location][product]) {
+                        map[location][product][area].sort((a, b) => b.age - a.age);
+                    }
                 }
             }
 
-            urgentCache.set('urgentMap', urgentMap);
-        }
+            return map;
+        };
 
-        res.render('dashboard', { urgentMap, moment, user: req.user, orders: [] });
+        const currentOrders = allOrders.filter(order =>
+            ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
+            ["Warehouse K1", "Warehouse K2"].includes(order.latestLocation)
+        );
 
+        const currentMap = groupByCurrentLocation(currentOrders);
+
+        const urgentMap = categorize(allOrders, (order, age) => {
+            const { product, jobMethod, warehouseEntry, currentStatus } = order;
+            const method = jobMethod || 'Unknown';
+            if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) {
+                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) &&
+                    ((method === "Standard" && age >= 3 && age <= 7) || (method === "Express" && age >= 1 && age <= 7));
+            } else if (product === "temu") {
+                return (method === "Standard" && age >= 5 && age <= 14) || (method === "Drop Off" && age >= 7 && age <= 14);
+            } else {
+                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) && age >= 3 && age <= 14;
+            }
+        });
+
+        const overdueMap = categorize(allOrders, (order, age) => {
+            const { product } = order;
+            if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) return age > 7 && age < 30;
+            if (product === "temu") return age > 14 && age < 30;
+            return age > 14 && age < 30;
+        });
+
+        const archivedMap = categorize(allOrders, (order, age) => age >= 30);
+
+        const maxAttemptMap = categorize(allOrders, (order, age) => order.attempt >= 3 && age < 30);
+
+        const fridgeMap = categorize(allOrders, (order, age) => {
+            return ["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(order.product) &&
+                ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
+                order.fridge === "Yes";
+        });
+
+        res.render('dashboard', {
+            currentMap,
+            urgentMap,
+            overdueMap,
+            archivedMap,
+            maxAttemptMap,
+            fridgeMap,
+            moment,
+            user: req.user,
+            orders: []
+        });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
+});
+
+
+// Optional: refresh route to clear urgent cache
+app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
+    urgentCache.del('urgentMap');
+    res.redirect('/');
 });
 
 // Render login page
@@ -5540,8 +5640,16 @@ app.get('/deletePharmacyForm/:formId', ensureAuthenticated, ensureMOHForm, async
 
 app.get('/listofpharmacyPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
-        // Use the new query syntax to find documents with selected fields
-        const pods = await PharmacyPOD.find({})
+        const searchValue = req.query.search?.value?.trim();
+
+        let query = {};
+
+        if (searchValue) {
+            // Use regex to search for tracking number inside htmlContent
+            query = { htmlContent: new RegExp(searchValue, 'i') };
+        }
+
+        const pods = await PharmacyPOD.find(query)
             .select([
                 '_id',
                 'podName',
@@ -5555,14 +5663,83 @@ app.get('/listofpharmacyPod', ensureAuthenticated, ensureGeneratePODandUpdateDel
             ])
             .sort({ _id: -1 });
 
-        // Render the EJS template with the pods containing the selected fields
         res.render('listofpharmacyPod', { pods, user: req.user });
     } catch (error) {
         console.error('Error:', error);
-        // Handle the error and send an error response
         res.status(500).send('Failed to fetch Pharmacy POD data');
     }
 });
+
+app.get('/api/listofpharmacyPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        // Build base query
+        let query = {};
+
+        if (searchValue) {
+            const searchRegex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: searchRegex },
+                { dispatcher: searchRegex },
+                { area: searchRegex },
+                { deliveryDate: searchRegex },
+                { podCreator: searchRegex },
+                { podDate: searchRegex },
+                { htmlContent: searchRegex } // search inside htmlContent too
+            ];
+        }
+
+        // Determine sorting
+        let sort = {};
+        if (order && columns) {
+            const columnIndex = order.column;
+            const sortColumn = columns[columnIndex].data;
+            const sortDir = order.dir === 'desc' ? -1 : 1;
+            sort[sortColumn] = sortDir;
+        } else {
+            sort = { _id: -1 }; // Default: latest first
+        }
+
+        // Query total counts
+        const totalRecords = await PharmacyPOD.countDocuments({});
+        const filteredRecords = await PharmacyPOD.countDocuments(query);
+
+        const pods = await PharmacyPOD.find(query)
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: totalRecords,
+            recordsFiltered: filteredRecords,
+            data: pods
+        });
+
+    } catch (err) {
+        console.error("Error in server-side POD list:", err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 
 app.get('/listofldPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
@@ -5589,6 +5766,72 @@ app.get('/listofldPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery,
         res.status(500).send('Failed to fetch Local Delivery POD data');
     }
 });
+
+app.get('/api/listofldPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: regex },
+                { dispatcher: regex },
+                { area: regex },
+                { deliveryDate: regex },
+                { podCreator: regex },
+                { podDate: regex },
+                { htmlContent: regex } // for tracking number search
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await LDPOD.countDocuments({});
+        const filtered = await LDPOD.countDocuments(query);
+
+        const pods = await LDPOD.find(query)
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: pods
+        });
+
+    } catch (error) {
+        console.error("Error loading LD PODs:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.get('/listofgrpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
@@ -5747,6 +5990,74 @@ app.get('/listofnoncodPod', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     }
 });
 
+app.get('/api/listofnoncodPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: regex },
+                { product: regex },
+                { dispatcher: regex },
+                { area: regex },
+                { deliveryDate: regex },
+                { podCreator: regex },
+                { podDate: regex },
+                { htmlContent: regex }  // track by tracking number inside htmlContent
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await NONCODPOD.countDocuments({});
+        const filtered = await NONCODPOD.countDocuments(query);
+
+        const pods = await NONCODPOD.find(query)
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount',
+                'product'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: pods
+        });
+
+    } catch (error) {
+        console.error("Error loading NONCOD PODs:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 app.get('/listofkptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         // Use the new query syntax to find documents with selected fields
@@ -5772,6 +6083,72 @@ app.get('/listofkptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelive
         res.status(500).send('Failed to fetch KPTDP POD data');
     }
 });
+
+app.get('/api/listofkptdpPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: regex },
+                { dispatcher: regex },
+                { area: regex },
+                { deliveryDate: regex },
+                { podCreator: regex },
+                { podDate: regex },
+                { htmlContent: regex } // supports tracking number search
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await KPTDPPOD.countDocuments({});
+        const filtered = await KPTDPPOD.countDocuments(query);
+
+        const pods = await KPTDPPOD.find(query)
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: pods
+        });
+
+    } catch (error) {
+        console.error("Error loading KPTDP PODs:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.get('/listofkptdfPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
@@ -5822,6 +6199,71 @@ app.get('/listofTemuPoc', ensureAuthenticated, ensureGeneratePODandUpdateDeliver
         console.error('Error:', error);
         // Handle the error and send an error response
         res.status(500).send('Failed to fetch TEMU POC data');
+    }
+});
+
+app.get('/api/listofTemuPoc', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: regex },
+                { dispatcher: regex },
+                { area: regex },
+                { deliveryDate: regex },
+                { podCreator: regex },
+                { podDate: regex },
+                { htmlContent: regex } // for tracking number search
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await TEMUPOC.countDocuments({});
+        const filtered = await TEMUPOC.countDocuments(query);
+
+        const pods = await TEMUPOC.find(query)
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: pods
+        });
+
+    } catch (error) {
+        console.error("Error loading TEMU POCs:", error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -5900,6 +6342,71 @@ app.get('/listofcbslPod', ensureAuthenticated, ensureGeneratePODandUpdateDeliver
         console.error('Error:', error);
         // Handle the error and send an error response
         res.status(500).send('Failed to fetch FMX POD data');
+    }
+});
+
+app.get('/api/listofcbslPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: regex },
+                { dispatcher: regex },
+                { area: regex },
+                { deliveryDate: regex },
+                { podCreator: regex },
+                { podDate: regex },
+                { htmlContent: regex } // for tracking number search
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await CBSLPOD.countDocuments({});
+        const filtered = await CBSLPOD.countDocuments(query);
+
+        const pods = await CBSLPOD.find(query)
+            .select([
+                '_id',
+                'podName',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: pods
+        });
+
+    } catch (error) {
+        console.error("Error loading CBSL PODs:", error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -7116,18 +7623,14 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (
 
 app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
-        // Parse input data from the form
         const { product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
 
-        if ((dispatchers == "FL1") || (dispatchers == "FL2") || (dispatchers == "FL3") || (dispatchers == "FL4") || (dispatchers == "FL5")) {
-            var finalDispatcherName = dispatchers.toUpperCase() + " " + freelancerName.toUpperCase()
-        } else {
-            var finalDispatcherName = dispatchers.toUpperCase()
-        }
+        let finalDispatcherName = (dispatchers.startsWith("FL"))
+            ? `${dispatchers.toUpperCase()} ${freelancerName.toUpperCase()}`
+            : dispatchers.toUpperCase();
 
-        const userNameCaps = req.user.name.toUpperCase()
+        const userNameCaps = req.user.name.toUpperCase();
 
-        // Check if areas is a string or an array
         let areasArray = [];
         if (typeof areas === 'string') {
             areasArray = areas.split(',').map((area) => area.trim());
@@ -7135,58 +7638,48 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
             areasArray = areas.map((area) => area.trim());
         }
 
-        // Then, you can join the elements of the areasArray into a comma-separated string
         const areasJoined = areasArray.join(', ');
 
-        // Split tracking numbers into an array
-        const trackingNumbersArray = trackingNumbers.trim().split('\n').map((id) => id.trim().toUpperCase());
+        const trackingNumbersArray = trackingNumbers
+            .trim()
+            .split('\n')
+            .map((id) => id.trim().toUpperCase());
+
+        const uniqueTrackingNumbers = [...new Set(trackingNumbersArray)];
 
         const runSheetData = [];
-        const uniqueTrackingNumbers = new Set(); // Use a Set to automatically remove duplicates
 
-        for (const trackingNumber of trackingNumbersArray) {
-            if (!trackingNumber) continue;
-            uniqueTrackingNumbers.add(trackingNumber);
-        }
-
-        // Convert the Set back to an array (if needed)
-        const uniqueTrackingNumbersArray = Array.from(uniqueTrackingNumbers);
-
-        for (const trackingNumber of uniqueTrackingNumbersArray) {
+        for (const trackingNumber of uniqueTrackingNumbers) {
             try {
-                const response = await axios.get(
-                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-API-KEY': apiKey,
-                        },
-                    }
-                );
+                const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
 
-                const data = response.data.data;
+                if (!order) {
+                    console.warn(`Tracking number not found in DB: ${trackingNumber}`);
+                    continue;
+                }
+
                 runSheetData.push({
                     trackingNumber,
-                    deliverToCollectFrom: data.deliver_to_collect_from,
-                    address: data.address,
-                    phoneNumber: data.phone_number,
-                    jobType: data.job_type || '',
-                    totalPrice: data.total_price || '',
-                    paymentMode: data.payment_mode || '',
-                    remarks: data.remarks || '',
+                    deliverToCollectFrom: order.receiverName,
+                    address: order.receiverAddress,
+                    phoneNumber: order.receiverPhoneNumber,
+                    jobType: order.jobType || '',
+                    totalPrice: order.totalPrice || '',
+                    paymentMode: order.paymentMethod || '',
+                    remarks: order.remarks || '',
+                    fridge: order.fridge || '',
                 });
-            } catch (error) {
-                console.error(`Error for tracking number ${trackingNumber}:`, error);
-                // You can handle the error for this specific tracking number here if needed.
-                // It will continue processing other tracking numbers.
+            } catch (err) {
+                console.error(`MongoDB error for ${trackingNumber}:`, err);
+                // Continue processing other tracking numbers
             }
         }
-        // Render the runsheet EJS template with data
+
         res.render('podGeneratorSuccess', {
             podCreatedBy: userNameCaps,
             product,
             deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
-            areas: areasJoined, // Use the joined string instead of the original variable
+            areas: areasJoined,
             dispatchers: finalDispatcherName,
             trackingNumbers: runSheetData,
             podCreatedDate: moment().format('DD.MM.YY'),
@@ -7197,6 +7690,7 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
         res.status(500).send('Internal Server Error');
     }
 });
+
 
 app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const customerAddresses = req.body.customerAddresses.split('\n');
@@ -7831,6 +8325,18 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Job Method"
             }
 
+            if (req.body.statusCode == 'UWL') {
+                appliedStatus = "Update Warehouse"
+            }
+
+            if (req.body.statusCode == 'UFM') {
+                appliedStatus = "Update Fridge Medicine"
+            }
+
+            if (req.body.statusCode == 'UGR') {
+                appliedStatus = "Update Go Rush Remark"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -7887,11 +8393,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Clear Job"
             }
 
-            if ((req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
-                || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'CD') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
+            if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
+                || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
-                || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')) {
+                || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')
+                || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -8594,8 +9101,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
+                console.log("temu")
                 if (existingOrder === null) {
+
                     if (product == 'TEMU') {
+
                         if (data.data.type == 'Collection') {
                             newOrder = new ORDERS({
                                 area: area,
@@ -9009,6 +9519,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 receiverPostalCode: postalCode,
                                 jobType: data.data.type,
                                 jobMethod: data.data.job_type,
+                                fridge: "No"
                             });
 
                             var detrackUpdateData = {
@@ -9036,6 +9547,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
                             lastAssignedTo: "N/A",
+                            fridge: "No",
                             $push: {
                                 history: {
                                     statusHistory: "At Warehouse",
@@ -9347,138 +9859,148 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'SD') {
-                if (data.data.type == 'Collection') {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        update = {
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            jobDate: req.body.assignDate,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                            $push: {
-                                history: {
-                                    statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                if (data.data.status == 'dispatched') {
+                    if (data.data.type == 'Collection') {
+                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                $push: {
+                                    history: {
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                    }
                                 }
                             }
-                        }
 
-                        mongoDBrun = 2;
+                            mongoDBrun = 2;
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                }
+                            };
+
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
+
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: req.body.dispatchers,
+                                jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                $push: {
+                                    history: {
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                    }
+                                }
                             }
-                        };
 
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+                            mongoDBrun = 2;
 
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers
+                                }
+                            };
+
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
+                        }
                     } else {
-                        update = {
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: req.body.dispatchers,
-                            jobDate: req.body.assignDate,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers,
-                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                            $push: {
-                                history: {
-                                    statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers,
-                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                jobDate: req.body.assignDate,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                $push: {
+                                    history: {
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                    }
                                 }
                             }
-                        }
 
-                        mongoDBrun = 2;
+                            mongoDBrun = 2;
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                }
+                            };
+
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
+
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: req.body.dispatchers,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers,
+                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                $push: {
+                                    history: {
+                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                    }
+                                }
                             }
-                        };
 
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
+                            mongoDBrun = 2;
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers
+                                }
+                            };
+
+                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
+
+                            DetrackAPIrun = 1;
+                            completeRun = 1;
+                        }
                     }
-                } else {
-                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        update = {
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            jobDate: req.body.assignDate,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                            $push: {
-                                history: {
-                                    statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                }
-                            }
-                        }
-
-                        mongoDBrun = 2;
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                            }
-                        };
-
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
-
-                    } else {
-                        update = {
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: req.body.dispatchers,
-                            jobDate: req.body.assignDate,
-                            latestLocation: req.body.dispatchers,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers,
-                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                            $push: {
-                                history: {
-                                    statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers,
-                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                }
-                            }
-                        }
-
-                        mongoDBrun = 2;
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers
-                            }
-                        };
-
-                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
-                    }
-
                 }
-
-                DetrackAPIrun = 1;
-                completeRun = 1;
             }
 
             if (req.body.statusCode == 'SFJ') {
@@ -12075,6 +12597,104 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         wrongPick = 1;
                     }
                 }
+            }
+
+            if (req.body.statusCode == 'UWL') {
+                if ((data.data.latestLocation == "Warehouse K1") || (data.data.latestLocation == "Warehouse K2")) {
+                    if (req.body.warehouse == "Warehouse K1") {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
+                            lastUpdatedBy: req.user.name,
+                            latestLocation: req.body.warehouse,
+                            room: "Open Space",
+                            rackRowNum: "N/A",
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
+                                }
+                            }
+                        }
+
+                        portalUpdate = "Warehouse location updated. ";
+
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+                    }
+
+                    if (req.body.warehouse == "Warehouse K2") {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
+                            lastUpdatedBy: req.user.name,
+                            latestLocation: req.body.warehouse,
+                            room: req.body.k2room,
+                            rackRowNum: req.body.k2row,
+                            $push: {
+                                history: {
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
+                                }
+                            }
+                        }
+
+                        portalUpdate = "Warehouse location updated. ";
+
+                        mongoDBrun = 2;
+
+                        completeRun = 1;
+                    }
+                }
+            }
+
+            if (req.body.statusCode == 'UFM') {
+                if ((data.data.product == "pharmacymoh") || (data.data.product == "pharmacyjpmc") || (data.data.product == "pharmacyphc")) {
+                    update = {
+                        lastUpdateDateTime: moment().format(),
+                        latestReason: "Fridge item updated.",
+                        lastUpdatedBy: req.user.name,
+                        fridge: req.body.fridge,
+                        $push: {
+                            history: {
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                reason: "Fridge item updated.",
+                            }
+                        }
+                    }
+
+                    portalUpdate = "Fridge item updated. ";
+
+                    mongoDBrun = 2;
+
+                    completeRun = 1;
+                }
+            }
+
+            if (req.body.statusCode == 'UGR') {
+                update = {
+                    lastUpdateDateTime: moment().format(),
+                    latestReason: "Go Rush Remark updated as " + req.body.grRemark + ".",
+                    lastUpdatedBy: req.user.name,
+                    grRemark: req.body.grRemark,
+                    $push: {
+                        history: {
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            reason: "Go Rush Remark updated as " + req.body.grRemark + ".",
+                        }
+                    }
+                }
+
+                portalUpdate = "Go Rush Remark updated. ";
+
+                mongoDBrun = 2;
+
+                completeRun = 1;
             }
 
             if (completeRun == 0) {

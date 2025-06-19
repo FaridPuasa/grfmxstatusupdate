@@ -431,102 +431,251 @@
 
                 <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="container mt-4">
-                        <h1 class="text-center">Urgent Orders</h1>
+    <h1 class="text-center">Warehouse</h1>
 
-                        <% if (Object.keys(urgentMap).length===0) { %>
-                            <p class="text-center text-muted">No urgent orders found.</p>
-                            <% } %>
+    <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="current-tab" data-bs-toggle="tab"
+                data-bs-target="#current" type="button" role="tab">Current</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="urgent-tab" data-bs-toggle="tab" data-bs-target="#urgent"
+                type="button" role="tab">Urgent</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue"
+                type="button" role="tab">Overdue</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="maxattempt-tab" data-bs-toggle="tab"
+                data-bs-target="#maxattempt" type="button" role="tab">Max Attempt</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="fridge-tab" data-bs-toggle="tab" data-bs-target="#fridge"
+                type="button" role="tab">Fridge</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="archived-tab" data-bs-toggle="tab"
+                data-bs-target="#archived" type="button" role="tab">Archived</button>
+        </li>
+    </ul>
 
-                                <% Object.keys(urgentMap).forEach((product, index)=> { %>
-                                    <div class="card my-3">
-                                        <div class="card-header d-flex justify-content-between align-items-center toggle-header"
-                                            style="cursor: pointer;" data-bs-toggle="collapse"
-                                            data-bs-target="#collapse-<%= index %>">
-                                            <div><strong>
-                                                    <%= product.toUpperCase() %>
-                                                </strong></div>
-                                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                                <div class="badge bg-danger">
-                                                    <%= Object.values(urgentMap[product]).flat().length %> urgent
-                                                </div>
+    <form action="/refresh-urgent" method="get" class="text-end mb-3">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </form>
 
-                                                <% Object.keys(urgentMap[product]).forEach(method=> {
-                                                    const methodCount = urgentMap[product][method].length;
-                                                    %>
-                                                    <% if (methodCount> 0) { %>
-                                                        <span class="badge 
-                <% if (method === 'Standard') { %> bg-primary 
-                <% } else if (method === 'Express') { %> bg-warning text-dark 
-                <% } else if (method === 'Drop Off') { %> bg-info text-dark 
-                <% } else if (method === 'Immediate') { %> bg-danger 
-                <% } else if (method === 'Self Collect') { %> bg-success 
-                <% } else { %> bg-secondary 
-                <% } %>">
-                                                            <%= method %>: <%= methodCount %>
-                                                        </span>
-                                                        <% } %>
-                                                            <% }) %>
-                                            </div>
+    <div class="tab-content">
+        <% const tabData = [
+            { id: 'current', map: currentMap },
+            { id: 'urgent', map: urgentMap },
+            { id: 'overdue', map: overdueMap },
+            { id: 'maxattempt', map: maxAttemptMap },
+            { id: 'fridge', map: fridgeMap },
+            { id: 'archived', map: archivedMap }
+        ]; %>
 
-                                        </div>
+        <% tabData.forEach(({ id, map }, tabIndex) => { %>
+            <div class="tab-pane fade <%= tabIndex === 0 ? 'show active' : '' %>" id="<%= id %>" role="tabpanel">
 
-                                        <div class="collapse" id="collapse-<%= index %>">
-                                            <div class="card-body p-0">
-                                                <% Object.keys(urgentMap[product]).forEach(method=> { %>
-                                                    <div class="px-3 pt-3"><strong>
-                                                            <%= method %>
-                                                        </strong></div>
-                                                    <table class="table table-sm table-bordered mb-0">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Age</th>
-                                                                <th>Tracking Number</th>
-                                                                <th>Attempt</th>
-                                                                <th>Latest Reason</th>
-                                                                <th>Area</th>
-                                                                <th>Name</th>
-                                                                <th>Main Phone</th>
-                                                                <th>2nd Phone</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <% urgentMap[product][method].forEach(order=> { %>
-                                                                <tr>
-                                                                    <td>
-                                                                        <%= order.age %> days
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.doTrackingNumber %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.attempt %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.latestReason %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.area %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.receiverName %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.receiverPhoneNumber %>
-                                                                    </td>
-                                                                    <td>
-                                                                        <%= order.additionalPhoneNumber %>
-                                                                    </td>
-                                                                </tr>
-                                                                <% }) %>
-                                                        </tbody>
-                                                    </table>
-                                                    <hr class="my-1">
-                                                    <% }) %>
-                                            </div>
-                                        </div>
+                <% if (Object.keys(map).length === 0) { %>
+                    <p class="text-center text-muted">No <%= id %> orders found.</p>
+                <% } else { %>
+
+                    <% if (id === 'current') { %>
+                        <% Object.keys(map).forEach((location, locIndex) => {
+                            let locCount = 0;
+                            Object.keys(map[location]).forEach(product => {
+                                Object.keys(map[location][product]).forEach(area => {
+                                    locCount += map[location][product][area].length;
+                                });
+                            });
+                        %>
+                            <div class="card my-3">
+                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
+                                    style="cursor: pointer;" data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>">
+                                    <strong><%= location.toUpperCase() %></strong>
+                                    <div>
+                                        <span class="badge bg-primary"><%= locCount %> orders</span>
+                                        <i class="bi bi-caret-down-fill"></i>
                                     </div>
-                                    <% }) %>
-                    </div>
+                                </div>
+                                <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>">
+                                    <div class="card-body p-0">
+
+                                        <% Object.keys(map[location]).forEach((product, prodIndex) => {
+                                            let prodCount = 0;
+                                            Object.keys(map[location][product]).forEach(area => {
+                                                prodCount += map[location][product][area].length;
+                                            });
+                                        %>
+                                            <div class="card my-2 mx-3">
+                                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
+                                                    style="cursor: pointer;"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
+                                                    <strong><%= product.toUpperCase() %></strong>
+                                                    <div>
+                                                        <span class="badge bg-success"><%= prodCount %> orders</span>
+                                                        <i class="bi bi-caret-down-fill"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
+                                                    <div class="card-body p-0">
+
+                                                        <% Object.keys(map[location][product]).forEach((area, areaIndex) => {
+                                                            const areaCount = map[location][product][area].length;
+                                                        %>
+                                                            <div class="card my-2 mx-4">
+                                                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
+                                                                    style="cursor: pointer;"
+                                                                    data-bs-toggle="collapse"
+                                                                    data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
+                                                                    <strong><%= area %></strong>
+                                                                    <div>
+                                                                        <span class="badge bg-warning text-dark"><%= areaCount %> orders</span>
+                                                                        <i class="bi bi-caret-down-fill"></i>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
+                                                                    <table class="table table-sm table-bordered mb-0">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th>Age</th>
+                                                                                <th>Tracking Number</th>
+                                                                                <th>Attempt</th>
+                                                                                <th>Latest Reason</th>
+                                                                                <th>Area</th>
+                                                                                <th>Name</th>
+                                                                                <th>Main Phone</th>
+                                                                                <th>Go Rush Remark</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <% map[location][product][area].forEach(order => { %>
+                                                                                <tr>
+                                                                                    <td>
+                                                                                        <span class="badge
+                                                                                            <%= order.age >= 30 ? 'bg-dark' :
+                                                                                                order.age >= 10 ? 'bg-danger' :
+                                                                                                order.age >= 7 ? 'bg-warning text-dark' : 'bg-success' %>">
+                                                                                            <%= order.age %> days
+                                                                                        </span>
+                                                                                    </td>
+                                                                                    <td><%= order.doTrackingNumber %></td>
+                                                                                    <td><%= order.attempt %></td>
+                                                                                    <td><%= order.latestReason %></td>
+                                                                                    <td><%= order.area %></td>
+                                                                                    <td><%= order.receiverName %></td>
+                                                                                    <td><%= order.receiverPhoneNumber %></td>
+                                                                                    <td><%= order.grRemark || '-' %></td>
+                                                                                </tr>
+                                                                            <% }) %>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        <% }) %>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+
+                    <% } else { %>
+
+                        <% Object.keys(map).forEach((product, index) => { %>
+                            <div class="card my-3">
+                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
+                                    style="cursor: pointer;"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-<%= id %>-<%= index %>">
+                                    <div><strong><%= product.toUpperCase() %></strong></div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <div class="badge bg-danger">
+                                            <%= Object.values(map[product]).flat().length %> orders
+                                        </div>
+                                        <% Object.keys(map[product]).forEach(method => {
+                                            const methodCount = map[product][method].length;
+                                            if (methodCount > 0) { %>
+                                                <span class="badge
+                                                    <%= method === 'Standard' ? 'bg-primary' :
+                                                        method === 'Express' ? 'bg-warning text-dark' :
+                                                        method === 'Drop Off' ? 'bg-info text-dark' :
+                                                        method === 'Immediate' ? 'bg-danger' :
+                                                        method === 'Self Collect' ? 'bg-success' : 'bg-secondary' %>">
+                                                    <%= method %>: <%= methodCount %>
+                                                </span>
+                                        <% } }) %>
+                                        <i class="bi bi-caret-down-fill"></i>
+                                    </div>
+                                </div>
+                                <div class="collapse" id="collapse-<%= id %>-<%= index %>">
+                                    <div class="card-body p-0">
+                                        <% Object.keys(map[product]).forEach(method => {
+                                            const orders = map[product][method].filter(o => id !== 'maxattempt' || o.age < 30);
+                                            if (orders.length > 0) { %>
+                                                <div class="px-3 pt-3"><strong><%= method %></strong></div>
+                                                <table class="table table-sm table-bordered mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Age</th>
+                                                            <th>Tracking Number</th>
+                                                            <th>Location</th>
+                                                            <th>Attempt</th>
+                                                            <th>Latest Reason</th>
+                                                            <th>Area</th>
+                                                            <th>Name</th>
+                                                            <th>Main Phone</th>
+                                                            <th>Go Rush Remark</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% orders.forEach(order => { %>
+                                                            <tr>
+                                                                <td>
+                                                                    <span class="badge
+                                                                        <%= order.age >= 30 ? 'bg-dark' :
+                                                                            order.age >= 10 ? 'bg-danger' :
+                                                                            order.age >= 7 ? 'bg-warning text-dark' : 'bg-success' %>">
+                                                                        <%= order.age %> days
+                                                                    </span>
+                                                                </td>
+                                                                <td><%= order.doTrackingNumber %></td>
+                                                                <td><%= order.location || '-' %></td>
+                                                                <td><%= order.attempt %></td>
+                                                                <td><%= order.latestReason %></td>
+                                                                <td><%= order.area %></td>
+                                                                <td><%= order.receiverName %></td>
+                                                                <td><%= order.receiverPhoneNumber %></td>
+                                                                <td><%= order.grRemark || '-' %></td>
+                                                            </tr>
+                                                        <% }) %>
+                                                    </tbody>
+                                                </table>
+                                                <hr class="my-1">
+                                        <% } }) %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+
+                    <% } %>
+
+                <% } %>
+
+            </div>
+        <% }) %>
+    </div>
+</div>
+
 
                     <% } %>
     </div>

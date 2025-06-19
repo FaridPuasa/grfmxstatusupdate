@@ -92,6 +92,11 @@ const orderSchema = new mongoose.Schema({
     lastAssignedTo: String,
     receiverPostalCode: String,
     jobMethod: String,
+    room: String,
+    rackRowNum: String,
+    fridge: String,
+    grRemark: String,
+    jpmcRemark: String,
     history: [{
         statusHistory: String,
         dateUpdated: String,
