@@ -389,7 +389,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     }
 });
 
-
 // Optional: refresh route to clear urgent cache
 app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
     urgentCache.del('urgentMap');
