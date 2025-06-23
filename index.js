@@ -12651,7 +12651,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UFM') {
-                if ((data.data.product == "pharmacymoh") || (data.data.product == "pharmacyjpmc") || (data.data.product == "pharmacyphc")) {
+                if ((currentProduct == "pharmacymoh") || (currentProduct == "pharmacyjpmc") || (currentProduct == "pharmacyphc")) {
                     update = {
                         lastUpdateDateTime: moment().format(),
                         latestReason: "Fridge item updated.",
