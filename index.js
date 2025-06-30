@@ -9100,11 +9100,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
-                console.log("temu")
                 if (existingOrder === null) {
-
                     if (product == 'TEMU') {
-
                         if (data.data.type == 'Collection') {
                             newOrder = new ORDERS({
                                 area: area,
@@ -10006,49 +10003,141 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.status == 'failed') {
                     if (data.data.type == 'Collection') {
                         if (data.data.reason == "Unattempted Collection") {
-                            update = {
-                                currentStatus: "Failed Collection",
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt,
-                                latestLocation: "Customer",
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
+                            if (existingOrder === null) {
+                                newOrder = new ORDERS({
+                                    area: area,
+                                    items: itemsArray, // Use the dynamically created items array
+                                    attempt: data.data.attempt,
+                                    history: [{
                                         statusHistory: "Failed Collection",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
                                         reason: data.data.reason,
                                         lastLocation: "Customer",
+                                    }],
+                                    lastAssignedTo: data.data.assign_to,
+                                    latestLocation: "Customer",
+                                    product: currentProduct,
+                                    assignedTo: "N/A",
+                                    senderName: data.data.job_owner,
+                                    totalPrice: 0,
+                                    receiverName: data.data.deliver_to_collect_from,
+                                    trackingLink: data.data.tracking_link,
+                                    currentStatus: "Failed Collection",
+                                    paymentMethod: data.data.payment_mode,
+                                    warehouseEntry: "No",
+                                    warehouseEntryDateTime: "N/A",
+                                    receiverAddress: data.data.address,
+                                    receiverPhoneNumber: data.data.phone_number,
+                                    doTrackingNumber: consignmentID,
+                                    remarks: data.data.remarks,
+                                    latestReason: data.data.reason,
+                                    lastUpdateDateTime: moment().format(),
+                                    creationDate: data.data.created_at,
+                                    jobDate: req.body.assignDate,
+                                    flightDate: data.data.job_received_date,
+                                    mawbNo: data.data.run_number,
+                                    lastUpdatedBy: req.user.name,
+                                    parcelWeight: data.data.weight,
+                                    receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
+                                });
+
+                                mongoDBrun = 1;
+                            } else {
+                                update = {
+                                    currentStatus: "Failed Collection",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt,
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Failed Collection",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: "Customer",
+                                        }
                                     }
                                 }
-                            }
 
+                                mongoDBrun = 2;
+                            }
                         } else {
-                            update = {
-                                currentStatus: "Failed Collection",
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt + 1,
-                                latestLocation: "Customer",
-                                lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
+                            if (existingOrder === null) {
+                                newOrder = new ORDERS({
+                                    area: area,
+                                    items: itemsArray, // Use the dynamically created items array
+                                    attempt: data.data.attempt + 1,
+                                    history: [{
                                         statusHistory: "Failed Collection",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
                                         reason: data.data.reason,
                                         lastLocation: "Customer",
+                                    }],
+                                    lastAssignedTo: data.data.assign_to,
+                                    latestLocation: "Customer",
+                                    product: currentProduct,
+                                    assignedTo: "N/A",
+                                    senderName: data.data.job_owner,
+                                    totalPrice: 0,
+                                    receiverName: data.data.deliver_to_collect_from,
+                                    trackingLink: data.data.tracking_link,
+                                    currentStatus: "Failed Collection",
+                                    paymentMethod: data.data.payment_mode,
+                                    warehouseEntry: "No",
+                                    warehouseEntryDateTime: "N/A",
+                                    receiverAddress: data.data.address,
+                                    receiverPhoneNumber: data.data.phone_number,
+                                    doTrackingNumber: consignmentID,
+                                    remarks: data.data.remarks,
+                                    latestReason: data.data.reason,
+                                    lastUpdateDateTime: moment().format(),
+                                    creationDate: data.data.created_at,
+                                    jobDate: req.body.assignDate,
+                                    flightDate: data.data.job_received_date,
+                                    mawbNo: data.data.run_number,
+                                    lastUpdatedBy: req.user.name,
+                                    parcelWeight: data.data.weight,
+                                    receiverPostalCode: postalCode,
+                                    jobType: data.data.type,
+                                    jobMethod: data.data.job_type,
+                                });
+
+                                mongoDBrun = 1;
+                            } else {
+                                update = {
+                                    currentStatus: "Failed Collection",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt + 1,
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Failed Collection",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: "Customer",
+                                        }
                                     }
                                 }
-                            }
 
+                                mongoDBrun = 2;
+                            }
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
@@ -10161,27 +10250,72 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 if (data.data.status == 'completed') {
                     if (data.data.type == 'Collection') {
-                        update = {
-                            currentStatus: "Completed",
-                            lastUpdateDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: data.data.assign_to,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                            $push: {
-                                history: {
+                        if (existingOrder === null) {
+                            newOrder = new ORDERS({
+                                area: area,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Completed",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
                                     reason: "N/A",
                                     lastLocation: req.body.warehouse,
+                                }],
+                                lastAssignedTo: data.data.assign_to,
+                                latestLocation: req.body.warehouse,
+                                product: currentProduct,
+                                assignedTo: "N/A",
+                                senderName: data.data.job_owner,
+                                totalPrice: 0,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Completed",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: data.data.phone_number,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                latestReason: data.data.reason,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                lastUpdatedBy: req.user.name,
+                                parcelWeight: data.data.weight,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                currentStatus: "Completed",
+                                lastUpdateDateTime: moment().format(),
+                                latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: data.data.assign_to,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Completed",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: data.data.assign_to,
+                                        reason: "N/A",
+                                        lastLocation: req.body.warehouse,
+                                    }
                                 }
                             }
-                        }
 
-                        mongoDBrun = 2;
+                            mongoDBrun = 2;
+                        }
                     } else {
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -10247,7 +10381,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                             mongoDBrun = 2;
                         }
-
                     }
 
                     appliedStatus = "Completed"
@@ -10259,29 +10392,76 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (req.body.statusCode == 'CSSC') {
                 if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
-                    update = {
-                        currentStatus: "Drop Off",
-                        lastUpdateDateTime: moment().format(),
-                        instructions: data.data.remarks,
-                        assignedTo: "Selfcollect",
-                        jobDate: req.body.assignDate,
-                        latestLocation: "Customer",
-                        lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "Selfcollect",
-                        jobMethod: "Drop Off",
-                        $push: {
-                            history: {
+                    if (existingOrder === null) {
+                        newOrder = new ORDERS({
+                            area: area,
+                            items: itemsArray, // Use the dynamically created items array
+                            attempt: data.data.attempt,
+                            history: [{
                                 statusHistory: "Drop Off",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 lastAssignedTo: "Selfcollect",
                                 reason: "N/A",
                                 lastLocation: "Customer",
+                            }],
+                            lastAssignedTo: "Selfcollect",
+                            latestLocation: "Customer",
+                            product: currentProduct,
+                            assignedTo: "Selfcollect",
+                            senderName: data.data.job_owner,
+                            totalPrice: 0,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Drop Off",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "No",
+                            warehouseEntryDateTime: "N/A",
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: data.data.phone_number,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            latestReason: "N/A",
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            jobDate: req.body.assignDate,
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number,
+                            lastUpdatedBy: req.user.name,
+                            parcelWeight: data.data.weight,
+                            receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
+                        });
+
+                        mongoDBrun = 1;
+
+                    } else {
+                        update = {
+                            currentStatus: "Drop Off",
+                            lastUpdateDateTime: moment().format(),
+                            instructions: data.data.remarks,
+                            assignedTo: "Selfcollect",
+                            jobDate: req.body.assignDate,
+                            latestLocation: "Customer",
+                            lastUpdatedBy: req.user.name,
+                            lastAssignedTo: "Selfcollect",
+                            jobMethod: "Drop Off",
+                            $push: {
+                                history: {
+                                    statusHistory: "Drop Off",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: "Selfcollect",
+                                    reason: "N/A",
+                                    lastLocation: "Customer",
+                                }
                             }
                         }
-                    }
 
-                    mongoDBrun = 2;
+                        mongoDBrun = 2;
+
+                    }
 
                     var detrackUpdateData = {
                         do_number: consignmentID,
