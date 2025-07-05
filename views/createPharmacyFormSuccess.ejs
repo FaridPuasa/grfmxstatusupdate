@@ -716,6 +716,20 @@
                 const table = document.querySelector('table');
                 const ws = XLSX.utils.table_to_sheet(table);
 
+                // Force column 9 (IC No.) to be text and keep leading zeros
+                const range = XLSX.utils.decode_range(ws['!ref']);
+
+                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                    const cellAddress = { c: 8, r: R }; // Column 9 (IC No.), 0-based index
+                    const cellRef = XLSX.utils.encode_cell(cellAddress);
+
+                    const cell = ws[cellRef];
+                    if (cell && typeof cell.v !== 'undefined') {
+                        cell.t = 's'; // Mark as string
+                        cell.v = cell.v.toString().padStart(8, '0'); // Ensure 8-digit IC with leading 0
+                    }
+                }
+
                 // Add the worksheet to the workbook
                 XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
 
