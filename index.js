@@ -580,7 +580,7 @@ app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (
                 'receiverPostalCode'
             ])
             .sort({ _id: -1 })
-            .limit(1000);
+            .limit(5000);
 
         res.render('ewemanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
     } catch (error) {
@@ -615,7 +615,7 @@ app.post('/pdumanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (
                 'receiverPostalCode'
             ])
             .sort({ _id: -1 })
-            .limit(1000);
+            .limit(5000);
 
         res.render('pdumanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
     } catch (error) {
@@ -650,7 +650,7 @@ app.post('/mglobalmanifesttobillsearch', ensureAuthenticated, ensureViewJob, asy
                 'receiverPostalCode'
             ])
             .sort({ _id: -1 })
-            .limit(1000);
+            .limit(5000);
 
         res.render('mglobalmanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
     } catch (error) {
