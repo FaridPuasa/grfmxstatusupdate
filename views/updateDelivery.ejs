@@ -454,16 +454,23 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <optgroup label="Standard Delivery Flow">
+                        <optgroup label="Pharmacy/LD/EWE/KPT/Pure51 Flow">
                             <option value="12">1. Item In Warehouse</option>
                             <option value="35">2.1. Out for Delivery / Collection</option>
                             <option value="CSSC">2.2. Self Collect / Drop Off</option>
                         </optgroup>
-                        <optgroup label="PDU/MGLOBAL Flow">
+                        <optgroup label="MGLOBAL Flow">
                             <option value="CP">1. Custom Clearance In Progress</option>
                             <option value="12">2. Item In Warehouse</option>
                             <option value="35">3.1. Out for Delivery</option>
                             <option value="CSSC">3.2. Self Collect</option>
+                        </optgroup>
+                        <optgroup label="PDU Flow">
+                            <option value="CP">1. Custom Clearance In Progress</option>
+                            <option value="38">2. Custom Clearance Release</option>
+                            <option value="12">3. Item In Warehouse</option>
+                            <option value="35">4.1. Out for Delivery</option>
+                            <option value="CSSC">4.2. Self Collect</option>
                         </optgroup>
                         <optgroup label="TEMU Collection Flow">
                             <option value="IR">1. Add Temu Collection Orders</option>

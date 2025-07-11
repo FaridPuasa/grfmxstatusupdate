@@ -9200,9 +9200,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         var detrackUpdateData = {
                             do_number: consignmentID,
                             data: {
-                                status: "custom_clearing",
-                                zone: area,
-                                instructions: "CP"
+                                status: "on_hold",
+                                zone: area
                             }
                         };
 
@@ -9270,6 +9269,41 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         DetrackAPIrun = 1;
                         completeRun = 1;
                     }
+                }
+            }
+
+            if ((req.body.statusCode == '38') && (data.data.status == 'on_hold')) {
+                if (product == 'PDU') {
+                    update = {
+                        currentStatus: "Custom Clearance Release",
+                        lastUpdateDateTime: moment().format(),
+                        latestLocation: "Brunei Customs",
+                        lastUpdatedBy: req.user.name,
+                        $push: {
+                            history: {
+                                statusHistory: "Custom Clearance Release",
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                lastAssignedTo: "N/A",
+                                reason: "N/A",
+                                lastLocation: "Brunei Customs",
+                            }
+                        }
+                    }
+
+                    var detrackUpdateData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "custom_clearing",
+                            instructions: "CP"
+                        }
+                    };
+
+                    portalUpdate = "Portal and Detrack status updated to Custom Clearance Release. ";
+
+                    mongoDBrun = 2;
+                    DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
             }
 
@@ -13055,170 +13089,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 });
             }
 
-            //normal run
-            if (FMXAPIrun == 1) {
-                // Step 3: Create data for the second API request
-                const currentTime = moment().format();
-
-                const requestData = {
-                    UploadType: '',
-                    FileName: '',
-                    FileFormat: '',
-                    FileData: '',
-                    DateEvent: currentTime,
-                    ConsignmentId: consignmentID,
-                    StatusCode: fmxMilestoneCode,
-                    CityName: 'BN',
-                    ConsigneeName: ''
-                };
-
-                // Step 4: Make the second API request with bearer token
-                const response2 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                });
-
-                // Handle success response
-                // You can customize this part with appropriate notifications and redirections
-                console.log('API response:', response2.data);
-            }
-
-            //for 44 only
-            if (FMXAPIrun == 2) {
-                // Step 3: Create data for the second API request
-                const currentTime = moment().format();
-
-                const requestData = {
-                    UploadType: '',
-                    FileName: '',
-                    FileFormat: '',
-                    FileData: '',
-                    DateEvent: currentTime,
-                    ConsignmentId: consignmentID,
-                    StatusCode: fmxMilestoneCode,
-                    CityName: 'BN',
-                    ConsigneeName: '',
-                    Remark: detrackReason
-                };
-
-                // Step 4: Make the second API request with bearer token
-                const response4 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                });
-
-                // Handle success response
-                // You can customize this part with appropriate notifications and redirections
-                console.log('API response:', response4.data);
-            }
-
-            if (FMXAPIrun == 3) {
-                // Define an array of status codes to use in the two runs
-                const statusCodesToRun = [fmxMilestoneCode, '44']; // Replace with actual status codes
-
-                for (let i = 0; i < statusCodesToRun.length; i++) {
-                    // Step 3: Create data for the API request
-                    const currentTime = moment().format();
-
-                    const requestData = {
-                        UploadType: '',
-                        FileName: '',
-                        FileFormat: '',
-                        FileData: '',
-                        DateEvent: currentTime,
-                        ConsignmentId: consignmentID,
-                        StatusCode: statusCodesToRun[i], // Use the current status code from the array
-                        CityName: 'BN',
-                        ConsigneeName: '',
-                        Remark: detrackReason
-                    };
-
-                    // Step 4: Make the API request with the bearer token
-                    const response = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', requestData, {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`
-                        }
-                    });
-
-                    // Handle success response
-                    // You can customize this part with appropriate notifications and redirections
-                    console.log(`API response for status code ${statusCodesToRun[i]}:`, response.data);
-                }
-            }
-
-            if (FMXAPIrun == 5) {
-                // Step 3: Make the third API POST request with accessToken
-                const currentDate = moment(latestPODDate).format();
-                const fileName = `${consignmentID}_POD`;
-
-                const photoUrls = [
-                    data.data.photo_1_file_url,
-                    data.data.photo_2_file_url,
-                    data.data.photo_3_file_url,
-                    data.data.photo_4_file_url,
-                    data.data.photo_5_file_url,
-                    data.data.photo_6_file_url,
-                    data.data.photo_7_file_url,
-                    data.data.photo_8_file_url,
-                    data.data.photo_9_file_url,
-                    data.data.photo_10_file_url
-                ];
-
-                let selectedPhotoUrl = null;
-
-                // Find the first non-null photo URL
-                for (const url of photoUrls) {
-                    if (url) {
-                        selectedPhotoUrl = url;
-                        break;
-                    }
-                }
-
-                if (!selectedPhotoUrl) {
-                    throw new Error('No valid photo URL found');
-                }
-
-                // Download the image from the selected photo URL
-                const imageResponse = await axios.get(selectedPhotoUrl, { responseType: 'arraybuffer' });
-
-                if (imageResponse.status !== 200) {
-                    throw new Error('Error occurred during image download');
-                }
-
-                // Convert the image to base64
-                const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
-
-                if (data.data.status === 'Selfcollect') {
-                    remarkSC = 'Self Collect';
-                }
-
-                // Make the third API POST request with accessToken and base64Image
-                const response3 = await axios.post('https://client.fmx.asia/api/v1/order/milestone/create', {
-                    ImageUploader: {
-                        UploadType: 'POD',
-                        FileName: fileName,
-                        FileFormat: 'jpg',
-                        FileData: base64Image // Use the base64 image data here
-                    },
-                    DateEvent: currentDate,
-                    ConsignmentId: consignmentID,
-                    StatusCode: fmxMilestoneCode,
-                    CityName: 'BN',
-                    ConsigneeName: '',
-                    Remark: remarkSC // Add remark field with value
-                }, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                // Show a success message
-                console.log('Success');
-            }
-
             if (waOrderArrivedDeliverStandard == 5) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
@@ -14121,7 +13991,7 @@ async function handleOrderChange(change) {
 
             if ((result.length >= 2) && (checkProduct == 0)) {
                 for (let i = 1; i < result.length; i++) {
-                    if (result[i].product.includes("localdelivery")) {
+                    /* if (result[i].product.includes("localdelivery")) {
                         if (products == result[i].product) {
                             if (result[i].sequence == "N/A") {
                                 sequence = 1
@@ -14134,20 +14004,20 @@ async function handleOrderChange(change) {
                                 i = result.length
                             }
                         }
-                    } else {
-                        if (result[i].product.includes(products)) {
-                            if (result[i].sequence == "N/A") {
-                                sequence = 1
-                                checkProduct = 1
-                                i = result.length
-                            }
-                            else {
-                                sequence = parseInt(result[i].sequence) + 1
-                                checkProduct = 1
-                                i = result.length
-                            }
+                    } else { */
+                    if (result[i].product.includes(products)) {
+                        if (result[i].sequence == "N/A") {
+                            sequence = 1
+                            checkProduct = 1
+                            i = result.length
+                        }
+                        else {
+                            sequence = parseInt(result[i].sequence) + 1
+                            checkProduct = 1
+                            i = result.length
                         }
                     }
+                    /* } */
                 }
                 if (checkProduct == 0) {
                     sequence = 1
@@ -14180,10 +14050,10 @@ async function handleOrderChange(change) {
                 tracker = generateTracker(sequence, suffix, prefix);
             }
 
-            if (result[0].product == "localdeliveryjb") {
+            /* if (result[0].product == "localdeliveryjb") {
                 let suffix = "GR3", prefix = "JB";
                 tracker = generateTracker(sequence, suffix, prefix);
-            }
+            } */
 
             if (result[0].product == "grp") {
                 let suffix = "GR4", prefix = "GP";
