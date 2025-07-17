@@ -7650,29 +7650,66 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
 
         for (const trackingNumber of uniqueTrackingNumbers) {
             try {
-                const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+                if (product === "MOH/JPMC/PHC Pharmacy") {
+                    // Fetch from MongoDB
+                    const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
 
-                if (!order) {
-                    console.warn(`Tracking number not found in DB: ${trackingNumber}`);
-                    continue;
+                    if (!order) {
+                        console.warn(`Tracking number not found in DB: ${trackingNumber}`);
+                        continue;
+                    }
+
+                    runSheetData.push({
+                        trackingNumber,
+                        deliverToCollectFrom: order.receiverName,
+                        address: order.receiverAddress,
+                        phoneNumber: order.receiverPhoneNumber,
+                        jobType: order.jobType || '',
+                        totalPrice: order.totalPrice || '',
+                        paymentMode: order.paymentMethod || '',
+                        remarks: order.remarks || '',
+                        fridge: order.fridge || '',
+                    });
+
+                } else {
+                    // Fetch from Detrack API
+                    const apiKey = process.env.API_KEY;
+                    const response = await axios.get(
+                        `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-KEY': apiKey,
+                            },
+                        }
+                    );
+
+                    const data = response.data.data;
+
+                    if (!data) {
+                        console.warn(`No data returned from Detrack for: ${trackingNumber}`);
+                        continue;
+                    }
+
+                    runSheetData.push({
+                        trackingNumber,
+                        deliverToCollectFrom: data.deliver_to_collect_from,
+                        address: data.address,
+                        phoneNumber: data.phone_number,
+                        jobType: data.job_type || '',
+                        totalPrice: data.total_price || '',
+                        paymentMode: data.payment_mode || '',
+                        remarks: data.remarks || '',
+                        fridge: '', // Detrack likely doesn't provide this
+                    });
                 }
-
-                runSheetData.push({
-                    trackingNumber,
-                    deliverToCollectFrom: order.receiverName,
-                    address: order.receiverAddress,
-                    phoneNumber: order.receiverPhoneNumber,
-                    jobType: order.jobType || '',
-                    totalPrice: order.totalPrice || '',
-                    paymentMode: order.paymentMethod || '',
-                    remarks: order.remarks || '',
-                    fridge: order.fridge || '',
-                });
             } catch (err) {
-                console.error(`MongoDB error for ${trackingNumber}:`, err);
-                // Continue processing other tracking numbers
+                console.error(`Error for tracking number ${trackingNumber}:`, err);
+                // Continue with next tracking number
             }
         }
+
+        console.log (runSheetData)
 
         res.render('podGeneratorSuccess', {
             podCreatedBy: userNameCaps,
@@ -7684,6 +7721,7 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
             podCreatedDate: moment().format('DD.MM.YY'),
             user: req.user
         });
+
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Internal Server Error');
@@ -9234,7 +9272,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
                             currentStatus: "Custom Clearing",
-                            paymentMethod: data.data.payment_mode,
+                            paymentMethod: "NON COD",
                             warehouseEntry: "No",
                             warehouseEntryDateTime: "N/A",
                             receiverAddress: data.data.address,
@@ -9259,7 +9297,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             data: {
                                 status: "custom_clearing",
                                 zone: area,
-                                instructions: "CP"
+                                instructions: "CP",
+                                job_type: "Standard",
+                                total_price: 0,
+                                payment_amount: 0,
+                                payment_mode: "NON COD"
                             }
                         };
 
@@ -13944,7 +13986,7 @@ function getPrice(jobMethod) {
 const queue = [];
 let isProcessing = false;
 
-orderWatch.on('change', async (change) => {
+/* orderWatch.on('change', async (change) => {
     if (change.operationType == "insert") {
         // Push the new change to the queue
         queue.push(change);
@@ -13954,7 +13996,7 @@ orderWatch.on('change', async (change) => {
             processQueue();
         }
     }
-});
+}); */
 
 async function processQueue() {
     isProcessing = true;
