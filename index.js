@@ -14115,7 +14115,28 @@ async function handleOrderChange(change) {
 
             let tracker;
             let sequence;
-            let phoneNumber = result[0].receiverPhoneNumber ? "+" + result[0].receiverPhoneNumber.trim() : null;
+            let rawPhoneNumber = result[0].receiverPhoneNumber ? result[0].receiverPhoneNumber.trim() : null;
+            let finalPhoneNum;
+
+            if (rawPhoneNumber) {
+                // Remove all non-digit characters
+                let cleanedNumber = rawPhoneNumber.replace(/\D/g, "");
+
+                if (/^\d{7}$/.test(cleanedNumber)) {
+                    // Local 7-digit Brunei number
+                    finalPhoneNum = "+673" + cleanedNumber;
+                } else if (/^673\d{7}$/.test(cleanedNumber)) {
+                    // Brunei number already with country code (no +)
+                    finalPhoneNum = "+" + cleanedNumber;
+                } else if (/^\+673\d{7}$/.test(rawPhoneNumber)) {
+                    // Already correctly formatted
+                    finalPhoneNum = rawPhoneNumber;
+                } else {
+                    finalPhoneNum = "N/A"; // Invalid Brunei number
+                }
+            } else {
+                finalPhoneNum = "N/A"; // No number provided
+            }
             let whatsappName = result[0].receiverName;
 
             let checkProduct = 0;
@@ -14209,9 +14230,9 @@ async function handleOrderChange(change) {
             if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
                 result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" &&
                 result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu"
-                && result[0].product != "pure51" && result[0].product != "mglobal") {
+                && result[0].product != "pure51" && result[0].product != "mglobal" && finalPhoneNum != "N/A") {
 
-                await sendWhatsAppMessage(phoneNumber, whatsappName, tracker);
+                await sendWhatsAppMessage(finalPhoneNum, whatsappName, tracker);
             }
         }
     } catch (err) {
@@ -14230,12 +14251,12 @@ function generateTracker(sequence, suffix, prefix) {
     return `${suffix}${sequence}${prefix}`;
 }
 
-async function sendWhatsAppMessage(phoneNumber, name, trackingNumber) {
+async function sendWhatsAppMessage(finalPhoneNum, name, trackingNumber) {
     try {
         await axios.post(
             'https://hook.eu1.make.com/2rzk6t84td2261kh33zhdvfi98yggmhy',
             {
-                phone: phoneNumber,
+                phone: finalPhoneNum,
                 name: name,
                 trackingNumber: trackingNumber
             },
