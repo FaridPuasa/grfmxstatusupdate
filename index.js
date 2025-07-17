@@ -7709,8 +7709,6 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
             }
         }
 
-        console.log (runSheetData)
-
         res.render('podGeneratorSuccess', {
             podCreatedBy: userNameCaps,
             product,
@@ -9851,29 +9849,75 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 if (((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) || ((data.data.type == 'Delivery') && (data.data.status == 'in_sorting_area'))) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        update = {
-                            currentStatus: "Out for Delivery",
-                            lastUpdateDateTime: moment().format(),
-                            instructions: data.data.remarks,
-                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            attempt: data.data.attempt,
-                            jobDate: req.body.assignDate,
-                            latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                            $push: {
-                                history: {
+                        if (existingOrder === null) {
+                            newOrder = new ORDERS({
+                                area: area,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "N/A",
+                                    reason: detrackReason,
                                     lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                }],
+                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                product: currentProduct,
+                                assignedTo: "N/A",
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Out for Delivery",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                latestReason: detrackReason,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                lastUpdatedBy: req.user.name,
+                                parcelWeight: data.data.weight,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                attempt: data.data.attempt,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        reason: "N/A",
+                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                    }
                                 }
                             }
-                        }
 
-                        mongoDBrun = 2;
+                            mongoDBrun = 2;
+
+                        }
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
@@ -9887,29 +9931,74 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
-                        update = {
-                            currentStatus: "Out for Delivery",
-                            lastUpdateDateTime: moment().format(),
-                            instructions: data.data.remarks,
-                            assignedTo: req.body.dispatchers,
-                            attempt: data.data.attempt,
-                            jobDate: req.body.assignDate,
-                            latestLocation: req.body.dispatchers,
-                            lastUpdatedBy: req.user.name,
-                            lastAssignedTo: req.body.dispatchers,
-                            $push: {
-                                history: {
+                        if (existingOrder === null) {
+                            newOrder = new ORDERS({
+                                area: area,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
                                     statusHistory: "Out for Delivery",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: req.body.dispatchers,
-                                    reason: "N/A",
+                                    reason: detrackReason,
                                     lastLocation: req.body.dispatchers,
+                                }],
+                                lastAssignedTo: req.body.dispatchers,
+                                latestLocation: req.body.dispatchers,
+                                product: currentProduct,
+                                assignedTo: "N/A",
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Out for Delivery",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                latestReason: detrackReason,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                jobDate: req.body.assignDate,
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number,
+                                lastUpdatedBy: req.user.name,
+                                parcelWeight: data.data.weight,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: data.data.job_type,
+                            });
+
+                            mongoDBrun = 1;
+                        } else {
+                            update = {
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers,
+                                attempt: data.data.attempt,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: req.body.dispatchers,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                        lastLocation: req.body.dispatchers,
+                                    }
                                 }
                             }
-                        }
 
-                        mongoDBrun = 2;
+                            mongoDBrun = 2;
+                        }
 
                         var detrackUpdateData = {
                             do_number: consignmentID,
@@ -13986,7 +14075,7 @@ function getPrice(jobMethod) {
 const queue = [];
 let isProcessing = false;
 
-/* orderWatch.on('change', async (change) => {
+orderWatch.on('change', async (change) => {
     if (change.operationType == "insert") {
         // Push the new change to the queue
         queue.push(change);
@@ -13996,7 +14085,7 @@ let isProcessing = false;
             processQueue();
         }
     }
-}); */
+});
 
 async function processQueue() {
     isProcessing = true;
