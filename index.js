@@ -8907,6 +8907,48 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             else { area = "N/A" }
 
             if (req.body.statusCode == 'FA') {
+                newOrder = new ORDERS({
+                    area: area,
+                    items: itemsArray, // Use the dynamically created items array
+                    attempt: data.data.attempt,
+                    history: [{
+                        statusHistory: "At Warehouse",
+                        dateUpdated: moment().format(),
+                        updatedBy: req.user.name,
+                        lastAssignedTo: "N/A",
+                        reason: "N/A",
+                        lastLocation: req.body.warehouse,
+                    }],
+                    lastAssignedTo: "N/A",
+                    latestLocation: req.body.warehouse,
+                    product: currentProduct,
+                    assignedTo: "N/A",
+                    senderName: data.data.job_owner,
+                    totalPrice: data.data.total_price,
+                    receiverName: data.data.deliver_to_collect_from,
+                    trackingLink: data.data.tracking_link,
+                    currentStatus: "At Warehouse",
+                    paymentMethod: data.data.payment_mode,
+                    warehouseEntry: "Yes",
+                    warehouseEntryDateTime: moment().format(),
+                    receiverAddress: data.data.address,
+                    receiverPhoneNumber: finalPhoneNum,
+                    doTrackingNumber: consignmentID,
+                    remarks: data.data.remarks,
+                    latestReason: "N/A",
+                    lastUpdateDateTime: moment().format(),
+                    creationDate: data.data.created_at,
+                    jobDate: "N/A",
+                    flightDate: data.data.job_received_date,
+                    mawbNo: data.data.run_number,
+                    lastUpdatedBy: req.user.name,
+                    parcelWeight: data.data.weight,
+                    receiverPostalCode: postalCode,
+                    jobType: data.data.type,
+                    jobMethod: data.data.job_type,
+                });
+
+                mongoDBrun = 1;
                 /* update = {
                     currentStatus: "Return to Warehouse",
                     lastUpdateDateTime: moment().format(),
@@ -9114,7 +9156,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 } */
 
-                var detrackUpdateData = {
+                /* var detrackUpdateData = {
                     do_number: consignmentID,
                     data: {
                         zone: area,
@@ -9123,14 +9165,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 update = {
                     area: area
-                }
+                } */
 
-                mongoDBrun = 2;
+                mongoDBrun = 1;
 
-                DetrackAPIrun = 1;
+                /* DetrackAPIrun = 1; */
 
-                portalUpdate = "Portal updated for area. ";
-                appliedStatus = "Area update"
+                portalUpdate = "Portal updated for missing data. ";
+                appliedStatus = "Missing data update"
 
                 completeRun = 1;
             }
