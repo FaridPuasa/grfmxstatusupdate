@@ -14166,19 +14166,20 @@ async function handleOrderChange(change) {
 
                 if (/^\d{7}$/.test(cleanedNumber)) {
                     // Local 7-digit Brunei number
-                    finalPhoneNum = "+673" + cleanedNumber;
+                    finalPhoneNum = "673" + cleanedNumber;
                 } else if (/^673\d{7}$/.test(cleanedNumber)) {
-                    // Brunei number already with country code (no +)
-                    finalPhoneNum = "+" + cleanedNumber;
+                    // Already includes Brunei country code
+                    finalPhoneNum = cleanedNumber;
                 } else if (/^\+673\d{7}$/.test(rawPhoneNumber)) {
-                    // Already correctly formatted
-                    finalPhoneNum = rawPhoneNumber;
+                    // Already correctly formatted with +
+                    finalPhoneNum = rawPhoneNumber.replace("+", ""); // Remove +
                 } else {
                     finalPhoneNum = "N/A"; // Invalid Brunei number
                 }
             } else {
                 finalPhoneNum = "N/A"; // No number provided
             }
+
             let whatsappName = result[0].receiverName;
 
             let checkProduct = 0;
