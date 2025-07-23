@@ -257,6 +257,21 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             }
         );
 
+        const deliveryOrders = await ORDERS.find(
+            { currentStatus: "Out for Delivery" },
+            {
+                product: 1,
+                jobDate: 1,
+                assignedTo: 1,
+                doTrackingNumber: 1,
+                attempt: 1,
+                receiverName: 1,
+                receiverPhoneNumber: 1,
+                grRemark: 1,
+                area: 1
+            }
+        );
+
         const categorize = (orders, filterFn) => {
             const map = {};
             orders.forEach(order => {
@@ -372,6 +387,46 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                 order.fridge === "Yes";
         });
 
+        const deliveriesMap = (() => {
+            const map = {};
+            const assigneeAreas = {}; // track areas per assignee
+
+            deliveryOrders.forEach(order => {
+                const date = order.jobDate ? moment(order.jobDate).format("DD-MM-YYYY") : "Unknown Date";
+                const assignee = order.assignedTo || "Unassigned";
+                const product = order.product || "Unknown";
+                const area = order.area || "Unknown";
+
+                if (!map[date]) map[date] = {};
+                if (!map[date][assignee]) {
+                    map[date][assignee] = { __areas: new Set(), __products: {} };
+                }
+
+                map[date][assignee].__areas.add(area); // add to area Set
+
+                if (!map[date][assignee].__products[product]) {
+                    map[date][assignee].__products[product] = [];
+                }
+
+                map[date][assignee].__products[product].push({
+                    doTrackingNumber: order.doTrackingNumber || '-',
+                    area: order.area || '-',
+                    receiverName: order.receiverName || '-',
+                    receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                    grRemark: order.grRemark || '-'
+                });
+            });
+
+            // Convert Sets to arrays for rendering
+            Object.keys(map).forEach(date => {
+                Object.keys(map[date]).forEach(assignee => {
+                    map[date][assignee].__areas = Array.from(map[date][assignee].__areas);
+                });
+            });
+
+            return map;
+        })();
+
         res.render('dashboard', {
             currentMap,
             urgentMap,
@@ -379,6 +434,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             archivedMap,
             maxAttemptMap,
             fridgeMap,
+            deliveriesMap,
             moment,
             user: req.user,
             orders: []
@@ -8372,6 +8428,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Go Rush Remark"
             }
 
+            if (req.body.statusCode == 'FCC') {
+                appliedStatus = "Update Fail due to Customer not available / cannot be contacted"
+            }
+
+            if (req.body.statusCode == 'FSC') {
+                appliedStatus = "Update Fail due to Reschedule to self collect requested by customer"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -8433,7 +8497,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
                 || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')
-                || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')) {
+                || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')
+                || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -13076,9 +13141,115 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                portalUpdate = "Go Rush Remark updated. ";
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        instructions: req.body.grRemark
+                    }
+                };
+
+                portalUpdate = "Go Rush Remark updated in Portal and Detrack. ";
 
                 mongoDBrun = 2;
+                DetrackAPIrun = 1;
+
+                completeRun = 1;
+            }
+
+            if ((req.body.statusCode == 'FCC') && (product == 'MGLOBAL') && (data.data.type == 'Delivery') && ((data.data.status == 'at_warehouse')) || (data.data.status == 'in_sorting_area')) {
+                update = {
+                    currentStatus: "At Warehouse",
+                    lastUpdateDateTime: moment().format(),
+                    assignedTo: "N/A",
+                    latestReason: "Customer not available / cannot be contacted",
+                    grRemark: "Customer not available / cannot be contacted",
+                    lastUpdatedBy: req.user.name,
+                    $push: {
+                        history: {
+                            statusHistory: "Failed Delivery",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            reason: "Customer not available / cannot be contacted"
+                        },
+                        history: {
+                            statusHistory: "At Warehouse",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "failed", // Use the calculated dStatus
+                        assign_to: "FL1",
+                        reason: "Customer not available / cannot be contacted",
+                        pod_time: moment().format("hh:mm A")
+                    }
+                };
+
+                var detrackUpdateData2 = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "at_warehouse",
+                        assign_to: ""
+                    }
+                };
+
+                portalUpdate = "Detrack and Portal updated for Fail due to Customer not available / cannot be contacted";
+
+                mongoDBrun = 2;
+                DetrackAPIrun = 6;
+
+                completeRun = 1;
+            }
+
+            if ((req.body.statusCode == 'FSC') && (product == 'MGLOBAL') && (data.data.type == 'Delivery') && ((data.data.status == 'at_warehouse')) || (data.data.status == 'in_sorting_area')) {
+                update = {
+                    currentStatus: "At Warehouse",
+                    lastUpdateDateTime: moment().format(),
+                    assignedTo: "N/A",
+                    latestReason: "Reschedule to self collect requested by customer",
+                    grRemark: "Reschedule to self collect requested by customer",
+                    lastUpdatedBy: req.user.name,
+                    $push: {
+                        history: {
+                            statusHistory: "Failed Delivery",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            reason: "Reschedule to self collect requested by customer"
+                        },
+                        history: {
+                            statusHistory: "At Warehouse",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "failed", // Use the calculated dStatus
+                        assign_to: "FL1",
+                        reason: "Reschedule to self collect requested by customer",
+                        pod_time: moment().format("hh:mm A")
+                    }
+                };
+
+                var detrackUpdateData2 = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "at_warehouse",
+                        assign_to: ""
+                    }
+                };
+
+                portalUpdate = "Detrack and Portal updated for Reschedule to self collect requested by customer";
+
+                mongoDBrun = 2;
+                DetrackAPIrun = 6;
 
                 completeRun = 1;
             }
@@ -13262,7 +13433,41 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 });
             }
 
-            if (waOrderArrivedDeliverStandard == 5) {
+            if (DetrackAPIrun == 6) {
+                request({
+                    method: 'PUT',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(detrackUpdateData)
+                }, function (error, response, body) {
+                    if (!error && response.statusCode === 200) {
+                        console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
+
+                        request({
+                            method: 'PUT',
+                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-KEY': apiKey
+                            },
+                            body: JSON.stringify(detrackUpdateData2)
+                        }, function (error, response, body) {
+                            if (!error && response.statusCode === 200) {
+                                console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                            } else {
+                                console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                            }
+                        });
+                    } else {
+                        console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                    }
+                });
+            }
+
+            /* if (waOrderArrivedDeliverStandard == 5) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
                 let c = data.data.tracking_link;
@@ -13961,7 +14166,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     .catch(error => {
                         console.error('Error creating or updating contact information:', error.response.data);
                     });
-            }
+            } */
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array

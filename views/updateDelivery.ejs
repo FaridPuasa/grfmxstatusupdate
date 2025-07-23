@@ -463,7 +463,9 @@
                             <option value="CP">1. Custom Clearance In Progress</option>
                             <option value="12">2. Item In Warehouse</option>
                             <option value="35">3.1. Out for Delivery</option>
-                            <option value="CSSC">3.2. Self Collect</option>
+                            <option value="FCC">3.2. Fail due to Customer not available / cannot be contacted</option>
+                            <option value="FSC">3.3.1. Fail due to Reschedule to self collect requested by customer</option>
+                            <option value="CSSC">3.3.2. Self Collect</option>
                         </optgroup>
                         <optgroup label="PDU Flow">
                             <option value="CP">1. Custom Clearance In Progress</option>
@@ -502,7 +504,7 @@
                             <option value="AJ">2. Cancelled -> Reactivate Job</option>
                             <option value="47">3. Dispose Job</option>
                             <!-- <option value="AJN">|FMX & EWE/SHEIN| Cancelled -> Reactivate Job with new tracking number</option> -->
-                            <!-- <option value="FA">|All| Fix Job</option> -->
+                            <option value="FA">|All| Fix Job</option>
                         </optgroup>
                     </select>
                 </div>
@@ -606,7 +608,8 @@
                     <input type="text" id="grRemark" name="grRemark" class="form-control" disabled>
                     <strong><small>*1 tracking number per update recommended unless multiple tracking number with
                             same
-                            remark.</small></strong>
+                            remark.</small></strong><br>
+                            <strong><small>**Check if there is existing customer remark on Detrack before updating.</small></strong>
                 </div>
             </div>
             <div class="mb-3">

@@ -676,6 +676,126 @@
     </div>
 </div>
 
+<div class="container mt-5">
+    <h1 class="text-center">Out For Delivery</h1>
+
+    <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="deliveries-tab" data-bs-toggle="tab"
+                data-bs-target="#deliveries-content" type="button" role="tab">
+                Active Deliveries
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="deliveries-content" role="tabpanel">
+            <% if (Object.keys(deliveriesMap).length === 0) { %>
+                <p class="text-center text-muted">No deliveries found.</p>
+            <% } else { %>
+                <% Object.keys(deliveriesMap).forEach((date, dateIndex) => { 
+                    // Count total orders for this date
+                    let dateCount = 0;
+                    Object.keys(deliveriesMap[date]).forEach(assignee => {
+                        Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
+                            dateCount += deliveriesMap[date][assignee].__products[product].length;
+                        });
+                    });
+                %>
+                    <div class="card my-3">
+                        <div class="card-header d-flex align-items-center toggle-header"
+                            style="cursor: pointer; width: 100%;" data-bs-toggle="collapse"
+                            data-bs-target="#collapse-deliveries-<%= dateIndex %>">
+                            <div style="flex-grow: 1;">
+                                <strong><%= date %></strong>
+                            </div>
+                            <span class="badge bg-primary ms-3"><%= dateCount %> orders</span>
+                            <i class="bi bi-caret-down-fill ms-3"></i>
+                        </div>
+                        <div class="collapse" id="collapse-deliveries-<%= dateIndex %>">
+                            <div class="card-body p-0">
+                                <% Object.keys(deliveriesMap[date]).forEach((assignee, assignIndex) => {
+                                    // Count total orders for this assignee on this date
+                                    let assigneeCount = 0;
+                                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
+                                        assigneeCount += deliveriesMap[date][assignee].__products[product].length;
+                                    });
+                                %>
+                                    <div class="card my-2 mx-3">
+                                        <div class="card-header d-flex align-items-center toggle-header"
+                                            style="cursor: pointer; width: 100%;"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>">
+                                            <div style="flex-grow: 1;">
+                                                <strong>
+                                                    <%= assignee %>
+                                                    <% if (deliveriesMap[date][assignee].__areas.length > 0) { %>
+                                                        (
+                                                        <%= deliveriesMap[date][assignee].__areas.join(', ') %>
+                                                        )
+                                                    <% } %>
+                                                </strong>
+                                            </div>
+                                            <span class="badge bg-success ms-3"><%= assigneeCount %> orders</span>
+                                            <i class="bi bi-caret-down-fill ms-3"></i>
+                                        </div>
+                                        <div class="collapse" id="collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>">
+                                            <div class="card-body p-0">
+                                                <% Object.keys(deliveriesMap[date][assignee].__products).forEach((product, prodIndex) => {
+                                                    // Count orders for this product under assignee and date
+                                                    let productCount = deliveriesMap[date][assignee].__products[product].length;
+                                                %>
+                                                    <div class="card my-2 mx-3">
+                                                        <div class="card-header d-flex align-items-center toggle-header"
+                                                            style="cursor: pointer; width: 100%;"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
+                                                            <div style="flex-grow: 1;">
+                                                                <strong><%= product.toUpperCase() %></strong>
+                                                            </div>
+                                                            <span class="badge bg-warning text-dark ms-3"><%= productCount %> orders</span>
+                                                            <i class="bi bi-caret-down-fill ms-3"></i>
+                                                        </div>
+                                                        <div class="collapse" id="collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
+                                                            <div class="card-body p-0">
+                                                                <table class="table table-sm table-bordered mb-0">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Tracking Number</th>
+                                                                            <th>Area</th>
+                                                                            <th>Name</th>
+                                                                            <th>Main Phone</th>
+                                                                            <th>Go Rush Remark</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <% deliveriesMap[date][assignee].__products[product].forEach(order => { %>
+                                                                            <tr>
+                                                                                <td><%= order.doTrackingNumber %></td>
+                                                                                <td><%= order.area || '-' %></td>
+                                                                                <td><%= order.receiverName %></td>
+                                                                                <td><%= order.receiverPhoneNumber %></td>
+                                                                                <td><%= order.grRemark %></td>
+                                                                            </tr>
+                                                                        <% }) %>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <% }) %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } %>
+        </div>
+    </div>
+</div>
 
                     <% } %>
     </div>
