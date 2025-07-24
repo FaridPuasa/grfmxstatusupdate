@@ -10467,6 +10467,54 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             /* if (data.data.phone_number != null) {
                                 waOrderFailedDelivery = 5;
                             } */
+                        } else if (data.data.reason == "Reschedule to self collect requested by customer") {
+                            update = {
+                                currentStatus: "Return to Warehouse",
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: "N/A",
+                                latestReason: data.data.reason,
+                                attempt: data.data.attempt + 1,
+                                latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
+                                lastAssignedTo: data.data.assign_to,
+                                grRemark: "Reschedule to self collect requested by customer",
+                                $push: {
+                                    history: {
+                                        statusHistory: "Failed Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: data.data.assign_to,
+                                        reason: data.data.reason,
+                                        lastLocation: data.data.assign_to,
+                                    },
+                                    history: {
+                                        statusHistory: "Return to Warehouse",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: "N/A",
+                                        reason: "N/A",
+                                        lastLocation: req.body.warehouse,
+                                    }
+                                }
+                            }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    status: "at_warehouse" // Use the calculated dStatus
+                                }
+                            };
+
+                            var detrackUpdateDataAttempt = {
+                                data: {
+                                    do_number: consignmentID,
+                                }
+                            };
+
+                            DetrackAPIrun = 2;
+                            appliedStatus = "Failed Delivery, Return to Warehouse"
+                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+
                         } else {
                             update = {
                                 currentStatus: "Return to Warehouse",
