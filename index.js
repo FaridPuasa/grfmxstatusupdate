@@ -13156,102 +13156,110 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 completeRun = 1;
             }
 
-            if ((req.body.statusCode == 'FCC') && (product == 'MGLOBAL') && (data.data.type == 'Delivery') && ((data.data.status == 'at_warehouse')) || (data.data.status == 'in_sorting_area')) {
-                update = {
-                    currentStatus: "At Warehouse",
-                    lastUpdateDateTime: moment().format(),
-                    assignedTo: "N/A",
-                    latestReason: "Customer not available / cannot be contacted",
-                    grRemark: "Customer not available / cannot be contacted",
-                    lastUpdatedBy: req.user.name,
-                    $push: {
-                        history: {
-                            statusHistory: "Failed Delivery",
-                            dateUpdated: moment().format(),
-                            updatedBy: req.user.name,
-                            reason: "Customer not available / cannot be contacted"
-                        },
-                        history: {
-                            statusHistory: "At Warehouse",
-                            dateUpdated: moment().format(),
-                            updatedBy: req.user.name,
+            if (req.body.statusCode == 'FCC') {
+                if (product == 'MGLOBAL') {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: "N/A",
+                            latestReason: "Customer not available / cannot be contacted",
+                            grRemark: "Customer not available / cannot be contacted",
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Customer not available / cannot be contacted"
+                                },
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                }
+                            }
                         }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "failed", // Use the calculated dStatus
+                                assign_to: "FL1",
+                                reason: "Customer not available / cannot be contacted",
+                                pod_time: moment().format("hh:mm A")
+                            }
+                        };
+
+                        var detrackUpdateData2 = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse",
+                                assign_to: ""
+                            }
+                        };
+
+                        portalUpdate = "Detrack and Portal updated for Fail due to Customer not available / cannot be contacted";
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 6;
+
+                        completeRun = 1;
                     }
                 }
-
-                var detrackUpdateData = {
-                    do_number: consignmentID,
-                    data: {
-                        status: "failed", // Use the calculated dStatus
-                        assign_to: "FL1",
-                        reason: "Customer not available / cannot be contacted",
-                        pod_time: moment().format("hh:mm A")
-                    }
-                };
-
-                var detrackUpdateData2 = {
-                    do_number: consignmentID,
-                    data: {
-                        status: "at_warehouse",
-                        assign_to: ""
-                    }
-                };
-
-                portalUpdate = "Detrack and Portal updated for Fail due to Customer not available / cannot be contacted";
-
-                mongoDBrun = 2;
-                DetrackAPIrun = 6;
-
-                completeRun = 1;
             }
 
-            if ((req.body.statusCode == 'FSC') && (product == 'MGLOBAL') && (data.data.type == 'Delivery') && ((data.data.status == 'at_warehouse')) || (data.data.status == 'in_sorting_area')) {
-                update = {
-                    currentStatus: "At Warehouse",
-                    lastUpdateDateTime: moment().format(),
-                    assignedTo: "N/A",
-                    latestReason: "Reschedule to self collect requested by customer",
-                    grRemark: "Reschedule to self collect requested by customer",
-                    lastUpdatedBy: req.user.name,
-                    $push: {
-                        history: {
-                            statusHistory: "Failed Delivery",
-                            dateUpdated: moment().format(),
-                            updatedBy: req.user.name,
-                            reason: "Reschedule to self collect requested by customer"
-                        },
-                        history: {
-                            statusHistory: "At Warehouse",
-                            dateUpdated: moment().format(),
-                            updatedBy: req.user.name,
+            if (req.body.statusCode == 'FSC') {
+                if (product == 'MGLOBAL') {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: "N/A",
+                            latestReason: "Reschedule to self collect requested by customer",
+                            grRemark: "Reschedule to self collect requested by customer",
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    statusHistory: "Failed Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    reason: "Reschedule to self collect requested by customer"
+                                },
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                }
+                            }
                         }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "failed", // Use the calculated dStatus
+                                assign_to: "FL1",
+                                reason: "Reschedule to self collect requested by customer",
+                                pod_time: moment().format("hh:mm A")
+                            }
+                        };
+
+                        var detrackUpdateData2 = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse",
+                                assign_to: ""
+                            }
+                        };
+
+                        portalUpdate = "Detrack and Portal updated for Reschedule to self collect requested by customer";
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 6;
+
+                        completeRun = 1;
                     }
                 }
-
-                var detrackUpdateData = {
-                    do_number: consignmentID,
-                    data: {
-                        status: "failed", // Use the calculated dStatus
-                        assign_to: "FL1",
-                        reason: "Reschedule to self collect requested by customer",
-                        pod_time: moment().format("hh:mm A")
-                    }
-                };
-
-                var detrackUpdateData2 = {
-                    do_number: consignmentID,
-                    data: {
-                        status: "at_warehouse",
-                        assign_to: ""
-                    }
-                };
-
-                portalUpdate = "Detrack and Portal updated for Reschedule to self collect requested by customer";
-
-                mongoDBrun = 2;
-                DetrackAPIrun = 6;
-
-                completeRun = 1;
             }
 
             if (completeRun == 0) {
