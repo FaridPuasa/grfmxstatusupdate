@@ -439,6 +439,10 @@
                 data-bs-target="#current" type="button" role="tab">Current</button>
         </li>
         <li class="nav-item" role="presentation">
+    <button class="nav-link" id="plannedselfcollect-tab" data-bs-toggle="tab"
+        data-bs-target="#plannedselfcollect" type="button" role="tab">Planned Self Collect</button>
+</li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="urgent-tab" data-bs-toggle="tab" data-bs-target="#urgent"
                 type="button" role="tab">Urgent</button>
         </li>
@@ -469,6 +473,7 @@
     <div class="tab-content">
         <% const tabData = [
             { id: 'current', map: currentMap },
+            { id: 'plannedselfcollect', map: plannedSelfCollectMap },
             { id: 'urgent', map: urgentMap },
             { id: 'overdue', map: overdueMap },
             { id: 'maxattempt', map: maxAttemptMap },
@@ -680,13 +685,13 @@
     <h1 class="text-center">Out For Delivery</h1>
 
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="deliveries-tab" data-bs-toggle="tab"
-                data-bs-target="#deliveries-content" type="button" role="tab">
-                Active Deliveries
-            </button>
-        </li>
-    </ul>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="deliveries-tab" data-bs-toggle="tab" data-bs-target="#deliveries-content" type="button" role="tab">Active Deliveries</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="codbt-tab" data-bs-toggle="tab" data-bs-target="#codbt-content" type="button" role="tab">COD/BT Collected</button>
+    </li>
+</ul>
 
     <div class="tab-content">
         <div class="tab-pane fade show active" id="deliveries-content" role="tabpanel">
@@ -794,16 +799,156 @@
                 <% }) %>
             <% } %>
         </div>
+        <div class="tab-pane fade" id="codbt-content" role="tabpanel" aria-labelledby="codbt-tab">
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <input type="date" id="codbt-date-picker" class="form-control" />
+        </div>
+    </div>
+
+    <div class="table-responsive mt-3">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Dispatcher</th>
+                    <th>Total Amount</th>
+                    <th>Cash</th>
+                    <th>BT</th>
+                </tr>
+            </thead>
+            <tbody id="codbt-table-body">
+                <!-- Populated by JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
     </div>
 </div>
 
                     <% } %>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let codBtData = null;
+    let codBtDataLoaded = false;
+
+    async function loadCodBtData() {
+        if (codBtDataLoaded) return;
+        try {
+            const response = await fetch('/api/codbt-collected');
+            codBtData = await response.json();
+            codBtDataLoaded = true;
+            refreshCodBtTable();
+        } catch (error) {
+            console.error('Failed to fetch COD/BT data:', error);
+        }
+    }
+
+    function refreshCodBtTable() {
+        const selectedDate = document.getElementById('codbt-date-picker').value;
+        const formattedDate = moment(selectedDate).format('DD-MM-YYYY');
+
+        const tableBody = document.getElementById('codbt-table-body');
+        tableBody.innerHTML = '';
+
+        if (codBtData && codBtData[formattedDate]) {
+            const dispatchers = codBtData[formattedDate];
+            let hasData = false;
+
+            let grandTotal = 0;
+            let grandCash = 0;
+            let grandBT = 0;
+
+            Object.keys(dispatchers).forEach((dispatcher, index) => {
+                const data = dispatchers[dispatcher];
+
+                const totalAmount = data.total || 0;
+                const cashAmount = data.cash || 0;
+                const btAmount = data.bt || 0;
+
+                if (totalAmount > 0 || cashAmount > 0 || btAmount > 0) {
+                    hasData = true;
+
+                    grandTotal += totalAmount;
+                    grandCash += cashAmount;
+                    grandBT += btAmount;
+
+                    const collapseId = `dispatcher-collapse-${index}`;
+
+                    const summaryRow = `
+                        <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
+                            <td>${dispatcher}</td>
+                            <td>${totalAmount.toFixed(2)}</td>
+                            <td>${cashAmount.toFixed(2)}</td>
+                            <td>${btAmount.toFixed(2)}</td>
+                        </tr>
+                        <tr class="collapse" id="${collapseId}">
+                            <td colspan="4">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Tracking Number</th>
+                                            <th>Product</th>
+                                            <th>Delivery Type</th>
+                                            <th>Payment Method</th>
+                                            <th>Total Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.jobs.map(job => `
+                                            <tr>
+                                                <td>${job.doTrackingNumber}</td>
+                                                <td>${job.product}</td>
+                                                <td>${job.jobMethod}</td>
+                                                <td>${job.paymentMethod}</td>
+                                                <td>${job.totalPrice.toFixed(2)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', summaryRow);
+                }
+            });
+
+            if (hasData) {
+                const grandRow = `
+                    <tr class="table-success fw-bold">
+                        <td>Grand Total</td>
+                        <td>${grandTotal.toFixed(2)}</td>
+                        <td>${grandCash.toFixed(2)}</td>
+                        <td>${grandBT.toFixed(2)}</td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', grandRow);
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>';
+            }
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>';
+        }
+    }
+
+    document.getElementById('codbt-date-picker').addEventListener('change', () => {
+        if (codBtDataLoaded) refreshCodBtTable();
+    });
+
+    document.getElementById('codbt-tab').addEventListener('shown.bs.tab', function () {
+        loadCodBtData();
+    });
+
+    document.getElementById('codbt-date-picker').value = moment().format('YYYY-MM-DD');
+</script>
+
 </body>
 
 </html>
