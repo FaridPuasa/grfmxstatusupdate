@@ -203,8 +203,13 @@ const processingResults = [];
 app.get('/api/codbt-collected', async (req, res) => {
     try {
         const moment = require('moment');
+        const startDate = moment().subtract(30, 'days').startOf('day').toDate();
+
         const completedOrders = await ORDERS.find(
-            { currentStatus: "Completed" },
+            {
+                currentStatus: "Completed",
+                jobDate: { $gte: startDate } // Only last 30 days
+            },
             {
                 jobDate: 1,
                 assignedTo: 1,
@@ -342,7 +347,10 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         );
 
         const completedOrders = await ORDERS.find(
-            { currentStatus: "Completed" },
+            {
+                currentStatus: "Completed",
+                jobDate: { $gte: moment().subtract(30, 'days').startOf('day').toDate() } // Limit to 30 days
+            },
             {
                 jobDate: 1,
                 assignedTo: 1,
@@ -7835,36 +7843,36 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
                     });
 
                 } else { */
-                    // Fetch from Detrack API
-                    const apiKey = process.env.API_KEY;
-                    const response = await axios.get(
-                        `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey,
-                            },
-                        }
-                    );
-
-                    const data = response.data.data;
-
-                    if (!data) {
-                        console.warn(`No data returned from Detrack for: ${trackingNumber}`);
-                        continue;
+                // Fetch from Detrack API
+                const apiKey = process.env.API_KEY;
+                const response = await axios.get(
+                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey,
+                        },
                     }
+                );
 
-                    runSheetData.push({
-                        trackingNumber,
-                        deliverToCollectFrom: data.deliver_to_collect_from,
-                        address: data.address,
-                        phoneNumber: data.phone_number,
-                        jobType: data.job_type || '',
-                        totalPrice: data.total_price || '',
-                        paymentMode: data.payment_mode || '',
-                        remarks: data.remarks || '',
-                        fridge: '', // Detrack likely doesn't provide this
-                    });
+                const data = response.data.data;
+
+                if (!data) {
+                    console.warn(`No data returned from Detrack for: ${trackingNumber}`);
+                    continue;
+                }
+
+                runSheetData.push({
+                    trackingNumber,
+                    deliverToCollectFrom: data.deliver_to_collect_from,
+                    address: data.address,
+                    phoneNumber: data.phone_number,
+                    jobType: data.job_type || '',
+                    totalPrice: data.total_price || '',
+                    paymentMode: data.payment_mode || '',
+                    remarks: data.remarks || '',
+                    fridge: '', // Detrack likely doesn't provide this
+                });
                 /* } */
             } catch (err) {
                 console.error(`Error for tracking number ${trackingNumber}:`, err);
@@ -14490,196 +14498,163 @@ function getPrice(jobMethod) {
 
 const queue = [];
 let isProcessing = false;
-const productLocks = new Map(); // Mutex lock per product
 
-// Watcher for order changes
 orderWatch.on('change', async (change) => {
-    if (change.operationType === "insert") {
+    if (change.operationType == "insert") {
+        // Push the new change to the queue
         queue.push(change);
+
+        // If there's no active processing, start processing the queue
         if (!isProcessing) {
             processQueue();
         }
     }
 });
 
-// Process queue sequentially
 async function processQueue() {
     isProcessing = true;
+
     while (queue.length > 0) {
+        // Get the first change in the queue
         const currentChange = queue.shift();
+
+        // Execute the logic for this change
         await handleOrderChange(currentChange);
     }
+
     isProcessing = false;
 }
 
-// Handle order insert change with mutex lock per product
 async function handleOrderChange(change) {
     try {
-        const currentOrder = change.fullDocument;
-        if (!currentOrder || !currentOrder.product) return;
+        const result = await ORDERS.find().sort({ $natural: -1 }).limit(1000);
+        let filter = new mongoose.Types.ObjectId(result[0]._id);
 
-        let product = currentOrder.product.includes("pharmacy") ? "pharmacy" : currentOrder.product;
+        if (result[0].product != null) {
+            let products = result[0].product;
 
-        // Wait until product lock is free
-        while (productLocks.get(product)) {
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
+            if (products.includes("pharmacy") == true) {
+                products = "pharmacy";
+            }
 
-        // Lock this product
-        productLocks.set(product, true);
+            let tracker;
+            let sequence;
+            let rawPhoneNumber = result[0].receiverPhoneNumber ? result[0].receiverPhoneNumber.trim() : null;
+            let finalPhoneNum;
 
-        // 1. Get latest valid sequence for this product
-        let latestValidSequenceDoc = await ORDERS.findOne({
-            product: product,
-            sequence: { $ne: "N/A" }
-        }).sort({ _id: -1 });
+            if (rawPhoneNumber) {
+                // Remove all non-digit characters
+                let cleanedNumber = rawPhoneNumber.replace(/\D/g, "");
 
-        let currentSequence = latestValidSequenceDoc ? parseInt(latestValidSequenceDoc.sequence) : 0;
-        let latestValidId = latestValidSequenceDoc ? latestValidSequenceDoc._id : null;
+                if (/^\d{7}$/.test(cleanedNumber)) {
+                    // Local 7-digit Brunei number
+                    finalPhoneNum = "+673" + cleanedNumber;
+                } else if (/^673\d{7}$/.test(cleanedNumber)) {
+                    // Brunei number already with country code (no +)
+                    finalPhoneNum = "+" + cleanedNumber;
+                } else if (/^\+673\d{7}$/.test(rawPhoneNumber)) {
+                    // Already correctly formatted
+                    finalPhoneNum = rawPhoneNumber;
+                } else {
+                    finalPhoneNum = "N/A"; // Invalid Brunei number
+                }
+            } else {
+                finalPhoneNum = "N/A"; // No number provided
+            }
+            let whatsappName = result[0].receiverName;
 
-        // 2. Find N/A records newer than latest valid sequence
-        let naRecordsQuery = {
-            product: product,
-            sequence: "N/A",
-            _id: { $gt: latestValidId || mongoose.Types.ObjectId('000000000000000000000000') }
-        };
+            let checkProduct = 0;
 
-        let naRecords = await ORDERS.find(naRecordsQuery).sort({ _id: 1 });
+            if ((result.length >= 2) && (checkProduct == 0)) {
+                for (let i = 1; i < result.length; i++) {
+                    if (result[i].product.includes(products)) {
+                        if (result[i].sequence == "N/A") {
+                            sequence = 1
+                            checkProduct = 1
+                            i = result.length
+                        }
+                        else {
+                            sequence = parseInt(result[i].sequence) + 1
+                            checkProduct = 1
+                            i = result.length
+                        }
+                    }
+                    /* } */
+                }
+                if (checkProduct == 0) {
+                    sequence = 1
+                    checkProduct = 1
+                }
+            }
 
-        // 3. Fix N/A sequences (newer ones only)
-        for (let doc of naRecords) {
-            currentSequence += 1;
-            let tracker = generateTracker(currentSequence, getSuffix(product), getPrefix(product));
+            if (!sequence) {
+                sequence = 1;  // Default sequence value if not set
+            }
 
-            await ORDERS.findByIdAndUpdate(doc._id, {
-                sequence: currentSequence,
-                doTrackingNumber: tracker
-            });
-        }
+            // Example for pharmacy MOH product
+            if (result[0].product == "pharmacymoh") {
+                let suffix = "GR2", prefix = "MH";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
 
-        // 4. Assign sequence to current order
-        currentSequence += 1;
-        let tracker = generateTracker(currentSequence, getSuffix(product), getPrefix(product));
-        await ORDERS.findByIdAndUpdate(currentOrder._id, {
-            sequence: currentSequence,
-            doTrackingNumber: tracker
-        });
+            if (result[0].product == "pharmacyjpmc") {
+                let suffix = "GR2", prefix = "JP";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
 
-        // 5. WhatsApp Sending Logic
-        let finalPhoneNum = formatPhoneNumber(currentOrder.receiverPhoneNumber);
-        if (shouldSendWhatsApp(currentOrder.product, finalPhoneNum)) {
-            await sendWhatsAppMessage(finalPhoneNum, currentOrder.receiverName, tracker);
-        }
+            if (result[0].product == "pharmacyphc") {
+                let suffix = "GR2", prefix = "PN";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
 
-    } catch (err) {
-        console.error('Error processing order change:', err);
-    } finally {
-        // Unlock product after done
-        const product = change.fullDocument.product.includes("pharmacy") ? "pharmacy" : change.fullDocument.product;
-        productLocks.set(product, false);
-    }
-}
+            if (result[0].product == "localdelivery") {
+                let suffix = "GR3", prefix = "LD";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
 
-// Batch-fix function for manual repair of existing N/A sequences
-async function batchFixNASequences() {
-    try {
-        const products = await ORDERS.distinct("product");
+            if (result[0].product == "grp") {
+                let suffix = "GR4", prefix = "GP";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
 
-        for (let product of products) {
-            if (!product) continue;
+            if (result[0].product == "cbsl") {
+                let suffix = "GR5", prefix = "CB";
+                tracker = generateTracker(sequence, suffix, prefix);
+            }
 
-            let fixedProduct = product.includes("pharmacy") ? "pharmacy" : product;
+            if (result[0].product == "kptdp") {
+                tracker = result[0].doTrackingNumber;
+            }
 
-            let latestValidSequenceDoc = await ORDERS.findOne({
-                product: fixedProduct,
-                sequence: { $ne: "N/A" }
-            }).sort({ _id: -1 });
+            // Other product cases go here, similar to the above case
 
-            let currentSequence = latestValidSequenceDoc ? parseInt(latestValidSequenceDoc.sequence) : 0;
-            let latestValidId = latestValidSequenceDoc ? latestValidSequenceDoc._id : null;
+            let update = { doTrackingNumber: tracker, sequence: sequence };
+            await ORDERS.findByIdAndUpdate(filter, update);
 
-            let naRecordsQuery = {
-                product: fixedProduct,
-                sequence: "N/A",
-                _id: { $gt: latestValidId || mongoose.Types.ObjectId('000000000000000000000000') }
-            };
+            // Logic to send WhatsApp message using axios
+            if (result[0].product != "fmx" && result[0].product != "bb" && result[0].product != "fcas" &&
+                result[0].product != "icarus" && result[0].product != "ewe" && result[0].product != "ewens" &&
+                result[0].product != "temu" && result[0].product != "kptdf" && result[0].product != "pdu"
+                && result[0].product != "pure51" && result[0].product != "mglobal" && finalPhoneNum != "N/A" &&
+                (result[0].product === "" || result[0].product.length === 0 || result[0].product != null)) {
 
-            let naRecords = await ORDERS.find(naRecordsQuery).sort({ _id: 1 });
-
-            for (let doc of naRecords) {
-                currentSequence += 1;
-                let tracker = generateTracker(currentSequence, getSuffix(fixedProduct), getPrefix(fixedProduct));
-
-                await ORDERS.findByIdAndUpdate(doc._id, {
-                    sequence: currentSequence,
-                    doTrackingNumber: tracker
-                });
-
-                console.log(`Fixed Order ID: ${doc._id} | Sequence: ${currentSequence} | Tracker: ${tracker}`);
+                await sendWhatsAppMessage(finalPhoneNum, whatsappName, tracker);
             }
         }
-
-        console.log('Batch-fix completed.');
     } catch (err) {
-        console.error('Error in batchFixNASequences:', err);
+        console.error('Error processing order change:', err);
     }
 }
 
-// Utility Functions
 function generateTracker(sequence, suffix, prefix) {
-    const sequenceStr = sequence.toString().padStart(7, '0');
-    return `${suffix}${sequenceStr}${prefix}`;
-}
-
-function getSuffix(product) {
-    switch (product) {
-        case "pharmacymoh": return "GR2";
-        case "pharmacyjpmc": return "GR2";
-        case "pharmacyphc": return "GR2";
-        case "localdelivery": return "GR3";
-        case "grp": return "GR4";
-        case "cbsl": return "GR5";
-        default: return "GRX";
-    }
-}
-
-function getPrefix(product) {
-    switch (product) {
-        case "pharmacymoh": return "MH";
-        case "pharmacyjpmc": return "JP";
-        case "pharmacyphc": return "PN";
-        case "localdelivery": return "LD";
-        case "grp": return "GP";
-        case "cbsl": return "CB";
-        default: return "XX";
-    }
-}
-
-function formatPhoneNumber(rawPhoneNumber) {
-    if (!rawPhoneNumber) return "N/A";
-    let cleanedNumber = rawPhoneNumber.replace(/\D/g, "");
-    if (/^\d{7}$/.test(cleanedNumber)) {
-        return "+673" + cleanedNumber;
-    } else if (/^673\d{7}$/.test(cleanedNumber)) {
-        return "+" + cleanedNumber;
-    } else if (/^\+673\d{7}$/.test(rawPhoneNumber)) {
-        return rawPhoneNumber;
-    }
-    return "N/A";
-}
-
-function shouldSendWhatsApp(product, phoneNum) {
-    const excludedProducts = ["fmx", "bb", "fcas", "icarus", "ewe", "ewens", "temu", "kptdf", "pdu", "pure51", "mglobal"];
-
-    if (!product || product.trim().length === 0) {
-        return false; // Skip if product is null, undefined, or empty string
-    }
-
-    if (excludedProducts.includes(product)) {
-        return false; // Skip if product is in excluded list
-    }
-
-    return phoneNum !== "N/A"; // Only send if phone number is valid
+    if (sequence >= 0 && sequence <= 9) return `${suffix}0000000${sequence}${prefix}`;
+    if (sequence >= 10 && sequence <= 99) return `${suffix}000000${sequence}${prefix}`;
+    if (sequence >= 100 && sequence <= 999) return `${suffix}00000${sequence}${prefix}`;
+    if (sequence >= 1000 && sequence <= 9999) return `${suffix}0000${sequence}${prefix}`;
+    if (sequence >= 10000 && sequence <= 99999) return `${suffix}000${sequence}${prefix}`;
+    if (sequence >= 100000 && sequence <= 999999) return `${suffix}00${sequence}${prefix}`;
+    if (sequence >= 1000000 && sequence <= 9999999) return `${suffix}0${sequence}${prefix}`;
+    return `${suffix}${sequence}${prefix}`;
 }
 
 async function sendWhatsAppMessage(finalPhoneNum, name, trackingNumber) {
