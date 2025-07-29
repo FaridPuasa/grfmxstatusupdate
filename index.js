@@ -347,10 +347,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         );
 
         const completedOrders = await ORDERS.find(
-            {
-                currentStatus: "Completed",
-                jobDate: { $gte: moment().subtract(30, 'days').startOf('day').toDate() } // Limit to 30 days
-            },
+            { currentStatus: "Completed" },
             {
                 jobDate: 1,
                 assignedTo: 1,
