@@ -203,13 +203,10 @@ const processingResults = [];
 app.get('/api/codbt-collected', async (req, res) => {
     try {
         const moment = require('moment');
-        const startDate = moment().subtract(30, 'days').startOf('day').toDate();
+        const startDate = moment().subtract(30, 'days').startOf('day');
 
         const completedOrders = await ORDERS.find(
-            {
-                currentStatus: "Completed",
-                jobDate: { $gte: startDate } // Only last 30 days
-            },
+            { currentStatus: "Completed" },
             {
                 jobDate: 1,
                 assignedTo: 1,
@@ -221,12 +218,18 @@ app.get('/api/codbt-collected', async (req, res) => {
             }
         );
 
-        const codBtMap = {};
-        completedOrders.forEach(order => {
-            const totalPrice = Number(order.totalPrice) || 0;
-            if (totalPrice === 0) return; // Skip 0-amount jobs
+        const filteredOrders = completedOrders.filter(order => {
+            if (!order.jobDate) return false; // Skip if no jobDate
+            const jobMoment = moment(order.jobDate, 'YYYY-MM-DD');
+            return jobMoment.isValid() && jobMoment.isSameOrAfter(startDate);
+        });
 
-            const date = order.jobDate ? moment(order.jobDate).format("DD-MM-YYYY") : "Unknown Date";
+        const codBtMap = {};
+        filteredOrders.forEach(order => {
+            const totalPrice = Number(order.totalPrice) || 0;
+            if (totalPrice === 0) return;
+
+            const date = moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY");
             const dispatcher = order.assignedTo || "Unassigned";
             const paymentMethod = order.paymentMethod || '';
 
@@ -237,9 +240,7 @@ app.get('/api/codbt-collected', async (req, res) => {
 
             if (paymentMethod === "Cash") {
                 codBtMap[date][dispatcher].cash += totalPrice;
-            } else if (paymentMethod.includes("Bank Transfer")) {
-                codBtMap[date][dispatcher].bt += totalPrice;
-            } else if (paymentMethod.includes("Bill Payment")) {
+            } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
                 codBtMap[date][dispatcher].bt += totalPrice;
             }
 
@@ -252,15 +253,15 @@ app.get('/api/codbt-collected', async (req, res) => {
             });
         });
 
-        // Sort jobs for each dispatcher based on Payment Priority
+        // Sort jobs per dispatcher by payment priority
         Object.keys(codBtMap).forEach(date => {
             Object.keys(codBtMap[date]).forEach(dispatcher => {
                 codBtMap[date][dispatcher].jobs.sort((a, b) => {
-                    const priority = paymentMethod => {
-                        if (paymentMethod === "Cash") return 1;
-                        if (paymentMethod.includes("Bank Transfer")) return 2;
-                        if (paymentMethod.includes("Bill Payment")) return 3;
-                        return 4; // Unknown/others
+                    const priority = method => {
+                        if (method === "Cash") return 1;
+                        if (method.includes("Bank Transfer")) return 2;
+                        if (method.includes("Bill Payment")) return 3;
+                        return 4;
                     };
                     return priority(a.paymentMethod) - priority(b.paymentMethod);
                 });
@@ -278,16 +279,14 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         const moment = require('moment');
         const now = moment();
+        const startDate = moment().subtract(30, 'days').startOf('day');
 
         function generateLocation(order) {
             const { latestLocation, room, rackRowNum, area, jobMethod } = order;
             if (!latestLocation) return '-';
-
             let parts = [latestLocation];
 
-            if (latestLocation === 'Warehouse K1') {
-                return parts.join(', ');
-            }
+            if (latestLocation === 'Warehouse K1') return parts.join(', ');
 
             if (latestLocation === 'Warehouse K2') {
                 if (room === 'Room 1') {
@@ -303,65 +302,39 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                     if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
                 }
             }
-
             return parts.join(', ');
         }
 
         const allOrders = await ORDERS.find(
             { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            {
-                product: 1,
-                currentStatus: 1,
-                warehouseEntry: 1,
-                jobMethod: 1,
-                warehouseEntryDateTime: 1,
-                creationDate: 1,
-                doTrackingNumber: 1,
-                attempt: 1,
-                latestReason: 1,
-                area: 1,
-                receiverName: 1,
-                receiverPhoneNumber: 1,
-                additionalPhoneNumber: 1,
-                fridge: 1,
-                latestLocation: 1,
-                grRemark: 1,
-                room: 1,
-                rackRowNum: 1
-            }
+            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, fridge: 1, latestLocation: 1, grRemark: 1, room: 1, rackRowNum: 1 }
         );
 
         const deliveryOrders = await ORDERS.find(
             { currentStatus: "Out for Delivery" },
-            {
-                product: 1,
-                jobDate: 1,
-                assignedTo: 1,
-                doTrackingNumber: 1,
-                attempt: 1,
-                receiverName: 1,
-                receiverPhoneNumber: 1,
-                grRemark: 1,
-                area: 1
-            }
+            { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1 }
         );
 
         const completedOrders = await ORDERS.find(
             { currentStatus: "Completed" },
-            {
-                jobDate: 1,
-                assignedTo: 1,
-                totalPrice: 1,
-                paymentMethod: 1
-            }
+            { jobDate: 1, assignedTo: 1, totalPrice: 1, paymentMethod: 1 }
         );
 
+        // Filter Completed Orders for COD/BT Summary (last 30 days)
+        const filteredCompleted = completedOrders.filter(order => {
+            if (!order.jobDate) return false;
+            const jobMoment = moment(order.jobDate, 'YYYY-MM-DD');
+            return jobMoment.isValid() && jobMoment.isSameOrAfter(startDate);
+        });
+
         const codBtMap = {};
-        completedOrders.forEach(order => {
-            const date = order.jobDate ? moment(order.jobDate).format("DD-MM-YYYY") : "Unknown Date";
+        filteredCompleted.forEach(order => {
+            const date = moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY");
             const dispatcher = order.assignedTo || "Unassigned";
             const totalPrice = Number(order.totalPrice) || 0;
             const paymentMethod = order.paymentMethod || '';
+
+            if (totalPrice === 0) return;
 
             if (!codBtMap[date]) codBtMap[date] = {};
             if (!codBtMap[date][dispatcher]) codBtMap[date][dispatcher] = { total: 0, cash: 0, bt: 0 };
@@ -370,7 +343,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
             if (paymentMethod === "Cash") {
                 codBtMap[date][dispatcher].cash += totalPrice;
-            } else if (paymentMethod.includes("Bill Payment") || paymentMethod.includes("Bank Transfer")) {
+            } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
                 codBtMap[date][dispatcher].bt += totalPrice;
             }
         });
@@ -499,20 +472,18 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
         const deliveriesMap = (() => {
             const map = {};
-            const assigneeAreas = {}; // track areas per assignee
+            const assigneeAreas = {};
 
             deliveryOrders.forEach(order => {
-                const date = order.jobDate ? moment(order.jobDate).format("DD-MM-YYYY") : "Unknown Date";
+                const date = order.jobDate ? moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY") : "Unknown Date";
                 const assignee = order.assignedTo || "Unassigned";
                 const product = order.product || "Unknown";
                 const area = order.area || "Unknown";
 
                 if (!map[date]) map[date] = {};
-                if (!map[date][assignee]) {
-                    map[date][assignee] = { __areas: new Set(), __products: {} };
-                }
+                if (!map[date][assignee]) map[date][assignee] = { __areas: new Set(), __products: {} };
 
-                map[date][assignee].__areas.add(area); // add to area Set
+                map[date][assignee].__areas.add(area);
 
                 if (!map[date][assignee].__products[product]) {
                     map[date][assignee].__products[product] = [];
@@ -527,7 +498,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                 });
             });
 
-            // Convert Sets to arrays for rendering
             Object.keys(map).forEach(date => {
                 Object.keys(map[date]).forEach(assignee => {
                     map[date][assignee].__areas = Array.from(map[date][assignee].__areas);
