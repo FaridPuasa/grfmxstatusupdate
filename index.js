@@ -13190,7 +13190,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UWL') {
-                if ((data.data.latestLocation == "Warehouse K1") || (data.data.latestLocation == "Warehouse K2")) {
+                if (((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) || ((data.data.type == 'Delivery') && (data.data.status == 'in_sorting_area'))) {
                     if (req.body.warehouse == "Warehouse K1") {
                         update = {
                             lastUpdateDateTime: moment().format(),
@@ -14472,7 +14472,6 @@ let isProcessing = false;
 // Watch for new order inserts
 orderWatch.on('change', async (change) => {
     if (change.operationType === "insert") {
-        console.log(`New order detected: ${change.fullDocument?._id || 'Unknown ID'}`);
         queue.push(change);
         if (!isProcessing) {
             processQueue();
@@ -14493,44 +14492,33 @@ async function processQueue() {
 
 async function handleOrderChange(change) {
     try {
-        console.log(`Processing order...`);
         const result = await ORDERS.find().sort({ $natural: -1 }).limit(1);
 
-        if (!result[0] || !result[0].product || result[0].product.length === 0) {
-            console.log("No product found in order, skipping...");
-            return;
-        }
+        if (!result[0] || !result[0].product || result[0].product.length === 0) return;
 
         const order = result[0];
         const product = order.product;
 
-        console.log(`Product detected: ${product}`);
-
-        // Skip kptdp entirely
-        if (product === "kptdp") {
-            console.log("Product is kptdp. Skipping tracking number generation and WhatsApp.");
-            return;
-        }
+        if (product === "kptdp") return; // Skip kptdp orders
 
         let counterField = "";
         let suffix = "";
         let prefix = "";
         let tracker = "";
 
-        // Determine product category and counter field
         if (product.includes("pharmacy")) {
             counterField = "pharmacy";
             suffix = "GR2";
             if (product === "pharmacymoh") prefix = "MH";
             else if (product === "pharmacyjpmc") prefix = "JP";
             else if (product === "pharmacyphc") prefix = "PN";
-            else prefix = "PH"; // Fallback prefix
+            else prefix = "PH"; // fallback
         } else if (product === "localdelivery") {
             counterField = "localdelivery";
             suffix = "GR3";
             prefix = "LD";
         } else if (product === "grp") {
-            counterField = "grp"; // Make sure grp field exists in COUNTER doc
+            counterField = "grp";
             suffix = "GR4";
             prefix = "GP";
         } else if (product === "cbsl") {
@@ -14538,32 +14526,20 @@ async function handleOrderChange(change) {
             suffix = "GR5";
             prefix = "CB";
         } else {
-            console.log(`Product ${product} is not configured for tracking generation. Skipping...`);
-            return;
+            return; // Skip unknown products
         }
 
-        // Increment counter and get sequence number
         const sequence = await incrementAndGetCounter(counterField);
-        console.log(`Counter for ${counterField} incremented. New value: ${sequence}`);
-
-        // Generate Tracking Number
         tracker = generateTracker(sequence, suffix, prefix);
-        console.log(`Generated Tracking Number: ${tracker}`);
 
-        // Update order with new tracker and sequence
+        // Save both doTrackingNumber and sequence in ORDERS
         await ORDERS.findByIdAndUpdate(order._id, { doTrackingNumber: tracker, sequence: sequence });
-        console.log(`Order ${order._id} updated with tracking number and sequence.`);
 
-        // Clean phone number
         const finalPhoneNum = cleanPhoneNumber(order.receiverPhoneNumber);
         const whatsappName = order.receiverName;
 
-        // Check if should send WhatsApp
         if (shouldSendWhatsApp(product, finalPhoneNum)) {
-            console.log(`Sending WhatsApp to ${finalPhoneNum} | Name: ${whatsappName} | Tracker: ${tracker}`);
             await sendWhatsAppMessage(finalPhoneNum, whatsappName, tracker);
-        } else {
-            console.log(`WhatsApp not sent for product: ${product} or invalid phone number: ${finalPhoneNum}`);
         }
 
     } catch (err) {
@@ -14590,19 +14566,16 @@ function cleanPhoneNumber(rawPhoneNumber) {
 }
 
 function shouldSendWhatsApp(product, phoneNumber) {
-    const skipProducts = ["fmx", "bb", "fcas", "icarus", "ewe", "ewens", "temu", "kptdf", "pdu", "pure51", "mglobal", "kptdp"];
+    const skipProducts = [
+        "fmx", "bb", "fcas", "icarus", "ewe", "ewens",
+        "temu", "kptdf", "pdu", "pure51", "mglobal", "kptdp"
+    ];
     return !skipProducts.includes(product) && phoneNumber !== "N/A";
 }
 
 function generateTracker(sequence, suffix, prefix) {
-    if (sequence >= 0 && sequence <= 9) return `${suffix}0000000${sequence}${prefix}`;
-    if (sequence >= 10 && sequence <= 99) return `${suffix}000000${sequence}${prefix}`;
-    if (sequence >= 100 && sequence <= 999) return `${suffix}00000${sequence}${prefix}`;
-    if (sequence >= 1000 && sequence <= 9999) return `${suffix}0000${sequence}${prefix}`;
-    if (sequence >= 10000 && sequence <= 99999) return `${suffix}000${sequence}${prefix}`;
-    if (sequence >= 100000 && sequence <= 999999) return `${suffix}00${sequence}${prefix}`;
-    if (sequence >= 1000000 && sequence <= 9999999) return `${suffix}0${sequence}${prefix}`;
-    return `${suffix}${sequence}${prefix}`;
+    const padded = sequence.toString().padStart(8, '0');
+    return `${suffix}${padded}${prefix}`;
 }
 
 async function sendWhatsAppMessage(finalPhoneNum, name, trackingNumber) {
@@ -14617,11 +14590,10 @@ async function sendWhatsAppMessage(finalPhoneNum, name, trackingNumber) {
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b' // Replace with your actual key
+                    'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b' // Replace with your real key
                 }
             }
         );
-        console.log(`WhatsApp message sent successfully to ${finalPhoneNum}`);
     } catch (error) {
         console.error('Error sending WhatsApp:', error.response?.data || error.message);
     }
