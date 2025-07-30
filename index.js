@@ -9058,7 +9058,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (req.body.statusCode == 'FA') {
                 update = {
-                    product: "mglobal"
+                    product: "pharmacyjpmc"
                 }
 
 
@@ -10477,6 +10477,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 });
 
                                 mongoDBrun = 1;
+                                completeRun = 1;
                             } else {
                                 update = {
                                     currentStatus: "Failed Collection",
@@ -10500,7 +10501,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
 
                                 mongoDBrun = 2;
+                                completeRun = 1;
                             }
+
                             var detrackUpdateDataAttempt = {
                                 data: {
                                     do_number: consignmentID,
@@ -10551,8 +10554,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             };
 
                             DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+                            completeRun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse"
-
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
                             /* if (data.data.phone_number != null) {
@@ -10603,6 +10607,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             };
 
                             DetrackAPIrun = 2;
+                            mongoDBrun = 2;
+                            completeRun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse"
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
 
@@ -10650,13 +10656,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             };
 
                             DetrackAPIrun = 2;
+                            mongoDBrun = 2;
+                            completeRun = 1;
                             appliedStatus = "Failed Delivery, Return to Warehouse"
                             portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                         }
                     }
-
-                    mongoDBrun = 2;
-                    completeRun = 1;
                 }
 
                 if (data.data.status == 'completed') {
