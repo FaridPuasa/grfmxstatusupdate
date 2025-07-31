@@ -13,6 +13,7 @@ const bcrypt = require('bcryptjs');
 const flash = require('connect-flash');
 const NodeCache = require('node-cache');
 const urgentCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
+const codBtCache = new NodeCache({ stdTTL: 600 }); // cache for 10 minutes, adjust as needed
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -203,10 +204,14 @@ const password = process.env.PASSWORD;
 // Create an array to store processing results
 const processingResults = [];
 
+// COD/BT Collected API with Caching
 app.get('/api/codbt-collected', async (req, res) => {
     try {
-        const moment = require('moment');
-        const startDate = moment().subtract(30, 'days').startOf('day');
+        // Check Cache First
+        const cachedData = codBtCache.get('codbtData');
+        if (cachedData) {
+            return res.json(cachedData);
+        }
 
         const completedOrders = await ORDERS.find(
             { currentStatus: "Completed" },
@@ -221,10 +226,11 @@ app.get('/api/codbt-collected', async (req, res) => {
             }
         );
 
+        // Filter out NON COD and missing jobDate
         const filteredOrders = completedOrders.filter(order => {
-            if (!order.jobDate) return false; // Skip if no jobDate
-            const jobMoment = moment(order.jobDate, 'YYYY-MM-DD');
-            return jobMoment.isValid() && jobMoment.isSameOrAfter(startDate);
+            if (!order.jobDate) return false;
+            if (order.paymentMethod === "NON COD") return false;
+            return true;
         });
 
         const codBtMap = {};
@@ -256,7 +262,7 @@ app.get('/api/codbt-collected', async (req, res) => {
             });
         });
 
-        // Sort jobs per dispatcher by payment priority
+        // Optional: Sort jobs by payment priority
         Object.keys(codBtMap).forEach(date => {
             Object.keys(codBtMap[date]).forEach(dispatcher => {
                 codBtMap[date][dispatcher].jobs.sort((a, b) => {
@@ -271,18 +277,26 @@ app.get('/api/codbt-collected', async (req, res) => {
             });
         });
 
+        // Cache the result
+        codBtCache.set('codbtData', codBtMap);
+
         res.json(codBtMap);
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch COD/BT data' });
     }
 });
 
+app.get('/api/codbt-collected/refresh', (req, res) => {
+    codBtCache.del('codbtData');
+    res.json({ status: 'Cache cleared. Will refresh on next load.' });
+});
+
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         const moment = require('moment');
         const now = moment();
-        const startDate = moment().subtract(30, 'days').startOf('day');
 
         function generateLocation(order) {
             const { latestLocation, room, rackRowNum, area, jobMethod } = order;
@@ -320,27 +334,24 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
         const completedOrders = await ORDERS.find(
             { currentStatus: "Completed" },
-            { jobDate: 1, assignedTo: 1, totalPrice: 1, paymentMethod: 1 }
+            { jobDate: 1, assignedTo: 1, totalPrice: 1, paymentMethod: 1, doTrackingNumber: 1, product: 1, jobMethod: 1 }
         );
 
-        // Filter Completed Orders for COD/BT Summary (last 30 days)
-        const filteredCompleted = completedOrders.filter(order => {
-            if (!order.jobDate) return false;
-            const jobMoment = moment(order.jobDate, 'YYYY-MM-DD');
-            return jobMoment.isValid() && jobMoment.isSameOrAfter(startDate);
-        });
-
+        // COD/BT Map - Exclude NON COD, No 30-day limit
         const codBtMap = {};
-        filteredCompleted.forEach(order => {
-            const date = moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY");
-            const dispatcher = order.assignedTo || "Unassigned";
-            const totalPrice = Number(order.totalPrice) || 0;
-            const paymentMethod = order.paymentMethod || '';
+        completedOrders.forEach(order => {
+            if (!order.jobDate) return;
+            if (order.paymentMethod === "NON COD") return;
 
+            const totalPrice = Number(order.totalPrice) || 0;
             if (totalPrice === 0) return;
 
+            const date = moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY");
+            const dispatcher = order.assignedTo || "Unassigned";
+            const paymentMethod = order.paymentMethod || '';
+
             if (!codBtMap[date]) codBtMap[date] = {};
-            if (!codBtMap[date][dispatcher]) codBtMap[date][dispatcher] = { total: 0, cash: 0, bt: 0 };
+            if (!codBtMap[date][dispatcher]) codBtMap[date][dispatcher] = { total: 0, cash: 0, bt: 0, jobs: [] };
 
             codBtMap[date][dispatcher].total += totalPrice;
 
@@ -349,8 +360,15 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
                 codBtMap[date][dispatcher].bt += totalPrice;
             }
-        });
 
+            codBtMap[date][dispatcher].jobs.push({
+                doTrackingNumber: order.doTrackingNumber || '-',
+                product: order.product || '-',
+                jobMethod: order.jobMethod || '-',
+                paymentMethod: paymentMethod,
+                totalPrice: totalPrice
+            });
+        });
 
         const categorize = (orders, filterFn) => {
             const map = {};
@@ -524,11 +542,87 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             user: req.user,
             orders: []
         });
+
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
 });
+
+async function checkActiveDeliveriesStatus() {
+    try {
+        console.log(`[${new Date().toISOString()}] Starting delivery status check...`);
+
+        const activeOrders = await ORDERS.find({ currentStatus: "Out for Delivery" }, { doTrackingNumber: 1 });
+
+        console.log(`Found ${activeOrders.length} active deliveries to check.`);
+
+        for (let order of activeOrders) {
+            const trackingNumber = order.doTrackingNumber;
+            if (!trackingNumber) {
+                console.log(`Skipping order with missing tracking number.`);
+                continue;
+            }
+
+            console.log(`Checking tracking number: ${trackingNumber}...`);
+
+            try {
+                const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/`, {
+                    params: { do_number: trackingNumber },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': 'd4dfab3975765c8ffa920d9a0c6bda0c12d17a35a946d337'
+                    }
+                });
+
+                const data = response.data;
+                console.log(`Detrack response for ${trackingNumber}: Status = ${data.data.status}`);
+
+                if (data.data.status && data.data.status.toLowerCase() === 'completed') {
+                    console.log(`Order ${trackingNumber} is completed. Updating MongoDB...`);
+
+                    const filter = { doTrackingNumber: trackingNumber };
+                    const update = {
+                        currentStatus: "Completed",
+                        lastUpdateDateTime: moment().format(),
+                        latestLocation: "Customer",
+                        lastUpdatedBy: "System",
+                        $push: {
+                            history: {
+                                statusHistory: "Completed",
+                                dateUpdated: moment().format(),
+                                updatedBy: "System",
+                                lastAssignedTo: data.data.assign_to || '-',
+                                lastLocation: "Customer"
+                            }
+                        }
+                    };
+                    const options = { upsert: false, new: false };
+
+                    const result = await ORDERS.findOneAndUpdate(filter, update, options);
+                    console.log(`Order ${trackingNumber} updated successfully.`);
+                } else {
+                    console.log(`Order ${trackingNumber} is not completed yet.`);
+                }
+
+            } catch (apiError) {
+                console.error(`Error checking tracking ${trackingNumber}:`, apiError.response ? apiError.response.data : apiError.message);
+            }
+
+            // Delay between requests to avoid API rate limit
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        console.log(`Delivery status check finished.`);
+
+    } catch (error) {
+        console.error('Watcher encountered an error:', error);
+    }
+}
+
+// Run every 10 minutes
+setInterval(checkActiveDeliveriesStatus, 600000);
+checkActiveDeliveriesStatus(); // Run once on server start
 
 // Optional: refresh route to clear urgent cache
 app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
@@ -7866,7 +7960,6 @@ app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
         res.status(500).send('Internal Server Error');
     }
 });
-
 
 app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const customerAddresses = req.body.customerAddresses.split('\n');
