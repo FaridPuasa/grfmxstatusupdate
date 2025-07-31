@@ -553,18 +553,23 @@ async function checkActiveDeliveriesStatus() {
     try {
         console.log(`[${new Date().toISOString()}] Starting delivery status check...`);
 
-        const activeOrders = await ORDERS.find({ currentStatus: "Out for Delivery" }, { doTrackingNumber: 1 });
+        const activeOrders = await ORDERS.find(
+            { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
+            { doTrackingNumber: 1, currentStatus: 1 }
+        );
 
-        console.log(`Found ${activeOrders.length} active deliveries to check.`);
+        console.log(`Found ${activeOrders.length} active deliveries (Out for Delivery / Self Collect / Drop Off) to check.`);
 
         for (let order of activeOrders) {
             const trackingNumber = order.doTrackingNumber;
+            const currentStatus = order.currentStatus;
+
             if (!trackingNumber) {
                 console.log(`Skipping order with missing tracking number.`);
                 continue;
             }
 
-            console.log(`Checking tracking number: ${trackingNumber}...`);
+            console.log(`Checking tracking number: ${trackingNumber} [Current Status: ${currentStatus}]...`);
 
             try {
                 const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/`, {
@@ -579,25 +584,48 @@ async function checkActiveDeliveriesStatus() {
                 console.log(`Detrack response for ${trackingNumber}: Status = ${data.data.status}`);
 
                 if (data.data.status && data.data.status.toLowerCase() === 'completed') {
-                    console.log(`Order ${trackingNumber} is completed. Updating MongoDB...`);
+                    let filter = { doTrackingNumber: trackingNumber };
+                    let update = {};
+                    let options = { upsert: false, new: false };
 
-                    const filter = { doTrackingNumber: trackingNumber };
-                    const update = {
-                        currentStatus: "Completed",
-                        lastUpdateDateTime: moment().format(),
-                        latestLocation: "Customer",
-                        lastUpdatedBy: "System",
-                        $push: {
-                            history: {
-                                statusHistory: "Completed",
-                                dateUpdated: moment().format(),
-                                updatedBy: "System",
-                                lastAssignedTo: data.data.assign_to || '-',
-                                lastLocation: "Customer"
+                    if (currentStatus === "Out for Delivery" || currentStatus === "Self Collect") {
+                        console.log(`Order ${trackingNumber} (${currentStatus}) is completed. Updating as Delivered to Customer.`);
+                        update = {
+                            currentStatus: "Completed",
+                            lastUpdateDateTime: moment().format(),
+                            latestLocation: "Customer",
+                            lastUpdatedBy: "System",
+                            $push: {
+                                history: {
+                                    statusHistory: "Completed",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "System",
+                                    lastAssignedTo: data.data.assign_to || '-',
+                                    lastLocation: "Customer"
+                                }
                             }
-                        }
-                    };
-                    const options = { upsert: false, new: false };
+                        };
+                    } else if (currentStatus === "Drop Off") {
+                        console.log(`Order ${trackingNumber} (Drop Off) is completed. Updating as Returned to Warehouse.`);
+                        const warehouseEntryCheckDateTime = moment().format();
+                        update = {
+                            currentStatus: "Completed",
+                            lastUpdateDateTime: moment().format(),
+                            latestLocation: "K1 Warehouse",
+                            lastUpdatedBy: "System",
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                            $push: {
+                                history: {
+                                    statusHistory: "Completed",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: "System",
+                                    lastAssignedTo: "Selfcollect",
+                                    lastLocation: "K1 Warehouse"
+                                }
+                            }
+                        };
+                    }
 
                     const result = await ORDERS.findOneAndUpdate(filter, update, options);
                     console.log(`Order ${trackingNumber} updated successfully.`);
