@@ -682,121 +682,211 @@
 </div>
 
 <div class="container mt-5">
-    <h1 class="text-center">Out For Delivery</h1>
+    <h1 class="text-center">In Progress / Completed</h1>
 
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="deliveries-tab" data-bs-toggle="tab" data-bs-target="#deliveries-content" type="button" role="tab">Active Deliveries</button>
+            <button class="nav-link active" id="activejobs-tab" data-bs-toggle="tab" data-bs-target="#activejobs-content" type="button" role="tab" aria-controls="activejobs-content" aria-selected="true">
+                Active Jobs
+            </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="codbt-tab" data-bs-toggle="tab" data-bs-target="#codbt-content" type="button" role="tab">COD/BT Collected</button>
+            <button class="nav-link" id="codbt-tab" data-bs-toggle="tab" data-bs-target="#codbt-content" type="button" role="tab" aria-controls="codbt-content" aria-selected="false">
+                COD/BT Collected
+            </button>
         </li>
     </ul>
 
     <div class="tab-content">
-        <!-- Deliveries Tab Content -->
-        <div class="tab-pane fade show active" id="deliveries-content" role="tabpanel">
-            <% if (Object.keys(deliveriesMap).length === 0) { %>
-                <p class="text-center text-muted">No deliveries found.</p>
-            <% } else { %>
-                <% Object.keys(deliveriesMap).forEach((date, dateIndex) => { 
-                    let dateCount = 0;
-                    Object.keys(deliveriesMap[date]).forEach(assignee => {
-                        Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
-                            dateCount += deliveriesMap[date][assignee].__products[product].length;
-                        });
+        <!-- Active Jobs Tab -->
+        <div class="tab-pane fade show active" id="activejobs-content" role="tabpanel" aria-labelledby="activejobs-tab">
+    <% if (Object.keys(deliveriesMap).length === 0) { %>
+        <p class="text-center text-muted">No jobs found.</p>
+    <% } else { %>
+        <% Object.keys(deliveriesMap).forEach((date, dateIndex) => {
+            // Calculate total jobs for badge
+            let dateCount = 0;
+            Object.keys(deliveriesMap[date]).forEach(assignee => {
+                if (assignee === 'Selfcollect') {
+                    // Sum all job method counts for Selfcollect
+                    const statuses = deliveriesMap[date][assignee].__statuses || {};
+                    Object.keys(statuses).forEach(st => {
+                        dateCount += statuses[st].length;
                     });
-                %>
-                    <div class="card my-3">
-                        <div class="card-header d-flex align-items-center toggle-header"
-                            style="cursor: pointer; width: 100%;" data-bs-toggle="collapse"
-                            data-bs-target="#collapse-deliveries-<%= dateIndex %>">
-                            <div style="flex-grow: 1;">
-                                <strong><%= date %></strong>
-                            </div>
-                            <span class="badge bg-primary ms-3"><%= dateCount %> orders</span>
-                            <i class="bi bi-caret-down-fill ms-3"></i>
-                        </div>
-                        <div class="collapse" id="collapse-deliveries-<%= dateIndex %>">
-                            <div class="card-body p-0">
-                                <% Object.keys(deliveriesMap[date]).forEach((assignee, assignIndex) => {
-                                    let assigneeCount = 0;
-                                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
-                                        assigneeCount += deliveriesMap[date][assignee].__products[product].length;
-                                    });
-                                %>
-                                    <div class="card my-2 mx-3">
-                                        <div class="card-header d-flex align-items-center toggle-header"
-                                            style="cursor: pointer; width: 100%;"
-                                            data-bs-toggle="collapse"
-                                            data-bs-target="#collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>">
-                                            <div style="flex-grow: 1;">
-                                                <strong>
-                                                    <%= assignee %>
-                                                    <% if (deliveriesMap[date][assignee].__areas.length > 0) { %>
-                                                        ( <%= deliveriesMap[date][assignee].__areas.join(', ') %> )
-                                                    <% } %>
-                                                </strong>
-                                            </div>
-                                            <span class="badge bg-success ms-3"><%= assigneeCount %> orders</span>
-                                            <i class="bi bi-caret-down-fill ms-3"></i>
-                                        </div>
-                                        <div class="collapse" id="collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>">
-                                            <div class="card-body p-0">
-                                                <% Object.keys(deliveriesMap[date][assignee].__products).forEach((product, prodIndex) => {
-                                                    let productCount = deliveriesMap[date][assignee].__products[product].length;
-                                                %>
-                                                    <div class="card my-2 mx-3">
-                                                        <div class="card-header d-flex align-items-center toggle-header"
-                                                            style="cursor: pointer; width: 100%;"
-                                                            data-bs-toggle="collapse"
-                                                            data-bs-target="#collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
-                                                            <div style="flex-grow: 1;">
-                                                                <strong><%= product.toUpperCase() %></strong>
-                                                            </div>
-                                                            <span class="badge bg-warning text-dark ms-3"><%= productCount %> orders</span>
-                                                            <i class="bi bi-caret-down-fill ms-3"></i>
-                                                        </div>
-                                                        <div class="collapse" id="collapse-deliveries-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
-                                                            <div class="card-body p-0">
-                                                                <table class="table table-sm table-bordered mb-0">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Tracking Number</th>
-                                                                            <th>Area</th>
-                                                                            <th>Name</th>
-                                                                            <th>Main Phone</th>
-                                                                            <th>Go Rush Remark</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <% deliveriesMap[date][assignee].__products[product].forEach(order => { %>
-                                                                            <tr>
-                                                                                <td><%= order.doTrackingNumber %></td>
-                                                                                <td><%= order.area || '-' %></td>
-                                                                                <td><%= order.receiverName %></td>
-                                                                                <td><%= order.receiverPhoneNumber %></td>
-                                                                                <td><%= order.grRemark %></td>
-                                                                            </tr>
-                                                                        <% }) %>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                <% }) %>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <% }) %>
-                            </div>
-                        </div>
+                } else {
+                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
+                        dateCount += deliveriesMap[date][assignee].__products[product].length;
+                    });
+                }
+            });
+        %>
+            <div class="card my-3">
+                <div class="card-header d-flex align-items-center toggle-header"
+                    style="cursor: pointer; width: 100%;" data-bs-toggle="collapse"
+                    data-bs-target="#collapse-activejobs-<%= dateIndex %>">
+                    <div style="flex-grow: 1;">
+                        <strong><%= date %></strong>
                     </div>
-                <% }) %>
-            <% } %>
-        </div>
+                    <span class="badge bg-primary ms-3"><%= dateCount %> jobs</span>
+                    <i class="bi bi-caret-down-fill ms-3"></i>
+                </div>
+                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>">
+                    <div class="card-body p-0">
+                        <% 
+                            // Separate Selfcollect and other dispatchers
+                            const otherDispatchers = [];
+                            let selfcollectDispatcher = null;
+                            Object.keys(deliveriesMap[date]).forEach(assignee => {
+                                if (assignee === 'Selfcollect') {
+                                    selfcollectDispatcher = deliveriesMap[date][assignee];
+                                } else {
+                                    otherDispatchers.push({ name: assignee, data: deliveriesMap[date][assignee] });
+                                }
+                            });
 
-        <!-- COD/BT Collected Tab Content -->
+                            // Sort other dispatchers alphabetically
+                            otherDispatchers.sort((a,b) => a.name.localeCompare(b.name));
+
+                            // Render other dispatchers first
+                            otherDispatchers.forEach((disp, assignIndex) => {
+                                let assigneeCount = 0;
+                                Object.keys(disp.data.__products).forEach(product => {
+                                    assigneeCount += disp.data.__products[product].length;
+                                });
+                        %>
+                            <div class="card my-2 mx-3">
+                                <div class="card-header d-flex align-items-center toggle-header"
+                                    style="cursor: pointer; width: 100%;"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>">
+                                    <div style="flex-grow: 1;">
+                                        <strong><%= disp.name %> <span style="font-weight:normal;">(<%= disp.data.__areas ? disp.data.__areas.join(', ') : '' %>)</span></strong>
+                                    </div>
+                                    <span class="badge bg-success ms-3"><%= assigneeCount %> jobs</span>
+                                    <i class="bi bi-caret-down-fill ms-3"></i>
+                                </div>
+                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>">
+                                    <div class="card-body p-0">
+                                        <% Object.keys(disp.data.__products).forEach((product, prodIndex) => {
+                                            const productCount = disp.data.__products[product].length;
+                                        %>
+                                            <div class="card my-2 mx-3">
+                                                <div class="card-header d-flex align-items-center toggle-header"
+                                                    style="cursor: pointer; width: 100%;"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
+                                                    <div style="flex-grow: 1;">
+                                                        <strong><%= product.toUpperCase() %></strong>
+                                                    </div>
+                                                    <span class="badge bg-warning text-dark ms-3"><%= productCount %> jobs</span>
+                                                    <i class="bi bi-caret-down-fill ms-3"></i>
+                                                </div>
+                                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
+                                                    <div class="card-body p-0">
+                                                        <table class="table table-sm table-bordered mb-0">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Tracking Number</th>
+                                                                    <th>Area</th>
+                                                                    <th>Name</th>
+                                                                    <th>Main Phone</th>
+                                                                    <th>Go Rush Remark</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <% disp.data.__products[product].forEach(order => { %>
+                                                                    <tr>
+                                                                        <td><%= order.doTrackingNumber %></td>
+                                                                        <td><%= order.area || '-' %></td>
+                                                                        <td><%= order.receiverName %></td>
+                                                                        <td><%= order.receiverPhoneNumber %></td>
+                                                                        <td><%= order.grRemark %></td>
+                                                                    </tr>
+                                                                <% }) %>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+
+                        <% if (selfcollectDispatcher) { 
+                            // Get job methods for Selfcollect in sorted order
+                            const statuses = selfcollectDispatcher.__statuses || {};
+                            const jobMethodsOrder = ['Self Collect', 'Drop Off'];
+                            const availableJobMethods = jobMethodsOrder.filter(m => statuses[m] && statuses[m].length > 0);
+                        %>
+                            <div class="card my-2 mx-3">
+                                <div class="card-header d-flex align-items-center toggle-header"
+                                    style="cursor: pointer; width: 100%;"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect">
+                                    <div style="flex-grow: 1;">
+                                        <strong>Selfcollect <span style="font-weight:normal;">(<%= availableJobMethods.join(', ') %>)</span></strong>
+                                    </div>
+                                    <span class="badge bg-success ms-3">
+                                        <%= availableJobMethods.reduce((acc, method) => acc + statuses[method].length, 0) %> jobs
+                                    </span>
+                                    <i class="bi bi-caret-down-fill ms-3"></i>
+                                </div>
+                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-selfcollect">
+                                    <div class="card-body p-0">
+                                        <% availableJobMethods.forEach((jobMethod, statusIndex) => {
+                                            const jobs = statuses[jobMethod];
+                                        %>
+                                            <div class="card my-2 mx-3">
+                                                <div class="card-header d-flex align-items-center toggle-header"
+                                                    style="cursor: pointer; width: 100%;"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>">
+                                                    <div style="flex-grow: 1;">
+                                                        <strong><%= jobMethod %></strong>
+                                                    </div>
+                                                    <span class="badge bg-success ms-3"><%= jobs.length %> jobs</span>
+                                                    <i class="bi bi-caret-down-fill ms-3"></i>
+                                                </div>
+                                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>">
+                                                    <div class="card-body p-0">
+                                                        <table class="table table-sm table-bordered mb-0">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Tracking Number</th>
+                                                                    <th>Name</th>
+                                                                    <th>Main Phone</th>
+                                                                    <th>Go Rush Remark</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <% jobs.forEach(order => { %>
+                                                                    <tr>
+                                                                        <td><%= order.doTrackingNumber %></td>
+                                                                        <td><%= order.receiverName %></td>
+                                                                        <td><%= order.receiverPhoneNumber %></td>
+                                                                        <td><%= order.grRemark %></td>
+                                                                    </tr>
+                                                                <% }) %>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    <% } %>
+</div>
+
+        <!-- COD/BT Collected Tab -->
         <div class="tab-pane fade" id="codbt-content" role="tabpanel" aria-labelledby="codbt-tab">
             <div class="row mt-3">
                 <div class="col-md-4">
@@ -828,6 +918,7 @@
             </div>
         </div>
     </div>
+    </div>
 
                     <% } %>
     </div>
@@ -840,12 +931,11 @@
 
 <script>
     let codBtData = null;
-    let codBtDataLoaded = false;
 
     async function loadCodBtData() {
-        if (codBtDataLoaded) return;
+        const selectedDate = document.getElementById('codbt-date-picker').value;
+        const formattedDate = moment(selectedDate).format('YYYY-MM-DD');
 
-        // Show spinner immediately
         const tableBody = document.getElementById('codbt-table-body');
         tableBody.innerHTML = `
             <tr id="codbt-loading-spinner">
@@ -856,9 +946,9 @@
         `;
 
         try {
-            const response = await fetch('/api/codbt-collected');
-            codBtData = await response.json();
-            codBtDataLoaded = true;
+            const response = await fetch(`/api/codbt-collected?date=${formattedDate}`);
+            const data = await response.json();
+            codBtData = data;
             refreshCodBtTable();
         } catch (error) {
             console.error('Failed to fetch COD/BT data:', error);
@@ -867,94 +957,158 @@
     }
 
     function refreshCodBtTable() {
-        const selectedDate = document.getElementById('codbt-date-picker').value;
-        const formattedDate = moment(selectedDate).format('DD-MM-YYYY');
+    const selectedDate = document.getElementById('codbt-date-picker').value;
+    const formattedDate = moment(selectedDate).format('DD-MM-YYYY');
 
-        const tableBody = document.getElementById('codbt-table-body');
-        tableBody.innerHTML = ''; // clear spinner or previous data
+    const tableBody = document.getElementById('codbt-table-body');
+    tableBody.innerHTML = '';
 
-        if (codBtData && codBtData[formattedDate]) {
-            const dispatchers = codBtData[formattedDate];
-            let hasData = false;
+    if (codBtData && codBtData[formattedDate]) {
+        const dispatchers = codBtData[formattedDate];
+        let grandTotal = 0;
+        let grandCash = 0;
+        let grandBT = 0;
 
-            let grandTotal = 0;
-            let grandCash = 0;
-            let grandBT = 0;
+        // First render other dispatchers
+        Object.keys(dispatchers).forEach((dispatcher, index) => {
+            if (dispatcher === 'Selfcollect') return;  // Skip Selfcollect for now
 
-            Object.keys(dispatchers).forEach((dispatcher, index) => {
-                const data = dispatchers[dispatcher];
+            const data = dispatchers[dispatcher];
+            const totalAmount = data.total || 0;
+            const cashAmount = data.cash || 0;
+            const btAmount = data.bt || 0;
 
-                const totalAmount = data.total || 0;
-                const cashAmount = data.cash || 0;
-                const btAmount = data.bt || 0;
+            if (totalAmount > 0 || cashAmount > 0 || btAmount > 0) {
+                const collapseId = `dispatcher-collapse-${index}`;
 
-                if (totalAmount > 0 || cashAmount > 0 || btAmount > 0) {
-                    hasData = true;
-
-                    grandTotal += totalAmount;
-                    grandCash += cashAmount;
-                    grandBT += btAmount;
-
-                    const collapseId = `dispatcher-collapse-${index}`;
-
-                    const summaryRow = `
-                        <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
-                            <td>${dispatcher}</td>
-                            <td>${totalAmount.toFixed(2)}</td>
-                            <td>${cashAmount.toFixed(2)}</td>
-                            <td>${btAmount.toFixed(2)}</td>
-                        </tr>
-                        <tr class="collapse" id="${collapseId}">
-                            <td colspan="4">
-                                <table class="table table-sm table-bordered mb-0">
-                                    <thead>
+                const summaryRow = `
+                    <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
+                        <td>${dispatcher}</td>
+                        <td>${totalAmount.toFixed(2)}</td>
+                        <td>${cashAmount.toFixed(2)}</td>
+                        <td>${btAmount.toFixed(2)}</td>
+                    </tr>
+                    <tr class="collapse" id="${collapseId}">
+                        <td colspan="4">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Tracking Number</th>
+                                        <th>Product</th>
+                                        <th>Delivery Type</th>
+                                        <th>Payment Method</th>
+                                        <th>Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.jobs.map(job => `
                                         <tr>
-                                            <th>Tracking Number</th>
-                                            <th>Product</th>
-                                            <th>Delivery Type</th>
-                                            <th>Payment Method</th>
-                                            <th>Total Amount</th>
+                                            <td>${job.doTrackingNumber}</td>
+                                            <td>${job.product}</td>
+                                            <td>${job.jobMethod}</td>
+                                            <td>${job.paymentMethod}</td>
+                                            <td>${job.totalPrice.toFixed(2)}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${data.jobs.map(job => `
-                                            <tr>
-                                                <td>${job.doTrackingNumber}</td>
-                                                <td>${job.product}</td>
-                                                <td>${job.jobMethod}</td>
-                                                <td>${job.paymentMethod}</td>
-                                                <td>${job.totalPrice.toFixed(2)}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </td>
-                        </tr>
-                    `;
-                    tableBody.insertAdjacentHTML('beforeend', summaryRow);
-                }
-            });
-
-            if (hasData) {
-                const grandRow = `
-                    <tr class="table-success fw-bold">
-                        <td>Grand Total</td>
-                        <td>${grandTotal.toFixed(2)}</td>
-                        <td>${grandCash.toFixed(2)}</td>
-                        <td>${grandBT.toFixed(2)}</td>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </td>
                     </tr>
                 `;
-                tableBody.insertAdjacentHTML('beforeend', grandRow);
-            } else {
-                tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>';
-            }
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>';
-        }
-    }
+                tableBody.insertAdjacentHTML('beforeend', summaryRow);
 
+                grandTotal += totalAmount;
+                grandCash += cashAmount;
+                grandBT += btAmount;
+            }
+        });
+
+        // Then render Selfcollect
+        if (dispatchers['Selfcollect'] && dispatchers['Selfcollect'].__statuses) {
+            const statuses = dispatchers['Selfcollect'].__statuses;
+            let selfcollectJobs = [];
+
+            // Gather jobs from statuses into one array with jobMethod sort order
+            Object.keys(statuses).forEach(status => {
+                selfcollectJobs = selfcollectJobs.concat(statuses[status].jobs);
+            });
+
+            // Sort jobs: Self Collect first, then Drop Off
+            selfcollectJobs.sort((a, b) => {
+                if (a.jobMethod === b.jobMethod) return 0;
+                if (a.jobMethod === 'Self Collect') return -1;
+                if (b.jobMethod === 'Self Collect') return 1;
+                return 0;
+            });
+
+            const totalAmount = selfcollectJobs.reduce((sum, job) => sum + (job.totalPrice || 0), 0);
+            const cashAmount = selfcollectJobs.reduce((sum, job) => sum + (job.paymentMethod === 'Cash' ? job.totalPrice : 0), 0);
+            const btAmount = selfcollectJobs.reduce((sum, job) => {
+                return sum + ((job.paymentMethod.includes('Bank Transfer') || job.paymentMethod.includes('Bill Payment')) ? job.totalPrice : 0);
+            }, 0);
+
+            const collapseId = `selfcollect-collapse`;
+
+            const summaryRow = `
+                <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
+                    <td>Selfcollect</td>
+                    <td>${totalAmount.toFixed(2)}</td>
+                    <td>${cashAmount.toFixed(2)}</td>
+                    <td>${btAmount.toFixed(2)}</td>
+                </tr>
+                <tr class="collapse" id="${collapseId}">
+                    <td colspan="4">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Tracking Number</th>
+                                    <th>Product</th>
+                                    <th>Delivery Type</th>
+                                    <th>Payment Method</th>
+                                    <th>Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${selfcollectJobs.map(job => `
+                                    <tr>
+                                        <td>${job.doTrackingNumber}</td>
+                                        <td>${job.product}</td>
+                                        <td>${job.jobMethod}</td>
+                                        <td>${job.paymentMethod}</td>
+                                        <td>${job.totalPrice.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            `;
+            tableBody.insertAdjacentHTML('beforeend', summaryRow);
+
+            grandTotal += totalAmount;
+            grandCash += cashAmount;
+            grandBT += btAmount;
+        }
+
+        // Grand Total Row
+        const grandRow = `
+            <tr class="table-success fw-bold">
+                <td>Grand Total</td>
+                <td>${grandTotal.toFixed(2)}</td>
+                <td>${grandCash.toFixed(2)}</td>
+                <td>${grandBT.toFixed(2)}</td>
+            </tr>
+        `;
+        tableBody.insertAdjacentHTML('beforeend', grandRow);
+
+    } else {
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>';
+    }
+}
+
+    // Event listeners
     document.getElementById('codbt-date-picker').addEventListener('change', () => {
-        if (codBtDataLoaded) refreshCodBtTable();
+        loadCodBtData();
     });
 
     document.getElementById('codbt-tab').addEventListener('shown.bs.tab', () => {
@@ -962,11 +1116,10 @@
     });
 
     document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
-        codBtDataLoaded = false;
         loadCodBtData();
     });
 
-    // Set date picker default to today
+    // Initialize date picker to today
     document.getElementById('codbt-date-picker').value = moment().format('YYYY-MM-DD');
 </script>
 

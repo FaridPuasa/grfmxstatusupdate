@@ -184,7 +184,7 @@ const ORDERS = require('./models/ORDERS');
 const WAORDERS = require('./models/WAORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 const NONCODPOD = require('./models/NONCODPOD');
-const ORDERCOUNTER  = require('./models/ORDERCOUNTER');
+const ORDERCOUNTER = require('./models/ORDERCOUNTER');
 
 const COUNTER_ID = "68897ff1c0ccfbcb817e0c15";
 
@@ -204,93 +204,136 @@ const password = process.env.PASSWORD;
 // Create an array to store processing results
 const processingResults = [];
 
-// COD/BT Collected API with Caching
+// COD/BT Collected API with date filtering and caching
 app.get('/api/codbt-collected', async (req, res) => {
     try {
-        // Check Cache First
-        const cachedData = codBtCache.get('codbtData');
-        if (cachedData) {
-            return res.json(cachedData);
+        const moment = require('moment');
+        const dateParam = req.query.date; // expecting YYYY-MM-DD format
+
+        if (!dateParam) {
+            return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
         }
 
-        const completedOrders = await ORDERS.find(
-            { currentStatus: "Completed" },
-            {
-                jobDate: 1,
-                assignedTo: 1,
-                totalPrice: 1,
-                paymentMethod: 1,
-                doTrackingNumber: 1,
-                product: 1,
-                jobMethod: 1
-            }
-        );
+        const formattedDateKey = moment(dateParam, 'YYYY-MM-DD').format('DD-MM-YYYY');
 
-        // Filter out NON COD and missing jobDate
-        const filteredOrders = completedOrders.filter(order => {
-            if (!order.jobDate) return false;
-            if (order.paymentMethod === "NON COD") return false;
-            return true;
-        });
+        // Check Cache First for specific date
+        const cachedData = codBtCache.get(formattedDateKey);
+        if (cachedData) {
+            return res.json({ [formattedDateKey]: cachedData });
+        }
 
-        const codBtMap = {};
-        filteredOrders.forEach(order => {
+        // Fetch completed orders for the date, exclude NON COD and no empty product
+        const completedOrders = await ORDERS.find({
+            currentStatus: "Completed",
+            jobDate: dateParam,
+            paymentMethod: { $ne: "NON COD" },
+            product: { $nin: [null, ""] }
+        }).lean();
+
+        if (!completedOrders || completedOrders.length === 0) {
+            // No data found for this date
+            return res.json({ [formattedDateKey]: {} });
+        }
+
+        // Grouping map
+        const dispatcherMap = {};
+
+        completedOrders.forEach(order => {
             const totalPrice = Number(order.totalPrice) || 0;
-            if (totalPrice === 0) return;
+            if (totalPrice <= 0) return; // skip zero totals
 
-            const date = moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY");
             const dispatcher = order.assignedTo || "Unassigned";
             const paymentMethod = order.paymentMethod || '';
+            const currentStatus = order.currentStatus || '';
 
-            if (!codBtMap[date]) codBtMap[date] = {};
-            if (!codBtMap[date][dispatcher]) codBtMap[date][dispatcher] = { total: 0, cash: 0, bt: 0, jobs: [] };
+            // Normalize keys if needed (optional)
+            // e.g. dispatcher = dispatcher.trim();
 
-            codBtMap[date][dispatcher].total += totalPrice;
+            if (dispatcher === 'Selfcollect') {
+                if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { __statuses: {} };
 
-            if (paymentMethod === "Cash") {
-                codBtMap[date][dispatcher].cash += totalPrice;
-            } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
-                codBtMap[date][dispatcher].bt += totalPrice;
-            }
+                if (!dispatcherMap[dispatcher].__statuses[currentStatus]) {
+                    dispatcherMap[dispatcher].__statuses[currentStatus] = { total: 0, cash: 0, bt: 0, jobs: [] };
+                }
 
-            codBtMap[date][dispatcher].jobs.push({
-                doTrackingNumber: order.doTrackingNumber || '-',
-                product: order.product || '-',
-                jobMethod: order.jobMethod || '-',
-                paymentMethod: paymentMethod,
-                totalPrice: totalPrice
-            });
-        });
+                const statusGroup = dispatcherMap[dispatcher].__statuses[currentStatus];
+                statusGroup.total += totalPrice;
 
-        // Optional: Sort jobs by payment priority
-        Object.keys(codBtMap).forEach(date => {
-            Object.keys(codBtMap[date]).forEach(dispatcher => {
-                codBtMap[date][dispatcher].jobs.sort((a, b) => {
-                    const priority = method => {
-                        if (method === "Cash") return 1;
-                        if (method.includes("Bank Transfer")) return 2;
-                        if (method.includes("Bill Payment")) return 3;
-                        return 4;
-                    };
-                    return priority(a.paymentMethod) - priority(b.paymentMethod);
+                if (paymentMethod === "Cash") {
+                    statusGroup.cash += totalPrice;
+                } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
+                    statusGroup.bt += totalPrice;
+                }
+
+                statusGroup.jobs.push({
+                    doTrackingNumber: order.doTrackingNumber || '-',
+                    product: order.product || '-',
+                    jobMethod: order.jobMethod || '-',
+                    paymentMethod: paymentMethod,
+                    totalPrice: totalPrice
                 });
-            });
+
+            } else {
+                if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { total: 0, cash: 0, bt: 0, jobs: [] };
+
+                dispatcherMap[dispatcher].total += totalPrice;
+                if (paymentMethod === "Cash") {
+                    dispatcherMap[dispatcher].cash += totalPrice;
+                } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
+                    dispatcherMap[dispatcher].bt += totalPrice;
+                }
+
+                dispatcherMap[dispatcher].jobs.push({
+                    doTrackingNumber: order.doTrackingNumber || '-',
+                    product: order.product || '-',
+                    jobMethod: order.jobMethod || '-',
+                    paymentMethod: paymentMethod,
+                    totalPrice: totalPrice
+                });
+            }
         });
 
-        // Cache the result
-        codBtCache.set('codbtData', codBtMap);
+        // Sort dispatcher keys, placing 'Selfcollect' last
+        const orderedDispatcherMap = {};
+        Object.keys(dispatcherMap)
+            .sort((a, b) => {
+                if (a === 'Selfcollect') return 1;
+                if (b === 'Selfcollect') return -1;
+                return a.localeCompare(b);
+            })
+            .forEach(dispatcher => {
+                if (dispatcher === 'Selfcollect') {
+                    // Sort Selfcollect __statuses keys with "Self Collect" first then "Drop Off"
+                    const statuses = dispatcherMap[dispatcher].__statuses;
+                    const orderedStatuses = {};
 
-        res.json(codBtMap);
+                    ['Self Collect', 'Drop Off']
+                        .filter(status => statuses[status])
+                        .forEach(status => {
+                            orderedStatuses[status] = statuses[status];
+                        });
+
+                    // Add any other statuses at the end
+                    Object.keys(statuses)
+                        .filter(s => !['Self Collect', 'Drop Off'].includes(s))
+                        .forEach(s => {
+                            orderedStatuses[s] = statuses[s];
+                        });
+
+                    dispatcherMap[dispatcher].__statuses = orderedStatuses;
+                }
+
+                orderedDispatcherMap[dispatcher] = dispatcherMap[dispatcher];
+            });
+
+        codBtCache.set(formattedDateKey, orderedDispatcherMap);
+
+        return res.json({ [formattedDateKey]: orderedDispatcherMap });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch COD/BT data' });
+        console.error('Error in /api/codbt-collected:', error);
+        return res.status(500).json({ error: 'Failed to fetch COD/BT data' });
     }
-});
-
-app.get('/api/codbt-collected/refresh', (req, res) => {
-    codBtCache.del('codbtData');
-    res.json({ status: 'Cache cleared. Will refresh on next load.' });
 });
 
 app.get('/', ensureAuthenticated, async (req, res) => {
@@ -328,8 +371,8 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         );
 
         const deliveryOrders = await ORDERS.find(
-            { currentStatus: "Out for Delivery" },
-            { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1 }
+            { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
+            { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
         );
 
         const completedOrders = await ORDERS.find(
@@ -491,6 +534,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                 age <= 30;
         });
 
+        // Group deliveries
         const deliveriesMap = (() => {
             const map = {};
             const assigneeAreas = {};
@@ -500,29 +544,64 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                 const assignee = order.assignedTo || "Unassigned";
                 const product = order.product || "Unknown";
                 const area = order.area || "Unknown";
+                const currentStatus = order.currentStatus || "Unknown";
 
                 if (!map[date]) map[date] = {};
-                if (!map[date][assignee]) map[date][assignee] = { __areas: new Set(), __products: {} };
 
-                map[date][assignee].__areas.add(area);
+                if (assignee === 'Selfcollect') {
+                    // Handle Selfcollect differently
+                    if (!map[date][assignee]) map[date][assignee] = { __statuses: {} };
 
-                if (!map[date][assignee].__products[product]) {
-                    map[date][assignee].__products[product] = [];
+                    if (!map[date][assignee].__statuses[currentStatus]) {
+                        map[date][assignee].__statuses[currentStatus] = [];
+                    }
+
+                    map[date][assignee].__statuses[currentStatus].push({
+                        doTrackingNumber: order.doTrackingNumber || '-',
+                        receiverName: order.receiverName || '-',
+                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                        grRemark: order.grRemark || '-'
+                    });
+
+                } else {
+                    // Normal dispatchers grouped by area and product
+                    if (!map[date][assignee]) map[date][assignee] = { __areas: new Set(), __products: {} };
+
+                    map[date][assignee].__areas.add(area);
+
+                    if (!map[date][assignee].__products[product]) {
+                        map[date][assignee].__products[product] = [];
+                    }
+
+                    map[date][assignee].__products[product].push({
+                        doTrackingNumber: order.doTrackingNumber || '-',
+                        area: area,
+                        receiverName: order.receiverName || '-',
+                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                        grRemark: order.grRemark || '-'
+                    });
                 }
-
-                map[date][assignee].__products[product].push({
-                    doTrackingNumber: order.doTrackingNumber || '-',
-                    area: order.area || '-',
-                    receiverName: order.receiverName || '-',
-                    receiverPhoneNumber: order.receiverPhoneNumber || '-',
-                    grRemark: order.grRemark || '-'
-                });
             });
 
+            // Convert __areas Set to Array for frontend rendering
             Object.keys(map).forEach(date => {
                 Object.keys(map[date]).forEach(assignee => {
-                    map[date][assignee].__areas = Array.from(map[date][assignee].__areas);
+                    if (assignee !== 'Selfcollect') {
+                        map[date][assignee].__areas = Array.from(map[date][assignee].__areas);
+                    }
                 });
+
+                // Ensure Selfcollect always placed last by ordering keys manually
+                const ordered = {};
+                Object.keys(map[date]).sort((a, b) => {
+                    if (a === 'Selfcollect') return 1; // Move Selfcollect to bottom
+                    if (b === 'Selfcollect') return -1;
+                    return a.localeCompare(b);
+                }).forEach(key => {
+                    ordered[key] = map[date][key];
+                });
+
+                map[date] = ordered;
             });
 
             return map;
@@ -551,25 +630,18 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
 async function checkActiveDeliveriesStatus() {
     try {
-        console.log(`[${new Date().toISOString()}] Starting delivery status check...`);
-
         const activeOrders = await ORDERS.find(
             { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
             { doTrackingNumber: 1, currentStatus: 1 }
         );
-
-        console.log(`Found ${activeOrders.length} active deliveries (Out for Delivery / Self Collect / Drop Off) to check.`);
 
         for (let order of activeOrders) {
             const trackingNumber = order.doTrackingNumber;
             const currentStatus = order.currentStatus;
 
             if (!trackingNumber) {
-                console.log(`Skipping order with missing tracking number.`);
                 continue;
             }
-
-            console.log(`Checking tracking number: ${trackingNumber} [Current Status: ${currentStatus}]...`);
 
             try {
                 const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/`, {
@@ -581,7 +653,6 @@ async function checkActiveDeliveriesStatus() {
                 });
 
                 const data = response.data;
-                console.log(`Detrack response for ${trackingNumber}: Status = ${data.data.status}`);
 
                 if (data.data.status && data.data.status.toLowerCase() === 'completed') {
                     let filter = { doTrackingNumber: trackingNumber };
@@ -589,7 +660,6 @@ async function checkActiveDeliveriesStatus() {
                     let options = { upsert: false, new: false };
 
                     if (currentStatus === "Out for Delivery" || currentStatus === "Self Collect") {
-                        console.log(`Order ${trackingNumber} (${currentStatus}) is completed. Updating as Delivered to Customer.`);
                         update = {
                             currentStatus: "Completed",
                             lastUpdateDateTime: moment().format(),
@@ -606,7 +676,6 @@ async function checkActiveDeliveriesStatus() {
                             }
                         };
                     } else if (currentStatus === "Drop Off") {
-                        console.log(`Order ${trackingNumber} (Drop Off) is completed. Updating as Returned to Warehouse.`);
                         const warehouseEntryCheckDateTime = moment().format();
                         update = {
                             currentStatus: "Completed",
@@ -640,8 +709,6 @@ async function checkActiveDeliveriesStatus() {
             // Delay between requests to avoid API rate limit
             await new Promise(resolve => setTimeout(resolve, 500));
         }
-
-        console.log(`Delivery status check finished.`);
 
     } catch (error) {
         console.error('Watcher encountered an error:', error);
@@ -1053,8 +1120,6 @@ app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req
             ])
             .sort({ _id: -1 })
             .limit(3000);
-
-        console.log(waorders)
 
         const totalRecords = waorders.length;
 
@@ -8455,8 +8520,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             // Skip empty lines
             if (!consignmentID) continue;
 
-            console.log('Processing Consignment ID:', consignmentID);
-
             // Step 2: Make the first API GET request to fetch data from Detrack
             const response1 = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
                 headers: {
@@ -8482,8 +8545,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 // Handle the case where data.data.phone_number is null or empty
                 finalPhoneNum = "No phone number provided";
             }
-
-            console.log(finalPhoneNum); // Output the final phone number
 
             for (let i = 0; i < counttaskhistory; i++) {
                 if (data.data.milestones[i].status == 'completed') {
