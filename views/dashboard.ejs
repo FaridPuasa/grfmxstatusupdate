@@ -956,6 +956,36 @@
         }
     }
 
+    // Helper to group jobs by payment method in desired order
+    function groupJobsByPaymentMethod(jobs) {
+        const paymentGroups = {
+            cash: [],
+            bankTransfer: [],
+            billPayment: [],
+            others: []
+        };
+
+        jobs.forEach(job => {
+            const pm = job.paymentMethod.toLowerCase();
+            if (pm === 'cash') {
+                paymentGroups.cash.push(job);
+            } else if (pm.includes('bank transfer')) {
+                paymentGroups.bankTransfer.push(job);
+            } else if (pm.includes('bill payment')) {
+                paymentGroups.billPayment.push(job);
+            } else {
+                paymentGroups.others.push(job);
+            }
+        });
+
+        return [
+            ...paymentGroups.cash,
+            ...paymentGroups.bankTransfer,
+            ...paymentGroups.billPayment,
+            ...paymentGroups.others
+        ];
+    }
+
     function refreshCodBtTable() {
     const selectedDate = document.getElementById('codbt-date-picker').value;
     const formattedDate = moment(selectedDate).format('DD-MM-YYYY');
@@ -969,10 +999,33 @@
         let grandCash = 0;
         let grandBT = 0;
 
-        // First render other dispatchers
-        Object.keys(dispatchers).forEach((dispatcher, index) => {
-            if (dispatcher === 'Selfcollect') return;  // Skip Selfcollect for now
+        // Helper to sort jobs by payment method: Cash, Bank Transfer, Bill Payment
+        function sortJobsByPayment(jobs) {
+            const cashJobs = [];
+            const bankTransferJobs = [];
+            const billPaymentJobs = [];
+            const others = [];
 
+            jobs.forEach(job => {
+                const pm = job.paymentMethod || '';
+                if (pm === 'Cash') {
+                    cashJobs.push(job);
+                } else if (pm.includes('Bank Transfer')) {
+                    bankTransferJobs.push(job);
+                } else if (pm.includes('Bill Payment')) {
+                    billPaymentJobs.push(job);
+                } else {
+                    others.push(job);
+                }
+            });
+
+            return [...cashJobs, ...bankTransferJobs, ...billPaymentJobs, ...others];
+        }
+
+        // Render all dispatchers except Selfcollect first (sorted alphabetically)
+        const dispatcherNames = Object.keys(dispatchers).filter(d => d !== 'Selfcollect').sort();
+
+        dispatcherNames.forEach((dispatcher, index) => {
             const data = dispatchers[dispatcher];
             const totalAmount = data.total || 0;
             const cashAmount = data.cash || 0;
@@ -980,6 +1033,8 @@
 
             if (totalAmount > 0 || cashAmount > 0 || btAmount > 0) {
                 const collapseId = `dispatcher-collapse-${index}`;
+
+                const sortedJobs = sortJobsByPayment(data.jobs || []);
 
                 const summaryRow = `
                     <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
@@ -1001,7 +1056,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${data.jobs.map(job => `
+                                    ${sortedJobs.map(job => `
                                         <tr>
                                             <td>${job.doTrackingNumber}</td>
                                             <td>${job.product}</td>
@@ -1023,74 +1078,77 @@
             }
         });
 
-        // Then render Selfcollect
-        if (dispatchers['Selfcollect'] && dispatchers['Selfcollect'].__statuses) {
-            const statuses = dispatchers['Selfcollect'].__statuses;
-            let selfcollectJobs = [];
+        // Render Selfcollect last, as a single dispatcher row named "Selfcollect"
+        const selfcollectData = dispatchers['Selfcollect'];
+        if (selfcollectData && selfcollectData.__statuses) {
+            // Aggregate totals for Selfcollect over both statuses
+            let scTotal = 0, scCash = 0, scBT = 0;
+            const jobsByStatus = {};
+            const statusOrder = ['Self Collect', 'Drop Off'];
 
-            // Gather jobs from statuses into one array with jobMethod sort order
-            Object.keys(statuses).forEach(status => {
-                selfcollectJobs = selfcollectJobs.concat(statuses[status].jobs);
+            // Collect all jobs per status & accumulate totals
+            statusOrder.forEach(status => {
+                const statusData = selfcollectData.__statuses[status];
+                if (statusData) {
+                    scTotal += statusData.total || 0;
+                    scCash += statusData.cash || 0;
+                    scBT += statusData.bt || 0;
+                    jobsByStatus[status] = statusData.jobs || [];
+                } else {
+                    jobsByStatus[status] = [];
+                }
             });
 
-            // Sort jobs: Self Collect first, then Drop Off
-            selfcollectJobs.sort((a, b) => {
-                if (a.jobMethod === b.jobMethod) return 0;
-                if (a.jobMethod === 'Self Collect') return -1;
-                if (b.jobMethod === 'Self Collect') return 1;
-                return 0;
-            });
+            if (scTotal > 0 || scCash > 0 || scBT > 0) {
+                const collapseId = `dispatcher-collapse-selfcollect`;
 
-            const totalAmount = selfcollectJobs.reduce((sum, job) => sum + (job.totalPrice || 0), 0);
-            const cashAmount = selfcollectJobs.reduce((sum, job) => sum + (job.paymentMethod === 'Cash' ? job.totalPrice : 0), 0);
-            const btAmount = selfcollectJobs.reduce((sum, job) => {
-                return sum + ((job.paymentMethod.includes('Bank Transfer') || job.paymentMethod.includes('Bill Payment')) ? job.totalPrice : 0);
-            }, 0);
+                // Flatten jobs: Self Collect jobs first, then Drop Off jobs
+                const allJobs = [...jobsByStatus['Self Collect'], ...jobsByStatus['Drop Off']];
+                const sortedJobs = sortJobsByPayment(allJobs);
 
-            const collapseId = `selfcollect-collapse`;
-
-            const summaryRow = `
-                <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
-                    <td>Selfcollect</td>
-                    <td>${totalAmount.toFixed(2)}</td>
-                    <td>${cashAmount.toFixed(2)}</td>
-                    <td>${btAmount.toFixed(2)}</td>
-                </tr>
-                <tr class="collapse" id="${collapseId}">
-                    <td colspan="4">
-                        <table class="table table-sm table-bordered mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Tracking Number</th>
-                                    <th>Product</th>
-                                    <th>Delivery Type</th>
-                                    <th>Payment Method</th>
-                                    <th>Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${selfcollectJobs.map(job => `
+                const summaryRow = `
+                    <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
+                        <td>Selfcollect</td>
+                        <td>${scTotal.toFixed(2)}</td>
+                        <td>${scCash.toFixed(2)}</td>
+                        <td>${scBT.toFixed(2)}</td>
+                    </tr>
+                    <tr class="collapse" id="${collapseId}">
+                        <td colspan="4">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead>
                                     <tr>
-                                        <td>${job.doTrackingNumber}</td>
-                                        <td>${job.product}</td>
-                                        <td>${job.jobMethod}</td>
-                                        <td>${job.paymentMethod}</td>
-                                        <td>${job.totalPrice.toFixed(2)}</td>
+                                        <th>Tracking Number</th>
+                                        <th>Product</th>
+                                        <th>Delivery Type</th>
+                                        <th>Payment Method</th>
+                                        <th>Total Amount</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
-            `;
-            tableBody.insertAdjacentHTML('beforeend', summaryRow);
+                                </thead>
+                                <tbody>
+                                    ${sortedJobs.map(job => `
+                                        <tr>
+                                            <td>${job.doTrackingNumber}</td>
+                                            <td>${job.product}</td>
+                                            <td>${job.jobMethod}</td>
+                                            <td>${job.paymentMethod}</td>
+                                            <td>${job.totalPrice.toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', summaryRow);
 
-            grandTotal += totalAmount;
-            grandCash += cashAmount;
-            grandBT += btAmount;
+                grandTotal += scTotal;
+                grandCash += scCash;
+                grandBT += scBT;
+            }
         }
 
-        // Grand Total Row
+        // Grand Total row
         const grandRow = `
             <tr class="table-success fw-bold">
                 <td>Grand Total</td>

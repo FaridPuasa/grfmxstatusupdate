@@ -250,13 +250,16 @@ app.get('/api/codbt-collected', async (req, res) => {
             // e.g. dispatcher = dispatcher.trim();
 
             if (dispatcher === 'Selfcollect') {
+                const jobMethod = order.jobMethod || 'Unknown';  // Use jobMethod for statuses
+
                 if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { __statuses: {} };
 
-                if (!dispatcherMap[dispatcher].__statuses[currentStatus]) {
-                    dispatcherMap[dispatcher].__statuses[currentStatus] = { total: 0, cash: 0, bt: 0, jobs: [] };
+                if (!dispatcherMap[dispatcher].__statuses[jobMethod]) {
+                    dispatcherMap[dispatcher].__statuses[jobMethod] = { total: 0, cash: 0, bt: 0, jobs: [] };
                 }
 
-                const statusGroup = dispatcherMap[dispatcher].__statuses[currentStatus];
+                const statusGroup = dispatcherMap[dispatcher].__statuses[jobMethod];
+
                 statusGroup.total += totalPrice;
 
                 if (paymentMethod === "Cash") {
