@@ -668,6 +668,7 @@ async function checkActiveDeliveriesStatus() {
                             lastUpdateDateTime: moment().format(),
                             latestLocation: "Customer",
                             lastUpdatedBy: "System",
+                            assignedTo: data.data.assign_to || '-',
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -687,6 +688,7 @@ async function checkActiveDeliveriesStatus() {
                             lastUpdatedBy: "System",
                             warehouseEntry: "Yes",
                             warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                            assignedTo: "Selfcollect",
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
@@ -8434,30 +8436,122 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
     res.render('successAddressArea', { entries: result, user: req.user });
 });
 
-// Handle form submission for /scanFMX route
-app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    // Check if it's Sunday between 3 AM and 9 AM
-    const now = moment();
-    const isSunday = now.day() === 0;
-    const isWithinRestrictedTime = now.hour() >= 0 && now.hour() < 12;
+async function updateDetrackStatus(consignmentID, apiKey, detrackUpdateDataAttempt, detrackUpdateData) {
+    try {
+        // First API Call: Increase Attempt
+        const attemptResponse = await axios.post(
+            'https://app.detrack.com/api/v2/dn/jobs/reattempt',
+            detrackUpdateDataAttempt,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                }
+            }
+        );
 
-    let accessToken = null; // Initialize the accessToken variable
+        if (attemptResponse.status === 200) {
+            console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
+        } else {
+            console.error(`Failed to increase attempt for Tracking Number: ${consignmentID}`);
+            return;
+        }
 
-    if (!(isSunday && isWithinRestrictedTime)) {
-        /*
-        // Step 1: Authenticate and get accessToken
-        const authResponse = await axios.post('https://client.fmx.asia/api/tokenauth/authenticate', {
-            userNameOrEmailAddress: username,
-            password: password,
-            source: 'string'
-        });
+        // Small Delay to avoid API race condition
+        await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
 
-        accessToken = authResponse.data.result.accessToken;
-        */
-    } else {
-        console.log("Skipping authentication because it's Sunday between 12 AM and 12 PM.");
+        // Second API Call: Update Status
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                const updateResponse = await axios.put(
+                    'https://app.detrack.com/api/v2/dn/jobs/update',
+                    detrackUpdateData,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey
+                        }
+                    }
+                );
+
+                if (updateResponse.status === 200) {
+                    console.log(`Detrack Status Updated for Tracking Number: ${consignmentID}`);
+                    break;
+                } else {
+                    throw new Error(`Status Code: ${updateResponse.status}`);
+                }
+            } catch (err) {
+                retries--;
+                console.error(`Error updating Detrack Status for ${consignmentID}. Retries left: ${retries}`);
+                if (retries === 0) {
+                    console.error(`Final failure for Detrack Status Update for ${consignmentID}`);
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 sec before retry
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error(`Unexpected error for Tracking Number: ${consignmentID}`, error.message);
     }
-    // Split the tracking numbers by newlines
+}
+
+async function updateDetrackStatusWithRetry(consignmentID, apiKey, updateData, attempt = 1) {
+    try {
+        const response = await axios.put(
+            'https://app.detrack.com/api/v2/dn/jobs/update',
+            updateData,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                }
+            }
+        );
+        console.log(`[SUCCESS] Detrack Updated to "${updateData.data.status}" - Attempt ${attempt} - Tracking: ${consignmentID}`);
+        return true;
+    } catch (error) {
+        console.error(`[FAIL] Attempt ${attempt} Failed - Status: "${updateData.data.status}" - Tracking: ${consignmentID} - Error: ${error.message}`);
+        if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+            return updateDetrackStatusWithRetry(consignmentID, apiKey, updateData, attempt + 1);
+        } else {
+            console.error(`[FINAL FAIL] Unable to update Detrack Status: "${updateData.data.status}" - Tracking: ${consignmentID}`);
+            return false;
+        }
+    }
+}
+
+async function increaseDetrackAttempt(consignmentID, apiKey, detrackUpdateDataAttempt, attempt = 1) {
+    try {
+        const response = await axios.post(
+            'https://app.detrack.com/api/v2/dn/jobs/reattempt',
+            detrackUpdateDataAttempt,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                }
+            }
+        );
+        console.log(`Attempt increased by 1 for Consignment ID: ${consignmentID} (Attempt ${attempt})`);
+        return true;
+    } catch (error) {
+        console.error(`Attempt ${attempt} to increase attempt failed for Tracking Number: ${consignmentID} - Error: ${error.message}`);
+        if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // exponential backoff
+            return increaseDetrackAttempt(consignmentID, apiKey, detrackUpdateDataAttempt, attempt + 1);
+        } else {
+            console.error(`Final failure to increase attempt for Tracking Number: ${consignmentID}`);
+            return false;
+        }
+    }
+}
+
+// Handle form submission
+app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    let accessToken = null; // Initialize the accessToken variable
 
     const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());
 
@@ -8474,22 +8568,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     for (const consignmentID of uniqueConsignmentIDsArray) {
         try {
             var DetrackAPIrun = 0;
-            var FMXAPIrun = 0;
             var mongoDBrun = 0;
             var completeRun = 0;
             var ceCheck = 0;
             var warehouseEntryCheck = 0;
-            var waOrderArrivedDeliverStandard = 0;
-            var waOrderArrivedDeliverExpressMedicine = 0;
-            var waOrderArrivedDeliverExpressNonMedicine = 0;
-            var waOrderArrivedDeliverImmediate = 0;
-            var waOrderArrivedPickup = 0;
-            var waOrderArrivedDeliverFMX = 0;
             var waOrderFailedDelivery = 0;
             var waOrderCompletedFeedback = 0;
             var product = '';
             var latestPODDate = "";
-            var fmxUpdate = "";
             var portalUpdate = "";
             var currentDetrackStatus = "";
             var detrackReason = "";
@@ -8500,9 +8586,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var currentProduct = "";
             var warehouseEntryCheckDateTime = "";
             var completedCheckDateTime = "";
-            var fmxMilestoneCode = "";
             var remarkSC = '';
-            var wmsAttempt = 0;
             var maxAttempt = 0;
             var unattemptedTimes = 0;
             var itemsArray = []; // Array to hold items for the new order
@@ -8519,6 +8603,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var finalLDPrice = '';
             var lastMilestoneStatus = '';
             var finalPhoneNum = '';
+            var finalArea = "";
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -8555,21 +8640,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     completedCheckDateTime = data.data.milestones[i].created_at;
                 }
 
-                if (data.data.milestones[i].status == 'failed') {
-                    detrackReason = data.data.milestones[i].reason;
-                    if (data.data.milestones[i].reason == "Unattempted Delivery") {
-                        wmsAttempt = wmsAttempt - 1;
-                        unattemptedTimes = unattemptedTimes + 1;
-                    }
-                }
-
                 if ((data.data.milestones[i].status == 'at_warehouse') && (warehouseEntryCheck == 0)) {
                     warehouseEntryCheckDateTime = data.data.milestones[i].created_at;
                     warehouseEntryCheck = 1;
-                }
-
-                if ((data.data.milestones[i].status == "out_for_delivery") || (data.data.milestones[i].status == "dispatched")) {
-                    wmsAttempt = wmsAttempt + 1;
                 }
             }
 
@@ -9241,12 +9314,16 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             else if (address.includes("TEMBURONG") == true) { area = "TEMBURONG" }
             else { area = "N/A" }
 
+            if (data.data.zone != null) {
+                finalArea = data.data.zone;
+            } else {
+                finalArea = area;
+            }
+
             if (req.body.statusCode == 'FA') {
                 update = {
                     product: "pharmacyjpmc"
                 }
-
-
 
                 /* newOrder = new ORDERS({
                     area: area,
@@ -9524,40 +9601,29 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if (data.data.type == 'Collection') {
                             newOrder = new ORDERS({
                                 area: area,
-                                items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
                                     statusHistory: "Info Received",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
                                     lastLocation: "Customer",
                                 }],
-                                lastAssignedTo: "N/A",
                                 latestLocation: "Customer",
                                 product: currentProduct,
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
+                                senderName: "TEMU",
                                 totalPrice: 0,
                                 receiverName: data.data.deliver_to_collect_from,
                                 trackingLink: data.data.tracking_link,
                                 currentStatus: "Info Received",
-                                paymentMethod: data.data.payment_mode,
+                                paymentMethod: "NON COD",
                                 warehouseEntry: "No",
                                 warehouseEntryDateTime: "N/A",
                                 receiverAddress: data.data.address,
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                latestReason: "N/A",
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
-                                jobDate: "N/A",
-                                flightDate: "N/A",
-                                mawbNo: "N/A",
                                 lastUpdatedBy: req.user.name,
-                                parcelWeight: "N/A",
                                 receiverPostalCode: postalCode,
                                 jobType: data.data.type,
                                 jobMethod: data.data.job_type,
@@ -9572,7 +9638,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
-            if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
+            /* if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
                 if (existingOrder === null) {
                     if (product == 'PDU') {
                         newOrder = new ORDERS({
@@ -9728,25 +9794,23 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
-            }
+            } */
 
             if (req.body.statusCode == 12) {
                 if ((data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
                     update = {
+                        area: finalArea,
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
                         warehouseEntry: "Yes",
                         warehouseEntryDateTime: moment().format(),
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
                         $push: {
                             history: {
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
                                 lastLocation: req.body.warehouse,
                             }
                         }
@@ -9756,6 +9820,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         do_number: consignmentID,
                         data: {
                             status: "", // Use the calculated dStatus
+                            zone: finalArea,
                         }
                     };
 
@@ -9764,11 +9829,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     mongoDBrun = 2;
                     DetrackAPIrun = 4;
                     completeRun = 1;
-
                 }
 
                 if ((data.data.status == 'info_recv') && (product == 'CBSL')) {
                     update = {
+                        area: finalArea,
                         currentStatus: "At Warehouse",
                         lastUpdateDateTime: moment().format(),
                         warehouseEntry: "Yes",
@@ -9776,14 +9841,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         attempt: data.data.attempt,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
                         $push: {
                             history: {
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
                                 lastLocation: req.body.warehouse,
                             }
                         }
@@ -9796,7 +9858,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         data: {
                             status: "", // Use the calculated dStatus
                             do_number: data.data.tracking_number,
-                            tracking_number: consignmentID
+                            tracking_number: consignmentID,
+                            zone: finalArea,
                         }
                     };
 
@@ -9816,27 +9879,23 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if ((data.data.status == 'info_recv') && (product == 'KPTDP')) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
-                            area: area,
+                            area: finalArea,
                             items: itemsArray, // Use the dynamically created items array
                             attempt: data.data.attempt,
                             history: [{
                                 statusHistory: "At Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
                                 lastLocation: req.body.warehouse,
                             }],
-                            lastAssignedTo: "N/A",
                             latestLocation: req.body.warehouse,
                             product: currentProduct,
-                            assignedTo: "N/A",
                             senderName: "KPT",
                             totalPrice: data.data.total_price,
                             receiverName: data.data.deliver_to_collect_from,
                             trackingLink: data.data.tracking_link,
                             currentStatus: "At Warehouse",
-                            paymentMethod: data.data.payment_mode,
+                            paymentMethod: "NON COD",
                             warehouseEntry: "Yes",
                             warehouseEntryDateTime: moment().format(),
                             receiverAddress: data.data.address,
@@ -9844,12 +9903,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             doTrackingNumber: consignmentID,
                             parcelTrackingNum: data.data.tracking_number,
                             remarks: data.data.remarks,
-                            latestReason: "N/A",
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
-                            jobDate: "N/A",
                             lastUpdatedBy: req.user.name,
-                            parcelWeight: data.data.weight,
                             receiverPostalCode: postalCode,
                             jobType: data.data.type,
                             jobMethod: data.data.job_type,
@@ -9862,7 +9918,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             data: {
                                 status: "", // Use the calculated dStatus
                                 zone: area,
-                                phone_number: finalPhoneNum
+                                phone_number: finalPhoneNum,
+                                zone: finalArea,
                             }
                         };
 
@@ -9875,7 +9932,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 if ((data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL') && (product != 'TEMU') && (product != 'PDU') && (product != 'KPTDP') && (product != 'MGLOBAL')) {
                     if (existingOrder === null) {
-                        if ((product == 'EWE') || (product == 'EWENS')) {
+                        /* if ((product == 'EWE') || (product == 'EWENS')) {
                             newOrder = new ORDERS({
                                 area: area,
                                 items: itemsArray, // Use the dynamically created items array
@@ -9931,83 +9988,76 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             mongoDBrun = 1;
                             DetrackAPIrun = 4;
                             completeRun = 1;
-                        } else {
-                            newOrder = new ORDERS({
-                                area: area,
-                                items: [{
-                                    quantity: data.data.items[0].quantity,
-                                    description: data.data.items[0].description,
-                                    totalItemPrice: data.data.total_price
-                                }],
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
-                                    lastLocation: req.body.warehouse,
-                                }],
-                                lastAssignedTo: "N/A",
-                                latestLocation: req.body.warehouse,
-                                product: currentProduct,
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "At Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: finalPhoneNum,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                latestReason: "N/A",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: "N/A",
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                                fridge: "No"
-                            });
+                        } else { */
+                        newOrder = new ORDERS({
+                            area: finalArea,
+                            items: [{
+                                quantity: data.data.items[0].quantity,
+                                description: data.data.items[0].description,
+                                totalItemPrice: data.data.total_price
+                            }],
+                            attempt: data.data.attempt,
+                            history: [{
+                                statusHistory: "At Warehouse",
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                lastLocation: req.body.warehouse,
+                            }],
+                            latestLocation: req.body.warehouse,
+                            product: currentProduct,
+                            senderName: data.data.job_owner,
+                            totalPrice: data.data.total_price,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "At Warehouse",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: finalPhoneNum,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: data.data.job_type,
+                            fridge: "No"
+                        });
 
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "", // Use the calculated dStatus
-                                    zone: area,
-                                    phone_number: finalPhoneNum
-                                }
-                            };
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                                zone: area,
+                                phone_number: finalPhoneNum,
+                                zone: finalArea,
+                            }
+                        };
 
-                            portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
+                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
 
-                            mongoDBrun = 1;
-                            DetrackAPIrun = 4;
-                            completeRun = 1;
-                        }
+                        mongoDBrun = 1;
+                        DetrackAPIrun = 4;
+                        completeRun = 1;
+                        /* } */
 
                     } else {
                         update = {
+                            area: finalArea,
                             currentStatus: "At Warehouse",
                             lastUpdateDateTime: moment().format(),
                             warehouseEntry: "Yes",
                             warehouseEntryDateTime: moment().format(),
                             latestLocation: req.body.warehouse,
                             lastUpdatedBy: req.user.name,
-                            lastAssignedTo: "N/A",
                             fridge: "No",
                             $push: {
                                 history: {
                                     statusHistory: "At Warehouse",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
                                     lastLocation: req.body.warehouse,
                                 }
                             }
@@ -10018,7 +10068,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             data: {
                                 status: "", // Use the calculated dStatus
                                 zone: area,
-                                phone_number: finalPhoneNum
+                                phone_number: finalPhoneNum,
+                                zone: finalArea,
                             }
                         };
 
@@ -10036,7 +10087,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (existingOrder === null) {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             newOrder = new ORDERS({
-                                area: area,
+                                area: finalArea,
                                 items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
@@ -10044,10 +10095,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: "N/A",
                                     lastLocation: "Customer",
                                 }],
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 latestLocation: "Customer",
                                 product: currentProduct,
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
@@ -10063,14 +10112,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
                                 remarks: data.data.remarks,
-                                latestReason: "N/A",
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
                                 lastUpdatedBy: req.user.name,
-                                parcelWeight: data.data.weight,
                                 receiverPostalCode: postalCode,
                                 jobType: data.data.type,
                                 jobMethod: data.data.job_type,
@@ -10083,7 +10128,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched"
+                                    status: "dispatched",
+                                    zone: finalArea,
                                 }
                             };
 
@@ -10091,7 +10137,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         } else {
                             newOrder = new ORDERS({
-                                area: area,
+                                area: finalArea,
                                 items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
@@ -10099,10 +10145,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: req.body.dispatchers,
-                                    reason: "N/A",
                                     lastLocation: "Customer",
                                 }],
-                                lastAssignedTo: req.body.dispatchers,
                                 latestLocation: "Customer",
                                 product: currentProduct,
                                 assignedTo: req.body.dispatchers,
@@ -10118,7 +10162,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
                                 remarks: data.data.remarks,
-                                latestReason: "N/A",
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: req.body.assignDate,
@@ -10138,7 +10181,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched"
+                                    status: "dispatched",
+                                    zone: finalArea,
                                 }
                             };
 
@@ -10152,6 +10196,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                             update = {
+                                area: finalArea,
                                 currentStatus: "Out for Collection",
                                 lastUpdateDateTime: moment().format(),
                                 instructions: data.data.remarks,
@@ -10160,14 +10205,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: "Customer",
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Collection",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "N/A",
                                         lastLocation: "Customer",
                                     }
                                 }
@@ -10180,7 +10223,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched"
+                                    status: "dispatched",
+                                    zone: finalArea,
                                 }
                             };
 
@@ -10188,6 +10232,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         } else {
                             update = {
+                                area: finalArea,
                                 currentStatus: "Out for Collection",
                                 lastUpdateDateTime: moment().format(),
                                 instructions: data.data.remarks,
@@ -10196,14 +10241,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: "Customer",
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Collection",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers,
-                                        reason: "N/A",
                                         lastLocation: "Customer",
                                     }
                                 }
@@ -10216,7 +10259,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 data: {
                                     date: req.body.assignDate, // Get the Assign Date from the form
                                     assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched"
+                                    status: "dispatched",
+                                    zone: finalArea,
                                 }
                             };
 
@@ -10234,7 +10278,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
-                                area: area,
+                                area: finalArea,
                                 items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
@@ -10245,10 +10289,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     reason: detrackReason,
                                     lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 }],
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 product: currentProduct,
-                                assignedTo: "N/A",
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
                                 receiverName: data.data.deliver_to_collect_from,
@@ -10277,6 +10320,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             mongoDBrun = 1;
                         } else {
                             update = {
+                                area: finalArea,
                                 currentStatus: "Out for Delivery",
                                 lastUpdateDateTime: moment().format(),
                                 instructions: data.data.remarks,
@@ -10285,21 +10329,18 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "N/A",
                                         lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                     }
                                 }
                             }
 
                             mongoDBrun = 2;
-
                         }
 
                         var detrackUpdateData = {
@@ -10307,7 +10348,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                status: "dispatched"
+                                status: "dispatched",
+                                zone: finalArea,
                             }
                         };
 
@@ -10316,7 +10358,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
-                                area: area,
+                                area: finalArea,
                                 items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
@@ -10327,10 +10369,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     reason: detrackReason,
                                     lastLocation: req.body.dispatchers,
                                 }],
-                                lastAssignedTo: req.body.dispatchers,
                                 latestLocation: req.body.dispatchers,
                                 product: currentProduct,
-                                assignedTo: "N/A",
+                                assignedTo: req.body.dispatchers,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
                                 receiverName: data.data.deliver_to_collect_from,
@@ -10359,6 +10400,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             mongoDBrun = 1;
                         } else {
                             update = {
+                                area: finalArea,
                                 currentStatus: "Out for Delivery",
                                 lastUpdateDateTime: moment().format(),
                                 instructions: data.data.remarks,
@@ -10367,7 +10409,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers,
                                 $push: {
                                     history: {
                                         statusHistory: "Out for Delivery",
@@ -10388,7 +10429,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             data: {
                                 date: req.body.assignDate, // Get the Assign Date from the form
                                 assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                status: "dispatched"
+                                status: "dispatched",
+                                zone: finalArea,
                             }
                         };
 
@@ -10411,7 +10453,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
@@ -10445,7 +10486,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers,
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
@@ -10480,7 +10520,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 jobDate: req.body.assignDate,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
@@ -10515,7 +10554,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: req.body.dispatchers,
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
@@ -10553,7 +10591,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if (data.data.reason == "Unattempted Collection") {
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
-                                    area: area,
+                                    area: finalArea,
                                     items: itemsArray, // Use the dynamically created items array
                                     attempt: data.data.attempt,
                                     history: [{
@@ -10564,7 +10602,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         reason: data.data.reason,
                                         lastLocation: "Customer",
                                     }],
-                                    lastAssignedTo: data.data.assign_to,
                                     latestLocation: "Customer",
                                     product: currentProduct,
                                     assignedTo: "N/A",
@@ -10603,7 +10640,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     attempt: data.data.attempt,
                                     latestLocation: "Customer",
                                     lastUpdatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Collection",
@@ -10621,7 +10657,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         } else {
                             if (existingOrder === null) {
                                 newOrder = new ORDERS({
-                                    area: area,
+                                    area: finalArea,
                                     items: itemsArray, // Use the dynamically created items array
                                     attempt: data.data.attempt + 1,
                                     history: [{
@@ -10632,7 +10668,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         reason: data.data.reason,
                                         lastLocation: "Customer",
                                     }],
-                                    lastAssignedTo: data.data.assign_to,
                                     latestLocation: "Customer",
                                     product: currentProduct,
                                     assignedTo: "N/A",
@@ -10672,7 +10707,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     attempt: data.data.attempt + 1,
                                     latestLocation: "Customer",
                                     lastUpdatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
                                     $push: {
                                         history: {
                                             statusHistory: "Failed Collection",
@@ -10710,7 +10744,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: data.data.attempt,
                                 latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -10724,8 +10757,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         statusHistory: "Return to Warehouse",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
                                         lastLocation: req.body.warehouse,
                                     }
                                 }
@@ -10756,7 +10787,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: data.data.attempt + 1,
                                 latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
                                 grRemark: "Reschedule to self collect requested by customer",
                                 $push: {
                                     history: {
@@ -10771,8 +10801,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         statusHistory: "Return to Warehouse",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
                                         lastLocation: req.body.warehouse,
                                     }
                                 }
@@ -10806,7 +10834,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 attempt: data.data.attempt + 1,
                                 latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
                                 $push: {
                                     history: {
                                         statusHistory: "Failed Delivery",
@@ -10820,8 +10847,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         statusHistory: "Return to Warehouse",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
-                                        lastAssignedTo: "N/A",
-                                        reason: "N/A",
                                         lastLocation: req.body.warehouse,
                                     }
                                 }
@@ -10853,7 +10878,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (data.data.type == 'Collection') {
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
-                                area: area,
+                                area: finalArea,
                                 items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
@@ -10861,13 +10886,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
-                                    reason: "N/A",
                                     lastLocation: req.body.warehouse,
                                 }],
-                                lastAssignedTo: data.data.assign_to,
                                 latestLocation: req.body.warehouse,
                                 product: currentProduct,
-                                assignedTo: "N/A",
+                                assignedTo: data.data.assign_to,
                                 senderName: data.data.job_owner,
                                 totalPrice: 0,
                                 receiverName: data.data.deliver_to_collect_from,
@@ -10900,16 +10923,15 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
                                 warehouseEntry: "Yes",
                                 warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                                assignedTo: data.data.assign_to,
                                 $push: {
                                     history: {
                                         statusHistory: "Completed",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
-                                        reason: "N/A",
                                         lastLocation: req.body.warehouse,
                                     }
                                 }
@@ -10920,7 +10942,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
-                                area: area,
+                                area: finalArea,
                                 items: itemsArray, // Use the dynamically created items array
                                 attempt: data.data.attempt,
                                 history: [{
@@ -10928,13 +10950,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to,
-                                    reason: "N/A",
                                     lastLocation: "Customer",
                                 }],
-                                lastAssignedTo: data.data.assign_to,
                                 latestLocation: "Customer",
                                 product: currentProduct,
-                                assignedTo: "N/A",
+                                assignedTo: data.data.assign_to,
                                 senderName: data.data.job_owner,
                                 totalPrice: data.data.total_price,
                                 receiverName: data.data.deliver_to_collect_from,
@@ -10947,7 +10967,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 receiverPhoneNumber: data.data.phone_number,
                                 doTrackingNumber: consignmentID,
                                 remarks: data.data.remarks,
-                                latestReason: "N/A",
                                 lastUpdateDateTime: moment().format(),
                                 creationDate: data.data.created_at,
                                 jobDate: data.data.date,
@@ -10967,14 +10986,13 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdateDateTime: moment().format(),
                                 latestLocation: "Customer",
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: data.data.assign_to,
+                                assignedTo: data.data.assign_to,
                                 $push: {
                                     history: {
                                         statusHistory: "Completed",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
-                                        reason: "N/A",
                                         lastLocation: "Customer",
                                     }
                                 }
@@ -10995,7 +11013,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
                     if (existingOrder === null) {
                         newOrder = new ORDERS({
-                            area: area,
+                            area: finalArea,
                             items: itemsArray, // Use the dynamically created items array
                             attempt: data.data.attempt,
                             history: [{
@@ -11003,10 +11021,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 lastAssignedTo: "Selfcollect",
-                                reason: "N/A",
                                 lastLocation: "Customer",
                             }],
-                            lastAssignedTo: "Selfcollect",
                             latestLocation: "Customer",
                             product: currentProduct,
                             assignedTo: "Selfcollect",
@@ -11022,7 +11038,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             receiverPhoneNumber: data.data.phone_number,
                             doTrackingNumber: consignmentID,
                             remarks: data.data.remarks,
-                            latestReason: "N/A",
                             lastUpdateDateTime: moment().format(),
                             creationDate: data.data.created_at,
                             jobDate: req.body.assignDate,
@@ -11046,7 +11061,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             jobDate: req.body.assignDate,
                             latestLocation: "Customer",
                             lastUpdatedBy: req.user.name,
-                            lastAssignedTo: "Selfcollect",
                             jobMethod: "Drop Off",
                             $push: {
                                 history: {
@@ -11070,7 +11084,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             date: req.body.assignDate, // Get the Assign Date from the form
                             assign_to: "Selfcollect", // Get the selected dispatcher from the form
                             status: "dispatched", // Use the calculated dStatus
-                            job_type: "Drop Off"
+                            job_type: "Drop Off",
+                            zone: finalArea,
                         }
                     };
 
@@ -11090,7 +11105,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: "Go Rush Office",
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: "Selfcollect",
                                 jobMethod: "Self Collect",
                                 $push: {
                                     history: {
@@ -11098,7 +11112,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "Selfcollect",
-                                        reason: "N/A",
                                         lastLocation: "Go Rush Office",
                                     }
                                 }
@@ -11138,7 +11151,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 jobDate: req.body.assignDate,
                                 latestLocation: "Go Rush Office",
                                 lastUpdatedBy: req.user.name,
-                                lastAssignedTo: "Selfcollect",
                                 jobMethod: "Self Collect",
                                 $push: {
                                     history: {
@@ -11146,7 +11158,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: "Selfcollect",
-                                        reason: "N/A",
                                         lastLocation: "Go Rush Office",
                                     }
                                 }
@@ -11186,14 +11197,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         latestReason: detrackReason,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
                         pharmacyFormCreated: "Yes",
                         $push: {
                             history: {
                                 statusHistory: "Cancelled",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
                                 reason: "Cancelled Delivery",
                                 lastLocation: req.body.warehouse,
                             }
@@ -11208,13 +11217,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         latestReason: detrackReason,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
                         $push: {
                             history: {
                                 statusHistory: "Cancelled",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
                                 reason: "Cancelled Delivery",
                                 lastLocation: req.body.warehouse,
                             }
@@ -11227,6 +11234,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         do_number: data.data.tracking_number,
                         data: {
                             status: "cancelled",
+                            date: moment().format('YYYY-MM-DD'),
                         }
                     };
                 } else {
@@ -11234,6 +11242,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         do_number: consignmentID,
                         data: {
                             status: "cancelled",
+                            date: moment().format('YYYY-MM-DD'),
                         }
                     };
                 }
@@ -11241,7 +11250,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 portalUpdate = "Portal and Detrack status updated to Cancelled. ";
 
                 mongoDBrun = 2
-                DetrackAPIrun = 1;
+                DetrackAPIrun = 7;
                 completeRun = 1;
             }
 
@@ -11257,14 +11266,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         latestReason: detrackReason,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
                         pharmacyFormCreated: "No",
                         $push: {
                             history: {
                                 statusHistory: "Return to Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
                                 reason: detrackReason,
                                 lastLocation: req.body.warehouse,
                             }
@@ -11279,13 +11286,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         latestReason: detrackReason,
                         latestLocation: req.body.warehouse,
                         lastUpdatedBy: req.user.name,
-                        lastAssignedTo: "N/A",
                         $push: {
                             history: {
                                 statusHistory: "Return to Warehouse",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
                                 reason: detrackReason,
                                 lastLocation: req.body.warehouse,
                             }
@@ -11317,13 +11322,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     latestReason: detrackReason,
                     latestLocation: "Disposed",
                     lastUpdatedBy: req.user.name,
-                    lastAssignedTo: "N/A",
                     $push: {
                         history: {
                             statusHistory: "Disposed",
                             dateUpdated: moment().format(),
                             updatedBy: req.user.name,
-                            lastAssignedTo: "N/A",
                             reason: detrackReason,
                             lastLocation: "Disposed",
                         }
@@ -11347,8 +11350,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.weight != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
-                        lastUpdatedBy: req.user.name,
                         parcelWeight: req.body.weight,
                         $push: {
                             history: {
@@ -11361,8 +11362,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Weight updated to " + req.body.weight + " kg.",
-                        lastUpdatedBy: req.user.name,
                         parcelWeight: req.body.weight,
                         $push: {
                             history: {
@@ -11393,8 +11392,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (req.body.paymentMethod == 'NON COD') {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Payment method updated to " + req.body.paymentMethod + ".",
-                        lastUpdatedBy: req.user.name,
                         paymentMethod: req.body.paymentMethod,
                         totalPrice: 0,
                         $push: {
@@ -11419,8 +11416,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.paymentMethod == 'Cash') {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
-                            lastUpdatedBy: req.user.name,
                             paymentMethod: req.body.paymentMethod,
                             totalPrice: req.body.price,
                             $push: {
@@ -11443,8 +11438,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
-                            lastUpdatedBy: req.user.name,
                             paymentMethod: req.body.paymentMethod,
                             totalPrice: req.body.price,
                             $push: {
@@ -11479,8 +11472,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.zone != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
-                        lastUpdatedBy: req.user.name,
                         area: req.body.area,
                         $push: {
                             history: {
@@ -11493,8 +11484,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Area updated to " + req.body.area + ".",
-                        lastUpdatedBy: req.user.name,
                         area: req.body.area,
                         $push: {
                             history: {
@@ -11525,8 +11514,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.address != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Address updated from " + data.data.address + " to " + req.body.address + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverAddress: req.body.address,
                         $push: {
                             history: {
@@ -11539,8 +11526,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Address updated to " + req.body.address + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverAddress: req.body.address,
                         $push: {
                             history: {
@@ -11571,8 +11556,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.phone_number != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Phone number updated from " + data.data.phone_number + " to " + req.body.phoneNum + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverPhoneNumber: req.body.phoneNum,
                         $push: {
                             history: {
@@ -11585,8 +11568,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Phone number updated to " + req.body.phoneNum + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverPhoneNumber: req.body.phoneNum,
                         $push: {
                             history: {
@@ -11617,8 +11598,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.deliver_to_collect_from != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverName: req.body.name,
                         $push: {
                             history: {
@@ -11631,8 +11610,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Customer Name updated to " + req.body.name + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverName: req.body.name,
                         $push: {
                             history: {
@@ -11663,8 +11640,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.date != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
-                        lastUpdatedBy: req.user.name,
                         jobDate: req.body.assignDate,
                         $push: {
                             history: {
@@ -11677,8 +11652,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Job Date updated to " + req.body.assignDate + ".",
-                        lastUpdatedBy: req.user.name,
                         jobDate: req.body.assignDate,
                         $push: {
                             history: {
@@ -11709,8 +11682,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.postal_code != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Postal Code updated from " + data.data.postal_code + " to " + req.body.postalCode + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverPostalCode: req.body.postalCode,
                         $push: {
                             history: {
@@ -11723,8 +11694,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Postal Code updated to " + req.body.postalCode + ".",
-                        lastUpdatedBy: req.user.name,
                         receiverPostalCode: req.body.postalCode,
                         $push: {
                             history: {
@@ -11755,8 +11724,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.run_number != null) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
-                        lastUpdatedBy: req.user.name,
                         mawbNo: req.body.awbNum,
                         $push: {
                             history: {
@@ -11769,8 +11736,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 } else {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "AWB number updated to " + req.body.awbNum + ".",
-                        lastUpdatedBy: req.user.name,
                         mawbNo: req.body.awbNum,
                         $push: {
                             history: {
@@ -11803,8 +11768,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 4,
                                 paymentAmount: 4,
                                 jobMethod: req.body.jobMethod,
@@ -11860,8 +11823,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             && (!data.data.address.includes("Brunei Muara")) && (!data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 6,
                                 paymentAmount: 6,
                                 jobMethod: req.body.jobMethod,
@@ -11915,8 +11876,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 8,
                                 paymentAmount: 8,
                                 jobMethod: req.body.jobMethod,
@@ -11973,8 +11932,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: 0,
                             paymentAmount: 0,
                             jobMethod: req.body.jobMethod,
@@ -12015,8 +11972,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 4,
                                 paymentAmount: 4,
                                 jobMethod: req.body.jobMethod,
@@ -12074,8 +12029,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             && (!data.data.address.includes("Brunei Muara")) && (!data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 8,
                                 paymentAmount: 8,
                                 jobMethod: req.body.jobMethod,
@@ -12131,8 +12084,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 8,
                                 paymentAmount: 8,
                                 jobMethod: req.body.jobMethod,
@@ -12187,8 +12138,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 11,
                                 paymentAmount: 11,
                                 jobMethod: req.body.jobMethod,
@@ -12244,8 +12193,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 5.5,
                                 paymentAmount: 5.5,
                                 jobMethod: req.body.jobMethod,
@@ -12301,8 +12248,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: 4,
                             paymentAmount: 4,
                             jobMethod: req.body.jobMethod,
@@ -12349,8 +12294,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12412,8 +12355,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12476,8 +12417,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12539,8 +12478,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12602,8 +12539,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12665,8 +12600,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12728,8 +12661,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: finalLDPrice,
                             paymentAmount: finalLDPrice,
                             jobMethod: req.body.jobMethod,
@@ -12790,8 +12721,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.jobMethod == "Standard") {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: 4,
                             paymentAmount: 4,
                             jobMethod: req.body.jobMethod,
@@ -12847,8 +12776,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 5.5,
                                 paymentAmount: 5.5,
                                 jobMethod: req.body.jobMethod,
@@ -12905,8 +12832,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 20,
                                 paymentAmount: 20,
                                 jobMethod: req.body.jobMethod,
@@ -12962,8 +12887,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             totalPrice: 4,
                             paymentAmount: 4,
                             jobMethod: req.body.jobMethod,
@@ -13016,8 +12939,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Brunei Muara")) || (data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 7,
                                 paymentAmount: 7,
                                 jobMethod: req.body.jobMethod,
@@ -13075,8 +12996,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             && (!data.data.address.includes("Brunei Muara")) && (!data.data.address.includes("brunei-muara"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 5,
                                 paymentAmount: 5,
                                 jobMethod: req.body.jobMethod,
@@ -13132,8 +13051,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Belait")) || (data.data.address.includes("belait"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 3,
                                 paymentAmount: 3,
                                 jobMethod: req.body.jobMethod,
@@ -13188,8 +13105,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if ((data.data.address.includes("Temburong")) || (data.data.address.includes("temburong"))) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 totalPrice: 10,
                                 paymentAmount: 10,
                                 jobMethod: req.body.jobMethod,
@@ -13252,8 +13167,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.jobMethod == "Standard") {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             jobMethod: req.body.jobMethod,
                             $push: {
                                 history: {
@@ -13281,8 +13194,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                            lastUpdatedBy: req.user.name,
                             jobMethod: req.body.jobMethod,
                             $push: {
                                 history: {
@@ -13316,8 +13227,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         if (req.body.jobMethod == "Standard") {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 jobMethod: req.body.jobMethod,
                                 $push: {
                                     history: {
@@ -13345,8 +13254,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         } else if ((req.body.jobMethod == "Self Collect") || (req.body.jobMethod == "Pickup")) {
                             update = {
                                 lastUpdateDateTime: moment().format(),
-                                latestReason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
-                                lastUpdatedBy: req.user.name,
                                 jobMethod: req.body.jobMethod,
                                 $push: {
                                     history: {
@@ -13384,8 +13291,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.warehouse == "Warehouse K1") {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
-                            lastUpdatedBy: req.user.name,
                             latestLocation: req.body.warehouse,
                             room: "Open Space",
                             rackRowNum: "N/A",
@@ -13408,8 +13313,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     if (req.body.warehouse == "Warehouse K2") {
                         update = {
                             lastUpdateDateTime: moment().format(),
-                            latestReason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
-                            lastUpdatedBy: req.user.name,
                             latestLocation: req.body.warehouse,
                             room: req.body.k2room,
                             rackRowNum: req.body.k2row,
@@ -13435,8 +13338,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if ((currentProduct == "pharmacymoh") || (currentProduct == "pharmacyjpmc") || (currentProduct == "pharmacyphc")) {
                     update = {
                         lastUpdateDateTime: moment().format(),
-                        latestReason: "Fridge item updated.",
-                        lastUpdatedBy: req.user.name,
                         fridge: req.body.fridge,
                         $push: {
                             history: {
@@ -13458,8 +13359,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (req.body.statusCode == 'UGR') {
                 update = {
                     lastUpdateDateTime: moment().format(),
-                    latestReason: "Go Rush Remark updated as " + req.body.grRemark + ".",
-                    lastUpdatedBy: req.user.name,
                     grRemark: req.body.grRemark,
                     $push: {
                         history: {
@@ -13608,727 +13507,133 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (mongoDBrun == 2) {
                 const result = await ORDERS.findOneAndUpdate(filter, update, option);
-                console.log(`MongoDB Updated for Tracking Number: ${consignmentID}`);
+                if (result) {
+                    console.log(`MongoDB Updated for Tracking Number: ${consignmentID}`);
+                } else {
+                    console.error(`MongoDB Update Failed for Tracking Number: ${consignmentID}`);
+                }
             }
 
             if (DetrackAPIrun == 1) {
-                // Make the API request to update the status in Detrack
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateData)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Detrack Status Updated for Tracking Number: ${consignmentID}`);
-                    } else {
-                        console.error(`Error updating Detrack Status for Tracking Number: ${consignmentID}`);
-                    }
-                });
+                await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+            } else {
+                console.log(`DetrackAPIrun is not 1; skipping update for Tracking: ${consignmentID}`);
             }
 
             if (DetrackAPIrun == 2) {
-                // Make the API request to add attempt in Detrack
-                request({
-                    method: 'POST',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateDataAttempt)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
-
-                        // Always make the second API request after the first one
-                        request({
-                            method: 'PUT',
-                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey
-                            },
-                            body: JSON.stringify(detrackUpdateData)
-                        }, function (error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                console.log(`Detrack Status Updated for Tracking Number: ${consignmentID}`);
-                            } else {
-                                console.error(`Error updating Detrack Status for Tracking Number: ${consignmentID}`);
-                            }
-                        });
-
-                    } else {
-                        console.error(`Error increase attempt by 1 for Tracking Number: ${consignmentID}`);
-                    }
-                });
+                await updateDetrackStatus(consignmentID, apiKey, detrackUpdateDataAttempt, detrackUpdateData);
             }
 
             if (DetrackAPIrun == 3) {
-                // Make the API request to add attempt in Detrack
-                request({
-                    method: 'POST',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/reattempt',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateDataAttempt)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Attempt for Consignment ID: ${consignmentID} increased by 1`);
-                    } else {
-                        console.error(`Error increasing attempt by 1 for Tracking Number: ${consignmentID}`);
-                    }
-                });
+                await increaseDetrackAttempt(consignmentID, apiKey, detrackUpdateDataAttempt);
+            } else {
+                console.log(`DetrackAPIrun is not 3; skipping attempt increase for Tracking Number: ${consignmentID}`);
             }
 
             if (DetrackAPIrun == 4) {
-                // First update with status "at_warehouse"
+                console.log(`Starting Detrack update sequence (at_warehouse → in_sorting_area) for Tracking: ${consignmentID}`);
+
+                // First update: at_warehouse
                 detrackUpdateData.data.status = "at_warehouse";
+                const firstSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateData)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                if (firstSuccess) {
+                    // Second update: in_sorting_area
+                    detrackUpdateData.data.status = "in_sorting_area";
+                    const secondSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
-                        // Second update with status "in_sorting_area" (without zone)
-                        detrackUpdateData.data = {
-                            status: "in_sorting_area" // Only include status for the second run
-                        };
-
-                        request({
-                            method: 'PUT',
-                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey
-                            },
-                            body: JSON.stringify(detrackUpdateData)
-                        }, function (error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                console.log(`Detrack Status Updated to "In Sorting Area" for Tracking Number: ${consignmentID}`);
-                            } else {
-                                console.error(`Error updating Detrack Status to "In Sorting Area" for Tracking Number: ${consignmentID}`);
-                            }
-                        });
+                    if (secondSuccess) {
+                        console.log(`[COMPLETE] Both Detrack updates succeeded for Tracking: ${consignmentID}`);
                     } else {
-                        console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                        console.error(`[ERROR] Second update (in_sorting_area) failed for Tracking: ${consignmentID}`);
                     }
-                });
+                } else {
+                    console.error(`[ERROR] First update (at_warehouse) failed for Tracking: ${consignmentID}. Second update skipped.`);
+                }
+            } else {
+                console.log(`DetrackAPIrun is not 4; skipping updates for Tracking: ${consignmentID}`);
             }
 
             if (DetrackAPIrun == 5) {
-                // First update with status "at_warehouse"
+                console.log(`Starting Detrack Update Sequence (At Warehouse → In Sorting Area) for Tracking: ${consignmentID}`);
+
+                // First update: at_warehouse
                 detrackUpdateData.data.status = "at_warehouse";
+                const firstUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateData)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                if (firstUpdateSuccess) {
+                    // Prepare second update: in_sorting_area
+                    detrackUpdateData2.data.status = "in_sorting_area";
+                    const secondUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData2);
 
-                        // Second update with status "in_sorting_area" (without zone)
-                        detrackUpdateData2.data = {
-                            status: "in_sorting_area" // Only include status for the second run
-                        };
-
-                        request({
-                            method: 'PUT',
-                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey
-                            },
-                            body: JSON.stringify(detrackUpdateData2)
-                        }, function (error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                console.log(`Detrack Status Updated to "In Sorting Area" for Tracking Number: ${consignmentID}`);
-                            } else {
-                                console.error(`Error updating Detrack Status to "In Sorting Area" for Tracking Number: ${consignmentID}`);
-                            }
-                        });
+                    if (secondUpdateSuccess) {
+                        console.log(`[COMPLETE] Both Detrack updates succeeded for Tracking Number: ${consignmentID}`);
                     } else {
-                        console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                        console.error(`[ERROR] Second update (in_sorting_area) failed for Tracking Number: ${consignmentID}`);
                     }
-                });
+                } else {
+                    console.error(`[ERROR] First update (at_warehouse) failed for Tracking Number: ${consignmentID}. Second update skipped.`);
+                }
+            } else {
+                console.log(`DetrackAPIrun is not 5. Skipping Detrack updates for Tracking Number: ${consignmentID}`);
             }
 
             if (DetrackAPIrun == 6) {
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    body: JSON.stringify(detrackUpdateData)
-                }, function (error, response, body) {
-                    if (!error && response.statusCode === 200) {
-                        console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                console.log(`Starting Detrack Update Sequence for Tracking Number: ${consignmentID}`);
 
-                        request({
-                            method: 'PUT',
-                            url: 'https://app.detrack.com/api/v2/dn/jobs/update',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey
-                            },
-                            body: JSON.stringify(detrackUpdateData2)
-                        }, function (error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                console.log(`Detrack Status Updated to "At Warehouse" for Tracking Number: ${consignmentID}`);
-                            } else {
-                                console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
-                            }
-                        });
+                const firstUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+                if (firstUpdateSuccess) {
+                    const secondUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData2);
+
+                    if (secondUpdateSuccess) {
+                        console.log(`[COMPLETE] Both Detrack updates succeeded for Tracking Number: ${consignmentID}`);
                     } else {
-                        console.error(`Error updating Detrack Status to "At Warehouse" for Tracking Number: ${consignmentID}`);
+                        console.error(`[ERROR] Second update (at_warehouse) failed for Tracking Number: ${consignmentID}`);
                     }
-                });
+                } else {
+                    console.error(`[ERROR] First update (failed delivery) failed for Tracking Number: ${consignmentID}. Second update skipped.`);
+                }
+            } else {
+                console.log(`DetrackAPIrun is not 6. Skipping Detrack updates for Tracking Number: ${consignmentID}`);
             }
 
-            /* if (waOrderArrivedDeliverStandard == 5) {
-                let a = data.data.deliver_to_collect_from;
-                let b = consignmentID;
-                let c = data.data.tracking_link;
-                let phoneNumber = data.data.phone_number;
+            if (DetrackAPIrun == 7) {
+                console.log(`Starting Detrack Update Sequence (Date → Cancelled Status) for Tracking: ${consignmentID}`);
 
-                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const createOrUpdateRequestBody = {
-                    "firstName": a,
-                    "phone": phoneNumber
+                // Step 1: Update Date only
+                const updateDateData = {
+                    do_number: consignmentID,
+                    data: {
+                        date: moment().format('YYYY-MM-DD')
+                    }
                 };
 
-                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const requestBody =
-                {
-                    "message": {
-                        "type": "whatsapp_template",
-                        "template": {
-                            "name": "order_arrived_deliver_standard",
-                            "components": [
-                                {
-                                    "type": "header",
-                                    "format": "text",
-                                    "text": "Go Rush Order"
-                                },
-                                {
-                                    "text": `Hello ${a},\n\nYour order for the tracking number *${b}* is now prepared by our dedicated team and will be delivered within 2 to 3 working days from today.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nIf there are any requests for a change in the address or reschedule, please reach us as soon as possible via WhatsApp or call us at *2332065*.`,
-                                    "type": "body",
-                                    "parameters": [
-                                        {
-                                            "text": a,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": b,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": c,
-                                            "type": "text"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "text": "Go Rush Express",
-                                    "type": "footer"
-                                }
-                            ],
-                            "languageCode": "en"
+                const dateUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, updateDateData);
+
+                if (dateUpdateSuccess) {
+                    console.log(`[STEP 1 SUCCESS] Date updated for Tracking: ${consignmentID}`);
+
+                    // Step 2: Update Status to "cancelled"
+                    const updateStatusData = {
+                        do_number: consignmentID,
+                        data: {
+                            status: "cancelled"
                         }
-                    },
-                    "channelId": 209602
-                }
+                    };
 
-                // Make the API call to create or update contact information
-                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                        'Content-Type': 'application/json'
+                    const statusUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, updateStatusData);
+
+                    if (statusUpdateSuccess) {
+                        console.log(`[COMPLETE] Date and Cancelled Status both updated for Tracking: ${consignmentID}`);
+                    } else {
+                        console.error(`[ERROR] Failed to update Status to "cancelled" for Tracking: ${consignmentID}`);
                     }
-                })
-                    .then(response => {
-                        console.log('Contact information created or updated successfully:', response.data);
-
-                        // Introduce a delay of 10 seconds before proceeding with the next API call
-                        setTimeout(() => {
-                            axios.post(apiUrl, requestBody, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            })
-                                .then(response => {
-                                    console.log('Message sent successfully:', response.data);
-                                })
-                                .catch(error => {
-                                    console.error('Error sending message:', error.response.data);
-                                });
-                        }, 10000); // 10 seconds delay
-                    })
-                    .catch(error => {
-                        console.error('Error creating or updating contact information:', error.response.data);
-                    });
-            }
-
-            if (waOrderArrivedDeliverExpressMedicine == 5) {
-                let a = data.data.deliver_to_collect_from;
-                let b = consignmentID;
-                let c = data.data.tracking_link;
-                let phoneNumber = data.data.phone_number;
-
-                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const createOrUpdateRequestBody = {
-                    "firstName": a,
-                    "phone": phoneNumber
-                };
-
-                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const requestBody =
-                {
-                    "message": {
-                        "type": "whatsapp_template",
-                        "template": {
-                            "name": "order_arrived_deliver_express_medicine",
-                            "components": [
-                                {
-                                    "type": "header",
-                                    "format": "text",
-                                    "text": "Go Rush Order"
-                                },
-                                {
-                                    "text": `Hello ${a},\n\nYour order for the tracking number *${b}* will be delivered on the next working day after the medicine is released from the pharmacy.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nIf there are any requests for a change in the address or reschedule, please reach us as soon as possible via WhatsApp or call us at *2332065*.`,
-                                    "type": "body",
-                                    "parameters": [
-                                        {
-                                            "text": a,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": b,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": c,
-                                            "type": "text"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "text": "Go Rush Express",
-                                    "type": "footer"
-                                }
-                            ],
-                            "languageCode": "en"
-                        }
-                    },
-                    "channelId": 209602
+                } else {
+                    console.error(`[ERROR] Failed to update Date for Tracking: ${consignmentID}. Status update skipped.`);
                 }
-
-                // Make the API call to create or update contact information
-                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => {
-                        console.log('Contact information created or updated successfully:', response.data);
-
-                        // Introduce a delay of 10 seconds before proceeding with the next API call
-                        setTimeout(() => {
-                            axios.post(apiUrl, requestBody, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            })
-                                .then(response => {
-                                    console.log('Message sent successfully:', response.data);
-                                })
-                                .catch(error => {
-                                    console.error('Error sending message:', error.response.data);
-                                });
-                        }, 10000); // 10 seconds delay
-                    })
-                    .catch(error => {
-                        console.error('Error creating or updating contact information:', error.response.data);
-                    });
-            }
-
-            if (waOrderArrivedDeliverExpressNonMedicine == 5) {
-                let a = data.data.deliver_to_collect_from;
-                let b = consignmentID;
-                let c = data.data.tracking_link;
-                let phoneNumber = data.data.phone_number;
-
-                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const createOrUpdateRequestBody = {
-                    "firstName": a,
-                    "phone": phoneNumber
-                };
-
-                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const requestBody =
-                {
-                    "message": {
-                        "type": "whatsapp_template",
-                        "template": {
-                            "name": "order_arrived_deliver_express_nonmedicine",
-                            "components": [
-                                {
-                                    "type": "header",
-                                    "format": "text",
-                                    "text": "Go Rush Order"
-                                },
-                                {
-                                    "text": `Hello ${a},\n\nYour order for the tracking number *${b}* is now prepared by our dedicated team and will be delivered today.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nIf there are any requests for a change in the address or reschedule, please reach us as soon as possible via WhatsApp or call us at *2332065*.`,
-                                    "type": "body",
-                                    "parameters": [
-                                        {
-                                            "text": a,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": b,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": c,
-                                            "type": "text"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "text": "Go Rush Express",
-                                    "type": "footer"
-                                }
-                            ],
-                            "languageCode": "en"
-                        }
-                    },
-                    "channelId": 209602
-                }
-
-                // Make the API call to create or update contact information
-                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => {
-                        console.log('Contact information created or updated successfully:', response.data);
-
-                        // Introduce a delay of 10 seconds before proceeding with the next API call
-                        setTimeout(() => {
-                            axios.post(apiUrl, requestBody, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            })
-                                .then(response => {
-                                    console.log('Message sent successfully:', response.data);
-                                })
-                                .catch(error => {
-                                    console.error('Error sending message:', error.response.data);
-                                });
-                        }, 10000); // 10 seconds delay
-                    })
-                    .catch(error => {
-                        console.error('Error creating or updating contact information:', error.response.data);
-                    });
-            }
-
-            if (waOrderArrivedDeliverImmediate == 5) {
-                let a = data.data.deliver_to_collect_from;
-                let b = consignmentID;
-                let c = data.data.tracking_link;
-                let phoneNumber = data.data.phone_number;
-
-                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const createOrUpdateRequestBody = {
-                    "firstName": a,
-                    "phone": phoneNumber
-                };
-
-                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const requestBody =
-                {
-                    "message": {
-                        "type": "whatsapp_template",
-                        "template": {
-                            "name": "order_arrived_deliver_immediate",
-                            "components": [
-                                {
-                                    "type": "header",
-                                    "format": "text",
-                                    "text": "Go Rush Order"
-                                },
-                                {
-                                    "text": `Hello ${a},\n\nYour order for the tracking number *${b}* is now prepared by our dedicated team and will be delivered within 3 hours.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${c}\n\nIf there are any requests for a change in the address or reschedule, please reach us as soon as possible via WhatsApp or call us at *2332065*.`,
-                                    "type": "body",
-                                    "parameters": [
-                                        {
-                                            "text": a,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": b,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": c,
-                                            "type": "text"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "text": "Go Rush Express",
-                                    "type": "footer"
-                                }
-                            ],
-                            "languageCode": "en"
-                        }
-                    },
-                    "channelId": 209602
-                }
-
-                // Make the API call to create or update contact information
-                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => {
-                        console.log('Contact information created or updated successfully:', response.data);
-
-                        // Introduce a delay of 10 seconds before proceeding with the next API call
-                        setTimeout(() => {
-                            axios.post(apiUrl, requestBody, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            })
-                                .then(response => {
-                                    console.log('Message sent successfully:', response.data);
-                                })
-                                .catch(error => {
-                                    console.error('Error sending message:', error.response.data);
-                                });
-                        }, 10000); // 10 seconds delay
-                    })
-                    .catch(error => {
-                        console.error('Error creating or updating contact information:', error.response.data);
-                    });
-            }
-
-            if (waOrderArrivedDeliverFMX == 5) {
-                let a = data.data.deliver_to_collect_from;
-                let b = consignmentID;
-                let c = data.data.items[0].quantity + "x " + data.data.items[0].description
-                let d = data.data.tracking_link;
-                let phoneNumber = data.data.phone_number;
-
-                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const createOrUpdateRequestBody = {
-                    "firstName": a,
-                    "phone": phoneNumber
-                };
-
-                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const requestBody =
-                {
-                    "message": {
-                        "type": "whatsapp_template",
-                        "template": {
-                            "name": "order_arrived_deliver_fmx",
-                            "components": [
-                                {
-                                    "type": "header",
-                                    "format": "text",
-                                    "text": "Go Rush Order"
-                                },
-                                {
-                                    "text": `Hello ${a},\n\nYour order for the tracking number *${b}* is now prepared by our dedicated team and will be delivered on the next working day.\n\nOrder Details:\n\n*${c}*\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below:\n\n${d}\n\nIf there are any requests for a change in the address or reschedule, please reach us as soon as possible via WhatsApp or call us at *2332065*.`,
-                                    "type": "body",
-                                    "parameters": [
-                                        {
-                                            "text": a,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": b,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": c,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": d,
-                                            "type": "text"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "text": "Go Rush Express",
-                                    "type": "footer"
-                                }
-                            ],
-                            "languageCode": "en"
-                        }
-                    },
-                    "channelId": 209602
-                }
-
-                // Make the API call to create or update contact information
-                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => {
-                        console.log('Contact information created or updated successfully:', response.data);
-
-                        // Introduce a delay of 10 seconds before proceeding with the next API call
-                        setTimeout(() => {
-                            axios.post(apiUrl, requestBody, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            })
-                                .then(response => {
-                                    console.log('Message sent successfully:', response.data);
-                                })
-                                .catch(error => {
-                                    console.error('Error sending message:', error.response.data);
-                                });
-                        }, 10000); // 10 seconds delay
-                    })
-                    .catch(error => {
-                        console.error('Error creating or updating contact information:', error.response.data);
-                    });
-            }
-
-            if (waOrderArrivedPickup == 5) {
-                let a = data.data.deliver_to_collect_from;
-                let b = data.data.tracking_number;
-                let c = data.data.tracking_link;
-                let phoneNumber = data.data.phone_number;
-
-                const createOrUpdateUrl = `https://api.respond.io/v2/contact/create_or_update/phone:${phoneNumber}`;
-                const createOrUpdateAuthToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const createOrUpdateRequestBody = {
-                    "firstName": a,
-                    "phone": phoneNumber
-                };
-
-                const apiUrl = `https://api.respond.io/v2/contact/phone:${phoneNumber}/message`;
-                const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTA3Niwic3BhY2VJZCI6MTkyNzEzLCJvcmdJZCI6MTkyODMzLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzAyMDIxMTM4fQ.cpPpGcK8DLyyI2HUSHDcEkIcY8JzGD7DT-ogbZK5UFU';
-                const requestBody =
-                {
-                    "message": {
-                        "type": "whatsapp_template",
-                        "template": {
-                            "name": "order_arrived_pickup",
-                            "components": [
-                                {
-                                    "type": "header",
-                                    "format": "text",
-                                    "text": "Go Rush Order"
-                                },
-                                {
-                                    "text": `Hello ${a},\n\nYour order for the tracking number ${b} has arrived at Go Rush.\n\nYour tracking number can be tracked on www.gorushbn.com or through this link below: ${c}.\n\nOur dedicated team is now preparing your order and invoice for pickup.\n\nOnce ready, we'll promptly send you the invoice, and your order will be ready for collection.\n\nFor any further inquiries, please reach us via WhatsApp or call us at 2332065.`,
-                                    "type": "body",
-                                    "parameters": [
-                                        {
-                                            "text": a,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": b,
-                                            "type": "text"
-                                        },
-                                        {
-                                            "text": c,
-                                            "type": "text"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "text": "Go Rush Express",
-                                    "type": "footer"
-                                }
-                            ],
-                            "languageCode": "en"
-                        }
-                    },
-                    "channelId": 209602
-                }
-
-                // Make the API call to create or update contact information
-                axios.post(createOrUpdateUrl, createOrUpdateRequestBody, {
-                    headers: {
-                        'Authorization': `Bearer ${createOrUpdateAuthToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => {
-                        console.log('Contact information created or updated successfully:', response.data);
-
-                        // Introduce a delay of 10 seconds before proceeding with the next API call
-                        setTimeout(() => {
-                            axios.post(apiUrl, requestBody, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            })
-                                .then(response => {
-                                    console.log('Message sent successfully:', response.data);
-                                })
-                                .catch(error => {
-                                    console.error('Error sending message:', error.response.data);
-                                });
-                        }, 10000); // 10 seconds delay
-                    })
-                    .catch(error => {
-                        console.error('Error creating or updating contact information:', error.response.data);
-                    });
+            } else {
+                console.log(`DetrackAPIrun is not 7; skipping Detrack update sequence for Tracking: ${consignmentID}`);
             }
 
             if (waOrderFailedDelivery == 5) {
@@ -14503,13 +13808,13 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     .catch(error => {
                         console.error('Error creating or updating contact information:', error.response.data);
                     });
-            } */
+            }
 
             if (ceCheck == 0) {
                 // If processing is successful, add a success message to the results array
                 processingResults.push({
                     consignmentID,
-                    status: portalUpdate + fmxUpdate,
+                    status: portalUpdate,
                 });
             }
             else if ((ceCheck == 0) && (maxAttempt == 1)) {
@@ -14592,7 +13897,7 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
             ],
             remarks,
             passport: order.passport,
-            attempt: 0,
+            attempt: 1,
             jobType: order.jobType,
             product: order.product,
             icPassNum: order.icPassNum,
