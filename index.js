@@ -822,8 +822,6 @@ async function checkActiveDeliveriesStatus() {
 setInterval(checkActiveDeliveriesStatus, 600000);
 checkActiveDeliveriesStatus(); // Run once on server start
 
-// Run stale Info Received check at 5 AM Brunei Time daily
-const schedule = require('node-schedule');
 schedule.scheduleJob('0 5 * * *', 'Asia/Brunei', checkStaleInfoReceivedJobs);
 
 // Optional: refresh route to clear urgent cache
