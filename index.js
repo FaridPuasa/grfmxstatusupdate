@@ -12,6 +12,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
 const flash = require('connect-flash');
 const NodeCache = require('node-cache');
+const schedule = require('node-schedule');
 const urgentCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
 const codBtCache = new NodeCache({ stdTTL: 600 }); // cache for 10 minutes, adjust as needed
 const app = express();
@@ -631,6 +632,103 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     }
 });
 
+// Function 3: Check for Stale Info Received Jobs (Updated Logic)
+async function checkStaleInfoReceivedJobs() {
+    try {
+        const targetProducts = ["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery", "cbsl"];
+        const thirtyDaysAgo = moment().subtract(30, 'days').format('YYYY-MM-DD');
+
+        const staleOrders = await ORDERS.find({
+            currentStatus: "Info Received",
+            product: { $in: targetProducts },
+            creationDate: { $lt: thirtyDaysAgo }
+        });
+
+        for (let order of staleOrders) {
+            const consignmentID = order.doTrackingNumber;
+            const product = order.product;
+
+            let update = {};
+            let option = { upsert: false, new: false };
+            let apiKey = 'd4dfab3975765c8ffa920d9a0c6bda0c12d17a35a946d337';
+
+            if (product === 'pharmacymoh') {
+                update = {
+                    currentStatus: "Cancelled",
+                    lastUpdateDateTime: moment().format(),
+                    latestReason: "Cancelled",
+                    lastUpdatedBy: "System",
+                    pharmacyFormCreated: "Yes",
+                    $push: {
+                        history: {
+                            statusHistory: "Cancelled",
+                            dateUpdated: moment().format(),
+                            updatedBy: "System",
+                            reason: "Cancelled",
+                        }
+                    }
+                };
+            } else {
+                update = {
+                    currentStatus: "Cancelled",
+                    lastUpdateDateTime: moment().format(),
+                    latestReason: "Cancelled",
+                    lastUpdatedBy: "System",
+                    $push: {
+                        history: {
+                            statusHistory: "Cancelled",
+                            dateUpdated: moment().format(),
+                            updatedBy: "System",
+                            reason: "Cancelled",
+                        }
+                    }
+                };
+            }
+
+            const result = await ORDERS.findOneAndUpdate({ doTrackingNumber: consignmentID }, update, option);
+            if (result) {
+                console.log(`MongoDB Updated for Tracking Number: ${consignmentID}`);
+            } else {
+                console.error(`MongoDB Update Failed for Tracking Number: ${consignmentID}`);
+            }
+
+            // Always Run Detrack Update Sequence
+            console.log(`Starting Detrack Update Sequence (Date → Cancelled Status) for Tracking: ${consignmentID}`);
+
+            // Step 1: Update Date Only
+            const updateDateData = {
+                do_number: consignmentID,
+                data: { date: moment().format('YYYY-MM-DD') }
+            };
+
+            const dateUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, updateDateData);
+
+            if (dateUpdateSuccess) {
+                console.log(`[STEP 1 SUCCESS] Date updated for Tracking: ${consignmentID}`);
+
+                // Step 2: Update Status to "cancelled"
+                const updateStatusData = {
+                    do_number: consignmentID,
+                    data: { status: "cancelled" }
+                };
+
+                const statusUpdateSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, updateStatusData);
+
+                if (statusUpdateSuccess) {
+                    console.log(`[COMPLETE] Date and Cancelled Status both updated for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] Failed to update Status to "cancelled" for Tracking: ${consignmentID}`);
+                }
+            } else {
+                console.error(`[ERROR] Failed to update Date for Tracking: ${consignmentID}. Status update skipped.`);
+            }
+        }
+
+    } catch (error) {
+        console.error('Error in stale Info Received jobs check:', error);
+    }
+}
+
 async function checkActiveDeliveriesStatus() {
     try {
         const activeOrders = await ORDERS.find(
@@ -723,6 +821,10 @@ async function checkActiveDeliveriesStatus() {
 // Run every 10 minutes
 setInterval(checkActiveDeliveriesStatus, 600000);
 checkActiveDeliveriesStatus(); // Run once on server start
+
+// Run stale Info Received check at 5 AM Brunei Time daily
+const schedule = require('node-schedule');
+schedule.scheduleJob('0 5 * * *', 'Asia/Brunei', checkStaleInfoReceivedJobs);
 
 // Optional: refresh route to clear urgent cache
 app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
