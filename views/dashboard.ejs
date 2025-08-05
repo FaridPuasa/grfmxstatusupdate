@@ -893,7 +893,7 @@
                     <input type="date" id="codbt-date-picker" class="form-control" />
                 </div>
                 <div class="col-md-2">
-                    <button id="refresh-codbt-btn" class="btn btn-primary w-100">Refresh</button>
+                    <button id="refresh-codbt-btn" class="btn btn-primary w-100" disabled>Refresh</button>
                 </div>
             </div>
 
@@ -908,12 +908,10 @@
                         </tr>
                     </thead>
                     <tbody id="codbt-table-body">
-                        <tr id="codbt-loading-spinner">
-                            <td colspan="4" class="text-center">
-                                <div class="spinner-border text-primary" role="status"></div>
-                            </td>
-                        </tr>
-                    </tbody>
+    <tr>
+        <td colspan="4" class="text-center text-muted">Select a date to view COD/BT Collected data.</td>
+    </tr>
+</tbody>
                 </table>
             </div>
         </div>
@@ -1166,12 +1164,18 @@
 
     // Event listeners
     document.getElementById('codbt-date-picker').addEventListener('change', () => {
-        loadCodBtData();
-    });
+    document.getElementById('refresh-codbt-btn').disabled = false;
+    loadCodBtData();
+});
 
     document.getElementById('codbt-tab').addEventListener('shown.bs.tab', () => {
-        loadCodBtData();
-    });
+    const datePicker = document.getElementById('codbt-date-picker');
+    if (!datePicker.value) {
+        datePicker.value = moment().format('YYYY-MM-DD');
+    }
+    document.getElementById('refresh-codbt-btn').disabled = false;
+    loadCodBtData();
+});
 
     document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
         loadCodBtData();

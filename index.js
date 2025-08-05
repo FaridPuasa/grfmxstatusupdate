@@ -209,7 +209,7 @@ const processingResults = [];
 app.get('/api/codbt-collected', async (req, res) => {
     try {
         const moment = require('moment');
-        const dateParam = req.query.date; // expecting YYYY-MM-DD format
+        const dateParam = req.query.date; // expecting YYYY-MM-DD
 
         if (!dateParam) {
             return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
@@ -217,13 +217,13 @@ app.get('/api/codbt-collected', async (req, res) => {
 
         const formattedDateKey = moment(dateParam, 'YYYY-MM-DD').format('DD-MM-YYYY');
 
-        // Check Cache First for specific date
+        // Check Cache First
         const cachedData = codBtCache.get(formattedDateKey);
         if (cachedData) {
             return res.json({ [formattedDateKey]: cachedData });
         }
 
-        // Fetch completed orders for the date, exclude NON COD and no empty product
+        // Fetch only completed orders for the given date (exclude NON COD, empty/null product)
         const completedOrders = await ORDERS.find({
             currentStatus: "Completed",
             jobDate: dateParam,
@@ -232,103 +232,82 @@ app.get('/api/codbt-collected', async (req, res) => {
         }).lean();
 
         if (!completedOrders || completedOrders.length === 0) {
-            // No data found for this date
+            // Cache empty result to avoid repeated DB hits
+            codBtCache.set(formattedDateKey, {});
             return res.json({ [formattedDateKey]: {} });
         }
 
-        // Grouping map
+        // Grouping map logic
         const dispatcherMap = {};
 
         completedOrders.forEach(order => {
             const totalPrice = Number(order.totalPrice) || 0;
-            if (totalPrice <= 0) return; // skip zero totals
+            if (totalPrice <= 0) return;
 
             const dispatcher = order.assignedTo || "Unassigned";
             const paymentMethod = order.paymentMethod || '';
-            const currentStatus = order.currentStatus || '';
-
-            // Normalize keys if needed (optional)
-            // e.g. dispatcher = dispatcher.trim();
+            const jobMethod = order.jobMethod || '-';
 
             if (dispatcher === 'Selfcollect') {
-                const jobMethod = order.jobMethod || 'Unknown';  // Use jobMethod for statuses
-
                 if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { __statuses: {} };
-
                 if (!dispatcherMap[dispatcher].__statuses[jobMethod]) {
                     dispatcherMap[dispatcher].__statuses[jobMethod] = { total: 0, cash: 0, bt: 0, jobs: [] };
                 }
 
-                const statusGroup = dispatcherMap[dispatcher].__statuses[jobMethod];
+                const group = dispatcherMap[dispatcher].__statuses[jobMethod];
+                group.total += totalPrice;
+                if (paymentMethod === "Cash") group.cash += totalPrice;
+                else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) group.bt += totalPrice;
 
-                statusGroup.total += totalPrice;
-
-                if (paymentMethod === "Cash") {
-                    statusGroup.cash += totalPrice;
-                } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
-                    statusGroup.bt += totalPrice;
-                }
-
-                statusGroup.jobs.push({
+                group.jobs.push({
                     doTrackingNumber: order.doTrackingNumber || '-',
                     product: order.product || '-',
-                    jobMethod: order.jobMethod || '-',
-                    paymentMethod: paymentMethod,
-                    totalPrice: totalPrice
+                    jobMethod,
+                    paymentMethod,
+                    totalPrice
                 });
 
             } else {
                 if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { total: 0, cash: 0, bt: 0, jobs: [] };
 
-                dispatcherMap[dispatcher].total += totalPrice;
-                if (paymentMethod === "Cash") {
-                    dispatcherMap[dispatcher].cash += totalPrice;
-                } else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) {
-                    dispatcherMap[dispatcher].bt += totalPrice;
-                }
+                const group = dispatcherMap[dispatcher];
+                group.total += totalPrice;
+                if (paymentMethod === "Cash") group.cash += totalPrice;
+                else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) group.bt += totalPrice;
 
-                dispatcherMap[dispatcher].jobs.push({
+                group.jobs.push({
                     doTrackingNumber: order.doTrackingNumber || '-',
                     product: order.product || '-',
-                    jobMethod: order.jobMethod || '-',
-                    paymentMethod: paymentMethod,
-                    totalPrice: totalPrice
+                    jobMethod,
+                    paymentMethod,
+                    totalPrice
                 });
             }
         });
 
-        // Sort dispatcher keys, placing 'Selfcollect' last
-        const orderedDispatcherMap = {};
-        Object.keys(dispatcherMap)
-            .sort((a, b) => {
-                if (a === 'Selfcollect') return 1;
-                if (b === 'Selfcollect') return -1;
-                return a.localeCompare(b);
-            })
-            .forEach(dispatcher => {
-                if (dispatcher === 'Selfcollect') {
-                    // Sort Selfcollect __statuses keys with "Self Collect" first then "Drop Off"
-                    const statuses = dispatcherMap[dispatcher].__statuses;
-                    const orderedStatuses = {};
-
-                    ['Self Collect', 'Drop Off']
-                        .filter(status => statuses[status])
-                        .forEach(status => {
-                            orderedStatuses[status] = statuses[status];
-                        });
-
-                    // Add any other statuses at the end
-                    Object.keys(statuses)
-                        .filter(s => !['Self Collect', 'Drop Off'].includes(s))
-                        .forEach(s => {
-                            orderedStatuses[s] = statuses[s];
-                        });
-
-                    dispatcherMap[dispatcher].__statuses = orderedStatuses;
-                }
-
-                orderedDispatcherMap[dispatcher] = dispatcherMap[dispatcher];
+        // Sort Selfcollect statuses (Self Collect first, Drop Off second)
+        if (dispatcherMap['Selfcollect']) {
+            const statuses = dispatcherMap['Selfcollect'].__statuses;
+            const orderedStatuses = {};
+            ['Self Collect', 'Drop Off'].forEach(status => {
+                if (statuses[status]) orderedStatuses[status] = statuses[status];
             });
+            // Append other statuses if any
+            Object.keys(statuses).forEach(status => {
+                if (!orderedStatuses[status]) orderedStatuses[status] = statuses[status];
+            });
+            dispatcherMap['Selfcollect'].__statuses = orderedStatuses;
+        }
+
+        // Sort dispatcher keys (Selfcollect last)
+        const orderedDispatcherMap = {};
+        Object.keys(dispatcherMap).sort((a, b) => {
+            if (a === 'Selfcollect') return 1;
+            if (b === 'Selfcollect') return -1;
+            return a.localeCompare(b);
+        }).forEach(dispatcher => {
+            orderedDispatcherMap[dispatcher] = dispatcherMap[dispatcher];
+        });
 
         codBtCache.set(formattedDateKey, orderedDispatcherMap);
 
@@ -336,9 +315,10 @@ app.get('/api/codbt-collected', async (req, res) => {
 
     } catch (error) {
         console.error('Error in /api/codbt-collected:', error);
-        return res.status(500).json({ error: 'Failed to fetch COD/BT data' });
+        return res.status(500).json({ error: 'Failed to fetch COD/BT data.' });
     }
 });
+
 
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
@@ -620,7 +600,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             fridgeMap,
             deliveriesMap,
             plannedSelfCollectMap,
-            codBtMap,
             moment,
             user: req.user,
             orders: []
@@ -634,6 +613,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
 // Function 3: Check for Stale Info Received Jobs (Updated Logic)
 async function checkStaleInfoReceivedJobs() {
+    const apiKey = process.env.API_KEY;
     try {
         const targetProducts = ["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery", "cbsl"];
         const thirtyDaysAgo = moment().subtract(30, 'days').format('YYYY-MM-DD');
@@ -650,7 +630,6 @@ async function checkStaleInfoReceivedJobs() {
 
             let update = {};
             let option = { upsert: false, new: false };
-            let apiKey = apiKey;
 
             if (product === 'pharmacymoh') {
                 update = {
@@ -9436,8 +9415,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 DetrackAPIrun = 1;
 
                 /* update = {
-                    product: "mglobal"
-                } */
+                    product: "ewe"
+                }
+
+                mongoDBrun = 2; */
 
                 /* newOrder = new ORDERS({
                     area: area,
