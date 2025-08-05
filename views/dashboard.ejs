@@ -929,30 +929,32 @@
 
 <script>
     let codBtData = null;
+let codBtLoaded = false;  // flag to prevent multiple loads
 
-    async function loadCodBtData() {
-        const selectedDate = document.getElementById('codbt-date-picker').value;
-        const formattedDate = moment(selectedDate).format('YYYY-MM-DD');
+async function loadCodBtData() {
+    const selectedDate = document.getElementById('codbt-date-picker').value;
+    const formattedDate = moment(selectedDate).format('YYYY-MM-DD');
 
-        const tableBody = document.getElementById('codbt-table-body');
-        tableBody.innerHTML = `
-            <tr id="codbt-loading-spinner">
-                <td colspan="4" class="text-center">
-                    <div class="spinner-border text-primary" role="status"></div>
-                </td>
-            </tr>
-        `;
+    const tableBody = document.getElementById('codbt-table-body');
+    tableBody.innerHTML = `
+        <tr id="codbt-loading-spinner">
+            <td colspan="4" class="text-center">
+                <div class="spinner-border text-primary" role="status"></div>
+            </td>
+        </tr>
+    `;
 
-        try {
-            const response = await fetch(`/api/codbt-collected?date=${formattedDate}`);
-            const data = await response.json();
-            codBtData = data;
-            refreshCodBtTable();
-        } catch (error) {
-            console.error('Failed to fetch COD/BT data:', error);
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load data.</td></tr>';
-        }
+    try {
+        const response = await fetch(`/api/codbt-collected?date=${formattedDate}`);
+        const data = await response.json();
+        codBtData = data;
+        refreshCodBtTable();
+        codBtLoaded = true;
+    } catch (error) {
+        console.error('Failed to fetch COD/BT data:', error);
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load data.</td></tr>';
     }
+}
 
     // Helper to group jobs by payment method in desired order
     function groupJobsByPaymentMethod(jobs) {
@@ -1168,21 +1170,24 @@
     loadCodBtData();
 });
 
-    document.getElementById('codbt-tab').addEventListener('shown.bs.tab', () => {
-    const datePicker = document.getElementById('codbt-date-picker');
-    if (!datePicker.value) {
-        datePicker.value = moment().format('YYYY-MM-DD');
+    // Only load COD/BT data when tab is shown, once
+document.getElementById('codbt-tab').addEventListener('shown.bs.tab', () => {
+    if (!codBtLoaded) {
+        // Initialize date picker to today if empty
+        if (!document.getElementById('codbt-date-picker').value) {
+            document.getElementById('codbt-date-picker').value = moment().format('YYYY-MM-DD');
+        }
+        loadCodBtData();
     }
-    document.getElementById('refresh-codbt-btn').disabled = false;
-    loadCodBtData();
 });
 
-    document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
-        loadCodBtData();
-    });
-
-    // Initialize date picker to today
-    document.getElementById('codbt-date-picker').value = moment().format('YYYY-MM-DD');
+    // Load on refresh button click and date change as usual
+document.getElementById('codbt-date-picker').addEventListener('change', () => {
+    if (codBtLoaded) loadCodBtData();
+});
+document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
+    loadCodBtData();
+});
 </script>
 
 </body>
