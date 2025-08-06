@@ -1159,6 +1159,37 @@ async function loadCodBtData() {
         `;
         tableBody.insertAdjacentHTML('beforeend', grandRow);
 
+        // ======= ADDITION: Auto-expand first dispatcher if only one dispatcher present =======
+        const dispatcherKeys = Object.keys(dispatchers).filter(d => {
+            const data = dispatchers[d];
+            // Check if dispatcher has any total > 0 or cash > 0 or bt > 0 to count as a dispatcher with data
+            if (d === 'Selfcollect' && data.__statuses) {
+                // Sum totals of Selfcollect statuses
+                let sumTotal = 0;
+                for (const status in data.__statuses) {
+                    sumTotal += data.__statuses[status].total || 0;
+                }
+                return sumTotal > 0;
+            } else {
+                return (data.total || 0) > 0 || (data.cash || 0) > 0 || (data.bt || 0) > 0;
+            }
+        });
+
+        if (dispatcherKeys.length === 1) {
+            let collapseIdToExpand;
+            if (dispatcherKeys[0] === 'Selfcollect') {
+                collapseIdToExpand = 'dispatcher-collapse-selfcollect';
+            } else {
+                // Find index of dispatcher for collapse id
+                const index = dispatcherNames.indexOf(dispatcherKeys[0]);
+                collapseIdToExpand = `dispatcher-collapse-${index}`;
+            }
+            const collapseElement = document.getElementById(collapseIdToExpand);
+            if (collapseElement) {
+                // Bootstrap 5 collapse toggle open
+                const bsCollapse = new bootstrap.Collapse(collapseElement, { toggle: true });
+            }
+        }
     } else {
         tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>';
     }
