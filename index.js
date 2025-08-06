@@ -11281,7 +11281,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 currentStatus: "Return to Warehouse",
                                 lastUpdateDateTime: moment().format(),
                                 assignedTo: "N/A",
-                                latestReason: data.data.reason,
+                                latestReason: "Reschedule to self collect requested by customer",
                                 attempt: data.data.attempt + 1,
                                 latestLocation: req.body.warehouse,
                                 lastUpdatedBy: req.user.name,
@@ -11292,7 +11292,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
+                                        reason: "Reschedule to self collect requested by customer",
                                         lastLocation: data.data.assign_to,
                                     },
                                     history: {
@@ -13796,7 +13796,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 history: {
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
-                                    reason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
+                                    reason: "Warehouse location updated to " + req.body.warehouse + ".",
                                 }
                             }
                         }
@@ -13818,7 +13818,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 history: {
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
-                                    reason: "Warehouse location updated from " + data.data.latestLocation + " to " + req.body.warehouse + ".",
+                                    reason: "Warehouse location updated to " + req.body.warehouse + ".",
                                 }
                             }
                         }
