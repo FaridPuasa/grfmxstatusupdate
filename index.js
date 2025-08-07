@@ -700,6 +700,9 @@ async function checkStaleInfoReceivedJobs() {
     }
 }
 
+setInterval(checkStaleInfoReceivedJobs, 86400000);
+checkStaleInfoReceivedJobs();
+
 async function checkActiveDeliveriesStatus() {
     try {
         const activeOrders = await ORDERS.find(
@@ -788,6 +791,9 @@ async function checkActiveDeliveriesStatus() {
         console.error('Watcher encountered an error:', error);
     }
 }
+
+setInterval(checkActiveDeliveriesStatus, 1800000);
+checkActiveDeliveriesStatus(); // Run once on server start
 
 // Function 2: Check and Update Orders with Empty Area
 async function checkAndUpdateEmptyAreaOrders() {
@@ -1190,6 +1196,9 @@ async function checkAndUpdateEmptyAreaOrders() {
         console.error('Error in empty area orders check:', error);
     }
 }
+
+setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
+checkAndUpdateEmptyAreaOrders();
 
 const rule = new schedule.RecurrenceRule();
 rule.tz = 'Asia/Brunei';
