@@ -12,7 +12,6 @@ const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
 const flash = require('connect-flash');
 const NodeCache = require('node-cache');
-const schedule = require('node-schedule');
 const urgentCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
 const codBtCache = new NodeCache({ stdTTL: 600 }); // cache for 10 minutes, adjust as needed
 const app = express();
@@ -1199,21 +1198,6 @@ async function checkAndUpdateEmptyAreaOrders() {
 
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
-
-const rule = new schedule.RecurrenceRule();
-rule.tz = 'Asia/Brunei';
-rule.hour = 5;
-rule.minute = 0;
-
-schedule.scheduleJob(rule, async () => {
-    console.log('Starting Stale Info Received Jobs Check...');
-    await checkStaleInfoReceivedJobs();
-
-    console.log('Starting Empty Area Orders Update...');
-    await checkAndUpdateEmptyAreaOrders();
-
-    console.log('All scheduled tasks completed.');
-});
 
 // Optional: refresh route to clear urgent cache
 app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
