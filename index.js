@@ -792,7 +792,7 @@ async function checkActiveDeliveriesStatus() {
     }
 }
 
-setInterval(checkActiveDeliveriesStatus, 1800000);
+setInterval(checkActiveDeliveriesStatus, 600000);
 checkActiveDeliveriesStatus(); // Run once on server start
 
 // Function 2: Check and Update Orders with Empty Area
