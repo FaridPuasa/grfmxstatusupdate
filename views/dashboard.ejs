@@ -695,6 +695,11 @@
                 COD/BT Collected
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+    <button class="nav-link" id="completed-jobs-tab" data-bs-toggle="tab" data-bs-target="#completed-jobs" type="button" role="tab" aria-controls="completed-jobs" aria-selected="false">
+        Completed Jobs
+    </button>
+</li>
     </ul>
 
     <div class="tab-content">
@@ -915,6 +920,26 @@
                 </table>
             </div>
         </div>
+        <div class="tab-pane fade" id="completed-jobs" role="tabpanel" aria-labelledby="completed-jobs-tab">
+    <div class="d-flex align-items-center my-2">
+        <input type="date" id="completed-jobs-date-picker" class="form-control me-2" style="max-width: 200px;">
+        <button class="btn btn-primary" id="refresh-completed-jobs-btn">Refresh</button>
+    </div>
+    <table class="table table-hover table-bordered">
+        <thead>
+            <tr>
+                <th>Dispatcher</th>
+                <th>In Progress</th>
+                <th>Completed</th>
+                <th>Failed</th>
+            </tr>
+        </thead>
+        <tbody id="completed-jobs-table-body">
+            <!-- Filled by JS -->
+        </tbody>
+    </table>
+</div>
+
     </div>
     </div>
 
@@ -930,6 +955,239 @@
 <script>
     let codBtData = null;
 let codBtLoaded = false;  // flag to prevent multiple loads
+
+let completedJobsData = null;
+let completedJobsLoaded = false;
+
+async function loadCompletedJobs() {
+    const datePicker = document.getElementById('completed-jobs-date-picker');
+    const selectedDate = datePicker.value || moment().format('YYYY-MM-DD');
+
+    const formattedDateKey = moment(selectedDate).format('YYYY-MM-DD');
+    const tableBody = document.getElementById('completed-jobs-table-body');
+
+    // Show loading spinner
+    tableBody.innerHTML = `
+        <tr><td colspan="4" class="text-center">
+            <div class="spinner-border text-primary" role="status"></div>
+        </td></tr>
+    `;
+
+    try {
+        const response = await fetch(`/api/completed-jobs?date=${formattedDateKey}`);
+        const data = await response.json();
+        completedJobsData = data;
+
+        renderCompletedJobsTable(data);
+        completedJobsLoaded = true;
+    } catch (error) {
+        console.error('Failed to load completed jobs:', error);
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to load data.</td></tr>`;
+    }
+}
+
+function createBadge(count, color='primary') {
+    return `<span class="badge bg-${color} ms-2">${count}</span>`;
+}
+
+function renderCompletedJobsTable(data) {
+    const tableBody = document.getElementById('completed-jobs-table-body');
+    tableBody.innerHTML = '';
+
+    const dispatchers = Object.keys(data).sort();
+
+    if (dispatchers.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>`;
+        return;
+    }
+
+    dispatchers.forEach((dispatcher, idx) => {
+        const d = data[dispatcher];
+        const inProgressCount = d.inProgress.length;
+        const completedCount = d.completed.length;
+        const failedCount = d.failed.length;
+
+        // Skip dispatchers with zero total jobs if you want, or show all
+        if (inProgressCount + completedCount + failedCount === 0) return;
+
+        const collapseId = `dispatcher-collapse-${idx}`;
+
+        // Dispatcher summary row
+        const dispatcherRow = `
+            <tr data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="cursor:pointer;">
+                <td>${dispatcher}</td>
+                <td>
+                    In Progress
+                    ${createBadge(inProgressCount, 'info')}
+                </td>
+                <td>
+                    Completed
+                    ${createBadge(completedCount, 'success')}
+                </td>
+                <td>
+                    Failed
+                    ${createBadge(failedCount, 'danger')}
+                </td>
+            </tr>
+        `;
+
+        // In Progress group rows (collapsible)
+        const inProgressCollapseId = `${collapseId}-inprogress`;
+        const inProgressGroupRow = `
+            <tr class="collapse" id="${collapseId}">
+                <td colspan="4" style="padding:0;">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr data-bs-toggle="collapse" data-bs-target="#${inProgressCollapseId}" style="cursor:pointer; background-color:#e9f5ff;">
+                                <td colspan="4">
+                                    In Progress Jobs
+                                    ${createBadge(inProgressCount, 'info')}
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="${inProgressCollapseId}">
+                                <td colspan="4" style="padding:0;">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Tracking Number</th>
+                                                <th>Product</th>
+                                                <th>Delivery Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${
+                                                d.inProgress.map(job => `
+                                                    <tr>
+                                                        <td>${job.doTrackingNumber || '-'}</td>
+                                                        <td>${job.product || '-'}</td>
+                                                        <td>${job.jobMethod || '-'}</td>
+                                                    </tr>
+                                                `).join('')
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        `;
+
+        // Completed group rows (collapsible)
+        const completedCollapseId = `${collapseId}-completed`;
+        const completedGroupRow = `
+            <tr class="collapse" id="${collapseId}">
+                <td colspan="4" style="padding:0;">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr data-bs-toggle="collapse" data-bs-target="#${completedCollapseId}" style="cursor:pointer; background-color:#e6f4ea;">
+                                <td colspan="4">
+                                    Completed Jobs
+                                    ${createBadge(completedCount, 'success')}
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="${completedCollapseId}">
+                                <td colspan="4" style="padding:0;">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Tracking Number</th>
+                                                <th>Product</th>
+                                                <th>Delivery Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${
+                                                d.completed.map(job => `
+                                                    <tr>
+                                                        <td>${job.doTrackingNumber || '-'}</td>
+                                                        <td>${job.product || '-'}</td>
+                                                        <td>${job.jobMethod || '-'}</td>
+                                                    </tr>
+                                                `).join('')
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        `;
+
+        // Failed group rows (collapsible)
+        const failedCollapseId = `${collapseId}-failed`;
+        const failedGroupRow = `
+            <tr class="collapse" id="${collapseId}">
+                <td colspan="4" style="padding:0;">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr data-bs-toggle="collapse" data-bs-target="#${failedCollapseId}" style="cursor:pointer; background-color:#fdecea;">
+                                <td colspan="4">
+                                    Failed Jobs
+                                    ${createBadge(failedCount, 'danger')}
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="${failedCollapseId}">
+                                <td colspan="4" style="padding:0;">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Tracking Number</th>
+                                                <th>Product</th>
+                                                <th>Delivery Type</th>
+                                                <th>Reason</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${
+                                                d.failed.map(job => `
+                                                    <tr>
+                                                        <td>${job.doTrackingNumber || '-'}</td>
+                                                        <td>${job.product || '-'}</td>
+                                                        <td>${job.jobMethod || '-'}</td>
+                                                        <td>${job.reason || '-'}</td>
+                                                    </tr>
+                                                `).join('')
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        `;
+
+        // Append all rows to table body
+        tableBody.insertAdjacentHTML('beforeend', dispatcherRow);
+        tableBody.insertAdjacentHTML('beforeend', inProgressGroupRow);
+        tableBody.insertAdjacentHTML('beforeend', completedGroupRow);
+        tableBody.insertAdjacentHTML('beforeend', failedGroupRow);
+    });
+}
+
+// Event Listeners
+document.getElementById('completed-jobs-date-picker').addEventListener('change', () => {
+    loadCompletedJobs();
+});
+
+document.getElementById('completed-jobs-tab').addEventListener('shown.bs.tab', () => {
+    if (!completedJobsLoaded) {
+        if (!document.getElementById('completed-jobs-date-picker').value) {
+            document.getElementById('completed-jobs-date-picker').value = moment().format('YYYY-MM-DD');
+        }
+        loadCompletedJobs();
+    }
+});
+
+// Optional: a refresh button
+document.getElementById('refresh-completed-jobs-btn').addEventListener('click', () => {
+    loadCompletedJobs();
+});
 
 async function loadCodBtData() {
     const selectedDate = document.getElementById('codbt-date-picker').value;

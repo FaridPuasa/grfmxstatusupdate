@@ -259,6 +259,124 @@ app.get('/api/codbt-collected', async (req, res) => {
     }
 });
 
+app.get('/api/completed-jobs', async (req, res) => {
+    try {
+        const moment = require('moment');
+        const dateParam = req.query.date;
+        if (!dateParam) {
+            return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
+        }
+
+        // Parse date for comparison, normalize to start/end of day for filtering
+        const startOfDay = moment(dateParam).startOf('day').toDate();
+        const endOfDay = moment(dateParam).endOf('day').toDate();
+
+        // 1. Fetch Completed jobs
+        const completedJobs = await ORDERS.find({
+            currentStatus: "Completed",
+            jobDate: dateParam,
+            product: { $nin: [null, ""] }
+        }).lean();
+
+        // 2. Fetch In Progress jobs (Out for Delivery, Self Collect, Drop Off)
+        const inProgressJobs = await ORDERS.find({
+            currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
+            jobDate: dateParam,
+            product: { $nin: [null, ""] }
+        }).lean();
+
+        // 3. Fetch Failed jobs by scanning history array with date filter
+        // Using aggregation pipeline for better filtering
+        const failedJobsAggregation = await ORDERS.aggregate([
+            {
+                $match: {
+                    jobDate: dateParam,
+                    history: {
+                        $elemMatch: {
+                            statusHistory: { $in: ["Failed Delivery", "Failed Collection"] },
+                            dateUpdated: { $gte: startOfDay, $lte: endOfDay }
+                        }
+                    },
+                    product: { $nin: [null, ""] }
+                }
+            },
+            {
+                // Project to only include the history entries that match failed conditions
+                $project: {
+                    doTrackingNumber: 1,
+                    product: 1,
+                    jobMethod: 1,
+                    assignedTo: 1,
+                    history: {
+                        $filter: {
+                            input: "$history",
+                            as: "h",
+                            cond: {
+                                $and: [
+                                    { $in: ["$$h.statusHistory", ["Failed Delivery", "Failed Collection"]] },
+                                    { $gte: ["$$h.dateUpdated", startOfDay] },
+                                    { $lte: ["$$h.dateUpdated", endOfDay] }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+
+        // Format failed jobs to flatten history reasons
+        const failedJobs = [];
+        failedJobsAggregation.forEach(order => {
+            order.history.forEach(failEntry => {
+                failedJobs.push({
+                    doTrackingNumber: order.doTrackingNumber || '-',
+                    product: order.product || '-',
+                    jobMethod: order.jobMethod || '-',
+                    assignedTo: order.assignedTo || 'Unassigned',
+                    reason: failEntry.reason || failEntry.statusHistory || '-'
+                });
+            });
+        });
+
+        // Group jobs by assignedTo (dispatcher)
+        const groupByDispatcher = (jobsArray) => {
+            const map = {};
+            jobsArray.forEach(job => {
+                const dispatcher = job.assignedTo || 'Unassigned';
+                if (!map[dispatcher]) map[dispatcher] = [];
+                map[dispatcher].push(job);
+            });
+            return map;
+        };
+
+        const groupedCompleted = groupByDispatcher(completedJobs);
+        const groupedInProgress = groupByDispatcher(inProgressJobs);
+        const groupedFailed = groupByDispatcher(failedJobs);
+
+        // Combine into one object keyed by dispatcher
+        const dispatchers = new Set([
+            ...Object.keys(groupedCompleted),
+            ...Object.keys(groupedInProgress),
+            ...Object.keys(groupedFailed),
+        ]);
+
+        const result = {};
+        dispatchers.forEach(dispatcher => {
+            result[dispatcher] = {
+                completed: groupedCompleted[dispatcher] || [],
+                inProgress: groupedInProgress[dispatcher] || [],
+                failed: groupedFailed[dispatcher] || [],
+            };
+        });
+
+        return res.json(result);
+
+    } catch (error) {
+        console.error('Error fetching completed jobs:', error);
+        return res.status(500).json({ error: 'Failed to fetch completed jobs.' });
+    }
+});
+
 // Helper function for grouping COD/BT completed orders by date and dispatcher
 async function getCodBtMapForDate(dateParam) {
     const moment = require('moment');
@@ -10329,17 +10447,21 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
-                                statusHistory: "Custom Clearance Release",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: "Brunei Customs",
-                            },
-                            history: {
-                                statusHistory: "At Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: req.body.warehouse,
-                            },
+                                $each: [
+                                    {
+                                        statusHistory: "Custom Clearance Release",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastLocation: "Brunei Customs",
+                                    },
+                                    {
+                                        statusHistory: "At Warehouse",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastLocation: req.body.warehouse,
+                                    }
+                                ]
+                            }
                         }
                     }
 
@@ -11306,18 +11428,22 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastLocation: req.body.warehouse,
+                                        $each: [
+                                            {
+                                                statusHistory: "Failed Delivery",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: data.data.assign_to,
+                                                reason: data.data.reason,
+                                                lastLocation: data.data.assign_to,
+                                            },
+                                            {
+                                                statusHistory: "Return to Warehouse",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastLocation: req.body.warehouse,
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -11350,18 +11476,22 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 grRemark: "Reschedule to self collect requested by customer",
                                 $push: {
                                     history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: "Reschedule to self collect requested by customer",
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastLocation: req.body.warehouse,
+                                        $each: [
+                                            {
+                                                statusHistory: "Failed Delivery",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: data.data.assign_to,
+                                                reason: "Reschedule to self collect requested by customer",
+                                                lastLocation: data.data.assign_to,
+                                            },
+                                            {
+                                                statusHistory: "Return to Warehouse",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastLocation: req.body.warehouse,
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -11396,18 +11526,22 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 lastUpdatedBy: req.user.name,
                                 $push: {
                                     history: {
-                                        statusHistory: "Failed Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
-                                        lastLocation: data.data.assign_to,
-                                    },
-                                    history: {
-                                        statusHistory: "Return to Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastLocation: req.body.warehouse,
+                                        $each: [
+                                            {
+                                                statusHistory: "Failed Delivery",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: data.data.assign_to,
+                                                reason: data.data.reason,
+                                                lastLocation: data.data.assign_to,
+                                            },
+                                            {
+                                                statusHistory: "Return to Warehouse",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastLocation: req.body.warehouse,
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -13956,15 +14090,19 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
-                                    statusHistory: "Failed Delivery",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    reason: "Customer not available / cannot be contacted"
-                                },
-                                history: {
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            reason: "Customer not available / cannot be contacted"
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -14009,15 +14147,19 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
-                                    statusHistory: "Failed Delivery",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    reason: "Reschedule to self collect requested by customer"
-                                },
-                                history: {
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            reason: "Reschedule to self collect requested by customer"
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                        }
+                                    ]
                                 }
                             }
                         }
