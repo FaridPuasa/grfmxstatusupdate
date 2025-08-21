@@ -9188,7 +9188,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var lastMilestoneStatus = '';
             var finalPhoneNum = '';
             var finalArea = "";
-            var messageTemuUpdate = 0;
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -10237,7 +10236,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             portalUpdate = "Order/job added. Portal status updated to Info Received. ";
 
                             mongoDBrun = 1;
-                            messageTemuUpdate = 1;
                             completeRun = 1;
                         }
                     }
@@ -14247,37 +14245,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 ceCheck = 1;
             }
 
-            // Define the function to send WhatsApp messages via ManyChat / Make
-            async function sendWhatsAppMessageTemu(phone, recipientName) {
-                try {
-                    await axios.post(
-                        'https://hook.eu1.make.com/wg47enwth61lf3ch4x6ihdr53b8treql',
-                        {
-                            phone: phone,
-                            name: recipientName,
-                            messageTemplate: "temureturnupdate"
-                        },
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b'
-                            }
-                        }
-                    );
-                    console.log(`Sent WhatsApp message to ${recipientName} (${phone})`);
-                } catch (error) {
-                    console.error('Error sending WhatsApp message:', error.response?.data || error.message);
-                }
-            }
-
             if (mongoDBrun == 1) {
+                // Save the new document to the database using promises
                 newOrder.save()
-                    .then(async (savedOrder) => {  // <- add async here
+                    .then(savedOrder => {
                         console.log('New order saved successfully:', savedOrder);
-
-                        if (messageTemuUpdate == 1) {
-                            await sendWhatsAppMessageTemu(finalPhoneNum, data.data.deliver_to_collect_from);
-                        }
                     })
                     .catch(err => {
                         console.error('Error saving new order:', err);
@@ -15195,15 +15167,34 @@ async function checkNonCodArea(order, trackingNumber) {
 
 async function handleOrderChange(change) {
     try {
-        const result = await ORDERS.find().sort({ $natural: -1 }).limit(1);
+        // ✅ Get the inserted order directly by its ID
+        const orderId = change.documentKey._id;
+        const order = await ORDERS.findById(orderId);
 
-        if (!result[0] || !result[0].product || result[0].product.length === 0) return;
+        if (!order || !order.product || order.product.length === 0) return;
 
-        const order = result[0];
         const product = order.product;
 
         if (product === "kptdp") return; // Skip kptdp orders
 
+        // ✅ Special handling for TEMU
+        if (product === "temu") {
+            const finalPhoneNum = cleanPhoneNumber(order.receiverPhoneNumber);
+            const whatsappName = order.receiverName;
+            const tracker = order.doTrackingNumber; // use existing one (already in DB)
+
+            if (shouldSendWhatsApp(product, finalPhoneNum)) {
+                try {
+                    await sendWhatsAppMessageTemu(finalPhoneNum, whatsappName);
+                    console.log(`✅ WhatsApp TEMU sent for tracker ${tracker}`);
+                } catch (err) {
+                    console.error(`❌ Failed to send TEMU WhatsApp for ${tracker}:`, err);
+                }
+            }
+            return; // stop here for TEMU (no tracker generation)
+        }
+
+        // ✅ Other products (generate tracker)
         let counterField = "";
         let suffix = "";
         let prefix = "";
@@ -15232,13 +15223,14 @@ async function handleOrderChange(change) {
             return; // Skip unknown products
         }
 
+        // Generate unique tracker number
         const sequence = await incrementAndGetCounter(counterField);
         tracker = generateTracker(sequence, suffix, prefix);
 
         // Save both doTrackingNumber and sequence in ORDERS
         await ORDERS.findByIdAndUpdate(order._id, { doTrackingNumber: tracker, sequence: sequence });
 
-        // Add this block here:
+        // Special check for non-COD
         if (["ewe", "pdu", "mglobal"].includes(product)) {
             await checkNonCodArea(order, tracker);
         }
@@ -15247,7 +15239,12 @@ async function handleOrderChange(change) {
         const whatsappName = order.receiverName;
 
         if (shouldSendWhatsApp(product, finalPhoneNum)) {
-            await sendWhatsAppMessage(finalPhoneNum, whatsappName, tracker);
+            try {
+                await sendWhatsAppMessage(finalPhoneNum, whatsappName, tracker);
+                console.log(`✅ WhatsApp sent for ${product} tracker ${tracker}`);
+            } catch (err) {
+                console.error(`❌ Failed to send WhatsApp for ${product} tracker ${tracker}:`, err);
+            }
         }
 
     } catch (err) {
@@ -15276,7 +15273,7 @@ function cleanPhoneNumber(rawPhoneNumber) {
 function shouldSendWhatsApp(product, phoneNumber) {
     const skipProducts = [
         "fmx", "bb", "fcas", "icarus", "ewe", "ewens",
-        "temu", "kptdf", "pdu", "pure51", "mglobal", "kptdp"
+        "kptdf", "pdu", "pure51", "mglobal", "kptdp"
     ];
     return !skipProducts.includes(product) && phoneNumber !== "N/A";
 }
@@ -15304,6 +15301,28 @@ async function sendWhatsAppMessage(finalPhoneNum, name, trackingNumber) {
         );
     } catch (error) {
         console.error('Error sending WhatsApp:', error.response?.data || error.message);
+    }
+}
+
+async function sendWhatsAppMessageTemu(finalPhoneNum, name) {
+    try {
+        await axios.post(
+            'https://hook.eu1.make.com/wg47enwth61lf3ch4x6ihdr53b8treql',
+            {
+                phone: finalPhoneNum,
+                name: name,
+                messageTemplate: "temureturnupdate"
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b'
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Error sending WhatsApp (Temu):', error.response?.data || error.message);
+        // important: don't throw, just swallow error so queue continues
     }
 }
 
