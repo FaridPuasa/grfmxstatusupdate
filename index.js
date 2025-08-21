@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const request = require('request');
 const axios = require('axios');
 const multer = require('multer');
+const xlsx = require('xlsx');
 const path = require('path');
 const moment = require('moment');
 const session = require('express-session');
@@ -263,82 +264,65 @@ app.get('/api/completed-jobs', async (req, res) => {
     try {
         const moment = require('moment');
         const dateParam = req.query.date;
-        if (!dateParam) {
-            return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
-        }
+        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
 
-        // Parse date for comparison, normalize to start/end of day for filtering
-        const startOfDay = moment(dateParam).startOf('day').toDate();
-        const endOfDay = moment(dateParam).endOf('day').toDate();
+        const startOfDay = moment(dateParam).startOf('day');
+        const endOfDay = moment(dateParam).endOf('day');
 
-        // 1. Fetch Completed jobs
+        // Fetch all orders with failed histories
+        const orders = await ORDERS.find({
+            product: { $nin: [null, ""] },
+            "history.statusHistory": { $in: ["Failed Delivery", "Failed Collection"] }
+        }).lean();
+
+        const failedJobs = [];
+
+        orders.forEach(order => {
+            order.history.forEach(h => {
+                if (["Failed Delivery", "Failed Collection"].includes(h.statusHistory)) {
+                    const dateUpdated = h.dateUpdated ? new Date(h.dateUpdated) : null;
+
+                    // Only include failed if it happened on the selected date
+                    if (
+                        dateUpdated &&
+                        moment(dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]') &&
+                        h.lastAssignedTo && h.lastAssignedTo.trim() !== ""  // skip if null/empty
+                    ) {
+
+                        // Check if the same order has a Completed on the same date
+                        const completedSameDay = order.history.some(hist =>
+                            hist.statusHistory === "Completed" &&
+                            hist.dateUpdated &&
+                            moment(hist.dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]')
+                        );
+
+                        if (!completedSameDay) {
+                            failedJobs.push({
+                                doTrackingNumber: order.doTrackingNumber || '-',
+                                product: order.product || '-',
+                                jobMethod: order.jobMethod || '-',
+                                assignedTo: h.lastAssignedTo || 'Unassigned',
+                                reason: h.reason || h.statusHistory || '-'
+                            });
+                        }
+                    }
+                }
+            });
+        });
+
+        // Completed and In Progress jobs still filtered by jobDate
         const completedJobs = await ORDERS.find({
             currentStatus: "Completed",
             jobDate: dateParam,
             product: { $nin: [null, ""] }
         }).lean();
 
-        // 2. Fetch In Progress jobs (Out for Delivery, Self Collect, Drop Off)
         const inProgressJobs = await ORDERS.find({
             currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
             jobDate: dateParam,
             product: { $nin: [null, ""] }
         }).lean();
 
-        // 3. Fetch Failed jobs by scanning history array with date filter
-        // Using aggregation pipeline for better filtering
-        const failedJobsAggregation = await ORDERS.aggregate([
-            {
-                $match: {
-                    jobDate: dateParam,
-                    history: {
-                        $elemMatch: {
-                            statusHistory: { $in: ["Failed Delivery", "Failed Collection"] },
-                            dateUpdated: { $gte: startOfDay, $lte: endOfDay }
-                        }
-                    },
-                    product: { $nin: [null, ""] }
-                }
-            },
-            {
-                // Project to only include the history entries that match failed conditions
-                $project: {
-                    doTrackingNumber: 1,
-                    product: 1,
-                    jobMethod: 1,
-                    assignedTo: 1,
-                    history: {
-                        $filter: {
-                            input: "$history",
-                            as: "h",
-                            cond: {
-                                $and: [
-                                    { $in: ["$$h.statusHistory", ["Failed Delivery", "Failed Collection"]] },
-                                    { $gte: ["$$h.dateUpdated", startOfDay] },
-                                    { $lte: ["$$h.dateUpdated", endOfDay] }
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
-        ]);
-
-        // Format failed jobs to flatten history reasons
-        const failedJobs = [];
-        failedJobsAggregation.forEach(order => {
-            order.history.forEach(failEntry => {
-                failedJobs.push({
-                    doTrackingNumber: order.doTrackingNumber || '-',
-                    product: order.product || '-',
-                    jobMethod: order.jobMethod || '-',
-                    assignedTo: order.assignedTo || 'Unassigned',
-                    reason: failEntry.reason || failEntry.statusHistory || '-'
-                });
-            });
-        });
-
-        // Group jobs by assignedTo (dispatcher)
         const groupByDispatcher = (jobsArray) => {
             const map = {};
             jobsArray.forEach(job => {
@@ -353,7 +337,7 @@ app.get('/api/completed-jobs', async (req, res) => {
         const groupedInProgress = groupByDispatcher(inProgressJobs);
         const groupedFailed = groupByDispatcher(failedJobs);
 
-        // Combine into one object keyed by dispatcher
+        // Combine dispatchers
         const dispatchers = new Set([
             ...Object.keys(groupedCompleted),
             ...Object.keys(groupedInProgress),
@@ -362,10 +346,17 @@ app.get('/api/completed-jobs', async (req, res) => {
 
         const result = {};
         dispatchers.forEach(dispatcher => {
+            const completed = groupedCompleted[dispatcher] || [];
+            const inProgress = groupedInProgress[dispatcher] || [];
+            const failed = groupedFailed[dispatcher] || [];
+
+            // Skip dispatcher if all counts are zero
+            if (completed.length + inProgress.length + failed.length === 0) return;
+
             result[dispatcher] = {
-                completed: groupedCompleted[dispatcher] || [],
-                inProgress: groupedInProgress[dispatcher] || [],
-                failed: groupedFailed[dispatcher] || [],
+                completed,
+                inProgress,
+                failed,
             };
         });
 
@@ -373,7 +364,7 @@ app.get('/api/completed-jobs', async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching completed jobs:', error);
-        return res.status(500).json({ error: 'Failed to fetch completed jobs.' });
+        res.status(500).json({ error: 'Failed to fetch completed jobs.' });
     }
 });
 
@@ -9197,6 +9188,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var lastMilestoneStatus = '';
             var finalPhoneNum = '';
             var finalArea = "";
+            var messageTemuUpdate = 0;
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -9372,6 +9364,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Fail due to Reschedule to self collect requested by customer"
             }
 
+            if (req.body.statusCode == 'FIA') {
+                appliedStatus = "Update Fail due to Incorrect Address"
+            }
+
             if (req.body.statusCode == 'IR') {
                 appliedStatus = "Info Received"
             }
@@ -9434,7 +9430,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
                 || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')
                 || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')
-                || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC')) {
+                || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC') || (req.body.statusCode == 'FIA')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -10241,6 +10237,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             portalUpdate = "Order/job added. Portal status updated to Info Received. ";
 
                             mongoDBrun = 1;
+                            messageTemuUpdate = 1;
                             completeRun = 1;
                         }
                     }
@@ -14084,7 +14081,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         update = {
                             currentStatus: "At Warehouse",
                             lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
                             latestReason: "Customer not available / cannot be contacted",
                             grRemark: "Customer not available / cannot be contacted",
                             lastUpdatedBy: req.user.name,
@@ -14141,7 +14137,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         update = {
                             currentStatus: "At Warehouse",
                             lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
                             latestReason: "Reschedule to self collect requested by customer",
                             grRemark: "Reschedule to self collect requested by customer",
                             lastUpdatedBy: req.user.name,
@@ -14192,15 +14187,97 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
+            if (req.body.statusCode == 'FIA') {
+                if (product == 'MGLOBAL') {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: "Incorrect Address",
+                            grRemark: "Incorrect Address",
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            reason: "Incorrect Address"
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "failed", // Use the calculated dStatus
+                                assign_to: "FL1",
+                                reason: "Incorrect Address",
+                                pod_time: moment().format("hh:mm A")
+                            }
+                        };
+
+                        var detrackUpdateData2 = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse",
+                                assign_to: ""
+                            }
+                        };
+
+                        portalUpdate = "Detrack and Portal updated for Fail due to Incorrect Address";
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 6;
+
+                        completeRun = 1;
+                    }
+                }
+            }
+
             if (completeRun == 0) {
                 ceCheck = 1;
             }
 
+            // Define the function to send WhatsApp messages via ManyChat / Make
+            async function sendWhatsAppMessageTemu(phone, recipientName) {
+                try {
+                    await axios.post(
+                        'https://hook.eu1.make.com/wg47enwth61lf3ch4x6ihdr53b8treql',
+                        {
+                            phone: phone,
+                            name: recipientName,
+                            messageTemplate: "temureturnupdate"
+                        },
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b'
+                            }
+                        }
+                    );
+                    console.log(`Sent WhatsApp message to ${recipientName} (${phone})`);
+                } catch (error) {
+                    console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+                }
+            }
+
             if (mongoDBrun == 1) {
-                // Save the new document to the database using promises
                 newOrder.save()
-                    .then(savedOrder => {
+                    .then(async (savedOrder) => {  // <- add async here
                         console.log('New order saved successfully:', savedOrder);
+
+                        if (messageTemuUpdate == 1) {
+                            await sendWhatsAppMessageTemu(finalPhoneNum, data.data.deliver_to_collect_from);
+                        }
                     })
                     .catch(err => {
                         console.error('Error saving new order:', err);
@@ -15229,6 +15306,79 @@ async function sendWhatsAppMessage(finalPhoneNum, name, trackingNumber) {
         console.error('Error sending WhatsApp:', error.response?.data || error.message);
     }
 }
+
+// New WhatsApp sending function for Return Temu
+async function sendWhatsAppMessageTemplate(formattedPhoneNum, name, messageTemplate) {
+    try {
+        await axios.post(
+            'https://hook.eu1.make.com/wg47enwth61lf3ch4x6ihdr53b8treql',
+            {
+                phone: formattedPhoneNum,
+                name: name,
+                messageTemplate: messageTemplate
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b'
+                }
+            }
+        );
+        console.log(`Sent WhatsApp message to ${name} (${formattedPhoneNum})`);
+    } catch (error) {
+        console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+    }
+}
+
+// Render EJS page for broadcast
+app.get('/broadcast', ensureAuthenticated, (req, res) => {
+    res.render('sendWAMessageTemplate');
+});
+
+// Upload route using memoryStorage multer
+app.post('/upload', upload.single('file'), async (req, res) => {
+    const messageTemplate = req.body.messageTemplate;
+
+    try {
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        for (const row of data) {
+            let excelPhone = row['Customer Phone Number'];
+            const name = row['Customer Name'];
+
+            // Clean up phone number (remove spaces, dashes, etc.)
+            if (excelPhone) {
+                excelPhone = excelPhone.toString().replace(/\D/g, ''); // keep only digits
+            }
+
+            let formattedPhoneNum;
+
+            // Apply original logic
+            if (excelPhone) {
+                if (excelPhone.length === 7) {
+                    formattedPhoneNum = "+673" + excelPhone;
+                } else if (excelPhone.length === 10) {
+                    formattedPhoneNum = "+" + excelPhone;
+                } else {
+                    formattedPhoneNum = excelPhone;
+                }
+            } else {
+                formattedPhoneNum = "No phone number provided";
+            }
+
+            if (formattedPhoneNum !== "No phone number provided" && name) {
+                await sendWhatsAppMessageTemplate(formattedPhoneNum, name, messageTemplate);
+            }
+        }
+
+        res.send('WhatsApp messages sent successfully.');
+    } catch (err) {
+        res.status(500).send('Error processing file: ' + err.message);
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

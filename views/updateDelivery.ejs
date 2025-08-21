@@ -461,17 +461,18 @@
                         <optgroup label="MGLOBAL Flow">
                             <option value="35">1.1. Out for Delivery</option>
                             <option value="FCC">1.2. Fail due to Customer not available / cannot be contacted</option>
-                            <option value="FSC">1.3.1. Fail due to Reschedule to self collect requested by customer</option>
-                            <option value="CSSC">1.3.2. Self Collect</option>
+                            <option value="FIA">1.3. Fail due to Incorrect Address</option>
+                            <option value="FSC">1.4.1. Fail due to Reschedule to self collect requested by customer</option>
+                            <option value="CSSC">1.4.2. Self Collect</option>
                         </optgroup>
                         <optgroup label="PDU Flow">
                             <option value="35">1.1. Out for Delivery</option>
                             <option value="CSSC">1.2. Self Collect</option>
                         </optgroup>
                         <optgroup label="TEMU Collection Flow">
-                            <option value="IR">1. Add Temu Collection Orders</option>
-                            <option value="35">2.1. Out for Collection</option>
-                            <option value="CSSC">2.2. Drop Off</option>
+                            <option value="IR">1. Add Temu Collection Orders + Send Temu Update Message</option>
+                            <!-- <option value="35">2.1. Out for Collection</option>
+                            <option value="CSSC">2.2. Drop Off</option> -->
                         </optgroup>
                         <optgroup label="LD/KPT/Pure51 Flow">
                             <option value="12">1. Item In Warehouse</option>

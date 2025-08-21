@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsApp Broadcast</title>
+</head>
+<body>
+    <h2>Send WhatsApp Broadcast</h2>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <label>Customer File (Excel/CSV):</label>
+        <input type="file" name="file" accept=".xlsx,.xls,.csv" required><br><br>
+
+        <label>Message Template:</label>
+        <select name="messageTemplate" required>
+            <option value="">-- Select Template --</option>
+            <option value="temureturnupdate">Temu Return Update</option>
+            <option value="test">Test</option>
+        </select><br><br>
+
+        <button type="submit">Send Broadcast</button>
+    </form>
+</body>
+</html>
