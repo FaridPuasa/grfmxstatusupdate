@@ -15,6 +15,8 @@ const flash = require('connect-flash');
 const NodeCache = require('node-cache');
 const urgentCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
 const codBtCache = new NodeCache({ stdTTL: 600 }); // cache for 10 minutes, adjust as needed
+const grWebsiteCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
+const temuReturnsCache = new NodeCache({ stdTTL: 60 }); // cache 60s
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -53,6 +55,14 @@ async function preloadCodBtCache(days = 7) {
     }
 }
 
+const allowedProducts = [
+    "pharmacymoh",
+    "pharmacyjpmc",
+    "pharmacyphc",
+    "localdelivery",
+    "cbsl"
+];
+
 mongoose.connect(db, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -60,6 +70,8 @@ mongoose.connect(db, {
     .then(async () => {
         console.log('Database Connected');
         await preloadCodBtCache(7);
+        await preloadGrWebsiteCache(); // preload when DB is ready
+        await preloadTemuReturnsCache(); // preload when DB is ready
         // Optionally start your server here if needed
     })
     .catch(err => console.log(err));
@@ -260,6 +272,44 @@ app.get('/api/codbt-collected', async (req, res) => {
     }
 });
 
+// 🔹 API endpoint
+app.get('/api/new-orders/gr-website', async (req, res) => {
+    try {
+        const dateParam = req.query.date; // YYYY-MM-DD
+        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
+
+        const cacheKey = `grWebsite-${dateParam}`;
+        const cachedData = grWebsiteCache.get(cacheKey);
+
+        if (cachedData) {
+            return res.json(cachedData);
+        }
+
+        const data = await fetchGrWebsiteOrders(dateParam);
+
+        // Save to cache
+        grWebsiteCache.set(cacheKey, data);
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching GR Website new orders:', error);
+        res.status(500).json({ error: 'Failed to fetch GR Website new orders.' });
+    }
+});
+
+// 🔹 Preload cache at startup (today’s orders)
+async function preloadGrWebsiteCache() {
+    try {
+        const today = moment().format("YYYY-MM-DD");
+        console.log(`Preloading GR Website cache for ${today}...`);
+        const data = await fetchGrWebsiteOrders(today);
+        grWebsiteCache.set(`grWebsite-${today}`, data);
+        console.log("✅ GR Website cache preloaded.");
+    } catch (err) {
+        console.error("❌ Failed to preload GR Website cache:", err);
+    }
+}
+
 app.get('/api/completed-jobs', async (req, res) => {
     try {
         const moment = require('moment');
@@ -368,6 +418,94 @@ app.get('/api/completed-jobs', async (req, res) => {
     }
 });
 
+async function fetchTemuReturnsOrders(dateParam) {
+    // Use local start/end of day
+    const startOfDay = moment(dateParam, "YYYY-MM-DD").startOf('day');
+    const endOfDay = moment(dateParam, "YYYY-MM-DD").endOf('day');
+
+    const orders = await ORDERS.find({
+        product: "temu",
+        history: { $elemMatch: { statusHistory: "Info Received" } }
+    }).lean();
+
+    const filteredOrders = [];
+
+    orders.forEach(order => {
+        const infoHistory = order.history.find(h =>
+            h.statusHistory === "Info Received" &&
+            h.dateUpdated &&
+            moment(h.dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]')
+        );
+
+        if (infoHistory) {
+            filteredOrders.push({
+                trackingNumber: order.doTrackingNumber,
+                area: order.area,
+                name: order.receiverName,
+                phone: order.receiverPhoneNumber,
+                dateUpdated: infoHistory.dateUpdated
+            });
+        }
+    });
+
+    // Sort newest → oldest
+    filteredOrders.sort((a, b) =>
+        moment(b.dateUpdated).valueOf() - moment(a.dateUpdated).valueOf()
+    );
+
+    return filteredOrders;
+}
+
+// 🔹 Helper: fetch & group orders for a given date, newest to oldest
+async function fetchGrWebsiteOrders(dateParam) {
+    const startOfDay = moment(dateParam).startOf('day');
+    const endOfDay = moment(dateParam).endOf('day');
+
+    const orders = await ORDERS.find({
+        product: { $in: allowedProducts },
+        history: { $elemMatch: { statusHistory: "Info Received" } }
+    }).lean();
+
+    const filteredOrders = [];
+
+    orders.forEach(order => {
+        const infoHistory = order.history.find(h =>
+            h.statusHistory === "Info Received" &&
+            h.dateUpdated &&
+            moment(h.dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]')
+        );
+
+        if (infoHistory) {
+            // attach dateUpdated for sorting
+            order.dateUpdated = infoHistory.dateUpdated;
+            // format to 12-hour time (e.g. 12:35pm)
+            order.orderTime = moment(infoHistory.dateUpdated).format("h:mm a");
+            filteredOrders.push(order);
+        }
+    });
+
+    // Sort newest to oldest
+    filteredOrders.sort((a, b) => moment(b.dateUpdated).valueOf() - moment(a.dateUpdated).valueOf());
+
+    // Group by product
+    const groupedByProduct = {};
+    filteredOrders.forEach(order => {
+        const product = order.product || 'Unknown';
+        if (!groupedByProduct[product]) groupedByProduct[product] = [];
+        groupedByProduct[product].push(order);
+    });
+
+    // Reorder by allowedProducts
+    const orderedResult = {};
+    allowedProducts.forEach(product => {
+        if (groupedByProduct[product]) {
+            orderedResult[product] = groupedByProduct[product];
+        }
+    });
+
+    return orderedResult;
+}
+
 // Helper function for grouping COD/BT completed orders by date and dispatcher
 async function getCodBtMapForDate(dateParam) {
     const moment = require('moment');
@@ -458,6 +596,38 @@ async function getCodBtMapForDate(dateParam) {
     return { [formattedDateKey]: orderedDispatcherMap };
 }
 
+// 🔹 API endpoint
+app.get('/api/new-orders/temu-returns', async (req, res) => {
+    try {
+        const dateParam = req.query.date; // YYYY-MM-DD
+        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
+
+        const cacheKey = `temuReturns-${dateParam}`;
+        const cachedData = temuReturnsCache.get(cacheKey);
+
+        if (cachedData) return res.json(cachedData);
+
+        const data = await fetchTemuReturnsOrders(dateParam);
+        temuReturnsCache.set(cacheKey, data);
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching TEMU Returns:', error);
+        res.status(500).json({ error: 'Failed to fetch TEMU Returns.' });
+    }
+});
+
+// 🔹 Preload cache at startup (today’s TEMU Returns)
+async function preloadTemuReturnsCache() {
+    try {
+        const today = moment().format("YYYY-MM-DD");
+        const data = await fetchTemuReturnsOrders(today);
+        temuReturnsCache.set(`temuReturns-${today}`, data);
+    } catch (err) {
+        console.error("Failed to preload TEMU Returns cache:", err);
+    }
+}
+
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         const moment = require('moment');
@@ -489,7 +659,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
         const allOrders = await ORDERS.find(
             { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, fridge: 1, latestLocation: 1, grRemark: 1, room: 1, rackRowNum: 1 }
+            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, fridge: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1 }
         );
 
         const deliveryOrders = await ORDERS.find(
@@ -519,6 +689,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                     additionalPhoneNumber: order.additionalPhoneNumber || '-',
                     fridge: order.fridge || '-',
                     latestLocation: order.latestLocation || '-',
+                    remarks: order.remarks || '-',
                     grRemark: order.grRemark || '-',
                     location: generateLocation(order)
                 });
@@ -559,6 +730,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                         additionalPhoneNumber: order.additionalPhoneNumber || '-',
                         jobMethod: order.jobMethod || '-',
                         fridge: order.fridge || '-',
+                        remarks: order.remarks || '-',
                         grRemark: order.grRemark || '-'
                     });
                 }

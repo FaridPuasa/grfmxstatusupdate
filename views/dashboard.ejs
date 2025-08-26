@@ -430,8 +430,11 @@
             <% } %>
 
                 <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                    <div class="container mt-4">
-    <h1 class="text-center">Warehouse</h1>
+                    <div class="card my-4">
+  <div class="card-header bg-dark text-white">
+    <h5 class="mb-0">Warehouse</h5>
+  </div>
+  <div class="card-body">
 
     <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -555,6 +558,7 @@
                                                                                 <th>Area</th>
                                                                                 <th>Name</th>
                                                                                 <th>Main Phone</th>
+                                                                                <th>Customer Remark</th>
                                                                                 <th>Go Rush Remark</th>
                                                                             </tr>
                                                                         </thead>
@@ -575,6 +579,7 @@
                                                                                     <td><%= order.area %></td>
                                                                                     <td><%= order.receiverName %></td>
                                                                                     <td><%= order.receiverPhoneNumber %></td>
+                                                                                    <td><%= order.remarks || '-' %></td>
                                                                                     <td><%= order.grRemark || '-' %></td>
                                                                                 </tr>
                                                                             <% }) %>
@@ -639,6 +644,7 @@
                                                             <th>Area</th>
                                                             <th>Name</th>
                                                             <th>Main Phone</th>
+                                                            <th>Customer Remark</th>
                                                             <th>Go Rush Remark</th>
                                                         </tr>
                                                     </thead>
@@ -660,6 +666,7 @@
                                                                 <td><%= order.area %></td>
                                                                 <td><%= order.receiverName %></td>
                                                                 <td><%= order.receiverPhoneNumber %></td>
+                                                                <td><%= order.remarks || '-' %></td>
                                                                 <td><%= order.grRemark || '-' %></td>
                                                             </tr>
                                                         <% }) %>
@@ -680,9 +687,14 @@
         <% }) %>
     </div>
 </div>
+  </div>
 
-<div class="container mt-5">
-    <h1 class="text-center">In Progress / Completed</h1>
+
+<div class="card my-4">
+  <div class="card-header bg-success text-white">
+    <h5 class="mb-0">In Progress / Completed</h5>
+  </div>
+  <div class="card-body">
 
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -941,8 +953,85 @@
 </div>
 
     </div>
-    </div>
 
+
+
+    </div>
+  </div>
+
+    <div class="card my-4">
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0">New Orders</h5>
+  </div>
+  <div class="card-body">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="newOrdersTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="grwebsite-tab" 
+        data-bs-toggle="tab" 
+        data-bs-target="#gr-website"
+        type="button" role="tab" 
+        aria-controls="gr-website" 
+        aria-selected="true">
+  GR Website
+</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="ewe-tab" data-bs-toggle="tab" data-bs-target="#ewe" type="button" role="tab" aria-controls="ewe" aria-selected="false">
+          EWE x PDU x MGLOBAL
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="wargaemas-tab" data-bs-toggle="tab" data-bs-target="#wargaemas" type="button" role="tab" aria-controls="wargaemas" aria-selected="false">
+          Warga Emas (MOH)
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+  <button class="nav-link" id="temu-tab" 
+          data-bs-toggle="tab" 
+          data-bs-target="#temu"
+          type="button" role="tab" 
+          aria-controls="temu" 
+          aria-selected="false">
+    TEMU Returns
+  </button>
+</li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content mt-3" id="newOrdersTabsContent">
+      <!-- GR Website -->
+      <div class="tab-pane fade show active" id="gr-website" role="tabpanel">
+    <div class="d-flex justify-content-start align-items-center mb-3">
+      <input type="date" id="grWebsiteDate" class="form-control w-auto" />
+    </div>
+    <div id="grWebsiteContainer">
+      <!-- Products and orders will be loaded here -->
+    </div>
+  </div>
+
+      <!-- EWE x PDU x MGLOBAL -->
+      <div class="tab-pane fade" id="ewe" role="tabpanel" aria-labelledby="ewe-tab">
+        <p class="text-muted">No data yet for EWE x PDU x MGLOBAL.</p>
+      </div>
+
+      <!-- Warga Emas (MOH) -->
+      <div class="tab-pane fade" id="wargaemas" role="tabpanel" aria-labelledby="wargaemas-tab">
+        <p class="text-muted">No data yet for Warga Emas (MOH).</p>
+      </div>
+
+      <!-- TEMU Returns -->
+      <div class="tab-pane fade" id="temu" role="tabpanel" aria-labelledby="temu-tab">
+  <div class="d-flex justify-content-start align-items-center mb-3">
+    <input type="date" id="temuReturnsDate" class="form-control w-auto" />
+  </div>
+  <div id="temuReturnsContainer">
+    <p class="text-muted">No TEMU returns loaded yet.</p>
+  </div>
+</div>
+    </div>
+  </div>
+</div>
                     <% } %>
     </div>
 
@@ -1455,6 +1544,214 @@ document.getElementById('codbt-date-picker').addEventListener('change', () => {
 });
 document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
     loadCodBtData();
+});
+</script>
+
+<script>
+$(document).ready(function () {
+  const today = moment().format("YYYY-MM-DD");
+  $("#temuReturnsDate").val(today);
+
+  function loadTemuReturns(date) {
+    $("#temuReturnsContainer").html(`
+  <div class="d-flex justify-content-center my-3">
+    <div class="spinner-border text-primary" role="status">
+    </div>
+  </div>`);
+
+    $.get(`/api/new-orders/temu-returns?date=${date}`, function (orders) {
+      if (!orders || orders.length === 0) {
+        $("#temuReturnsContainer").html(
+          `<p class="text-muted">No TEMU returns found for ${moment(date).format("DD-MM-YYYY")}.</p>`
+        );
+        return;
+      }
+
+      // Sort newest → oldest
+      orders.sort((a, b) => moment(b.dateUpdated).valueOf() - moment(a.dateUpdated).valueOf());
+
+      let html = `
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <h6 class="mb-0">TEMU Returns (${moment(date).format("DD-MM-YYYY")})</h6>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm table-striped mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Tracking Number</th>
+                  <th>Area</th>
+                  <th>Name</th>
+                  <th>Main Phone</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      orders.forEach(order => {
+        html += `
+          <tr>
+            <td>${order.trackingNumber || "-"}</td>
+            <td>${order.area || "-"}</td>
+            <td>${order.name || "-"}</td>
+            <td>${order.phone || "-"}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      $("#temuReturnsContainer").html(html);
+    });
+  }
+
+  // Load TEMU Returns immediately on page load
+  loadTemuReturns(today);
+
+  // Refresh when tab is shown
+  $('a[data-bs-toggle="tab"][href="#temu"]').on("shown.bs.tab", function () {
+    const date = $("#temuReturnsDate").val();
+    loadTemuReturns(date);
+  });
+
+  // Refresh when picking another date
+  $("#temuReturnsDate").on("change", function () {
+    loadTemuReturns($(this).val());
+  });
+});
+</script>
+
+<script>
+async function fetchGRWebsiteOrders(date) {
+  const container = document.getElementById('grWebsiteContainer');
+  container.innerHTML = `
+  <div class="d-flex justify-content-center my-3">
+    <div class="spinner-border text-primary" role="status">
+    </div>
+  </div>`;
+
+  try {
+    const res = await fetch(`/api/new-orders/gr-website?date=${date}`);
+    const data = await res.json();
+
+    container.innerHTML = '';
+
+    if (!data || Object.keys(data).length === 0) {
+      container.innerHTML = '<p>No orders found for selected date.</p>';
+      return;
+    }
+
+    // Loop through products
+    Object.keys(data).forEach(product => {
+      let orders = data[product];
+      const productId = `product-${product.replace(/\s+/g, '-')}`;
+
+      // Sort orders from newest to oldest
+      orders.sort((a, b) => {
+        const dateA = a.dateUpdated || a.dateCreated;
+        const dateB = b.dateUpdated || b.dateCreated;
+        return moment(dateB).valueOf() - moment(dateA).valueOf();
+      });
+
+      const productCard = document.createElement('div');
+      productCard.classList.add('card', 'mb-3');
+
+      // Product header (collapsible)
+      const header = document.createElement('div');
+      header.classList.add('card-header', 'bg-secondary', 'text-white', 'cursor-pointer');
+      header.setAttribute('data-bs-toggle', 'collapse');
+      header.setAttribute('data-bs-target', `#${productId}`);
+      header.style.cursor = 'pointer';
+      header.innerHTML = `
+        ${product} 
+        <span class="badge bg-light text-dark float-end">${orders.length}</span>
+      `;
+      productCard.appendChild(header);
+
+      // Collapsible body
+      const body = document.createElement('div');
+      body.classList.add('collapse');
+      body.id = productId;
+
+      const table = document.createElement('table');
+      table.classList.add('table', 'table-sm', 'table-bordered', 'mb-0');
+
+      // Determine columns based on product
+let columns;
+if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(product.toLowerCase())) {
+  columns = ["Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
+} else if (product.toLowerCase() === "cbsl") {
+  columns = ["Tracking Number", "Parcel Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
+} else {
+  columns = ["Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
+}
+
+      const thead = document.createElement('thead');
+      thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      orders.forEach(order => {
+        const row = document.createElement('tr');
+        if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(product.toLowerCase())) {
+  row.innerHTML = `
+    <td>${order.doTrackingNumber || '-'}</td>
+    <td>${order.orderTime || '-'}</td>
+    <td>${order.jobMethod || '-'}</td>
+    <td>${order.area || '-'}</td>
+    <td>${order.receiverName || '-'}</td>
+    <td>${order.receiverPhoneNumber || '-'}</td>
+  `;
+} else if (product.toLowerCase() === "cbsl") {
+  row.innerHTML = `
+    <td>${order.doTrackingNumber || '-'}</td>
+    <td>${order.parcelTrackingNum || '-'}</td>
+    <td>${order.orderTime || '-'}</td>
+    <td>${order.jobMethod || '-'}</td>
+    <td>${order.area || '-'}</td>
+    <td>${order.receiverName || '-'}</td>
+    <td>${order.receiverPhoneNumber || '-'}</td>
+  `;
+} else {
+  row.innerHTML = `
+    <td>${order.doTrackingNumber || '-'}</td>
+    <td>${order.orderTime || '-'}</td>
+    <td>${order.jobMethod || '-'}</td>
+    <td>${order.area || '-'}</td>
+    <td>${order.receiverName || '-'}</td>
+    <td>${order.receiverPhoneNumber || '-'}</td>
+  `;
+}
+        tbody.appendChild(row);
+      });
+
+      table.appendChild(tbody);
+      body.appendChild(table);
+      productCard.appendChild(body);
+
+      container.appendChild(productCard);
+    });
+
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<p class="text-danger">Failed to load orders.</p>';
+  }
+}
+
+// Initial load
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('grWebsiteDate').value = today;
+fetchGRWebsiteOrders(today);
+
+// Auto-refresh when date is changed
+document.getElementById('grWebsiteDate').addEventListener('change', (e) => {
+  const date = e.target.value;
+  if (date) fetchGRWebsiteOrders(date);
 });
 </script>
 
