@@ -1701,7 +1701,7 @@ if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(pro
         if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(product.toLowerCase())) {
   row.innerHTML = `
     <td>${order.doTrackingNumber || '-'}</td>
-    <td>${order.orderTime || '-'}</td>
+    <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
     <td>${order.jobMethod || '-'}</td>
     <td>${order.area || '-'}</td>
     <td>${order.receiverName || '-'}</td>
@@ -1711,7 +1711,7 @@ if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(pro
   row.innerHTML = `
     <td>${order.doTrackingNumber || '-'}</td>
     <td>${order.parcelTrackingNum || '-'}</td>
-    <td>${order.orderTime || '-'}</td>
+    <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
     <td>${order.jobMethod || '-'}</td>
     <td>${order.area || '-'}</td>
     <td>${order.receiverName || '-'}</td>
@@ -1720,7 +1720,7 @@ if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(pro
 } else {
   row.innerHTML = `
     <td>${order.doTrackingNumber || '-'}</td>
-    <td>${order.orderTime || '-'}</td>
+    <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
     <td>${order.jobMethod || '-'}</td>
     <td>${order.area || '-'}</td>
     <td>${order.receiverName || '-'}</td>
