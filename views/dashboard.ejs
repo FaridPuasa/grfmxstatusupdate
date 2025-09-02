@@ -76,11 +76,25 @@
                             </a>
                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
                                 <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                    <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
+                                    <div class="dropdown-divider"></div> <!-- Divider here -->
                                     <% } %>
                                         <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
                                         <a class="dropdown-item" href="/addressAreaCheck">Address Area
                                             Checker</a>
                                         <a class="dropdown-item" href="/podGenerator">POD / POC Generator</a>
+                                        <div class="dropdown-divider"></div> <!-- Divider here -->
+                                        <a class="dropdown-item" href="/listofAllOrdersOFD">All Out
+                                            for
+                                            Delivery / Collection</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersSC">All Self
+                                            Collect / Drop Off</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersAW">All
+                                            Warehouse</a>
+                                        <a class="dropdown-item" href="/listofAllOrdersIR">All
+                                            New Orders from Website</a>
+                                        <a class="dropdown-item" href="/listofWargaEmasOrders">All
+                                            Warga Emas Orders</a>
                                         <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
                                             ].includes(user.role)) { %>
                                             <div class="dropdown-divider"></div> <!-- Divider here -->
@@ -96,8 +110,8 @@
                                             <!-- <a class="dropdown-item" href="/listofewensPod">POD EWE NON
                                                         SHEIN</a> -->
                                             <!-- <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a> -->
-                                            <!-- <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a> -->
-                                            <a class="dropdown-item" href="/listofkptdpPod">POD KPT</a>
+                                            <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
+                                            <a class="dropdown-item" href="/listofkptdpPod">POD KPTDP</a>
                                             <!-- <a class="dropdown-item" href="/listofkptdfPod">POD KPTDF</a> -->
                                             <!-- <a class="dropdown-item" href="/listofpduPod">POD PDU</a>
                                                     <a class="dropdown-item" href="/listofmglobalPod">POD MGLOBAL</a> -->
@@ -105,7 +119,7 @@
                             </div>
                         </li>
                         <% } %>
-                            <% if (['moh', 'admin' ].includes(user.role))
+                            <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role))
                                 {%>
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
@@ -117,13 +131,29 @@
                                         <% } %>
                                             <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
                                                 ].includes(user.role)) { %>
-                                                    <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
-                                                <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrders">All</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersOFD">Out
+                                                    for
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
+                                                    Collect</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersIRCC">New</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofpharmacyMOHOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHOrdersCD">Cancelled</a>
+                                                <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
+                                                    STD</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH
+                                                    EXP</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH
+                                                    IMM</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH
+                                                    TTG</a>
+                                                <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
+                                                    KB</a>
                                                 <% } %>
                                                     <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
                                                         <div class="dropdown-divider"></div>
@@ -131,9 +161,6 @@
                                                         <a class="dropdown-item" href="/listofpharmacyMOHForms">Pharmacy
                                                             Form
                                                             List</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                    <a class="dropdown-item" href="/listofWargaEmasOrders">All
-                                            Warga Emas Orders</a>
                                                         <% } %>
                                                             <% if (['moh', 'finance' , 'cs' , 'manager' , 'admin'
                                                                 ].includes(user.role)) { %>
@@ -147,14 +174,180 @@
                                             <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
                                                 aria-expanded="false">
-                                                Search Manifest to Bill
+                                                EWE
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
                                                 <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">EWE</a>
-                                                        <a class="dropdown-item" href="/pdumanifesttobillsearch">PDU</a>
-                                                        <a class="dropdown-item" href="/mglobalmanifesttobillsearch">MGLOBAL</a>
+                                                    <a class="dropdown-item" href="/ewemanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
                                                     <% } %>
+                                                        <!-- <div class="dropdown-header">SHEIN</div> -->
+                                                        <a class="dropdown-item" href="/listofEWEOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersOFD">Out
+                                                            for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofEWEOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofEWEOrdersCD">Cancelled</a>
+                                                        <div class="dropdown-divider"></div>
+                                                        <!-- Divider here -->
+                                                        <!-- <div class="dropdown-header">NON SHEIN</div>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrders">All</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersOFD">Out for
+                                                                    Delivery</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersSC">Self
+                                                                    Collect</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersAW">Warehouse</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersCompleted">Completed</a>
+                                                                <a class="dropdown-item"
+                                                                    href="/listofEWENSOrdersCD">Cancelled</a> -->
+                                            </div>
+                                        </li>
+
+                                        <!-- <li class="nav-item dropdown">
+                                                    <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
+                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        FMX
+                                                    </a>
+                                                    <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
+                                                        <a class="dropdown-item" href="/listofFMXOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofFMXOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofFMXOrdersCD">Cancelled/Disposed</a>
+                                                    </div>
+                                                </li> -->
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                TEMU
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="temuListDropdown">
+                                                <div class="dropdown-header">Collection</div>
+                                                <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersOFC">Out for
+                                                    Collection</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersDO">Drop
+                                                    Off</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofTEMUCOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofTEMUCOrdersCD">Cancelled</a>
+                                                <!-- <div class="dropdown-divider"></div>
+                                                        <div class="dropdown-header">Delivery</div>
+                                                        <a class="dropdown-item" href="/listofTEMUDOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofTEMUDOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofTEMUDOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUDOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUCOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofTEMUCOrdersCD">Cancelled</a> -->
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="kptListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                KPT
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="kptListDropdown">
+                                                <div class="dropdown-header">Duty Paid</div>
+                                                <a class="dropdown-item" href="/listofKPTDPOrders">All</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersOFD">Out for
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersSC">Self
+                                                    Collect</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersAW">Warehouse</a>
+                                                <a class="dropdown-item"
+                                                    href="/listofKPTDPOrdersCompleted">Completed</a>
+                                                <a class="dropdown-item" href="/listofKPTDPOrdersCD">Cancelled</a>
+                                                <!-- <div class="dropdown-divider"></div>
+                                                        <div class="dropdown-header">Duty Free</div>
+                                                        <a class="dropdown-item" href="/listofKPTDFOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofKPTDFOrdersOFD">Out for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofKPTDFOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofKPTDFOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofKPTDFOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofKPTDFOrdersCD">Cancelled</a> -->
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                PDU
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="pduListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/pdumanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <a class="dropdown-item" href="/listofPDUOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersOFD">Out
+                                                            for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofPDUOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item" href="/listofPDUOrdersCD">Cancelled</a>
+                                            </div>
+                                        </li>
+
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
+                                                role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                MGLOBAL
+                                            </a>
+                                            <div class="dropdown-menu" aria-labelledby="pduListDropdown">
+                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/mglobalmanifesttobillsearch">Search
+                                                        Manifest to Bill</a>
+                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <% } %>
+                                                        <a class="dropdown-item" href="/listofMGLOBALOrders">All</a>
+                                                        <a class="dropdown-item" href="/listofMGLOBALOrdersOFD">Out
+                                                            for
+                                                            Delivery</a>
+                                                        <a class="dropdown-item" href="/listofMGLOBALOrdersSC">Self
+                                                            Collect</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofMGLOBALOrdersAW">Warehouse</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofMGLOBALOrdersCompleted">Completed</a>
+                                                        <a class="dropdown-item"
+                                                            href="/listofMGLOBALOrdersCD">Cancelled</a>
                                             </div>
                                         </li>
 
@@ -165,7 +358,7 @@
                                                 Others
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                                <!-- <a class="dropdown-item" href="/listofOrders">All</a>
+                                                <a class="dropdown-item" href="/listofOrders">All</a>
                                                 <a class="dropdown-item" href="/listofOrdersOFD">Out
                                                     for
                                                     Delivery</a>
@@ -175,23 +368,23 @@
                                                 <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
                                                 <a class="dropdown-item" href="/listofOrdersCompleted">Completed</a>
                                                 <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
-                                                <div class="dropdown-divider"></div> -->
+                                                <div class="dropdown-divider"></div> <!-- Divider here -->
                                                 <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
                                                 <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
                                                 <a class="dropdown-item" href="/listofLDOrders">Local
                                                     Delivery</a>
-                                                <!-- <a class="dropdown-item" href="/listofGRPOrders">GRP</a> -->
+                                                <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
                                                 <a class="dropdown-item" href="/listofCBSLOrders">Cross Border
                                                     Service
                                                     (Limbang)</a>
                                                 <a class="dropdown-item" href="/listofPURE51orders">Pure51</a>
-                                                <!-- <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
+                                                <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
                                                 <a class="dropdown-item" href="/listofFCASOrders">Fathan &
                                                     Co.</a>
-                                                <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a> -->
+                                                <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
                                                 <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
-                                                <!-- <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
-                                                <a class="dropdown-item" href="/listofEWENSOrders">EWENS</a> -->
+                                                <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
+                                                <a class="dropdown-item" href="/listofEWENSOrders">EWENS</a>
                                             </div>
                                         </li>
                                         <% } %>
@@ -265,6 +458,10 @@
                 data-bs-target="#maxattempt" type="button" role="tab">Max Attempt</button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="fridge-tab" data-bs-toggle="tab" data-bs-target="#fridge"
+                type="button" role="tab">Fridge</button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="archived-tab" data-bs-toggle="tab"
                 data-bs-target="#archived" type="button" role="tab">Archived</button>
         </li>
@@ -283,6 +480,7 @@
             { id: 'urgent', map: urgentMap },
             { id: 'overdue', map: overdueMap },
             { id: 'maxattempt', map: maxAttemptMap },
+            { id: 'fridge', map: fridgeMap },
             { id: 'archived', map: archivedMap }
         ]; %>
 
@@ -782,7 +980,22 @@
         <button class="nav-link" id="ewe-tab" data-bs-toggle="tab" data-bs-target="#ewe" type="button" role="tab" aria-controls="ewe" aria-selected="false">
           EWE x PDU x MGLOBAL
         </button>
-    </li>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="wargaemas-tab" data-bs-toggle="tab" data-bs-target="#wargaemas" type="button" role="tab" aria-controls="wargaemas" aria-selected="false">
+          Warga Emas (MOH)
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+  <button class="nav-link" id="temu-tab" 
+          data-bs-toggle="tab" 
+          data-bs-target="#temu"
+          type="button" role="tab" 
+          aria-controls="temu" 
+          aria-selected="false">
+    TEMU Returns
+  </button>
+</li>
     </ul>
 
     <!-- Tab Content -->
@@ -801,6 +1014,21 @@
       <div class="tab-pane fade" id="ewe" role="tabpanel" aria-labelledby="ewe-tab">
         <p class="text-muted">No data yet for EWE x PDU x MGLOBAL.</p>
       </div>
+
+      <!-- Warga Emas (MOH) -->
+      <div class="tab-pane fade" id="wargaemas" role="tabpanel" aria-labelledby="wargaemas-tab">
+        <p class="text-muted">No data yet for Warga Emas (MOH).</p>
+      </div>
+
+      <!-- TEMU Returns -->
+      <div class="tab-pane fade" id="temu" role="tabpanel" aria-labelledby="temu-tab">
+  <div class="d-flex justify-content-start align-items-center mb-3">
+    <input type="date" id="temuReturnsDate" class="form-control w-auto" />
+  </div>
+  <div id="temuReturnsContainer">
+    <p class="text-muted">No TEMU returns loaded yet.</p>
+  </div>
+</div>
     </div>
   </div>
 </div>
@@ -1320,50 +1548,129 @@ document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
 </script>
 
 <script>
+$(document).ready(function () {
+  const today = moment().format("YYYY-MM-DD");
+  $("#temuReturnsDate").val(today);
+
+  function loadTemuReturns(date) {
+    $("#temuReturnsContainer").html(`
+  <div class="d-flex justify-content-center my-3">
+    <div class="spinner-border text-primary" role="status">
+    </div>
+  </div>`);
+
+    $.get(`/api/new-orders/temu-returns?date=${date}`, function (orders) {
+      if (!orders || orders.length === 0) {
+        $("#temuReturnsContainer").html(
+          `<p class="text-muted">No TEMU returns found for ${moment(date).format("DD-MM-YYYY")}.</p>`
+        );
+        return;
+      }
+
+      // Sort newest → oldest
+      orders.sort((a, b) => moment(b.dateUpdated).valueOf() - moment(a.dateUpdated).valueOf());
+
+      let html = `
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <h6 class="mb-0">TEMU Returns (${moment(date).format("DD-MM-YYYY")})</h6>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm table-striped mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Tracking Number</th>
+                  <th>Area</th>
+                  <th>Name</th>
+                  <th>Main Phone</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      orders.forEach(order => {
+        html += `
+          <tr>
+            <td>${order.trackingNumber || "-"}</td>
+            <td>${order.area || "-"}</td>
+            <td>${order.name || "-"}</td>
+            <td>${order.phone || "-"}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      $("#temuReturnsContainer").html(html);
+    });
+  }
+
+  // Load TEMU Returns immediately on page load
+  loadTemuReturns(today);
+
+  // Refresh when tab is shown
+  $('a[data-bs-toggle="tab"][href="#temu"]').on("shown.bs.tab", function () {
+    const date = $("#temuReturnsDate").val();
+    loadTemuReturns(date);
+  });
+
+  // Refresh when picking another date
+  $("#temuReturnsDate").on("change", function () {
+    loadTemuReturns($(this).val());
+  });
+});
+</script>
+
+<script>
 async function fetchGRWebsiteOrders(date) {
   const container = document.getElementById('grWebsiteContainer');
   container.innerHTML = `
-    <div class="d-flex justify-content-center my-3">
-      <div class="spinner-border text-primary" role="status"></div>
+  <div class="d-flex justify-content-center my-3">
+    <div class="spinner-border text-primary" role="status">
     </div>
-  `;
+  </div>`;
 
   try {
     const res = await fetch(`/api/new-orders/gr-website?date=${date}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    container.innerHTML = ''; // clear loading spinner
+    container.innerHTML = '';
 
     if (!data || Object.keys(data).length === 0) {
       container.innerHTML = '<p>No orders found for selected date.</p>';
       return;
     }
 
-    // Lazy render each product using requestAnimationFrame to avoid blocking
-    const products = Object.keys(data);
-    let i = 0;
-
-    function renderNextProduct() {
-      if (i >= products.length) return;
-
-      const product = products[i];
-      const orders = data[product];
-
-      // Sort orders newest to oldest
-      orders.sort((a, b) => new Date(b.dateUpdated) - new Date(a.dateUpdated));
-
+    // Loop through products
+    Object.keys(data).forEach(product => {
+      let orders = data[product];
       const productId = `product-${product.replace(/\s+/g, '-')}`;
+
+      // Sort orders from newest to oldest
+      orders.sort((a, b) => {
+        const dateA = a.dateUpdated || a.dateCreated;
+        const dateB = b.dateUpdated || b.dateCreated;
+        return moment(dateB).valueOf() - moment(dateA).valueOf();
+      });
+
       const productCard = document.createElement('div');
       productCard.classList.add('card', 'mb-3');
 
       // Product header (collapsible)
       const header = document.createElement('div');
-      header.classList.add('card-header', 'bg-secondary', 'text-white');
+      header.classList.add('card-header', 'bg-secondary', 'text-white', 'cursor-pointer');
       header.setAttribute('data-bs-toggle', 'collapse');
       header.setAttribute('data-bs-target', `#${productId}`);
       header.style.cursor = 'pointer';
-      header.innerHTML = `${product} <span class="badge bg-light text-dark float-end">${orders.length}</span>`;
+      header.innerHTML = `
+        ${product} 
+        <span class="badge bg-light text-dark float-end">${orders.length}</span>
+      `;
       productCard.appendChild(header);
 
       // Collapsible body
@@ -1374,15 +1681,15 @@ async function fetchGRWebsiteOrders(date) {
       const table = document.createElement('table');
       table.classList.add('table', 'table-sm', 'table-bordered', 'mb-0');
 
-      // Determine columns
-      let columns;
-      if (["pharmacymoh","pharmacyjpmc","pharmacyphc","localdelivery"].includes(product.toLowerCase())) {
-        columns = ["Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
-      } else if (product.toLowerCase() === "cbsl") {
-        columns = ["Tracking Number", "Parcel Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
-      } else {
-        columns = ["Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
-      }
+      // Determine columns based on product
+let columns;
+if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(product.toLowerCase())) {
+  columns = ["Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
+} else if (product.toLowerCase() === "cbsl") {
+  columns = ["Tracking Number", "Parcel Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
+} else {
+  columns = ["Tracking Number", "Order Time", "Job Method", "Area", "Name", "Main Phone"];
+}
 
       const thead = document.createElement('thead');
       thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
@@ -1391,48 +1698,44 @@ async function fetchGRWebsiteOrders(date) {
       const tbody = document.createElement('tbody');
       orders.forEach(order => {
         const row = document.createElement('tr');
-        if (["pharmacymoh","pharmacyjpmc","pharmacyphc","localdelivery"].includes(product.toLowerCase())) {
-          row.innerHTML = `
-            <td>${order.doTrackingNumber || '-'}</td>
-            <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
-            <td>${order.jobMethod || '-'}</td>
-            <td>${order.area || '-'}</td>
-            <td>${order.receiverName || '-'}</td>
-            <td>${order.receiverPhoneNumber || '-'}</td>
-          `;
-        } else if (product.toLowerCase() === "cbsl") {
-          row.innerHTML = `
-            <td>${order.doTrackingNumber || '-'}</td>
-            <td>${order.parcelTrackingNum || '-'}</td>
-            <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
-            <td>${order.jobMethod || '-'}</td>
-            <td>${order.area || '-'}</td>
-            <td>${order.receiverName || '-'}</td>
-            <td>${order.receiverPhoneNumber || '-'}</td>
-          `;
-        } else {
-          row.innerHTML = `
-            <td>${order.doTrackingNumber || '-'}</td>
-            <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
-            <td>${order.jobMethod || '-'}</td>
-            <td>${order.area || '-'}</td>
-            <td>${order.receiverName || '-'}</td>
-            <td>${order.receiverPhoneNumber || '-'}</td>
-          `;
-        }
+        if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery"].includes(product.toLowerCase())) {
+  row.innerHTML = `
+    <td>${order.doTrackingNumber || '-'}</td>
+    <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
+    <td>${order.jobMethod || '-'}</td>
+    <td>${order.area || '-'}</td>
+    <td>${order.receiverName || '-'}</td>
+    <td>${order.receiverPhoneNumber || '-'}</td>
+  `;
+} else if (product.toLowerCase() === "cbsl") {
+  row.innerHTML = `
+    <td>${order.doTrackingNumber || '-'}</td>
+    <td>${order.parcelTrackingNum || '-'}</td>
+    <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
+    <td>${order.jobMethod || '-'}</td>
+    <td>${order.area || '-'}</td>
+    <td>${order.receiverName || '-'}</td>
+    <td>${order.receiverPhoneNumber || '-'}</td>
+  `;
+} else {
+  row.innerHTML = `
+    <td>${order.doTrackingNumber || '-'}</td>
+    <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
+    <td>${order.jobMethod || '-'}</td>
+    <td>${order.area || '-'}</td>
+    <td>${order.receiverName || '-'}</td>
+    <td>${order.receiverPhoneNumber || '-'}</td>
+  `;
+}
         tbody.appendChild(row);
       });
 
       table.appendChild(tbody);
       body.appendChild(table);
       productCard.appendChild(body);
+
       container.appendChild(productCard);
-
-      i++;
-      requestAnimationFrame(renderNextProduct); // schedule next product
-    }
-
-    renderNextProduct();
+    });
 
   } catch (err) {
     console.error(err);
@@ -1445,9 +1748,10 @@ const today = new Date().toISOString().split('T')[0];
 document.getElementById('grWebsiteDate').value = today;
 fetchGRWebsiteOrders(today);
 
-// Auto-refresh on date change
-document.getElementById('grWebsiteDate').addEventListener('change', e => {
-  fetchGRWebsiteOrders(e.target.value);
+// Auto-refresh when date is changed
+document.getElementById('grWebsiteDate').addEventListener('change', (e) => {
+  const date = e.target.value;
+  if (date) fetchGRWebsiteOrders(date);
 });
 </script>
 
