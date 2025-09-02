@@ -143,6 +143,7 @@
 
                                     <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
                                         %>
+                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
@@ -150,13 +151,14 @@
                                                 Search Manifest to Bill
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                
                                                     <a class="dropdown-item" href="/ewemanifesttobillsearch">EWE</a>
                                                         <a class="dropdown-item" href="/pdumanifesttobillsearch">PDU</a>
                                                         <a class="dropdown-item" href="/mglobalmanifesttobillsearch">MGLOBAL</a>
-                                                    <% } %>
+                                                    
                                             </div>
                                         </li>
+<% } %>
 
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
