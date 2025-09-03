@@ -4,60 +4,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All KPTDP Orders</title>
-    <!-- Include necessary CSS and JavaScript libraries (similar to listofpharmacyPod.ejs) -->
-    <!-- Make sure to include Bootstrap, jQuery, and DataTables -->
+    <title>Manifest to Bill Search</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
     <style>
-        /* Custom CSS for your page */
         .navbar-nav.flex-row {
             flex-direction: row !important;
         }
 
-        /* Make the navbar background transparent */
         .navbar {
             background-color: transparent;
         }
 
-        /* Add background color to the container */
         .container-bg {
             background-color: #333;
-            /* You can use your desired background color here */
         }
 
-        /* Add margin to the navigation links */
         .navbar-nav.flex-row .nav-item {
             margin-right: 10px;
         }
 
-        /* Add margin to the submit button */
+        .bg-red {
+            background-color: rgb(255, 110, 110) !important;
+        }
+
+        .bg-yellow {
+            background-color: yellow !important;
+        }
+
+        .bg-blue {
+            background-color: rgb(152, 184, 255) !important;
+        }
+
+        .bg-green {
+            background-color: rgb(137, 253, 126) !important;
+        }
+
         .btn-submit {
             margin-top: 10px;
-            /* Adjust the margin-top as needed */
         }
 
-        th {
-            background-color: #f2f2f2;
-            font-size: 15px;
-            text-align: center;
-            /* Center-align table headers horizontally */
-        }
-
+        th,
         td {
             font-size: 15px;
             text-align: center;
-            /* Center-align table data cells horizontally */
         }
 
         table {
-            width: 80%;
-            /* Set the desired width for the table */
+            width: 100%;
             margin: 0 auto;
-            /* Center the table horizontally */
-            vertical-align: middle;
-            /* Center-align table contents vertically */
+        }
+
+        .card {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -65,7 +65,6 @@
 <body class="bg-light">
     <div class="container-bg">
         <div class="container">
-            <!-- Create a similar navigation bar as in listofpharmacyPod.ejs -->
             <nav class="navbar navbar-expand-lg navbar-dark">
                 <a class="navbar-brand mr-auto" href="/">
                     <h2>Go Rush</h2>
@@ -191,120 +190,104 @@
             </nav>
         </div>
     </div>
-
-    <main class="mt-4" style="width: 100%;">
-        <h1 class="text-center mt-4">All KPTDP Orders (<%= totalRecords %>)</h1>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="orderTable">
-                <thead class="table-primary">
-                    <tr>
-                        <th class="header">KPT Tracking No.</th>
-                        <th class="header">Go Rush Tracking No.</th>
-                        <th class="header">Receiver Name</th>
-                        <th class="header">Current Status</th>
-                        <th class="header">Assigned To</th>
-                        <th class="header">Job Date</th>
-                        <th class="header">Attempt No.</th>
-                        <th class="header">Latest Reason</th>
-                        <th class="header">Warehouse Entry Date</th>
-                        <th class="header">Age in Warehouse</th>
-                        <th class="header">Last Update</th>
-                        <th class="header">Last Update By</th>
-                        <th class="header">Job Created</th>
-                        <th class="header">Phone No.</th>
-                        <th class="header">Address</th>
-                        <th class="header">Area</th>
-                        <th class="header">Item Description</th>
-                        <th class="header">Job Method</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    <!-- Iterate through the orders and display the data -->
-                    <% orders.forEach(function(order) { %>
-                        <tr>
-                            <td>
-                                <%= order.parcelTrackingNum %>
-                            </td>
-                            <td>
-                                <%= order.doTrackingNumber %>
-                            </td>
-                            <td>
-                                <%= order.receiverName %>
-                            </td>
-                            <td>
-                                <%= order.currentStatus %>
-                            </td>
-                            <td>
-                                <%= order.assignedTo %>
-                            </td>
-                            <td>
-                                <%= order.jobDate %>
-                            </td>
-                            <td>
-                                <%= order.attempt %>
-                            </td>
-                            <td>
-                                <%= order.latestReason %>
-                            </td>
-                            <td>
-                                <%= moment(order.warehouseEntryDateTime).isValid() ? moment(order.warehouseEntryDateTime).utcOffset(8).format('DD-MM-YYYY') : "N/A" %>
-                            </td>
-                            <td>
-                                <% if (order.currentStatus !=="Completed" ) { %>
-                                    <% if (order.warehouseEntry==="No" ) { %>
-                                        0
-                                        <% } else { %>
-                                            <% const entryDate=new Date(order.warehouseEntryDateTime); %>
-                                                <% const currentDate=new Date(); %>
-                                                    <% const ageInMilliseconds=currentDate - entryDate; %>
-                                                        <% const ageInDays=Math.floor(ageInMilliseconds / (1000 * 60 *
-                                                            60 * 24)); %>
-                                                            <%= ageInDays %>
-                                                                <% } %>
-                                                                    <% } else { %>
-                                                                        <!-- Add an empty cell or any placeholder when the status is "Completed" -->
-                                                                        <!-- Adjust the colspan to match the number of columns in the table -->
-                                                                        <% } %>
-                            </td>
-                            <td>
-                                <%= moment(order.lastUpdateDateTime).utcOffset(8).format('DD-MM-YYYY h:mm a') %>
-                            </td>
-                            <td>
-                                <%= order.lastUpdatedBy %>
-                            </td>
-                            <td>
-                                <%= moment(order.creationDate).format('DD-MM-YYYY h:mm a') %>
-                            </td>
-                            <td>
-                                <%= order.receiverPhoneNumber %>
-                            </td>
-                            <td>
-                                <%= order.receiverAddress %>
-                            </td>
-                            <td>
-                                <%= order.area %>
-                            </td>
-                            <td>
-                                <% const fullDescription=order.items.map(item=> item.description).join(', '); %>
-                                    <% const shortDescription=fullDescription.length> 50 ? fullDescription.substring(0,
-                                        50) + '...' : fullDescription; %>
-                                        <span class="description" onclick="toggleDescription(this)"
-                                            data-full="<%= fullDescription %>" data-short="<%= shortDescription %>">
-                                            <%= shortDescription %>
-                                        </span>
-                            </td>
-                            <td>
-                                <%= order.jobMethod %>
-                            </td>
-                        </tr>
-                        <% }); %>
-                </tbody>
-            </table>
+    <div class="container mt-5">
+    <h1 class="text-center mt-4">Manifest to Bill Search</h1>
+    <form action="/manifesttobillsearch" method="post">
+        <div class="form-group">
+            <label for="mawbNo">MAWB No.</label>
+            <input type="text" id="mawbNo" name="mawbNo" class="form-control" value="<%= searchQuery.mawbNo %>">
         </div>
-    </main>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+</div>
 
-    <!-- Include the necessary JavaScript libraries for DataTables and other custom scripts if needed -->
+<% if (orders && orders.length > 0) { %>
+    <div class="mt-4">
+        <h3 class="text-center">
+            <%= orders[0].product ? orders[0].product.toUpperCase() : '' %>
+            <% if (orders[0].mawbNo) { %>
+                <%= ' ' + orders[0].mawbNo %>
+            <% } %>
+            (<%= orders.length %>)
+        </h3>
+    </div>
+<% } %>
+
+<div id="results" class="mt-4">
+    <table class="table" id="orderTable">
+        <thead>
+            <tr>
+                <th>S/N</th>
+                <th>Tracking No.</th>
+                <th>Customer Name</th>
+                <th>Phone No.</th>
+                <th>Address</th>
+                <th>Postal Code</th>
+                <th>Weight (KG)</th>
+                <th>No. of Packages</th>
+                <th>Handling Charge</th>
+            </tr>
+        </thead>
+        <tbody id="results-body">
+            <% if (!orders || orders.length === 0) { %>
+                <tr>
+                    <td colspan="10" class="text-center">No records found</td>
+                </tr>
+            <% } else { %>
+                <% orders.forEach((order, index) => { 
+                    if (!order || !order.items || order.items.length === 0) {
+                        return; // Skip if order or items are undefined or empty
+                    }
+                    
+                    let handlingCharge = '';
+                    let weight = order.parcelWeight || 0;
+
+                    if (order.product && order.product.toLowerCase().includes('mglobal')) {
+                        handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+                    } else if (order.product && order.product.toLowerCase().includes('pdu')) {
+                        handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+                    } else if (order.product && (order.product.toLowerCase().includes('ewe') || order.product.toLowerCase().includes('ewens'))) {
+                        let charge2_8 = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+                        let charge3_5 = (Math.round((3.5 + 0.50 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+                        let firstChar = order.receiverPostalCode ? order.receiverPostalCode.charAt(0) : '';
+                        if (firstChar === 'B') {
+                            handlingCharge = charge2_8;
+                        } else if (['K', 'T', 'P'].includes(firstChar)) {
+                            handlingCharge = charge3_5;
+                        } else {
+                            if (order.area && order.area !== 'N/A') {
+                                if (['TEMBURONG', 'KB', 'KB / SERIA', 'LUMUT', 'TUTONG'].includes(order.area)) {
+                                    handlingCharge = charge3_5;
+                                } else {
+                                    handlingCharge = charge2_8;
+                                }
+                            } else {
+                                handlingCharge = `${charge2_8} or ${charge3_5}`;
+                            }
+                        }
+                    }
+                %>
+                    <tr>
+                        <td><%= index + 1 %></td>
+                        <td><%= order.doTrackingNumber %></td>
+                        <td><%= order.receiverName %></td>
+                        <td><%= order.receiverPhoneNumber %></td>
+                        <td><%= order.receiverAddress %></td>
+                        <td><%= order.receiverPostalCode %></td>
+                        <td><%= order.parcelWeight %></td>
+                        <td>1</td>
+                        <td><%= handlingCharge %></td>
+                    </tr>
+                <% }); %>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
@@ -324,20 +307,6 @@
                 ]
             });
         });
-    </script>
-
-    <script>
-        function toggleDescription(element) {
-            const isShort = element.textContent.endsWith('...');
-            const fullDescription = element.getAttribute('data-full');
-            const shortDescription = element.getAttribute('data-short');
-
-            if (isShort) {
-                element.textContent = fullDescription;
-            } else {
-                element.textContent = shortDescription;
-            }
-        }
     </script>
 </body>
 

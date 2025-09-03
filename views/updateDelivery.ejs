@@ -55,386 +55,128 @@
             <div class="row">
                 <div class="col-12">
                     <nav class="navbar navbar-expand-lg navbar-dark">
-                        <a class="navbar-brand mr-auto" href="/">
-                            <h2>Go Rush</h2>
-                        </a>
-                        <ul class="navbar-nav flex-row">
-                            <% if (['warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                <a class="navbar-brand mr-auto" href="/">
+                    <h2>Go Rush</h2>
+                </a>
+                <ul class="navbar-nav flex-row">
+                    <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Operation
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                        <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                                        <% } %>
+                                        <% if (['warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                        <a class="dropdown-item" href="https://warehouse.gorushbn.com">Scan Parcel In Warehouse (Pharmacy/EWE/PDU/MGLOBAL)</a>
+                                        <% } %>
+                                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'
+                                            ].includes(user.role)) { %>
+                                        <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                                        <% } %>
+                                        <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area
+                                            Checker</a>
+                                            <% } %>
+                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                    <a class="dropdown-item" href="/manifesttobillsearch">Search Manifest to Bill</a>
+                                        <% } %>
+                                        <% if (['cs' , 'warehouse' , 'manager' , 'admin'
+                                            ].includes(user.role)) { %>
+                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                            <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                            <a class="dropdown-item" href="/listofnoncodPod">POD EWE/PDU/MGLOBAL</a>
+                                            <a class="dropdown-item" href="/listofldPod">POD LD/Pure51/KPT/ICARUS</a>
+                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                                            <% } %>
+                            </div>
+                        </li>
+                        <% } %>
+                            <% if (['moh', 'cs' , 'manager' , 'admin', 'warehouse' ].includes(user.role))
+                                {%>
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
                                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        Operation
+                                        MOH
                                     </a>
                                     <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                                        <% if (['moh'].includes(user.role))
+                                {%>
+                                        <a class="dropdown-item" href="/mohsearch">Search</a>
+                                        <% } %>
                                         <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                            <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
-                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                            <% } %>
-                                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                                <a class="dropdown-item" href="/addressAreaCheck">Address Area
-                                                    Checker</a>
-                                                <a class="dropdown-item" href="/podGenerator">POD / POC Generator</a>
+                                    <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
+                                    <% } %>
+                                            <% if (['warehouse' , 'cs' , 'manager' , 'admin'
+                                                ].includes(user.role)) { %>
                                                 <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item" href="/listofAllOrdersOFD">All Out
-                                                    for
-                                                    Delivery / Collection</a>
-                                                <a class="dropdown-item" href="/listofAllOrdersSC">All Self
-                                                    Collect / Drop Off</a>
-                                                <a class="dropdown-item" href="/listofAllOrdersAW">All
-                                                    Warehouse</a>
-                                                <a class="dropdown-item" href="/listofAllOrdersIR">All
-                                                    New Orders from Website</a>
-                                                <a class="dropdown-item" href="/listofWargaEmasOrders">All
-                                                    Warga Emas Orders</a>
-                                                <% if (['finance', 'cs' , 'warehouse' , 'manager' , 'admin'
-                                                    ].includes(user.role)) { %>
-                                                    <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                    <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                                                    <a class="dropdown-item" href="/listofnoncodPod">POD
-                                                        EWE/PDU/MGLOBAL</a>
-                                                    <!-- <a class="dropdown-item" href="/listofewePod">POD EWE</a> -->
-                                                    <a class="dropdown-item" href="/listofldPod">POD LD</a>
-                                                    <!-- <a class="dropdown-item" href="/listofgrpPod">POD GRP</a> -->
-                                                    <!-- <a class="dropdown-item" href="/listoffmxPod">POD FMX</a> -->
-                                                    <a class="dropdown-item" href="/listofcbslPod">POD Cross Border
-                                                        Service
-                                                        (Limbang)</a>
-                                                    <!-- <a class="dropdown-item" href="/listofewensPod">POD EWE NON
-                                                        SHEIN</a> -->
-                                                    <!-- <a class="dropdown-item" href="/listoftemuPod">POD TEMU</a> -->
-                                                    <a class="dropdown-item" href="/listoftemuPoc">POC TEMU</a>
-                                                    <a class="dropdown-item" href="/listofkptdpPod">POD KPTDP</a>
-                                                    <!-- <a class="dropdown-item" href="/listofkptdfPod">POD KPTDF</a> -->
-                                                    <!-- <a class="dropdown-item" href="/listofpduPod">POD PDU</a>
-                                                    <a class="dropdown-item" href="/listofmglobalPod">POD MGLOBAL</a> -->
-                                                    <% } %>
+                                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
+                                                <% } %>
+                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                                        <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy
+                                                            Form
+                                                            List</a>
+                                                            <a class="dropdown-item" href="/listofWargaEmasOrders">All
+                                            Warga Emas Orders</a>
+                                                        <% } %>
                                     </div>
                                 </li>
                                 <% } %>
-                                    <% if (['moh', 'warehouse' , 'finance' , 'cs' , 'manager' , 'admin'
-                                        ].includes(user.role)) {%>
+
+                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
+                                        %>
                                         <li class="nav-item dropdown">
                                             <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
                                                 role="button" data-toggle="dropdown" aria-haspopup="true"
                                                 aria-expanded="false">
-                                                MOH
+                                                Others
                                             </a>
                                             <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                                <a class="dropdown-item" href="/mohsearch">Search</a>
-                                                <% } %>
-                                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
-                                                        ].includes(user.role)) { %>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersOFD">Out
-                                                            for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersIRCC">New</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyMOHOrdersCD">Cancelled</a>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">MOH
-                                                            STD</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">MOH
-                                                            EXP</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">MOH
-                                                            IMM</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">MOH
-                                                            TTG</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">MOH
-                                                            KB</a>
-                                                        <% } %>
-                                                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) {
-                                                                %>
-                                                                <div class="dropdown-divider"></div>
-                                                                <!-- Divider here -->
-                                                                <a class="dropdown-item"
-                                                                    href="/listofpharmacyMOHForms">Pharmacy
-                                                                    Form
-                                                                    List</a>
-                                                                <% } %>
-                                                                    <% if (['moh', 'finance' , 'cs' , 'manager'
-                                                                        , 'admin' ].includes(user.role)) { %>
+                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
+                                                <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
+                                                                                                <a class="dropdown-item" href="/listofCBSLOrders">Cross Border
+                                                    Service
+                                                    (Limbang)</a>
+                                                <a class="dropdown-item" href="/listofLDOrders">Local
+                                                    Delivery</a>
+                                                <a class="dropdown-item" href="/listofPURE51orders">Pure51</a>
+                                                                                                    <a class="dropdown-item" href="/listofKPTDPOrders">KPT</a>
+                                                <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
                                             </div>
                                         </li>
                                         <% } %>
 
-                                            <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin'
-                                                ].includes(user.role)) { %>
+                                            <!-- Add conditional rendering for login/logout buttons -->
+                                            <% if (user) { %>
                                                 <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="eweListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
+                                                    <a class="nav-link dropdown-toggle" href="#"
+                                                        id="accountSettingsDropdown" role="button"
+                                                        data-toggle="dropdown" aria-haspopup="true"
                                                         aria-expanded="false">
-                                                        EWE
+                                                        <%= user.name %> (<%= user.role.toUpperCase() %>)
                                                     </a>
-                                                    <div class="dropdown-menu" aria-labelledby="eweListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                            %>
-                                                            <a class="dropdown-item"
-                                                                href="/ewemanifesttobillsearch">Search
-                                                                Manifest to Bill</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
+                                                    <div class="dropdown-menu"
+                                                        aria-labelledby="accountSettingsDropdown">
+                                                        <a class="dropdown-item" href="/">Dashboard</a>
+                                                        <% if (['admin'].includes(user.role)) { %>
+                                                            <a class="dropdown-item" href="/createUser">Create
+                                                                User</a>
+                                                            <!-- <a class="dropdown-item" href="#">Manage Users</a> -->
                                                             <% } %>
-                                                                <!-- <div class="dropdown-header">SHEIN</div> -->
-                                                                <a class="dropdown-item" href="/listofEWEOrders">All</a>
-                                                                <a class="dropdown-item" href="/listofEWEOrdersOFD">Out
-                                                                    for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item" href="/listofEWEOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWEOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWEOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWEOrdersCD">Cancelled</a>
-                                                                <div class="dropdown-divider"></div>
-                                                                <!-- Divider here -->
-                                                                <!-- <div class="dropdown-header">NON SHEIN</div>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWENSOrders">All</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWENSOrdersOFD">Out for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWENSOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWENSOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWENSOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofEWENSOrdersCD">Cancelled</a> -->
-                                                    </div>
-                                                </li>
-
-                                                <!-- <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="fmxListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        FMX
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="fmxListDropdown">
-                                                        <a class="dropdown-item" href="/listofFMXOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersOFD">Out for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrdersIRCC">New</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofFMXOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofFMXOrdersCD">Cancelled/Disposed</a>
-                                                    </div>
-                                                </li> -->
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="temuListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        TEMU
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="temuListDropdown">
-                                                        <div class="dropdown-header">Collection</div>
-                                                        <a class="dropdown-item" href="/listofTEMUCOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofTEMUCOrdersOFC">Out for
-                                                            Collection</a>
-                                                        <a class="dropdown-item" href="/listofTEMUCOrdersDO">Drop
-                                                            Off</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUCOrdersCD">Cancelled</a>
-                                                        <!-- <div class="dropdown-divider"></div>
-                                                        <div class="dropdown-header">Delivery</div>
-                                                        <a class="dropdown-item" href="/listofTEMUDOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofTEMUDOrdersOFD">Out for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofTEMUDOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUDOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUCOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofTEMUCOrdersCD">Cancelled</a> -->
-                                                    </div>
-                                                </li>
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="kptListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        KPT
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="kptListDropdown">
-                                                        <div class="dropdown-header">Duty Paid</div>
-                                                        <a class="dropdown-item" href="/listofKPTDPOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofKPTDPOrdersOFD">Out for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofKPTDPOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDPOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDPOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDPOrdersCD">Cancelled</a>
-                                                        <!-- <div class="dropdown-divider"></div>
-                                                        <div class="dropdown-header">Duty Free</div>
-                                                        <a class="dropdown-item" href="/listofKPTDFOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofKPTDFOrdersOFD">Out for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofKPTDFOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDFOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDFOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofKPTDFOrdersCD">Cancelled</a> -->
-                                                    </div>
-                                                </li>
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        PDU
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="pduListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                            %>
-                                                            <a class="dropdown-item"
-                                                                href="/pdumanifesttobillsearch">Search
-                                                                Manifest to Bill</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                            <% } %>
-                                                                <a class="dropdown-item" href="/listofPDUOrders">All</a>
-                                                                <a class="dropdown-item" href="/listofPDUOrdersOFD">Out
-                                                                    for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item" href="/listofPDUOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofPDUOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofPDUOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofPDUOrdersCD">Cancelled</a>
-                                                    </div>
-                                                </li>
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="pduListDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        MGLOBAL
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="pduListDropdown">
-                                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) {
-                                                            %>
-                                                            <a class="dropdown-item"
-                                                                href="/mglobalmanifesttobillsearch">Search
-                                                                Manifest to Bill</a>
-                                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                            <% } %>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrders">All</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersOFD">Out
-                                                                    for
-                                                                    Delivery</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersSC">Self
-                                                                    Collect</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersAW">Warehouse</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersCompleted">Completed</a>
-                                                                <a class="dropdown-item"
-                                                                    href="/listofMGLOBALOrdersCD">Cancelled</a>
-                                                    </div>
-                                                </li>
-
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
-                                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        Others
-                                                    </a>
-                                                    <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                                        <a class="dropdown-item" href="/listofOrders">All</a>
-                                                        <a class="dropdown-item" href="/listofOrdersOFD">Out
-                                                            for
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofOrdersSC">Self
-                                                            Collect</a>
-                                                        <a class="dropdown-item" href="/listofOrdersAW">Warehouse</a>
-                                                        <a class="dropdown-item" href="/listofOrdersIRCC">New</a>
-                                                        <a class="dropdown-item"
-                                                            href="/listofOrdersCompleted">Completed</a>
-                                                        <a class="dropdown-item" href="/listofOrdersCD">Cancelled</a>
-                                                        <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                        <a class="dropdown-item"
-                                                            href="/listofpharmacyJPMCOrders">JPMC</a>
-                                                        <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
-                                                        <a class="dropdown-item" href="/listofLDOrders">Local
-                                                            Delivery</a>
-                                                        <a class="dropdown-item" href="/listofGRPOrders">GRP</a>
-                                                        <a class="dropdown-item" href="/listofCBSLOrders">Cross Border
-                                                            Service
-                                                            (Limbang)</a>
-                                                        <a class="dropdown-item" href="/listofPURE51orders">Pure51</a>
-                                                        <a class="dropdown-item" href="/listofBBOrders">Baiduri Bank</a>
-                                                        <a class="dropdown-item" href="/listofFCASOrders">Fathan &
-                                                            Co.</a>
-                                                        <a class="dropdown-item" href="/listofLDJBOrders">Joybean</a>
-                                                        <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
-                                                        <a class="dropdown-item" href="/listofFMXOrders">FMX</a>
-                                                        <a class="dropdown-item" href="/listofEWENSOrders">EWENS</a>
-                                                    </div>
-                                                </li>
-                                                <% } %>
-
-                                                    <!-- Add conditional rendering for login/logout buttons -->
-                                                    <% if (user) { %>
-                                                        <li class="nav-item dropdown">
-                                                            <a class="nav-link dropdown-toggle" href="#"
-                                                                id="accountSettingsDropdown" role="button"
-                                                                data-toggle="dropdown" aria-haspopup="true"
-                                                                aria-expanded="false">
-                                                                <%= user.name %> (<%= user.role.toUpperCase() %>)
-                                                            </a>
-                                                            <div class="dropdown-menu"
-                                                                aria-labelledby="accountSettingsDropdown">
-                                                                <a class="dropdown-item" href="/">Dashboard</a>
-                                                                <% if (['admin'].includes(user.role)) { %>
-                                                                    <a class="dropdown-item" href="/createUser">Create
-                                                                        User</a>
-                                                                    <!-- <a class="dropdown-item" href="#">Manage Users</a> -->
-                                                                    <% } %>
-                                                                        <!-- <a class="dropdown-item" href="#">Edit
+                                                                <!-- <a class="dropdown-item" href="#">Edit
                                                                             Profile</a> -->
-                                                                        <a class="dropdown-item"
-                                                                            href="/logout">Logout</a>
-                                                            </div>
-                                                        </li>
-                                                        <% } else { %>
-                                                            <li class="nav-item">
-                                                                <a class="nav-link" href="/login">Login</a>
-                                                            </li>
-                                                            <% } %>
-                        </ul>
-                    </nav>
+                                                                <a class="dropdown-item" href="/logout">Logout</a>
+                                                    </div>
+                                                </li>
+                                                <% } else { %>
+                                                    <li class="nav-item">
+                                                        <a class="nav-link" href="/login">Login</a>
+                                                    </li>
+                                                    <% } %>
+                </ul>
+            </nav>
                 </div>
             </div>
         </div>

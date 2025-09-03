@@ -1549,6 +1549,46 @@ app.post('/search', ensureAuthenticated, ensureViewJob, async (req, res) => {
     }
 });
 
+// GET route
+app.get('/manifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
+    res.render('manifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
+});
+
+// POST route
+app.post('/manifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const { mawbNo } = req.body;
+
+        let query = {};
+        if (mawbNo) {
+            query.mawbNo = new RegExp(mawbNo, 'i'); // Case-insensitive partial match
+        }
+
+        const orders = await ORDERS.find(query)
+            .select([
+                '_id',
+                'doTrackingNumber',
+                'receiverName',
+                'receiverAddress',
+                'area',
+                'receiverPhoneNumber',
+                'parcelWeight',
+                'flightDate',
+                'items',
+                'mawbNo',
+                'receiverPostalCode',
+                'product'
+            ])
+            .sort({ _id: -1 })
+            .limit(5000);
+
+        res.render('manifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 app.get('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
     res.render('ewemanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
 });
