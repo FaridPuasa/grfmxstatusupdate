@@ -55,128 +55,88 @@
             <div class="row">
                 <div class="col-12">
                     <nav class="navbar navbar-expand-lg navbar-dark">
-                <a class="navbar-brand mr-auto" href="/">
-                    <h2>Go Rush</h2>
-                </a>
-                <ul class="navbar-nav flex-row">
-                    <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                Operation
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                        <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
-                                        <% } %>
-                                        <% if (['warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                        <a class="dropdown-item" href="https://warehouse.gorushbn.com">Scan Parcel In Warehouse (Pharmacy/EWE/PDU/MGLOBAL)</a>
-                                        <% } %>
-                                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'
-                                            ].includes(user.role)) { %>
-                                        <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                                        <% } %>
-                                        <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                        <a class="dropdown-item" href="/addressAreaCheck">Address Area
-                                            Checker</a>
-                                            <% } %>
-                                        <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                    <a class="dropdown-item" href="/manifesttobillsearch">Search Manifest to Bill</a>
-                                        <% } %>
-                                        <% if (['cs' , 'warehouse' , 'manager' , 'admin'
-                                            ].includes(user.role)) { %>
-                                            <div class="dropdown-divider"></div> <!-- Divider here -->
-                                            <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
-                                            <a class="dropdown-item" href="/listofnoncodPod">POD EWE/PDU/MGLOBAL</a>
-                                            <a class="dropdown-item" href="/listofldPod">POD LD/Pure51/KPT/ICARUS</a>
-                                            <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
-                                            <% } %>
-                            </div>
-                        </li>
-                        <% } %>
-                            <% if (['moh', 'cs' , 'manager' , 'admin', 'warehouse' ].includes(user.role))
-                                {%>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
-                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        MOH
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                        <% if (['moh'].includes(user.role))
-                                {%>
-                                        <a class="dropdown-item" href="/mohsearch">Search</a>
-                                        <% } %>
-                                        <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                                    <a class="dropdown-item" href="/search">Search Pharmacy Order</a>
-                                    <% } %>
-                                            <% if (['warehouse' , 'cs' , 'manager' , 'admin'
-                                                ].includes(user.role)) { %>
-                                                <div class="dropdown-divider"></div> <!-- Divider here -->
-                                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
-                                                <% } %>
-                                                    <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                                                        <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy
-                                                            Form
-                                                            List</a>
-                                                            <a class="dropdown-item" href="/listofWargaEmasOrders">All
-                                            Warga Emas Orders</a>
-                                                        <% } %>
-                                    </div>
-                                </li>
-                                <% } %>
+            <a class="navbar-brand mr-auto" href="/">
+                <h2>Go Rush</h2>
+            </a>
+            <ul class="navbar-nav flex-row">
+                <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Operation
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                            <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                            <% } %>
+                            <% if (['warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://warehouse.gorushbn.com">Scan Parcel In Warehouse (Pharmacy/EWE/PDU/MGLOBAL)</a>
+                            <% } %>
+                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                            <% } %>
+                            <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
+                            <% } %>
+                            <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/manifesttobillsearch">Search Manifest to Bill</a>
+                            <% } %>
+                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
+                                <a class="dropdown-item" href="/listofnoncodPod">POD EWE/PDU/MGLOBAL</a>
+                                <a class="dropdown-item" href="/listofldPod">POD LD/Pure51/KPT/ICARUS</a>
+                                <a class="dropdown-item" href="/listofcbslPod">POD Cross Border Service (Limbang)</a>
+                            <% } %>
+                        </div>
+                    </li>
+                <% } %>
 
-                                    <% if (['warehouse', 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) {
-                                        %>
-                                        <li class="nav-item dropdown">
-                                            <a class="nav-link dropdown-toggle" href="#" id="allOrdersDropdown"
-                                                role="button" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Others
-                                            </a>
-                                            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                                                <a class="dropdown-item" href="/listofpharmacyJPMCOrders">JPMC</a>
-                                                <a class="dropdown-item" href="/listofpharmacyPHCOrders">PHC</a>
-                                                                                                <a class="dropdown-item" href="/listofCBSLOrders">Cross Border
-                                                    Service
-                                                    (Limbang)</a>
-                                                <a class="dropdown-item" href="/listofLDOrders">Local
-                                                    Delivery</a>
-                                                <a class="dropdown-item" href="/listofPURE51orders">Pure51</a>
-                                                                                                    <a class="dropdown-item" href="/listofKPTDPOrders">KPT</a>
-                                                <a class="dropdown-item" href="/listofICARUSOrders">ICARUS</a>
-                                            </div>
-                                        </li>
-                                        <% } %>
+                <% if (['moh', 'cs' , 'manager' , 'admin', 'warehouse' ].includes(user.role)) { %>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="mohDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            MOH
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="mohDropdown">
+                            <% if (['moh'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/mohsearch">Search</a>
+                            <% } %>
+                            <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
+                            <% } %>
+                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy Form List</a>
+                                <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
+                            <% } %>
+                        </div>
+                    </li>
+                <% } %>
 
-                                            <!-- Add conditional rendering for login/logout buttons -->
-                                            <% if (user) { %>
-                                                <li class="nav-item dropdown">
-                                                    <a class="nav-link dropdown-toggle" href="#"
-                                                        id="accountSettingsDropdown" role="button"
-                                                        data-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
-                                                        <%= user.name %> (<%= user.role.toUpperCase() %>)
-                                                    </a>
-                                                    <div class="dropdown-menu"
-                                                        aria-labelledby="accountSettingsDropdown">
-                                                        <a class="dropdown-item" href="/">Dashboard</a>
-                                                        <% if (['admin'].includes(user.role)) { %>
-                                                            <a class="dropdown-item" href="/createUser">Create
-                                                                User</a>
-                                                            <!-- <a class="dropdown-item" href="#">Manage Users</a> -->
-                                                            <% } %>
-                                                                <!-- <a class="dropdown-item" href="#">Edit
-                                                                            Profile</a> -->
-                                                                <a class="dropdown-item" href="/logout">Logout</a>
-                                                    </div>
-                                                </li>
-                                                <% } else { %>
-                                                    <li class="nav-item">
-                                                        <a class="nav-link" href="/login">Login</a>
-                                                    </li>
-                                                    <% } %>
-                </ul>
-            </nav>
+                <% if (user) { %>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#"
+                            id="accountSettingsDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true"
+                            aria-expanded="false">
+                            <%= user.name %> (<%= user.role.toUpperCase() %>)
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="accountSettingsDropdown">
+                            <a class="dropdown-item" href="/">Dashboard</a>
+                            <% if (['admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/createUser">Create User</a>
+                            <% } %>
+                            <a class="dropdown-item" href="/logout">Logout</a>
+                        </div>
+                    </li>
+                <% } else { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                <% } %>
+            </ul>
+        </nav>
                 </div>
             </div>
         </div>

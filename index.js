@@ -16,6 +16,7 @@ const NodeCache = require('node-cache');
 const urgentCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
 const codBtCache = new NodeCache({ stdTTL: 600 }); // cache for 10 minutes, adjust as needed
 const grWebsiteCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
+const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min cache
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -551,6 +552,152 @@ async function getCodBtMapForDate(dateParam) {
 
     return { [formattedDateKey]: orderedDispatcherMap };
 }
+
+// Helper: build MongoDB query based on filters
+function buildQuery(filters) {
+  const query = {};
+
+  // ===== Exact match fields (excluding tracking numbers) =====
+  const exactFields = ['mawbNo', 'receiverPostalCode', 'icPassNum', 'patientNumber'];
+  exactFields.forEach(field => {
+    if (filters[field] && filters[field].trim() !== '') {
+      query[field] = filters[field].trim();
+    }
+  });
+
+  // ===== Go Rush & Original Tracking No. (multiple lines) =====
+  ['doTrackingNumber', 'parcelTrackingNum'].forEach(field => {
+    if (filters[field] && filters[field].trim() !== '') {
+      const values = filters[field].split('\n').map(v => v.trim()).filter(v => v);
+      if (values.length === 1) query[field] = values[0];
+      else if (values.length > 1) query[field] = { $in: values };
+    }
+  });
+
+  // ===== Partial / contains fields =====
+  const partialFields = [
+    'receiverAddress',
+    'receiverName',
+    'receiverPhoneNumber',
+    'additionalPhoneNumber'
+  ];
+  partialFields.forEach(field => {
+    if (filters[field] && filters[field].trim() !== '') {
+      query[field] = { $regex: filters[field].trim(), $options: 'i' };
+    }
+  });
+
+  // ===== Dropdown / multi-select exact match =====
+  const multiFields = [
+    'jobMethod',
+    'product',
+    'assignedTo',
+    'area',
+    'currentStatus',
+    'latestReason',
+    'paymentMethod',
+    'latestLocation'
+  ];
+  multiFields.forEach(field => {
+    if (filters[field]) {
+      if (Array.isArray(filters[field]) && filters[field].length > 0) {
+        query[field] = { $in: filters[field].map(v => v.trim()) };
+      } else if (!Array.isArray(filters[field]) && filters[field].trim() !== '') {
+        query[field] = filters[field].trim();
+      }
+    }
+  });
+
+  // ===== Date range filters =====
+  if (filters.jobDateFrom || filters.jobDateTo) {
+    query.jobDate = {};
+    if (filters.jobDateFrom) query.jobDate.$gte = filters.jobDateFrom;
+    if (filters.jobDateTo) query.jobDate.$lte = filters.jobDateTo;
+  }
+
+  if (filters.creationDateFrom || filters.creationDateTo) {
+    query.creationDate = {};
+    if (filters.creationDateFrom) query.creationDate.$gte = filters.creationDateFrom;
+    if (filters.creationDateTo) query.creationDate.$lte = filters.creationDateTo;
+  }
+
+  return query;
+}
+
+// GET /searchJobs
+app.get('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
+  try {
+    res.render('searchJobs', { moment: moment, user: req.user });
+  } catch (err) {
+    console.error('Render Search Jobs Error:', err);
+    res.status(500).send('Failed to load Search Jobs page');
+  }
+});
+
+// POST /searchJobs
+app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
+  try {
+    const filters = req.body;
+    const query = buildQuery(filters);
+
+    const cacheKey = JSON.stringify(query);
+    if (searchJobsCache.has(cacheKey)) {
+      return res.json(searchJobsCache.get(cacheKey));
+    }
+
+    // Fetch from DB
+    const orders = await ORDERS.find(query).sort({ _id: -1 }).lean();
+
+    const today = new Date();
+
+    // Flatten objects for DataTable and calculate Age
+    const formattedOrders = orders.map(o => {
+      let age = '';
+      if (
+        o.warehouseEntry === "Yes" &&
+        o.currentStatus !== "Completed" &&
+        o.warehouseEntryDateTime
+      ) {
+        const entryDate = new Date(o.warehouseEntryDateTime);
+        const diffTime = today - entryDate; // milliseconds
+        age = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // convert to days
+      }
+
+      return {
+        doTrackingNumber: o.doTrackingNumber || '',
+        product: o.product || '',
+        currentStatus: o.currentStatus || '',
+        latestLocation: o.latestLocation || '',
+        age: age, // <-- new Age column
+        area: o.area || '',
+        jobMethod: o.jobMethod || '',
+        jobDate: o.jobDate || '',
+        assignedTo: o.assignedTo || '',
+        paymentMethod: o.paymentMethod || '',
+        paymentAmount: o.paymentAmount || '',
+        receiverName: o.receiverName || '',
+        receiverAddress: o.receiverAddress || '',
+        receiverPostalCode: o.receiverPostalCode || '',
+        receiverPhoneNumber: o.receiverPhoneNumber || '',
+        additionalPhoneNumber: o.additionalPhoneNumber || '',
+        creationDate: o.creationDate || '',
+        remarks: o.remarks || '',
+        mawbNo: o.mawbNo || '',
+        parcelTrackingNum: o.parcelTrackingNum || '',
+        icPassNum: o.icPassNum || '',
+        patientNumber: o.patientNumber || ''
+      };
+    });
+
+    searchJobsCache.set(cacheKey, formattedOrders);
+
+    return res.json(formattedOrders);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server Error' });
+  }
+});
 
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
