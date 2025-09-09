@@ -555,148 +555,189 @@ async function getCodBtMapForDate(dateParam) {
 
 // Helper: build MongoDB query based on filters
 function buildQuery(filters) {
-  const query = {};
+    const query = {};
 
-  // ===== Exact match fields (excluding tracking numbers) =====
-  const exactFields = ['mawbNo', 'receiverPostalCode', 'icPassNum', 'patientNumber'];
-  exactFields.forEach(field => {
-    if (filters[field] && filters[field].trim() !== '') {
-      query[field] = filters[field].trim();
+    // ===== Exact match fields (excluding tracking numbers) =====
+    const exactFields = ['mawbNo', 'receiverPostalCode', 'icPassNum', 'patientNumber'];
+    exactFields.forEach(field => {
+        if (filters[field] && filters[field].trim() !== '') {
+            query[field] = filters[field].trim();
+        }
+    });
+
+    // ===== Go Rush & Original Tracking No. (multiple lines) =====
+    ['doTrackingNumber', 'parcelTrackingNum'].forEach(field => {
+        if (filters[field] && filters[field].trim() !== '') {
+            const values = filters[field].split('\n').map(v => v.trim()).filter(v => v);
+            if (values.length === 1) query[field] = values[0];
+            else if (values.length > 1) query[field] = { $in: values };
+        }
+    });
+
+    // ===== Partial / contains fields =====
+    const partialFields = [
+        'receiverAddress',
+        'receiverName',
+        'receiverPhoneNumber',
+        'additionalPhoneNumber'
+    ];
+    partialFields.forEach(field => {
+        if (filters[field] && filters[field].trim() !== '') {
+            query[field] = { $regex: filters[field].trim(), $options: 'i' };
+        }
+    });
+
+    // ===== Dropdown / multi-select exact match =====
+    const multiFields = [
+        'jobMethod',
+        'product',
+        'assignedTo',
+        'area',
+        'currentStatus',
+        'latestReason',
+        'paymentMethod',
+        'latestLocation'
+    ];
+    multiFields.forEach(field => {
+        if (filters[field]) {
+            if (Array.isArray(filters[field]) && filters[field].length > 0) {
+                query[field] = { $in: filters[field].map(v => v.trim()) };
+            } else if (!Array.isArray(filters[field]) && filters[field].trim() !== '') {
+                query[field] = filters[field].trim();
+            }
+        }
+    });
+
+    // ===== Date range filters =====
+    if (filters.jobDateFrom || filters.jobDateTo) {
+        query.jobDate = {};
+        if (filters.jobDateFrom) query.jobDate.$gte = filters.jobDateFrom;
+        if (filters.jobDateTo) query.jobDate.$lte = filters.jobDateTo;
     }
-  });
 
-  // ===== Go Rush & Original Tracking No. (multiple lines) =====
-  ['doTrackingNumber', 'parcelTrackingNum'].forEach(field => {
-    if (filters[field] && filters[field].trim() !== '') {
-      const values = filters[field].split('\n').map(v => v.trim()).filter(v => v);
-      if (values.length === 1) query[field] = values[0];
-      else if (values.length > 1) query[field] = { $in: values };
+    if (filters.creationDateFrom || filters.creationDateTo) {
+        query.creationDate = {};
+        if (filters.creationDateFrom) query.creationDate.$gte = filters.creationDateFrom;
+        if (filters.creationDateTo) query.creationDate.$lte = filters.creationDateTo;
     }
-  });
 
-  // ===== Partial / contains fields =====
-  const partialFields = [
-    'receiverAddress',
-    'receiverName',
-    'receiverPhoneNumber',
-    'additionalPhoneNumber'
-  ];
-  partialFields.forEach(field => {
-    if (filters[field] && filters[field].trim() !== '') {
-      query[field] = { $regex: filters[field].trim(), $options: 'i' };
-    }
-  });
-
-  // ===== Dropdown / multi-select exact match =====
-  const multiFields = [
-    'jobMethod',
-    'product',
-    'assignedTo',
-    'area',
-    'currentStatus',
-    'latestReason',
-    'paymentMethod',
-    'latestLocation'
-  ];
-  multiFields.forEach(field => {
-    if (filters[field]) {
-      if (Array.isArray(filters[field]) && filters[field].length > 0) {
-        query[field] = { $in: filters[field].map(v => v.trim()) };
-      } else if (!Array.isArray(filters[field]) && filters[field].trim() !== '') {
-        query[field] = filters[field].trim();
-      }
-    }
-  });
-
-  // ===== Date range filters =====
-  if (filters.jobDateFrom || filters.jobDateTo) {
-    query.jobDate = {};
-    if (filters.jobDateFrom) query.jobDate.$gte = filters.jobDateFrom;
-    if (filters.jobDateTo) query.jobDate.$lte = filters.jobDateTo;
-  }
-
-  if (filters.creationDateFrom || filters.creationDateTo) {
-    query.creationDate = {};
-    if (filters.creationDateFrom) query.creationDate.$gte = filters.creationDateFrom;
-    if (filters.creationDateTo) query.creationDate.$lte = filters.creationDateTo;
-  }
-
-  return query;
+    return query;
 }
 
 // GET /searchJobs
 app.get('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
-  try {
-    res.render('searchJobs', { moment: moment, user: req.user });
-  } catch (err) {
-    console.error('Render Search Jobs Error:', err);
-    res.status(500).send('Failed to load Search Jobs page');
-  }
+    try {
+        res.render('searchJobs', { moment: moment, user: req.user });
+    } catch (err) {
+        console.error('Render Search Jobs Error:', err);
+        res.status(500).send('Failed to load Search Jobs page');
+    }
 });
 
 // POST /searchJobs
 app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
-  try {
-    const filters = req.body;
-    const query = buildQuery(filters);
+    try {
+        const filters = req.body;
+        const query = buildQuery(filters);
 
-    const cacheKey = JSON.stringify(query);
-    if (searchJobsCache.has(cacheKey)) {
-      return res.json(searchJobsCache.get(cacheKey));
+        const cacheKey = JSON.stringify(query);
+        if (searchJobsCache.has(cacheKey)) {
+            return res.json(searchJobsCache.get(cacheKey));
+        }
+
+        // Fetch from DB
+        const orders = await ORDERS.find(query).sort({ _id: -1 }).lean();
+
+        const today = new Date();
+
+        // Flatten objects for DataTable and calculate Age
+        const formattedOrders = orders.map(o => {
+            let age = '';
+            if (
+                o.warehouseEntry === "Yes" &&
+                o.currentStatus !== "Completed" &&
+                o.warehouseEntryDateTime
+            ) {
+                const entryDate = new Date(o.warehouseEntryDateTime);
+                const diffTime = today - entryDate; // milliseconds
+                age = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // convert to days
+            }
+
+            // === Handling Charge Logic ===
+            let handlingCharge = '';
+            let weight = parseFloat(o.parcelWeight) || 0;
+            let product = (o.product || '').toLowerCase();
+
+            if (product.includes('mglobal')) {
+                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+            } else if (product.includes('pdu')) {
+                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+            } else if (product.includes('ewe') || product.includes('ewens')) {
+                let charge2_8 = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+                let charge3_5 = (Math.round((3.5 + 0.50 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+                let firstChar = o.receiverPostalCode ? o.receiverPostalCode.charAt(0) : '';
+                if (firstChar === 'B') {
+                    handlingCharge = charge2_8;
+                } else if (['K', 'T', 'P'].includes(firstChar)) {
+                    handlingCharge = charge3_5;
+                } else {
+                    if (o.area && o.area !== 'N/A') {
+                        if (['TEMBURONG', 'KB', 'KB / SERIA', 'LUMUT', 'TUTONG'].includes(o.area)) {
+                            handlingCharge = charge3_5;
+                        } else {
+                            handlingCharge = charge2_8;
+                        }
+                    } else {
+                        handlingCharge = `${charge2_8} or ${charge3_5}`;
+                    }
+                }
+            }
+
+            return {
+                doTrackingNumber: o.doTrackingNumber || '',
+                product: o.product || '',
+                currentStatus: o.currentStatus || '',
+                latestLocation: o.latestLocation || '',
+                age: age,
+                area: o.area || '',
+                jobMethod: o.jobMethod || '',
+                jobDate: o.jobDate || '',
+                assignedTo: o.assignedTo || '',
+                paymentMethod: o.paymentMethod || '',
+                paymentAmount: o.paymentAmount || '',
+                receiverName: o.receiverName || '',
+                receiverAddress: o.receiverAddress || '',
+                receiverPostalCode: o.receiverPostalCode || '',
+                receiverPhoneNumber: o.receiverPhoneNumber || '',
+                additionalPhoneNumber: o.additionalPhoneNumber || '',
+                creationDate: o.creationDate || '',
+                remarks: o.remarks || '',
+                grRemark: o.grRemark || '',
+                mawbNo: o.mawbNo || '',
+                parcelTrackingNum: o.parcelTrackingNum || '',
+                icPassNum: o.icPassNum || '',
+                patientNumber: o.patientNumber || '',
+                screenshotInvoice: o.screenshotInvoice || '',
+                cargoPrice: o.cargoPrice || '',
+                itemsDescription: o.items ? o.items.map(i => i.description || '').join(', ') : '',
+                itemsQuantity: o.items ? o.items.map(i => i.quantity || '').join(', ') : '',
+                parcelWeight: o.parcelWeight || '',
+                noOfpackages: '1',
+                handlingCharge: handlingCharge // <-- only filled for pdu/ewe/mglobal
+            };
+        });
+
+        searchJobsCache.set(cacheKey, formattedOrders);
+
+        return res.json(formattedOrders);
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server Error' });
     }
-
-    // Fetch from DB
-    const orders = await ORDERS.find(query).sort({ _id: -1 }).lean();
-
-    const today = new Date();
-
-    // Flatten objects for DataTable and calculate Age
-    const formattedOrders = orders.map(o => {
-      let age = '';
-      if (
-        o.warehouseEntry === "Yes" &&
-        o.currentStatus !== "Completed" &&
-        o.warehouseEntryDateTime
-      ) {
-        const entryDate = new Date(o.warehouseEntryDateTime);
-        const diffTime = today - entryDate; // milliseconds
-        age = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // convert to days
-      }
-
-      return {
-        doTrackingNumber: o.doTrackingNumber || '',
-        product: o.product || '',
-        currentStatus: o.currentStatus || '',
-        latestLocation: o.latestLocation || '',
-        age: age, // <-- new Age column
-        area: o.area || '',
-        jobMethod: o.jobMethod || '',
-        jobDate: o.jobDate || '',
-        assignedTo: o.assignedTo || '',
-        paymentMethod: o.paymentMethod || '',
-        paymentAmount: o.paymentAmount || '',
-        receiverName: o.receiverName || '',
-        receiverAddress: o.receiverAddress || '',
-        receiverPostalCode: o.receiverPostalCode || '',
-        receiverPhoneNumber: o.receiverPhoneNumber || '',
-        additionalPhoneNumber: o.additionalPhoneNumber || '',
-        creationDate: o.creationDate || '',
-        remarks: o.remarks || '',
-        mawbNo: o.mawbNo || '',
-        parcelTrackingNum: o.parcelTrackingNum || '',
-        icPassNum: o.icPassNum || '',
-        patientNumber: o.patientNumber || ''
-      };
-    });
-
-    searchJobsCache.set(cacheKey, formattedOrders);
-
-    return res.json(formattedOrders);
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Server Error' });
-  }
 });
 
 app.get('/', ensureAuthenticated, async (req, res) => {
@@ -1727,122 +1768,6 @@ app.post('/manifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req
             .limit(5000);
 
         res.render('manifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.get('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
-    res.render('ewemanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
-});
-
-app.get('/pdumanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
-    res.render('pdumanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
-});
-
-app.get('/mglobalmanifesttobillsearch', ensureAuthenticated, ensureViewJob, (req, res) => {
-    res.render('mglobalmanifesttobillsearch', { moment: moment, user: req.user, orders: [], searchQuery: {} });
-});
-
-app.post('/ewemanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
-    try {
-        const { mawbNo } = req.body;
-
-        let query = { product: { $in: ["ewe", "ewens"] } };
-
-        if (mawbNo) {
-            query.mawbNo = new RegExp(mawbNo, 'i'); // Case-insensitive partial match
-        }
-
-        const orders = await ORDERS.find(query)
-            .select([
-                '_id',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'receiverPhoneNumber',
-                'parcelWeight',
-                'flightDate',
-                'items',
-                'mawbNo',
-                'receiverPostalCode'
-            ])
-            .sort({ _id: -1 })
-            .limit(5000);
-
-        res.render('ewemanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.post('/pdumanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
-    try {
-        const { mawbNo } = req.body;
-
-        // Update the query to only include "pdu" as the product
-        let query = { product: "pdu" };
-
-        if (mawbNo) {
-            query.mawbNo = new RegExp(mawbNo, 'i'); // Case-insensitive partial match
-        }
-
-        const orders = await ORDERS.find(query)
-            .select([
-                '_id',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'receiverPhoneNumber',
-                'parcelWeight',
-                'flightDate',
-                'items',
-                'mawbNo',
-                'receiverPostalCode'
-            ])
-            .sort({ _id: -1 })
-            .limit(5000);
-
-        res.render('pdumanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.post('/mglobalmanifesttobillsearch', ensureAuthenticated, ensureViewJob, async (req, res) => {
-    try {
-        const { mawbNo } = req.body;
-
-        // Update the query to only include "pdu" as the product
-        let query = { product: "mglobal" };
-
-        if (mawbNo) {
-            query.mawbNo = new RegExp(mawbNo, 'i'); // Case-insensitive partial match
-        }
-
-        const orders = await ORDERS.find(query)
-            .select([
-                '_id',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'receiverPhoneNumber',
-                'parcelWeight',
-                'flightDate',
-                'items',
-                'mawbNo',
-                'receiverPostalCode'
-            ])
-            .sort({ _id: -1 })
-            .limit(5000);
-
-        res.render('mglobalmanifesttobillsearch', { moment: moment, user: req.user, orders, searchQuery: req.body });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');

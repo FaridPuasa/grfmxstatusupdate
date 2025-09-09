@@ -94,9 +94,6 @@ table.dataTable { width: 100% !important; }
                                 <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                                 <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                             <% } %>
-                            <% if (['finance', 'manager' , 'admin' ].includes(user.role)) { %>
-                                <a class="dropdown-item" href="/manifesttobillsearch">Search Manifest to Bill</a>
-                            <% } %>
                             <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item" href="/listofpharmacyPod">POD Pharmacy</a>
@@ -154,8 +151,9 @@ table.dataTable { width: 100% !important; }
         </nav>
     </div>
 </div>
-
+<h1 class="text-center mt-4">Search Jobs</h1>
 <div class="container filters-container">
+  
   <form id="searchForm">
     <!-- Row 1: Text fields -->
         <div class="row mb-2">
@@ -211,17 +209,17 @@ table.dataTable { width: 100% !important; }
       <div class="col-md-3">
         <label class="form-label">Product</label>
         <select class="form-control select2" name="product[]" multiple>
+          <option value="pharmacymoh">Pharmacy MOH</option>
+          <option value="pharmacyjpmc">Pharmacy JPMC</option>
+          <option value="pharmacyphc">Pharmacy PHC</option>
+          <option value="localdelivery">Local Delivery</option>
           <option value="cbsl">Cross Border Service Limbang</option>
           <option value="ewe">EWE</option>
-          <option value="icarus">ICARUS</option>
-          <option value="kptdp">KPT</option>
-          <option value="localdelivery">Local Delivery</option>
           <option value="mglobal">MGLOBAL</option>
           <option value="pdu">PDU</option>
-          <option value="pharmacyjpmc">Pharmacy JPMC</option>
-          <option value="pharmacymoh">Pharmacy MOH</option>
-          <option value="pharmacyphc">Pharmacy PHC</option>
+          <option value="kptdp">KPT</option>
           <option value="pure51">Pure51</option>
+          <option value="icarus">ICARUS</option>
         </select>
       </div>
       <div class="col-md-3">
@@ -341,33 +339,45 @@ table.dataTable { width: 100% !important; }
   </form>
 </div>
 
+<!-- Table Header -->
+  <h5 id="tableHeader" class="text-center mb-2"></h5>
+
 <div class="container-fluid px-0">
   <table id="jobsTable" class="display nowrap" style="width:100%">
     <thead>
       <tr>
+        <th>S/N</th>
         <th>Action</th>
+        <th>Go Rush Remark</th>
+        <th>Customer Remark</th>
         <th>Go Rush Tracking No.</th>
         <th>Product</th>
         <th>Job Status</th>
         <th>Latest Location</th>
         <th>Age (Days)</th>
-        <th>Area</th>
         <th>Job Method</th>
         <th>Job Date</th>
         <th>Assigned To</th>
         <th>Payment Method</th>
         <th>Payment Amount</th>
         <th>Name</th>
-        <th>Customer Address</th>
-        <th>Postal Code</th>
         <th>Main Phone No.</th>
         <th>Additional Phone No.</th>
+        <th>Customer Address</th>
+        <th>Postal Code</th>
+        <th>Area</th>
         <th>Job Created Date</th>
-        <th>Remarks</th>
         <th>MAWB No.</th>
-        <th>Original Tracking No.</th>
         <th>IC/Passport No.</th>
         <th>Patient No.</th>
+        <th>Item Description</th>
+        <th>Quantity</th>
+        <th>Invoice/Item Screenshot</th>
+        <th>Original Tracking No.</th>
+        <th>Item Original Price</th>
+        <th>Weight (KG)</th>
+        <th>No. of Packages</th>
+        <th>Handling Charge</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -415,7 +425,6 @@ table.dataTable { width: 100% !important; }
   </div>
 </div>
 
-
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -424,28 +433,101 @@ table.dataTable { width: 100% !important; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.colVis.min.js"></script>
 <script>
 $(document).ready(function() {
   // Initialize Select2
   $('.select2').select2({ width: '100%' });
+
+  let manifestView = false; // Toggle state for Manifest to Bill view
 
   // Initialize DataTable
   let table = $('#jobsTable').DataTable({
     dom: 'lBfrtip',
     buttons: [
       {
-        extend: 'excelHtml5',
-        text: 'Export to Excel',
-        exportOptions: {
-          columns: ':not(.no-export)' // ignore Action column
+  extend: 'excelHtml5',
+  text: 'Export Excel',
+  exportOptions: {
+    columns: ':visible',
+    orthogonal: 'export',
+    format: {
+      body: function (data, row, column, node) {
+        if (column === 0) return row + 1; // S/N column
+        return data;
+      }
+    }
+  },
+  filename: function() {
+    // Build the filter part of the filename
+    let filters = [];
+    $('#searchForm').find('input[type="text"], textarea').each(function() {
+      const val = $(this).val().trim();
+      if (val) filters.push(val.replace(/[\s\/\\:*?"<>|]/g, '_'));
+    });
+    $('#searchForm').find('select.select2').each(function() {
+      const val = $(this).val();
+      if (val && val.length) filters.push(val.join('-').replace(/[\s\/\\:*?"<>|]/g, '_'));
+    });
+    const filterText = filters.length ? filters.join('_') : 'SearchJob';
+
+    // Get today's date
+    const today = moment().format('DD.MM.YYYY');
+
+    // Get number of rows currently displayed in the table
+    const rowCount = table.rows({ filter: 'applied' }).data().length;
+
+    return `${filterText}_${today}(${rowCount})`;
+  }
+},
+      {
+        extend: 'colvis',
+        text: 'Show/Hide Columns'
+      },
+      <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
+      {
+        text: 'Manifest to Bill',
+        action: function(e, dt, node, config) {
+          const manifestCols = [
+            0,  // S/N
+            4,  // Go Rush Tracking No.
+            14, // Name
+            15, // Main Phone No.
+            17, // Customer Address
+            18, // Postal Code
+            29, // Weight (KG)
+            30, // No. of Packages
+            31  // Handling Charge
+          ];
+
+          if (!manifestView) {
+            // Hide all other columns
+            dt.columns().every(function(index) {
+              if (!manifestCols.includes(index)) this.visible(false);
+            });
+          } else {
+            // Show all columns
+            dt.columns().visible(true);
+          }
+
+          manifestView = !manifestView;
         }
       }
+      <% } %>
     ],
     pageLength: 25,
     lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
     ordering: true,
-    order: [[1, 'desc']], // Go Rush Tracking No. column
+    order: [[1, 'desc']], // Default ordering
     columns: [
+      {
+        data: null,
+        orderable: false,
+        className: 'no-export',
+        render: function(data, type, row, meta) {
+          return meta.row + 1; // Fixed S/N
+        }
+      },
       { 
         data: null, 
         orderable: false, 
@@ -453,91 +535,116 @@ $(document).ready(function() {
         render: function(data, type, row) {
           if (['pharmacymoh','pharmacyjpmc','pharmacyphc'].includes(row.product.toLowerCase())) {
             return `<button class="btn btn-sm btn-primary reorder-btn" 
-                            data-tracking="${row.doTrackingNumber}" 
-                            data-address="${row.receiverAddress}" 
-                            data-product="${row.product}">Reorder</button>`;
+                      data-tracking="${row.doTrackingNumber}" 
+                      data-address="${row.receiverAddress}" 
+                      data-product="${row.product}">Reorder</button>`;
           }
           return '';
         }
       },
+      { data: 'grRemark' },
+      { data: 'remarks' },
       { data: 'doTrackingNumber' },
       { data: 'product' },
       { data: 'currentStatus' },
       { data: 'latestLocation' },
       { data: 'age' },
-      { data: 'area' },
       { data: 'jobMethod' },
       { data: 'jobDate' },
       { data: 'assignedTo' },
       { data: 'paymentMethod' },
       { data: 'paymentAmount' },
       { data: 'receiverName' },
-      { data: 'receiverAddress' },
-      { data: 'receiverPostalCode' },
       { data: 'receiverPhoneNumber' },
       { data: 'additionalPhoneNumber' },
+      { data: 'receiverAddress' },
+      { data: 'receiverPostalCode' },
+      { data: 'area' },
       { data: 'creationDate' },
-      { data: 'remarks' },
       { data: 'mawbNo' },
-      { data: 'parcelTrackingNum' },
       { data: 'icPassNum' },
-      { data: 'patientNumber' }
+      { data: 'patientNumber' },
+      { data: 'itemsDescription' },
+      { data: 'itemsQuantity' },
+      { data: 'screenshotInvoice',
+        render: function (data, type, row) {
+          if (type === 'export' || type === 'excel') return data || '';
+          if (!data) return '';
+          return '<a href="' + data + '" target="_blank">View Invoice</a>';
+        }
+      },
+      { data: 'parcelTrackingNum' },
+      { data: 'cargoPrice' },
+      { data: 'parcelWeight' },
+      { data: 'noOfpackages' },
+      <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
+{ data: 'handlingCharge' }
+<% } else { %>
+{ data: 'handlingCharge', visible: false }
+<% } %>
     ]
   });
 
-  // Reset button
+  // Reset Filters
   $('#resetFilters').on('click', function() {
     $('#searchForm')[0].reset();
     $('.select2').val(null).trigger('change');
     $('#searchForm').find('input, textarea, select').removeClass('filter-applied');
+    $('#tableHeader').text('');
   });
 
   // Handle search form submission
-$('#searchForm').on('submit', function(e) {
-  e.preventDefault();
-  const filters = {};
+  $('#searchForm').on('submit', function(e) {
+    e.preventDefault();
+    const filters = {};
 
-  // Show loading overlay only when searching
-  $('#loadingOverlay').show();
+    $('#loadingOverlay').show();
 
-  // Text, textarea, date inputs
-  $(this).find('input[type="text"], input[type="date"], textarea').each(function() {
-    const val = $(this).val();
-    if (val) { filters[$(this).attr('name')] = val; $(this).addClass('filter-applied'); }
-    else { $(this).removeClass('filter-applied'); }
+    $(this).find('input[type="text"], input[type="date"], textarea').each(function() {
+      const val = $(this).val();
+      if (val) { filters[$(this).attr('name')] = val; $(this).addClass('filter-applied'); }
+      else { $(this).removeClass('filter-applied'); }
+    });
+
+    $(this).find('select.select2').each(function() {
+      const name = $(this).attr('name').replace('[]','');
+      const val = $(this).val();
+      if (val && val.length) { filters[name] = val; $(this).addClass('filter-applied'); }
+      else { $(this).removeClass('filter-applied'); }
+    });
+
+    $.ajax({
+      url: '/searchJobs',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify(filters),
+      success: function(data) {
+        table.clear().rows.add(data).draw();
+
+        // Build header with applied filters and row count
+        let filterNames = [];
+        $('#searchForm').find('input[type="text"], textarea').each(function() {
+          const val = $(this).val().trim();
+          if (val) filterNames.push(val);
+        });
+        $('#searchForm').find('select.select2').each(function() {
+          const val = $(this).val();
+          if (val && val.length) filterNames.push(val.join(', '));
+        });
+        const filterText = filterNames.length ? filterNames.join(' | ') : 'All Jobs';
+        const rowCount = data.length;
+        $('#tableHeader').text(`${filterText} (${rowCount})`);
+      },
+      error: function() {
+        alert('Error fetching jobs');
+      },
+      complete: function() { $('#loadingOverlay').hide(); }
+    });
   });
 
-  // Multi-select dropdowns
-  $(this).find('select.select2').each(function() {
-    const name = $(this).attr('name').replace('[]','');
-    const val = $(this).val();
-    if (val && val.length) { filters[name] = val; $(this).addClass('filter-applied'); }
-    else { $(this).removeClass('filter-applied'); }
+  table.on('draw', function() {
+    $('#loadingOverlay').hide();
   });
-
-  $.ajax({
-    url: '/searchJobs',
-    type: 'POST',
-    contentType: 'application/json',
-    data: JSON.stringify(filters),
-    success: function(data) {
-      table.clear().rows.add(data).draw();
-    },
-    error: function(err) {
-      alert('Error fetching jobs');
-      console.error(err);
-    },
-    complete: function() {
-      // Hide overlay after AJAX and redraw
-      $('#loadingOverlay').hide();
-    }
-  });
-});
-
-// Optional: hide overlay also after DataTable redraw (for extra safety)
-table.on('draw', function() {
-  $('#loadingOverlay').hide();
-});
 
   // Reorder button click
   $(document).on('click', '.reorder-btn', function() {
@@ -552,12 +659,12 @@ table.on('draw', function() {
     const currentTime = moment().hour();
 
     function isExpressAvailable() {
-      if (currentDay === 4 && currentTime >= 11) return false; // Thursday after 11am
-      if (currentDay === 5 || currentDay === 6) return false; // Friday/Saturday
+      if (currentDay === 4 && currentTime >= 11) return false; 
+      if (currentDay === 5 || currentDay === 6) return false;
       return true;
     }
     function isImmediateAvailable() {
-      if (currentDay === 0 || currentDay === 5) return false; // Sunday or Friday
+      if (currentDay === 0 || currentDay === 5) return false;
       return currentTime >= 8 && currentTime <= 15;
     }
 
@@ -580,7 +687,6 @@ table.on('draw', function() {
     $('#reorderModal').modal('show');
   });
 
-  // Handle reorder form submission
   $('#reorderForm').on('submit', async function(e) {
     e.preventDefault();
     const trackingNumber = $('#trackingNumber').val();
