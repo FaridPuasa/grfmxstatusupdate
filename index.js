@@ -726,7 +726,8 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
                 itemsQuantity: o.items ? o.items.map(i => i.quantity || '').join(', ') : '',
                 parcelWeight: o.parcelWeight || '',
                 noOfpackages: '1',
-                handlingCharge: handlingCharge // <-- only filled for pdu/ewe/mglobal
+                handlingCharge: handlingCharge, // <-- only filled for pdu/ewe/mglobal
+                attempt: o.attempt || '',
             };
         });
 

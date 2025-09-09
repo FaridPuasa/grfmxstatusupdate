@@ -358,6 +358,7 @@ table.dataTable { width: 100% !important; }
         <th>Job Method</th>
         <th>Job Date</th>
         <th>Assigned To</th>
+        <th>Attempt</th>
         <th>Payment Method</th>
         <th>Payment Amount</th>
         <th>Name</th>
@@ -491,13 +492,13 @@ $(document).ready(function() {
           const manifestCols = [
             0,  // S/N
             4,  // Go Rush Tracking No.
-            14, // Name
-            15, // Main Phone No.
+            15, // Name
+            16, // Main Phone No.
             17, // Customer Address
-            18, // Postal Code
-            29, // Weight (KG)
-            30, // No. of Packages
-            31  // Handling Charge
+            19, // Postal Code
+            30, // Weight (KG)
+            31, // No. of Packages
+            32  // Handling Charge
           ];
 
           if (!manifestView) {
@@ -552,6 +553,7 @@ $(document).ready(function() {
       { data: 'jobMethod' },
       { data: 'jobDate' },
       { data: 'assignedTo' },
+      { data: 'attempt' },
       { data: 'paymentMethod' },
       { data: 'paymentAmount' },
       { data: 'receiverName' },
