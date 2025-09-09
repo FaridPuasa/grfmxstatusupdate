@@ -829,8 +829,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) {
                 return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) &&
                     ((method === "Standard" && age >= 3 && age <= 7) || (method === "Express" && age >= 1 && age <= 7));
-            } else if (product === "temu") {
-                return (method === "Standard" && age >= 5 && age <= 14) || (method === "Drop Off" && age >= 7 && age <= 14);
             } else {
                 return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) && age >= 3 && age <= 14;
             }
@@ -839,7 +837,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         const overdueMap = categorize(allOrders, (order, age) => {
             const { product } = order;
             if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) return age > 7 && age < 30;
-            if (product === "temu") return age > 14 && age < 30;
             return age > 14 && age < 30;
         });
 
@@ -10177,7 +10174,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'FA') {
-                update = {
+                /* update = {
                     area: finalArea
                 }
 
@@ -10189,7 +10186,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 };
 
                 mongoDBrun = 2;
-                DetrackAPIrun = 1;
+                DetrackAPIrun = 1; */
 
                 /* update = {
                     product: "ewe"
@@ -10197,7 +10194,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 mongoDBrun = 2; */
 
-                /* newOrder = new ORDERS({
+                newOrder = new ORDERS({
                     area: area,
                     items: itemsArray, // Use the dynamically created items array
                     attempt: data.data.attempt,
@@ -10237,7 +10234,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     jobType: data.data.type,
                     jobMethod: data.data.job_type,
                 });
- */
+
 
                 /* update = {
                     currentStatus: "Return to Warehouse",
@@ -10457,7 +10454,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     area: area
                 } */
 
-                /* mongoDBrun = 1; */
+                mongoDBrun = 1;
 
                 /* DetrackAPIrun = 1; */
 
