@@ -85,6 +85,12 @@ table.dataTable { width: 100% !important; }
 }
 </style>
 </head>
+
+<!-- Favicon -->
+  <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+  <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
+<link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
+<link rel="apple-touch-icon" href="/images/favicon.png">
 <body>
 
   <div class="container-bg">
@@ -451,8 +457,8 @@ table.dataTable { width: 100% !important; }
 <!-- Table Header -->
   <h5 id="tableHeader" class="text-center mb-2"></h5>
 
-<div class="container-fluid px-0">
-  <table id="jobsTable" class="display nowrap" style="width:100%">
+<div class="table-responsive">
+  <table id="jobsTable" class="table table-striped table-bordered w-100">
     <thead>
       <tr>
         <th>S/N</th>
@@ -553,6 +559,7 @@ $(document).ready(function() {
 
   // Initialize DataTable
   let table = $('#jobsTable').DataTable({
+    scrollX: true,   // 👈 enables horizontal scroll
     dom: 'lBfrtip',
     buttons: [
       {
