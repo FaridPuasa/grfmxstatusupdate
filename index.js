@@ -75,6 +75,21 @@ mongoose.connect(db, {
     })
     .catch(err => console.log(err));
 
+// Create a separate connection to the same cluster but to the "Vehicle" database
+// This will not modify your default connection used by ORDERS model.
+const vehicleConn = mongoose.createConnection(db, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  dbName: 'Vehicle' // explicitly connect to the Vehicle DB
+});
+
+vehicleConn.on('connected', () => {
+  console.log('Connected to Vehicle DB');
+});
+vehicleConn.on('error', (err) => {
+  console.error('Vehicle DB connection error:', err);
+});
+
 // Session management
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -213,6 +228,8 @@ const NONCODPOD = require('./models/NONCODPOD');
 const WAORDERS = require('./models/WAORDERS');
 const PharmacyFORM = require('./models/PharmacyFORM');
 const ORDERCOUNTER = require('./models/ORDERCOUNTER');
+const REPORT = require('./models/REPORT');
+const VEHICLE = require('./models/VEHICLE');
 
 const COUNTER_ID = "68897ff1c0ccfbcb817e0c15";
 
