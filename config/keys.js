@@ -4,5 +4,5 @@ const user = process.env.DBUSER
 const collection = process.env.COLLECTION
 
 module.exports = {
-    MongoURI: `mongodb+srv://itsupport:GSB110011@cluster0.kkzdiku.mongodb.net/`
-}
+  MongoURI: process.env.MONGO_URI
+};
