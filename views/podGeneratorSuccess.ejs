@@ -235,6 +235,9 @@
                                 <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                                 <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                             <% } %>
+                                <% if (['manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
+                            <% } %>
                             <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                                 <div class="dropdown-divider"></div>
                                 <div class="dropdown-header">POD</div>
@@ -313,6 +316,9 @@
                             <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
                                 <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                                 <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
+                                <% } %>
+                                <% if (['manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
                             <% } %>
                             <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                                 <div class="dropdown-divider"></div>

@@ -6,5 +6,4 @@ const ordercounterSchema = new mongoose.Schema({
     cbsl: { type: Number, default: 0 }
 }, { collection: 'ordercounter' });
 
-// Create a model for the "orders" collection
-module.exports = mongoose.model('ORDERCOUNTER', ordercounterSchema);
+module.exports = ordercounterSchema; // schema only

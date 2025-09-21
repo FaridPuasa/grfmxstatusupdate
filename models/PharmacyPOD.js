@@ -1,3 +1,4 @@
 const mongoose = require('mongoose');
+const podSchema = require('../schemas/podSchema');
 
-module.exports = mongoose.model('PharmacyPOD', require('../schemas/podSchema')); // Adjust the path to 'podSchema.js' if needed
+module.exports = podSchema; // schema only

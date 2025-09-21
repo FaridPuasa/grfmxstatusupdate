@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
-    plate: String,
-    status: String,
-}, { collection: 'vehicles' });
+  plate: { type: String, required: true },
+  status: { type: String, required: true } // active/inactive
+});
 
-// Create a model for the "orders" collection
-module.exports = mongoose.model('VEHICLE', vehicleSchema);
+module.exports = vehicleSchema; // schema only

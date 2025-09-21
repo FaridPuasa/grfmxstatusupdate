@@ -13,4 +13,4 @@ const formSchema = new mongoose.Schema({
     formCreator: String,
 });
 
-module.exports = mongoose.model('FORMS', formSchema);
+module.exports = formSchema; // schema only

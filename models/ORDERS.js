@@ -17,7 +17,7 @@ const orderSchema = new mongoose.Schema({
     paymentMethod: String,
     dateTimeSubmission: String,
     membership: String,
-    icNum: String, // Include fields from the second schema
+    icNum: String,
     items: [{
         quantity: String,
         expiryDate: String,
@@ -62,7 +62,6 @@ const orderSchema = new mongoose.Schema({
     qbCreationDate: String,
     shipmentMethod: String,
     ldProductWeight: String,
-    appointmentPlace: String,
     parcelTrackingNum: String,
     permitApplication: String,
     senderPhoneNumber: String,
@@ -107,5 +106,4 @@ const orderSchema = new mongoose.Schema({
     }],
 }, { collection: 'orders' });
 
-// Create a model for the "orders" collection
-module.exports = mongoose.model('ORDERS', orderSchema);
+module.exports = orderSchema; // schema only

@@ -1,96 +1,123 @@
+// ==================================================
+// 🌐 Environment & Core Modules
+// ==================================================
 require('dotenv').config();
+const path = require('path');
+const moment = require('moment-timezone');
+
+// ==================================================
+// 📦 Core Packages
+// ==================================================
 const express = require('express');
+const mongoose = require('mongoose');
+mongoose.set('strictQuery', true);
 const bodyParser = require('body-parser');
+const session = require('express-session');
+const flash = require('connect-flash');
+
+// ==================================================
+// 🔐 Auth & Security
+// ==================================================
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const bcrypt = require('bcryptjs');
+
+// ==================================================
+// 🌍 HTTP & Utilities
+// ==================================================
 const request = require('request');
 const axios = require('axios');
 const multer = require('multer');
 const xlsx = require('xlsx');
-const path = require('path');
-const moment = require('moment-timezone');
-const session = require('express-session');
-const passport = require('passport');
-const LocalStrategy = require('passport-local').Strategy;
-const bcrypt = require('bcryptjs');
-const flash = require('connect-flash');
+
+// ==================================================
+// ⚡ Cache
+// ==================================================
 const NodeCache = require('node-cache');
-const urgentCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
-const codBtCache = new NodeCache({ stdTTL: 600 }); // cache for 10 minutes, adjust as needed
-const grWebsiteCache = new NodeCache({ stdTTL: 60 }); // cache for 60 seconds
-const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min cache
+const urgentCache = new NodeCache({ stdTTL: 60 });   // 1 min
+const codBtCache = new NodeCache({ stdTTL: 600 });  // 10 min
+const grWebsiteCache = new NodeCache({ stdTTL: 60 });   // 1 min
+const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min
+
+// ==================================================
+// 🚀 App Config
+// ==================================================
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Serve static files from the "public" directory
-app.use(express.static('public'));
-
+// ==================================================
+// 🛠 Middleware
+// ==================================================
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({ extended: false }));
-// Middleware to parse JSON data
-app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/images', express.static('images'));
+
+// Body Parsers
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit: 50000 }));
 
-const mongoose = require('mongoose');
-const db = require('./config/keys').MongoURI;
-mongoose.set('strictQuery', true)
+// ==================================================
+// 🗄 Database Connections
+// ==================================================
+const dbURI = require('./config/keys').MongoURI;
 
-async function preloadCodBtCache(days = 7) {
-    console.log(`Preloading COD/BT cache for last ${days} days...`);
-    for (let i = 0; i < days; i++) {
-        const date = moment().subtract(i, 'days').format('YYYY-MM-DD');
-        const formattedDateKey = moment(date, 'YYYY-MM-DD').format('DD-MM-YYYY');
-
-        if (codBtCache.has(formattedDateKey)) {
-            continue; // already cached
-        }
-
-        try {
-            const codBtMap = await getCodBtMapForDate(date);
-            const mapData = codBtMap[formattedDateKey] || {};
-            codBtCache.set(formattedDateKey, mapData);
-            console.log(`Cached COD/BT data for ${formattedDateKey}`);
-        } catch (error) {
-            console.error(`Failed to preload COD/BT cache for ${formattedDateKey}:`, error);
-        }
-    }
-}
-
-const allowedProducts = [
-    "pharmacymoh",
-    "pharmacyjpmc",
-    "pharmacyphc",
-    "localdelivery",
-    "cbsl"
-];
-
-mongoose.connect(db, {
+// --- Main DB (GR_DMS) ---
+const mainConn = mongoose.createConnection(dbURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-})
-    .then(async () => {
-        console.log('Database Connected');
-        await preloadCodBtCache(7);
-        await preloadGrWebsiteCache(); // preload when DB is ready
-        // Optionally start your server here if needed
-    })
-    .catch(err => console.log(err));
-
-// Create a separate connection to the same cluster but to the "Vehicle" database
-// This will not modify your default connection used by ORDERS model.
-const vehicleConn = mongoose.createConnection(db, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  dbName: 'Vehicle' // explicitly connect to the Vehicle DB
+    dbName: 'GR_DMS'
 });
-
-vehicleConn.on('connected', () => {
-  console.log('Connected to Vehicle DB');
+mainConn.on('connected', async () => {
+    console.log('Connected to GR_DMS');
+    await preloadCodBtCache(7);
+    await preloadGrWebsiteCache();
 });
-vehicleConn.on('error', (err) => {
-  console.error('Vehicle DB connection error:', err);
-});
+mainConn.on('error', err => console.error('GR_DMS connection error:', err));
 
-// Session management
+// --- Vehicle DB ---
+const vehicleConn = mongoose.createConnection(dbURI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    dbName: 'Vehicle'
+});
+vehicleConn.on('connected', () => console.log('Connected to Vehicle DB'));
+vehicleConn.on('error', err => console.error('Vehicle DB connection error:', err));
+
+// ==================================================
+// 📊 Models
+// ==================================================
+// Main DB
+const USERS = mainConn.model('USERS', require('./models/USERS'));
+const ORDERS = mainConn.model('ORDERS', require('./models/ORDERS'));
+const PharmacyPOD = mainConn.model('PharmacyPOD', require('./models/PharmacyPOD'));
+const LDPOD = mainConn.model('LDPOD', require('./models/LDPOD'));
+const CBSLPOD = mainConn.model('CBSLPOD', require('./models/CBSLPOD'));
+const NONCODPOD = mainConn.model('NONCODPOD', require('./models/NONCODPOD'));
+const WAORDERS = mainConn.model('WAORDERS', require('./models/WAORDERS'));
+const PharmacyFORM = mainConn.model('PharmacyFORM', require('./models/PharmacyFORM'));
+const ORDERCOUNTER = mainConn.model('ORDERCOUNTER', require('./models/ORDERCOUNTER'));
+const REPORTS = mainConn.model('REPORTS', require('./models/REPORTS'));
+
+// Vehicle DB
+const VEHICLE = vehicleConn.model('VEHICLE', require('./models/VEHICLE'));
+const MILEAGELOGS = vehicleConn.model('MILEAGELOGS', require('./models/MILEAGELOGS'));
+
+// ==================================================
+// 🔧 Other Config / Globals
+// ==================================================
+const COUNTER_ID = "68897ff1c0ccfbcb817e0c15";
+const orderWatch = ORDERS.watch();
+const apiKey = process.env.API_KEY;
+const processingResults = [];
+
+// File Upload (Multer)
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// ==================================================
+// 🔑 Session & Authentication
+// ==================================================
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -98,30 +125,25 @@ app.use(session({
 }));
 
 app.use((req, res, next) => {
-    console.log(req.session); // Log the session object
+    console.log(req.session); // Debug session
     next();
 });
 
-// Initialize passport
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-// Passport configuration
+// Passport config
 passport.use(new LocalStrategy({ usernameField: 'email' }, (email, password, done) => {
-    USERS.findOne({ email: email })
+    USERS.findOne({ email })
         .then(user => {
-            if (!user) {
-                return done(null, false, { message: 'No user found with that email' });
-            }
+            if (!user) return done(null, false, { message: 'No user found with that email' });
 
             bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) throw err;
-                if (isMatch) {
-                    return done(null, user);
-                } else {
-                    return done(null, false, { message: 'Password incorrect' });
-                }
+                return isMatch
+                    ? done(null, user)
+                    : done(null, false, { message: 'Password incorrect' });
             });
         })
         .catch(err => done(err));
@@ -215,91 +237,6 @@ function ensureSearchMOHJob(req, res, next) {
     res.redirect('/');
 }
 
-// Import the shared schema
-const podSchema = require('./schemas/podSchema');
-
-// Import your models
-const USERS = require('./models/USERS');
-const ORDERS = require('./models/ORDERS');
-const PharmacyPOD = require('./models/PharmacyPOD');
-const LDPOD = require('./models/LDPOD');
-const CBSLPOD = require('./models/CBSLPOD');
-const NONCODPOD = require('./models/NONCODPOD');
-const WAORDERS = require('./models/WAORDERS');
-const PharmacyFORM = require('./models/PharmacyFORM');
-const ORDERCOUNTER = require('./models/ORDERCOUNTER');
-const REPORT = require('./models/REPORT');
-const VEHICLE = require('./models/VEHICLE');
-
-const COUNTER_ID = "68897ff1c0ccfbcb817e0c15";
-
-const orderWatch = ORDERS.watch()
-
-// Define storage for uploaded images
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
-
-// Serve static files from the 'images' directory
-app.use('/images', express.static('images'));
-
-const apiKey = process.env.API_KEY;
-const username = process.env.USRNME;
-const password = process.env.PASSWORD;
-
-// Create an array to store processing results
-const processingResults = [];
-
-// COD/BT Collected API with date filtering and caching
-app.get('/api/codbt-collected', async (req, res) => {
-    try {
-        const dateParam = req.query.date; // YYYY-MM-DD
-        if (!dateParam) {
-            return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
-        }
-
-        const moment = require('moment');
-        const formattedDateKey = moment(dateParam, 'YYYY-MM-DD').format('DD-MM-YYYY');
-
-        // Check cache first
-        const cached = codBtCache.get(formattedDateKey);
-        if (cached) return res.json({ [formattedDateKey]: cached });
-
-        // Fetch and group
-        const codBtMap = await getCodBtMapForDate(dateParam);
-        const mapData = codBtMap[formattedDateKey] || {};
-
-        // Cache the data
-        codBtCache.set(formattedDateKey, mapData);
-
-        res.json({ [formattedDateKey]: mapData });
-    } catch (err) {
-        console.error('Error /api/codbt-collected:', err);
-        res.status(500).json({ error: 'Failed to fetch COD/BT data.' });
-    }
-});
-
-// 🔹 API endpoint
-app.get('/api/new-orders/gr-website', async (req, res) => {
-    try {
-        const dateParam = req.query.date; // YYYY-MM-DD
-        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
-
-        const cacheKey = `grWebsite-${dateParam}`;
-        const cachedData = grWebsiteCache.get(cacheKey);
-        if (cachedData) return res.json(cachedData);
-
-        const data = await fetchGrWebsiteOrders(dateParam);
-
-        // Save to cache
-        grWebsiteCache.set(cacheKey, data);
-
-        res.json(data);
-    } catch (error) {
-        console.error('Error fetching GR Website new orders:', error);
-        res.status(500).json({ error: 'Failed to fetch GR Website new orders.' });
-    }
-});
-
 // 🔹 Preload cache at startup (today’s orders)
 async function preloadGrWebsiteCache() {
     try {
@@ -313,683 +250,26 @@ async function preloadGrWebsiteCache() {
     }
 }
 
-app.get('/api/completed-jobs', async (req, res) => {
-    try {
-        const moment = require('moment');
-        const dateParam = req.query.date;
-        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
+async function preloadCodBtCache(days = 7) {
+    console.log(`Preloading COD/BT cache for last ${days} days...`);
+    for (let i = 0; i < days; i++) {
+        const date = moment().subtract(i, 'days').format('YYYY-MM-DD');
+        const formattedDateKey = moment(date, 'YYYY-MM-DD').format('DD-MM-YYYY');
 
-        const startOfDay = moment(dateParam).startOf('day');
-        const endOfDay = moment(dateParam).endOf('day');
-
-        // Fetch all orders with failed histories
-        const orders = await ORDERS.find({
-            product: { $nin: [null, ""] },
-            "history.statusHistory": { $in: ["Failed Delivery", "Failed Collection"] }
-        }).lean();
-
-        const failedJobs = [];
-
-        orders.forEach(order => {
-            order.history.forEach(h => {
-                if (["Failed Delivery", "Failed Collection"].includes(h.statusHistory)) {
-                    const dateUpdated = h.dateUpdated ? new Date(h.dateUpdated) : null;
-
-                    // Only include failed if it happened on the selected date
-                    if (
-                        dateUpdated &&
-                        moment(dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]') &&
-                        h.lastAssignedTo && h.lastAssignedTo.trim() !== ""  // skip if null/empty
-                    ) {
-
-                        // Check if the same order has a Completed on the same date
-                        const completedSameDay = order.history.some(hist =>
-                            hist.statusHistory === "Completed" &&
-                            hist.dateUpdated &&
-                            moment(hist.dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]')
-                        );
-
-                        if (!completedSameDay) {
-                            failedJobs.push({
-                                doTrackingNumber: order.doTrackingNumber || '-',
-                                product: order.product || '-',
-                                jobMethod: order.jobMethod || '-',
-                                assignedTo: h.lastAssignedTo || 'Unassigned',
-                                reason: h.reason || h.statusHistory || '-'
-                            });
-                        }
-                    }
-                }
-            });
-        });
-
-        // Completed and In Progress jobs still filtered by jobDate
-        const completedJobs = await ORDERS.find({
-            currentStatus: "Completed",
-            jobDate: dateParam,
-            product: { $nin: [null, ""] }
-        }).lean();
-
-        const inProgressJobs = await ORDERS.find({
-            currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
-            jobDate: dateParam,
-            product: { $nin: [null, ""] }
-        }).lean();
-
-        const groupByDispatcher = (jobsArray) => {
-            const map = {};
-            jobsArray.forEach(job => {
-                const dispatcher = job.assignedTo || 'Unassigned';
-                if (!map[dispatcher]) map[dispatcher] = [];
-                map[dispatcher].push(job);
-            });
-            return map;
-        };
-
-        const groupedCompleted = groupByDispatcher(completedJobs);
-        const groupedInProgress = groupByDispatcher(inProgressJobs);
-        const groupedFailed = groupByDispatcher(failedJobs);
-
-        // Combine dispatchers
-        const dispatchers = new Set([
-            ...Object.keys(groupedCompleted),
-            ...Object.keys(groupedInProgress),
-            ...Object.keys(groupedFailed),
-        ]);
-
-        const result = {};
-        dispatchers.forEach(dispatcher => {
-            const completed = groupedCompleted[dispatcher] || [];
-            const inProgress = groupedInProgress[dispatcher] || [];
-            const failed = groupedFailed[dispatcher] || [];
-
-            // Skip dispatcher if all counts are zero
-            if (completed.length + inProgress.length + failed.length === 0) return;
-
-            result[dispatcher] = {
-                completed,
-                inProgress,
-                failed,
-            };
-        });
-
-        return res.json(result);
-
-    } catch (error) {
-        console.error('Error fetching completed jobs:', error);
-        res.status(500).json({ error: 'Failed to fetch completed jobs.' });
-    }
-});
-
-// 🔹 Helper: fetch & group orders for a given date
-async function fetchGrWebsiteOrders(dateParam) {
-    // Brunei timezone (UTC+8)
-    const startOfDay = moment.tz(dateParam + ' 00:00:00', 'YYYY-MM-DD HH:mm:ss', 'Asia/Brunei').utc().format();
-    const endOfDay = moment.tz(dateParam + ' 23:59:59', 'YYYY-MM-DD HH:mm:ss', 'Asia/Brunei').utc().format();
-
-    // Only fetch orders where "Info Received" exists in history within the date range
-    const orders = await ORDERS.find({
-        product: { $in: allowedProducts },
-        history: {
-            $elemMatch: {
-                statusHistory: "Info Received",
-                dateUpdated: { $gte: startOfDay, $lte: endOfDay } // string comparison works here
-            }
+        if (codBtCache.has(formattedDateKey)) {
+            continue; // already cached
         }
-    }).lean();
 
-    // Attach dateUpdated and orderTime
-    orders.forEach(order => {
-        const infoHistory = order.history.find(h =>
-            h.statusHistory === "Info Received" &&
-            h.dateUpdated >= startOfDay &&
-            h.dateUpdated <= endOfDay
-        );
-
-        order.dateUpdated = infoHistory.dateUpdated;
-        order.orderTime = moment(infoHistory.dateUpdated).tz('Asia/Brunei').format("h:mm a");
-    });
-
-    // Sort newest to oldest
-    orders.sort((a, b) => new Date(b.dateUpdated) - new Date(a.dateUpdated));
-
-    // Group by product
-    const groupedByProduct = {};
-    orders.forEach(order => {
-        const product = order.product || 'Unknown';
-        if (!groupedByProduct[product]) groupedByProduct[product] = [];
-        groupedByProduct[product].push(order);
-    });
-
-    // Reorder by allowedProducts
-    const orderedResult = {};
-    allowedProducts.forEach(product => {
-        if (groupedByProduct[product]) orderedResult[product] = groupedByProduct[product];
-    });
-
-    return orderedResult;
+        try {
+            const codBtMap = await getCodBtMapForDate(date);
+            const mapData = codBtMap[formattedDateKey] || {};
+            codBtCache.set(formattedDateKey, mapData);
+            console.log(`Cached COD/BT data for ${formattedDateKey}`);
+        } catch (error) {
+            console.error(`Failed to preload COD/BT cache for ${formattedDateKey}:`, error);
+        }
+    }
 }
-
-// Helper function for grouping COD/BT completed orders by date and dispatcher
-async function getCodBtMapForDate(dateParam) {
-    const moment = require('moment');
-    const formattedDateKey = moment(dateParam, 'YYYY-MM-DD').format('DD-MM-YYYY');
-
-    // Fetch completed orders with filtering
-    const completedOrders = await ORDERS.find({
-        currentStatus: "Completed",
-        jobDate: dateParam,
-        paymentMethod: { $ne: "NON COD" },
-        product: { $nin: [null, ""] }
-    }).lean();
-
-    if (!completedOrders || completedOrders.length === 0) {
-        return { [formattedDateKey]: {} };
-    }
-
-    const dispatcherMap = {};
-
-    completedOrders.forEach(order => {
-        const totalPrice = Number(order.totalPrice) || 0;
-        if (totalPrice <= 0) return;
-
-        const dispatcher = order.assignedTo || "Unassigned";
-        const paymentMethod = order.paymentMethod || '';
-        const jobMethod = order.jobMethod || '-';
-
-        if (dispatcher === 'Selfcollect') {
-            if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { __statuses: {} };
-            if (!dispatcherMap[dispatcher].__statuses[jobMethod]) {
-                dispatcherMap[dispatcher].__statuses[jobMethod] = { total: 0, cash: 0, bt: 0, jobs: [] };
-            }
-
-            const group = dispatcherMap[dispatcher].__statuses[jobMethod];
-            group.total += totalPrice;
-            if (paymentMethod === "Cash") group.cash += totalPrice;
-            else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) group.bt += totalPrice;
-
-            group.jobs.push({
-                doTrackingNumber: order.doTrackingNumber || '-',
-                product: order.product || '-',
-                jobMethod,
-                paymentMethod,
-                totalPrice
-            });
-
-        } else {
-            if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { total: 0, cash: 0, bt: 0, jobs: [] };
-
-            const group = dispatcherMap[dispatcher];
-            group.total += totalPrice;
-            if (paymentMethod === "Cash") group.cash += totalPrice;
-            else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) group.bt += totalPrice;
-
-            group.jobs.push({
-                doTrackingNumber: order.doTrackingNumber || '-',
-                product: order.product || '-',
-                jobMethod,
-                paymentMethod,
-                totalPrice
-            });
-        }
-    });
-
-    // Sort Selfcollect statuses (Self Collect first, Drop Off second)
-    if (dispatcherMap['Selfcollect']) {
-        const statuses = dispatcherMap['Selfcollect'].__statuses;
-        const orderedStatuses = {};
-        ['Self Collect', 'Drop Off'].forEach(status => {
-            if (statuses[status]) orderedStatuses[status] = statuses[status];
-        });
-        Object.keys(statuses).forEach(status => {
-            if (!orderedStatuses[status]) orderedStatuses[status] = statuses[status];
-        });
-        dispatcherMap['Selfcollect'].__statuses = orderedStatuses;
-    }
-
-    // Sort dispatchers (Selfcollect last)
-    const orderedDispatcherMap = {};
-    Object.keys(dispatcherMap).sort((a, b) => {
-        if (a === 'Selfcollect') return 1;
-        if (b === 'Selfcollect') return -1;
-        return a.localeCompare(b);
-    }).forEach(dispatcher => {
-        orderedDispatcherMap[dispatcher] = dispatcherMap[dispatcher];
-    });
-
-    return { [formattedDateKey]: orderedDispatcherMap };
-}
-
-// Helper: build MongoDB query based on filters
-function buildQuery(filters) {
-    const query = {};
-
-    // ===== Exact match fields (excluding tracking numbers) =====
-    const exactFields = ['mawbNo', 'receiverPostalCode', 'icPassNum', 'patientNumber'];
-    exactFields.forEach(field => {
-        if (filters[field] && filters[field].trim() !== '') {
-            query[field] = filters[field].trim();
-        }
-    });
-
-    // ===== Go Rush & Original Tracking No. (multiple lines) =====
-    ['doTrackingNumber', 'parcelTrackingNum'].forEach(field => {
-        if (filters[field] && filters[field].trim() !== '') {
-            const values = filters[field].split('\n').map(v => v.trim()).filter(v => v);
-            if (values.length === 1) query[field] = values[0];
-            else if (values.length > 1) query[field] = { $in: values };
-        }
-    });
-
-    // ===== Partial / contains fields =====
-    const partialFields = [
-        'receiverAddress',
-        'receiverName',
-        'receiverPhoneNumber',
-        'additionalPhoneNumber'
-    ];
-    partialFields.forEach(field => {
-        if (filters[field] && filters[field].trim() !== '') {
-            query[field] = { $regex: filters[field].trim(), $options: 'i' };
-        }
-    });
-
-    // ===== Dropdown / multi-select exact match =====
-    const multiFields = [
-        'jobMethod',
-        'product',
-        'assignedTo',
-        'area',
-        'currentStatus',
-        'latestReason',
-        'paymentMethod',
-        'latestLocation'
-    ];
-    multiFields.forEach(field => {
-        if (filters[field]) {
-            if (Array.isArray(filters[field]) && filters[field].length > 0) {
-                query[field] = { $in: filters[field].map(v => v.trim()) };
-            } else if (!Array.isArray(filters[field]) && filters[field].trim() !== '') {
-                query[field] = filters[field].trim();
-            }
-        }
-    });
-
-    // ===== Date range filters =====
-    if (filters.jobDateFrom || filters.jobDateTo) {
-        query.jobDate = {};
-        if (filters.jobDateFrom) query.jobDate.$gte = filters.jobDateFrom;
-        if (filters.jobDateTo) query.jobDate.$lte = filters.jobDateTo;
-    }
-
-    if (filters.creationDateFrom || filters.creationDateTo) {
-        query.creationDate = {};
-        if (filters.creationDateFrom) query.creationDate.$gte = filters.creationDateFrom;
-        if (filters.creationDateTo) query.creationDate.$lte = filters.creationDateTo;
-    }
-
-    return query;
-}
-
-// GET /searchJobs
-app.get('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
-    try {
-        res.render('searchJobs', { moment: moment, user: req.user });
-    } catch (err) {
-        console.error('Render Search Jobs Error:', err);
-        res.status(500).send('Failed to load Search Jobs page');
-    }
-});
-
-// POST /searchJobs
-app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
-    try {
-        const filters = req.body;
-        const query = buildQuery(filters);
-
-        const cacheKey = JSON.stringify(query);
-        if (searchJobsCache.has(cacheKey)) {
-            return res.json(searchJobsCache.get(cacheKey));
-        }
-
-        // Fetch from DB
-        const orders = await ORDERS.find(query).sort({ _id: -1 }).lean();
-
-        const today = new Date();
-
-        // Flatten objects for DataTable and calculate Age
-        const formattedOrders = orders.map(o => {
-            let age = '';
-            if (
-                o.warehouseEntry === "Yes" &&
-                o.currentStatus !== "Completed" &&
-                o.warehouseEntryDateTime
-            ) {
-                const entryDate = new Date(o.warehouseEntryDateTime);
-                const diffTime = today - entryDate; // milliseconds
-                age = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // convert to days
-            }
-
-            // === Handling Charge Logic ===
-            let handlingCharge = '';
-            let weight = parseFloat(o.parcelWeight) || 0;
-            let product = (o.product || '').toLowerCase();
-
-            if (product.includes('mglobal')) {
-                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-
-            } else if (product.includes('pdu')) {
-                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-
-            } else if (product.includes('ewe') || product.includes('ewens')) {
-                let charge2_8 = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-                let charge3_5 = (Math.round((3.5 + 0.50 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-
-                let firstChar = o.receiverPostalCode ? o.receiverPostalCode.charAt(0) : '';
-                if (firstChar === 'B') {
-                    handlingCharge = charge2_8;
-                } else if (['K', 'T', 'P'].includes(firstChar)) {
-                    handlingCharge = charge3_5;
-                } else {
-                    if (o.area && o.area !== 'N/A') {
-                        if (['TEMBURONG', 'KB', 'KB / SERIA', 'LUMUT', 'TUTONG'].includes(o.area)) {
-                            handlingCharge = charge3_5;
-                        } else {
-                            handlingCharge = charge2_8;
-                        }
-                    } else {
-                        handlingCharge = `${charge2_8} or ${charge3_5}`;
-                    }
-                }
-            }
-
-            return {
-                doTrackingNumber: o.doTrackingNumber || '',
-                product: o.product || '',
-                currentStatus: o.currentStatus || '',
-                latestLocation: o.latestLocation || '',
-                age: age,
-                area: o.area || '',
-                jobMethod: o.jobMethod || '',
-                jobDate: o.jobDate || '',
-                assignedTo: o.assignedTo || '',
-                paymentMethod: o.paymentMethod || '',
-                paymentAmount: o.paymentAmount || '',
-                receiverName: o.receiverName || '',
-                receiverAddress: o.receiverAddress || '',
-                receiverPostalCode: o.receiverPostalCode || '',
-                receiverPhoneNumber: o.receiverPhoneNumber || '',
-                additionalPhoneNumber: o.additionalPhoneNumber || '',
-                creationDate: o.creationDate || '',
-                remarks: o.remarks || '',
-                grRemark: o.grRemark || '',
-                mawbNo: o.mawbNo || '',
-                parcelTrackingNum: o.parcelTrackingNum || '',
-                icPassNum: o.icPassNum || '',
-                patientNumber: o.patientNumber || '',
-                screenshotInvoice: o.screenshotInvoice || '',
-                cargoPrice: o.cargoPrice || '',
-                itemsDescription: o.items ? o.items.map(i => i.description || '').join(', ') : '',
-                itemsQuantity: o.items ? o.items.map(i => i.quantity || '').join(', ') : '',
-                parcelWeight: o.parcelWeight || '',
-                noOfpackages: '1',
-                handlingCharge: handlingCharge, // <-- only filled for pdu/ewe/mglobal
-                attempt: o.attempt || '',
-            };
-        });
-
-        searchJobsCache.set(cacheKey, formattedOrders);
-
-        return res.json(formattedOrders);
-
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server Error' });
-    }
-});
-
-app.get('/', ensureAuthenticated, async (req, res) => {
-    try {
-        const moment = require('moment');
-        const now = moment();
-
-        function generateLocation(order) {
-            const { latestLocation, room, rackRowNum, area, jobMethod } = order;
-            if (!latestLocation) return '-';
-            let parts = [latestLocation];
-
-            if (latestLocation === 'Warehouse K1') return parts.join(', ');
-
-            if (latestLocation === 'Warehouse K2') {
-                if (room === 'Room 1') {
-                    if (room) parts.push(room);
-                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
-                } else if (room === 'Medicine Room') {
-                    if (room) parts.push(room);
-                    if (jobMethod) parts.push(jobMethod);
-                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
-                } else {
-                    if (room) parts.push(room);
-                    if (area) parts.push(area);
-                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
-                }
-            }
-            return parts.join(', ');
-        }
-
-        const allOrders = await ORDERS.find(
-            { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1 }
-        );
-
-        const deliveryOrders = await ORDERS.find(
-            { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
-            { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
-        );
-
-        const categorize = (orders, filterFn) => {
-            const map = {};
-            orders.forEach(order => {
-                const { product, jobMethod, warehouseEntryDateTime, creationDate } = order;
-                const method = jobMethod || 'Unknown';
-                const refDate = warehouseEntryDateTime || creationDate;
-                if (!refDate) return;
-                const age = now.diff(moment(refDate), 'days');
-                if (!filterFn(order, age)) return;
-                if (!map[product]) map[product] = {};
-                if (!map[product][method]) map[product][method] = [];
-                map[product][method].push({
-                    age,
-                    doTrackingNumber: order.doTrackingNumber || '-',
-                    attempt: order.attempt || '-',
-                    latestReason: order.latestReason || '-',
-                    area: order.area || '-',
-                    receiverName: order.receiverName || '-',
-                    receiverPhoneNumber: order.receiverPhoneNumber || '-',
-                    additionalPhoneNumber: order.additionalPhoneNumber || '-',
-                    latestLocation: order.latestLocation || '-',
-                    remarks: order.remarks || '-',
-                    grRemark: order.grRemark || '-',
-                    location: generateLocation(order)
-                });
-            });
-            for (const product in map) {
-                for (const method in map[product]) {
-                    map[product][method].sort((a, b) => b.age - a.age);
-                }
-            }
-            return map;
-        };
-
-        const groupByCurrentLocation = (orders) => {
-            const map = {};
-            orders.forEach(order => {
-                if (["At Warehouse", "Return to Warehouse"].includes(order.currentStatus)) {
-                    const location = order.latestLocation || 'Unknown';
-                    const product = order.product || 'Unknown';
-                    const area = order.area || 'Unknown';
-
-                    const refDate = order.warehouseEntryDateTime || order.creationDate;
-                    const age = refDate ? now.diff(moment(refDate), 'days') : '-';
-
-                    if (age === '-' || age >= 30) return;
-
-                    if (!map[location]) map[location] = {};
-                    if (!map[location][product]) map[location][product] = {};
-                    if (!map[location][product][area]) map[location][product][area] = [];
-
-                    map[location][product][area].push({
-                        age,
-                        doTrackingNumber: order.doTrackingNumber || '-',
-                        attempt: order.attempt || '-',
-                        latestReason: order.latestReason || '-',
-                        area,
-                        receiverName: order.receiverName || '-',
-                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
-                        additionalPhoneNumber: order.additionalPhoneNumber || '-',
-                        jobMethod: order.jobMethod || '-',
-                        remarks: order.remarks || '-',
-                        grRemark: order.grRemark || '-'
-                    });
-                }
-            });
-
-            for (const location in map) {
-                for (const product in map[location]) {
-                    for (const area in map[location][product]) {
-                        map[location][product][area].sort((a, b) => b.age - a.age);
-                    }
-                }
-            }
-
-            return map;
-        };
-
-        const currentOrders = allOrders.filter(order =>
-            ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
-            ["Warehouse K1", "Warehouse K2"].includes(order.latestLocation)
-        );
-
-        const currentMap = groupByCurrentLocation(currentOrders);
-
-        const urgentMap = categorize(allOrders, (order, age) => {
-            const { product, jobMethod, warehouseEntry, currentStatus } = order;
-            const method = jobMethod || 'Unknown';
-            if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) {
-                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) &&
-                    ((method === "Standard" && age >= 3 && age <= 7) || (method === "Express" && age >= 1 && age <= 7));
-            } else {
-                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) && age >= 3 && age <= 14;
-            }
-        });
-
-        const overdueMap = categorize(allOrders, (order, age) => {
-            const { product } = order;
-            if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) return age > 7 && age < 30;
-            return age > 14 && age < 30;
-        });
-
-        const archivedMap = categorize(allOrders, (order, age) => age >= 30);
-
-        const maxAttemptMap = categorize(allOrders, (order, age) => order.attempt >= 3 && age < 30);
-
-        const plannedSelfCollectMap = categorize(allOrders, (order, age) => {
-            return ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
-                order.grRemark && order.grRemark.toLowerCase().includes("self collect") &&
-                age <= 30;
-        });
-
-        // Group deliveries
-        const deliveriesMap = (() => {
-            const map = {};
-            const assigneeAreas = {};
-
-            deliveryOrders.forEach(order => {
-                const date = order.jobDate ? moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY") : "Unknown Date";
-                const assignee = order.assignedTo || "Unassigned";
-                const product = order.product || "Unknown";
-                const area = order.area || "Unknown";
-                const currentStatus = order.currentStatus || "Unknown";
-
-                if (!map[date]) map[date] = {};
-
-                if (assignee === 'Selfcollect') {
-                    // Handle Selfcollect differently
-                    if (!map[date][assignee]) map[date][assignee] = { __statuses: {} };
-
-                    if (!map[date][assignee].__statuses[currentStatus]) {
-                        map[date][assignee].__statuses[currentStatus] = [];
-                    }
-
-                    map[date][assignee].__statuses[currentStatus].push({
-                        doTrackingNumber: order.doTrackingNumber || '-',
-                        receiverName: order.receiverName || '-',
-                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
-                        grRemark: order.grRemark || '-'
-                    });
-
-                } else {
-                    // Normal dispatchers grouped by area and product
-                    if (!map[date][assignee]) map[date][assignee] = { __areas: new Set(), __products: {} };
-
-                    map[date][assignee].__areas.add(area);
-
-                    if (!map[date][assignee].__products[product]) {
-                        map[date][assignee].__products[product] = [];
-                    }
-
-                    map[date][assignee].__products[product].push({
-                        doTrackingNumber: order.doTrackingNumber || '-',
-                        area: area,
-                        receiverName: order.receiverName || '-',
-                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
-                        grRemark: order.grRemark || '-'
-                    });
-                }
-            });
-
-            // Convert __areas Set to Array for frontend rendering
-            Object.keys(map).forEach(date => {
-                Object.keys(map[date]).forEach(assignee => {
-                    if (assignee !== 'Selfcollect') {
-                        map[date][assignee].__areas = Array.from(map[date][assignee].__areas);
-                    }
-                });
-
-                // Ensure Selfcollect always placed last by ordering keys manually
-                const ordered = {};
-                Object.keys(map[date]).sort((a, b) => {
-                    if (a === 'Selfcollect') return 1; // Move Selfcollect to bottom
-                    if (b === 'Selfcollect') return -1;
-                    return a.localeCompare(b);
-                }).forEach(key => {
-                    ordered[key] = map[date][key];
-                });
-
-                map[date] = ordered;
-            });
-
-            return map;
-        })();
-
-        res.render('dashboard', {
-            currentMap,
-            urgentMap,
-            overdueMap,
-            archivedMap,
-            maxAttemptMap,
-            deliveriesMap,
-            plannedSelfCollectMap,
-            moment,
-            user: req.user,
-            orders: []
-        });
-
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
 
 // Function 3: Check for Stale Info Received Jobs (Updated Logic)
 async function checkStaleInfoReceivedJobs() {
@@ -1588,6 +868,1062 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
 
+// --- Convert string dateUpdated to Brunei local date and check against selected date ---
+function isOutForDeliveryOnDate(historyItem, dispatcher, dateStr) {
+    if (!historyItem || historyItem.statusHistory !== "Out for Delivery") return false;
+    if (historyItem.lastAssignedTo !== dispatcher) return false;
+
+    const d = new Date(historyItem.dateUpdated); // parse string
+    const localTime = new Date(d.getTime() + 8 * 60 * 60 * 1000); // Brunei UTC+8
+
+    const selected = new Date(dateStr);
+    selected.setHours(0, 0, 0, 0);
+
+    return localTime.getFullYear() === selected.getFullYear() &&
+        localTime.getMonth() === selected.getMonth() &&
+        localTime.getDate() === selected.getDate();
+}
+
+// --- Fetch dispatcher areas ---
+app.post('/api/getDispatcherAreas', ensureAuthenticated, async (req, res) => {
+    try {
+        const { dispatcher, date } = req.body;
+        if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
+
+        const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
+
+        const filtered = orders.filter(o => o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date)));
+
+        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
+        const productCounts = filtered.reduce((acc, o) => {
+            if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
+            return acc;
+        }, {});
+
+        res.json({ areas, totalOrders: filtered.length, productCounts });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch areas' });
+    }
+});
+
+// --- Fetch dispatcher job summary ---
+app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) => {
+    try {
+        const { dispatcher, date } = req.body;
+        if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
+
+        const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
+        const filtered = orders.filter(o => o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date)));
+
+        const totalOrders = filtered.length;
+        const productCounts = filtered.reduce((acc, o) => {
+            if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
+            return acc;
+        }, {});
+        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
+
+        res.json({ totalOrders, productCounts, areas });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch job summary' });
+    }
+});
+
+app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
+  try {
+    const { reportType, date, dispatcher, car, assignedJob } = req.body;
+    if (reportType !== 'Operation Morning Report') {
+      return res.send('<p>Only Operation Morning Report supported.</p>');
+    }
+
+    // --- Fetch orders for dispatcher ---
+    const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
+    const filtered = orders.filter(o =>
+      o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date))
+    );
+
+    const total = filtered.length;
+    const productCounts = filtered.reduce((acc, o) => {
+      if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
+      return acc;
+    }, {});
+    const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
+
+    // --- Format date for header ---
+    const d = new Date(date);
+    const formattedDate = d.toLocaleDateString('en-GB').replace(/\//g, '.');
+    const headerTitle = `Operation Morning Report ${formattedDate}`;
+
+    // --- Fetch active vehicles ---
+    const vehicles = await VEHICLE.find({ status: 'active' }).lean();
+    const vehicleIds = vehicles.map(v => v._id);
+
+    const selectedDateEnd = new Date(date);
+    selectedDateEnd.setHours(23, 59, 59, 999);
+
+    // --- Get latest mileage for each vehicle on or before selected date ---
+    const latestMileages = await MILEAGELOGS.aggregate([
+      {
+        $match: {
+          vehicleId: { $in: vehicleIds },
+          date: { $lte: selectedDateEnd }
+        }
+      },
+      { $sort: { date: -1 } },
+      {
+        $group: {
+          _id: "$vehicleId",
+          mileage: { $first: "$mileage" },
+          date: { $first: "$date" }
+        }
+      }
+    ]);
+
+    const mileageMap = {};
+    latestMileages.forEach(m => {
+      mileageMap[m._id.toString()] = m.mileage;
+    });
+
+    // --- Sort vehicles by latest mileage descending, N/A last ---
+    const sortedVehicles = vehicles.sort((a, b) => {
+      const mA = mileageMap[a._id.toString()];
+      const mB = mileageMap[b._id.toString()];
+
+      if (mA === undefined) return 1; // N/A last
+      if (mB === undefined) return -1;
+      return mB - mA; // descending
+    });
+
+    // --- Build Assigned Job content ---
+    let assignedJobContent = '';
+    if (total > 0) {
+      const productSummary = Object.entries(productCounts)
+        .map(([p, c]) => `${p} (${c})`).join(', ');
+      assignedJobContent = `- Deliver total (${total})`;
+      if (productSummary) assignedJobContent += ` | ${productSummary}`;
+    }
+    if (assignedJob) {
+      const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines.map(l => `- ${l}`).join('\n')}`;
+    }
+
+    const areaContent = total > 0 ? (areas.join(', ') || 'N/A') : 'N/A';
+
+    // --- Build HTML ---
+    const html = `
+      <!-- Logo -->
+      <div style="text-align:center; margin-bottom:10px;">
+        <img src="/images/logo.png" alt="Logo" style="height:60px;">
+      </div>
+
+      <!-- Report Header -->
+      <h2 style="text-align:center; font-weight:bold; margin-bottom:20px;">${headerTitle}</h2>
+
+      <!-- Dispatcher Assigned Jobs Table -->
+      <table class="table table-bordered" style="border-collapse:collapse; width:auto; margin-bottom:30px;">
+        <thead>
+          <tr style="background:yellow; font-weight:bold; text-align:center;">
+            <th colspan="4">Dispatcher Assigned Jobs</th>
+          </tr>
+          <tr>
+            <th>Vehicle No.</th>
+            <th>Dispatcher</th>
+            <th>Assigned Job</th>
+            <th>Area</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${car || 'N/A'}</td>
+            <td>${dispatcher}</td>
+            <td style="white-space:pre-line;">${assignedJobContent || 'N/A'}</td>
+            <td>${areaContent}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Morning Mileage Table -->
+      <table class="table table-bordered" style="border-collapse:collapse; width:auto; margin-bottom:20px;">
+        <thead>
+          <tr style="background:white; font-weight:bold; text-align:center;">
+            <td colspan="2">Morning Mileage</td>
+          </tr>
+          <tr style="background:yellow; font-weight:bold; text-align:center;">
+            <th>Vehicle No.</th>
+            <th>Latest Mileage</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sortedVehicles.map(v => `
+            <tr>
+              <td>${v.plate}</td>
+              <td>${mileageMap[v._id.toString()] ?? 'N/A'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <!-- Assigned & Checked By -->
+      <div style="font-weight:bold; margin-top:20px;">
+        Assigned & Checked by: ${req.user.username}
+      </div>
+    `;
+
+    res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error generating report');
+  }
+});
+
+app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
+  try {
+    console.log("req.user:", req.user); // useful for debugging
+
+    const { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
+    if (!reportType || !reportContent || !reportName) {
+      return res.json({ success: false, message: 'Missing data' });
+    }
+
+    // Check if a report with the same name exists
+    const existingReport = await REPORTS.findOne({ reportName });
+
+    if (existingReport && !forceReplace) {
+      // Duplicate found, inform frontend
+      return res.json({ success: false, duplicate: true, message: 'Report with this name already exists' });
+    }
+
+    if (existingReport && forceReplace) {
+      // Replace existing report
+      existingReport.reportType = reportType;
+      existingReport.reportContent = reportContent;
+      existingReport.assignedDispatchers = Array.isArray(assignedDispatchers) ? assignedDispatchers : [];
+      existingReport.createdBy = req.user.username || req.user.name || req.user.id || 'Unknown';
+      await existingReport.save();
+      return res.json({ success: true, message: 'Report replaced successfully' });
+    }
+
+    // No duplicate, create new report
+    await REPORTS.create({
+      reportType,
+      reportName,
+      reportContent,
+      assignedDispatchers: Array.isArray(assignedDispatchers) ? assignedDispatchers : [],
+      createdBy: req.user.username || req.user.name || req.user.id || 'Unknown'
+    });
+
+    res.json({ success: true, message: 'Report saved successfully' });
+  } catch (err) {
+    console.error('Error saving report:', err);
+    res.json({ success: false, message: err.message });
+  }
+});
+
+// Report Generator page
+app.get('/reportGenerator', ensureAuthenticated, async (req, res) => {
+    try {
+        const activeVehicles = await VEHICLE.find({ status: 'active' }).exec();
+        res.render('reportGenerator', { user: req.user, vehicles: activeVehicles });
+    } catch (err) {
+        console.error('Error in /reportGenerator:', err);
+        res.status(500).send("Error loading report generator page");
+    }
+});
+
+app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) return res.json([]);
+
+    // --- Fetch active vehicles ---
+    const vehicles = await VEHICLE.find({ status: 'active' }).lean();
+    const vehicleIds = vehicles.map(v => v._id);
+
+    // --- Get latest mileage for each vehicle on or before selected date ---
+    const selectedDateEnd = new Date(date);
+    selectedDateEnd.setHours(23, 59, 59, 999);
+
+    const latestMileages = await MILEAGELOGS.aggregate([
+      {
+        $match: {
+          vehicleId: { $in: vehicleIds },
+          date: { $lte: selectedDateEnd }
+        }
+      },
+      { $sort: { date: -1 } },
+      {
+        $group: {
+          _id: "$vehicleId",
+          mileage: { $first: "$mileage" },
+          date: { $first: "$date" }
+        }
+      }
+    ]);
+
+    const mileageMap = {};
+    latestMileages.forEach(m => {
+      mileageMap[m._id.toString()] = m.mileage;
+    });
+
+    // --- Build result for all vehicles ---
+    const result = vehicles.map(v => ({
+      plate: v.plate,
+      mileage: mileageMap[v._id.toString()] ?? 'N/A'
+    }));
+
+    // --- Sort descending mileage, N/A last ---
+    result.sort((a, b) => {
+      if (a.mileage === 'N/A') return 1;
+      if (b.mileage === 'N/A') return -1;
+      return b.mileage - a.mileage;
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch mileage' });
+  }
+});
+
+// COD/BT Collected API with date filtering and caching
+app.get('/api/codbt-collected', async (req, res) => {
+    try {
+        const dateParam = req.query.date; // YYYY-MM-DD
+        if (!dateParam) {
+            return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
+        }
+
+        const moment = require('moment');
+        const formattedDateKey = moment(dateParam, 'YYYY-MM-DD').format('DD-MM-YYYY');
+
+        // Check cache first
+        const cached = codBtCache.get(formattedDateKey);
+        if (cached) return res.json({ [formattedDateKey]: cached });
+
+        // Fetch and group
+        const codBtMap = await getCodBtMapForDate(dateParam);
+        const mapData = codBtMap[formattedDateKey] || {};
+
+        // Cache the data
+        codBtCache.set(formattedDateKey, mapData);
+
+        res.json({ [formattedDateKey]: mapData });
+    } catch (err) {
+        console.error('Error /api/codbt-collected:', err);
+        res.status(500).json({ error: 'Failed to fetch COD/BT data.' });
+    }
+});
+
+// 🔹 API endpoint
+app.get('/api/new-orders/gr-website', async (req, res) => {
+    try {
+        const dateParam = req.query.date; // YYYY-MM-DD
+        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
+
+        const cacheKey = `grWebsite-${dateParam}`;
+        const cachedData = grWebsiteCache.get(cacheKey);
+        if (cachedData) return res.json(cachedData);
+
+        const data = await fetchGrWebsiteOrders(dateParam);
+
+        // Save to cache
+        grWebsiteCache.set(cacheKey, data);
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching GR Website new orders:', error);
+        res.status(500).json({ error: 'Failed to fetch GR Website new orders.' });
+    }
+});
+
+app.get('/api/completed-jobs', async (req, res) => {
+    try {
+        const moment = require('moment');
+        const dateParam = req.query.date;
+        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
+
+        const startOfDay = moment(dateParam).startOf('day');
+        const endOfDay = moment(dateParam).endOf('day');
+
+        // Fetch all orders with failed histories
+        const orders = await ORDERS.find({
+            product: { $nin: [null, ""] },
+            "history.statusHistory": { $in: ["Failed Delivery", "Failed Collection"] }
+        }).lean();
+
+        const failedJobs = [];
+
+        orders.forEach(order => {
+            order.history.forEach(h => {
+                if (["Failed Delivery", "Failed Collection"].includes(h.statusHistory)) {
+                    const dateUpdated = h.dateUpdated ? new Date(h.dateUpdated) : null;
+
+                    // Only include failed if it happened on the selected date
+                    if (
+                        dateUpdated &&
+                        moment(dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]') &&
+                        h.lastAssignedTo && h.lastAssignedTo.trim() !== ""  // skip if null/empty
+                    ) {
+
+                        // Check if the same order has a Completed on the same date
+                        const completedSameDay = order.history.some(hist =>
+                            hist.statusHistory === "Completed" &&
+                            hist.dateUpdated &&
+                            moment(hist.dateUpdated).isBetween(startOfDay, endOfDay, undefined, '[]')
+                        );
+
+                        if (!completedSameDay) {
+                            failedJobs.push({
+                                doTrackingNumber: order.doTrackingNumber || '-',
+                                product: order.product || '-',
+                                jobMethod: order.jobMethod || '-',
+                                assignedTo: h.lastAssignedTo || 'Unassigned',
+                                reason: h.reason || h.statusHistory || '-'
+                            });
+                        }
+                    }
+                }
+            });
+        });
+
+        // Completed and In Progress jobs still filtered by jobDate
+        const completedJobs = await ORDERS.find({
+            currentStatus: "Completed",
+            jobDate: dateParam,
+            product: { $nin: [null, ""] }
+        }).lean();
+
+        const inProgressJobs = await ORDERS.find({
+            currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
+            jobDate: dateParam,
+            product: { $nin: [null, ""] }
+        }).lean();
+
+        const groupByDispatcher = (jobsArray) => {
+            const map = {};
+            jobsArray.forEach(job => {
+                const dispatcher = job.assignedTo || 'Unassigned';
+                if (!map[dispatcher]) map[dispatcher] = [];
+                map[dispatcher].push(job);
+            });
+            return map;
+        };
+
+        const groupedCompleted = groupByDispatcher(completedJobs);
+        const groupedInProgress = groupByDispatcher(inProgressJobs);
+        const groupedFailed = groupByDispatcher(failedJobs);
+
+        // Combine dispatchers
+        const dispatchers = new Set([
+            ...Object.keys(groupedCompleted),
+            ...Object.keys(groupedInProgress),
+            ...Object.keys(groupedFailed),
+        ]);
+
+        const result = {};
+        dispatchers.forEach(dispatcher => {
+            const completed = groupedCompleted[dispatcher] || [];
+            const inProgress = groupedInProgress[dispatcher] || [];
+            const failed = groupedFailed[dispatcher] || [];
+
+            // Skip dispatcher if all counts are zero
+            if (completed.length + inProgress.length + failed.length === 0) return;
+
+            result[dispatcher] = {
+                completed,
+                inProgress,
+                failed,
+            };
+        });
+
+        return res.json(result);
+
+    } catch (error) {
+        console.error('Error fetching completed jobs:', error);
+        res.status(500).json({ error: 'Failed to fetch completed jobs.' });
+    }
+});
+
+// 🔹 Helper: fetch & group orders for a given date
+async function fetchGrWebsiteOrders(dateParam) {
+    // Put allowedProducts inside since it's only needed here
+    const allowedProducts = [
+        "pharmacymoh",
+        "pharmacyjpmc",
+        "pharmacyphc",
+        "localdelivery",
+        "cbsl"
+    ];
+
+    // Brunei timezone (UTC+8)
+    const startOfDay = moment.tz(dateParam + ' 00:00:00', 'YYYY-MM-DD HH:mm:ss', 'Asia/Brunei').utc().format();
+    const endOfDay = moment.tz(dateParam + ' 23:59:59', 'YYYY-MM-DD HH:mm:ss', 'Asia/Brunei').utc().format();
+
+    // Only fetch orders where "Info Received" exists in history within the date range
+    const orders = await ORDERS.find({
+        product: { $in: allowedProducts },
+        history: {
+            $elemMatch: {
+                statusHistory: "Info Received",
+                dateUpdated: { $gte: startOfDay, $lte: endOfDay }
+            }
+        }
+    }).lean();
+
+    // Attach dateUpdated and orderTime
+    orders.forEach(order => {
+        const infoHistory = order.history.find(h =>
+            h.statusHistory === "Info Received" &&
+            h.dateUpdated >= startOfDay &&
+            h.dateUpdated <= endOfDay
+        );
+
+        order.dateUpdated = infoHistory.dateUpdated;
+        order.orderTime = moment(infoHistory.dateUpdated).tz('Asia/Brunei').format("h:mm a");
+    });
+
+    // Sort newest to oldest
+    orders.sort((a, b) => new Date(b.dateUpdated) - new Date(a.dateUpdated));
+
+    // Group by product
+    const groupedByProduct = {};
+    orders.forEach(order => {
+        const product = order.product || 'Unknown';
+        if (!groupedByProduct[product]) groupedByProduct[product] = [];
+        groupedByProduct[product].push(order);
+    });
+
+    // Reorder by allowedProducts
+    const orderedResult = {};
+    allowedProducts.forEach(product => {
+        if (groupedByProduct[product]) orderedResult[product] = groupedByProduct[product];
+    });
+
+    return orderedResult;
+}
+
+// Helper function for grouping COD/BT completed orders by date and dispatcher
+async function getCodBtMapForDate(dateParam) {
+    const moment = require('moment');
+    const formattedDateKey = moment(dateParam, 'YYYY-MM-DD').format('DD-MM-YYYY');
+
+    // Fetch completed orders with filtering
+    const completedOrders = await ORDERS.find({
+        currentStatus: "Completed",
+        jobDate: dateParam,
+        paymentMethod: { $ne: "NON COD" },
+        product: { $nin: [null, ""] }
+    }).lean();
+
+    if (!completedOrders || completedOrders.length === 0) {
+        return { [formattedDateKey]: {} };
+    }
+
+    const dispatcherMap = {};
+
+    completedOrders.forEach(order => {
+        const totalPrice = Number(order.totalPrice) || 0;
+        if (totalPrice <= 0) return;
+
+        const dispatcher = order.assignedTo || "Unassigned";
+        const paymentMethod = order.paymentMethod || '';
+        const jobMethod = order.jobMethod || '-';
+
+        if (dispatcher === 'Selfcollect') {
+            if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { __statuses: {} };
+            if (!dispatcherMap[dispatcher].__statuses[jobMethod]) {
+                dispatcherMap[dispatcher].__statuses[jobMethod] = { total: 0, cash: 0, bt: 0, jobs: [] };
+            }
+
+            const group = dispatcherMap[dispatcher].__statuses[jobMethod];
+            group.total += totalPrice;
+            if (paymentMethod === "Cash") group.cash += totalPrice;
+            else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) group.bt += totalPrice;
+
+            group.jobs.push({
+                doTrackingNumber: order.doTrackingNumber || '-',
+                product: order.product || '-',
+                jobMethod,
+                paymentMethod,
+                totalPrice
+            });
+
+        } else {
+            if (!dispatcherMap[dispatcher]) dispatcherMap[dispatcher] = { total: 0, cash: 0, bt: 0, jobs: [] };
+
+            const group = dispatcherMap[dispatcher];
+            group.total += totalPrice;
+            if (paymentMethod === "Cash") group.cash += totalPrice;
+            else if (paymentMethod.includes("Bank Transfer") || paymentMethod.includes("Bill Payment")) group.bt += totalPrice;
+
+            group.jobs.push({
+                doTrackingNumber: order.doTrackingNumber || '-',
+                product: order.product || '-',
+                jobMethod,
+                paymentMethod,
+                totalPrice
+            });
+        }
+    });
+
+    // Sort Selfcollect statuses (Self Collect first, Drop Off second)
+    if (dispatcherMap['Selfcollect']) {
+        const statuses = dispatcherMap['Selfcollect'].__statuses;
+        const orderedStatuses = {};
+        ['Self Collect', 'Drop Off'].forEach(status => {
+            if (statuses[status]) orderedStatuses[status] = statuses[status];
+        });
+        Object.keys(statuses).forEach(status => {
+            if (!orderedStatuses[status]) orderedStatuses[status] = statuses[status];
+        });
+        dispatcherMap['Selfcollect'].__statuses = orderedStatuses;
+    }
+
+    // Sort dispatchers (Selfcollect last)
+    const orderedDispatcherMap = {};
+    Object.keys(dispatcherMap).sort((a, b) => {
+        if (a === 'Selfcollect') return 1;
+        if (b === 'Selfcollect') return -1;
+        return a.localeCompare(b);
+    }).forEach(dispatcher => {
+        orderedDispatcherMap[dispatcher] = dispatcherMap[dispatcher];
+    });
+
+    return { [formattedDateKey]: orderedDispatcherMap };
+}
+
+// Helper: build MongoDB query based on filters
+function buildQuery(filters) {
+    const query = {};
+
+    // ===== Exact match fields (excluding tracking numbers) =====
+    const exactFields = ['mawbNo', 'receiverPostalCode', 'icPassNum', 'patientNumber'];
+    exactFields.forEach(field => {
+        if (filters[field] && filters[field].trim() !== '') {
+            query[field] = filters[field].trim();
+        }
+    });
+
+    // ===== Go Rush & Original Tracking No. (multiple lines) =====
+    ['doTrackingNumber', 'parcelTrackingNum'].forEach(field => {
+        if (filters[field] && filters[field].trim() !== '') {
+            const values = filters[field].split('\n').map(v => v.trim()).filter(v => v);
+            if (values.length === 1) query[field] = values[0];
+            else if (values.length > 1) query[field] = { $in: values };
+        }
+    });
+
+    // ===== Partial / contains fields =====
+    const partialFields = [
+        'receiverAddress',
+        'receiverName',
+        'receiverPhoneNumber',
+        'additionalPhoneNumber'
+    ];
+    partialFields.forEach(field => {
+        if (filters[field] && filters[field].trim() !== '') {
+            query[field] = { $regex: filters[field].trim(), $options: 'i' };
+        }
+    });
+
+    // ===== Dropdown / multi-select exact match =====
+    const multiFields = [
+        'jobMethod',
+        'product',
+        'assignedTo',
+        'area',
+        'currentStatus',
+        'latestReason',
+        'paymentMethod',
+        'latestLocation'
+    ];
+    multiFields.forEach(field => {
+        if (filters[field]) {
+            if (Array.isArray(filters[field]) && filters[field].length > 0) {
+                query[field] = { $in: filters[field].map(v => v.trim()) };
+            } else if (!Array.isArray(filters[field]) && filters[field].trim() !== '') {
+                query[field] = filters[field].trim();
+            }
+        }
+    });
+
+    // ===== Date range filters =====
+    if (filters.jobDateFrom || filters.jobDateTo) {
+        query.jobDate = {};
+        if (filters.jobDateFrom) query.jobDate.$gte = filters.jobDateFrom;
+        if (filters.jobDateTo) query.jobDate.$lte = filters.jobDateTo;
+    }
+
+    if (filters.creationDateFrom || filters.creationDateTo) {
+        query.creationDate = {};
+        if (filters.creationDateFrom) query.creationDate.$gte = filters.creationDateFrom;
+        if (filters.creationDateTo) query.creationDate.$lte = filters.creationDateTo;
+    }
+
+    return query;
+}
+
+// GET /searchJobs
+app.get('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        res.render('searchJobs', { moment: moment, user: req.user });
+    } catch (err) {
+        console.error('Render Search Jobs Error:', err);
+        res.status(500).send('Failed to load Search Jobs page');
+    }
+});
+
+// POST /searchJobs
+app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const filters = req.body;
+        const query = buildQuery(filters);
+
+        const cacheKey = JSON.stringify(query);
+        if (searchJobsCache.has(cacheKey)) {
+            return res.json(searchJobsCache.get(cacheKey));
+        }
+
+        // Fetch from DB
+        const orders = await ORDERS.find(query).sort({ _id: -1 }).lean();
+
+        const today = new Date();
+
+        // Flatten objects for DataTable and calculate Age
+        const formattedOrders = orders.map(o => {
+            let age = '';
+            if (
+                o.warehouseEntry === "Yes" &&
+                o.currentStatus !== "Completed" &&
+                o.warehouseEntryDateTime
+            ) {
+                const entryDate = new Date(o.warehouseEntryDateTime);
+                const diffTime = today - entryDate; // milliseconds
+                age = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // convert to days
+            }
+
+            // === Handling Charge Logic ===
+            let handlingCharge = '';
+            let weight = parseFloat(o.parcelWeight) || 0;
+            let product = (o.product || '').toLowerCase();
+
+            if (product.includes('mglobal')) {
+                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+            } else if (product.includes('pdu')) {
+                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+            } else if (product.includes('ewe') || product.includes('ewens')) {
+                let charge2_8 = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+                let charge3_5 = (Math.round((3.5 + 0.50 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
+
+                let firstChar = o.receiverPostalCode ? o.receiverPostalCode.charAt(0) : '';
+                if (firstChar === 'B') {
+                    handlingCharge = charge2_8;
+                } else if (['K', 'T', 'P'].includes(firstChar)) {
+                    handlingCharge = charge3_5;
+                } else {
+                    if (o.area && o.area !== 'N/A') {
+                        if (['TEMBURONG', 'KB', 'KB / SERIA', 'LUMUT', 'TUTONG'].includes(o.area)) {
+                            handlingCharge = charge3_5;
+                        } else {
+                            handlingCharge = charge2_8;
+                        }
+                    } else {
+                        handlingCharge = `${charge2_8} or ${charge3_5}`;
+                    }
+                }
+            }
+
+            return {
+                doTrackingNumber: o.doTrackingNumber || '',
+                product: o.product || '',
+                currentStatus: o.currentStatus || '',
+                latestLocation: o.latestLocation || '',
+                age: age,
+                area: o.area || '',
+                jobMethod: o.jobMethod || '',
+                jobDate: o.jobDate || '',
+                assignedTo: o.assignedTo || '',
+                paymentMethod: o.paymentMethod || '',
+                paymentAmount: o.paymentAmount || '',
+                receiverName: o.receiverName || '',
+                receiverAddress: o.receiverAddress || '',
+                receiverPostalCode: o.receiverPostalCode || '',
+                receiverPhoneNumber: o.receiverPhoneNumber || '',
+                additionalPhoneNumber: o.additionalPhoneNumber || '',
+                creationDate: o.creationDate || '',
+                remarks: o.remarks || '',
+                grRemark: o.grRemark || '',
+                mawbNo: o.mawbNo || '',
+                parcelTrackingNum: o.parcelTrackingNum || '',
+                icPassNum: o.icPassNum || '',
+                patientNumber: o.patientNumber || '',
+                screenshotInvoice: o.screenshotInvoice || '',
+                cargoPrice: o.cargoPrice || '',
+                itemsDescription: o.items ? o.items.map(i => i.description || '').join(', ') : '',
+                itemsQuantity: o.items ? o.items.map(i => i.quantity || '').join(', ') : '',
+                parcelWeight: o.parcelWeight || '',
+                noOfpackages: '1',
+                handlingCharge: handlingCharge, // <-- only filled for pdu/ewe/mglobal
+                attempt: o.attempt || '',
+            };
+        });
+
+        searchJobsCache.set(cacheKey, formattedOrders);
+
+        return res.json(formattedOrders);
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server Error' });
+    }
+});
+
+app.get('/', ensureAuthenticated, async (req, res) => {
+    try {
+        const moment = require('moment');
+        const now = moment();
+
+        function generateLocation(order) {
+            const { latestLocation, room, rackRowNum, area, jobMethod } = order;
+            if (!latestLocation) return '-';
+            let parts = [latestLocation];
+
+            if (latestLocation === 'Warehouse K1') return parts.join(', ');
+
+            if (latestLocation === 'Warehouse K2') {
+                if (room === 'Room 1') {
+                    if (room) parts.push(room);
+                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
+                } else if (room === 'Medicine Room') {
+                    if (room) parts.push(room);
+                    if (jobMethod) parts.push(jobMethod);
+                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
+                } else {
+                    if (room) parts.push(room);
+                    if (area) parts.push(area);
+                    if (rackRowNum) parts.push(`Row No.${rackRowNum}`);
+                }
+            }
+            return parts.join(', ');
+        }
+
+        const allOrders = await ORDERS.find(
+            { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
+            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1 }
+        );
+
+        const deliveryOrders = await ORDERS.find(
+            { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
+            { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
+        );
+
+        const categorize = (orders, filterFn) => {
+            const map = {};
+            orders.forEach(order => {
+                const { product, jobMethod, warehouseEntryDateTime, creationDate } = order;
+                const method = jobMethod || 'Unknown';
+                const refDate = warehouseEntryDateTime || creationDate;
+                if (!refDate) return;
+                const age = now.diff(moment(refDate), 'days');
+                if (!filterFn(order, age)) return;
+                if (!map[product]) map[product] = {};
+                if (!map[product][method]) map[product][method] = [];
+                map[product][method].push({
+                    age,
+                    doTrackingNumber: order.doTrackingNumber || '-',
+                    attempt: order.attempt || '-',
+                    latestReason: order.latestReason || '-',
+                    area: order.area || '-',
+                    receiverName: order.receiverName || '-',
+                    receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                    additionalPhoneNumber: order.additionalPhoneNumber || '-',
+                    latestLocation: order.latestLocation || '-',
+                    remarks: order.remarks || '-',
+                    grRemark: order.grRemark || '-',
+                    location: generateLocation(order)
+                });
+            });
+            for (const product in map) {
+                for (const method in map[product]) {
+                    map[product][method].sort((a, b) => b.age - a.age);
+                }
+            }
+            return map;
+        };
+
+        const groupByCurrentLocation = (orders) => {
+            const map = {};
+            orders.forEach(order => {
+                if (["At Warehouse", "Return to Warehouse"].includes(order.currentStatus)) {
+                    const location = order.latestLocation || 'Unknown';
+                    const product = order.product || 'Unknown';
+                    const area = order.area || 'Unknown';
+
+                    const refDate = order.warehouseEntryDateTime || order.creationDate;
+                    const age = refDate ? now.diff(moment(refDate), 'days') : '-';
+
+                    if (age === '-' || age >= 30) return;
+
+                    if (!map[location]) map[location] = {};
+                    if (!map[location][product]) map[location][product] = {};
+                    if (!map[location][product][area]) map[location][product][area] = [];
+
+                    map[location][product][area].push({
+                        age,
+                        doTrackingNumber: order.doTrackingNumber || '-',
+                        attempt: order.attempt || '-',
+                        latestReason: order.latestReason || '-',
+                        area,
+                        receiverName: order.receiverName || '-',
+                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                        additionalPhoneNumber: order.additionalPhoneNumber || '-',
+                        jobMethod: order.jobMethod || '-',
+                        remarks: order.remarks || '-',
+                        grRemark: order.grRemark || '-'
+                    });
+                }
+            });
+
+            for (const location in map) {
+                for (const product in map[location]) {
+                    for (const area in map[location][product]) {
+                        map[location][product][area].sort((a, b) => b.age - a.age);
+                    }
+                }
+            }
+
+            return map;
+        };
+
+        const currentOrders = allOrders.filter(order =>
+            ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
+            ["Warehouse K1", "Warehouse K2"].includes(order.latestLocation)
+        );
+
+        const currentMap = groupByCurrentLocation(currentOrders);
+
+        const urgentMap = categorize(allOrders, (order, age) => {
+            const { product, jobMethod, warehouseEntry, currentStatus } = order;
+            const method = jobMethod || 'Unknown';
+            if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) {
+                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) &&
+                    ((method === "Standard" && age >= 3 && age <= 7) || (method === "Express" && age >= 1 && age <= 7));
+            } else {
+                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) && age >= 3 && age <= 14;
+            }
+        });
+
+        const overdueMap = categorize(allOrders, (order, age) => {
+            const { product } = order;
+            if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) return age > 7 && age < 30;
+            return age > 14 && age < 30;
+        });
+
+        const archivedMap = categorize(allOrders, (order, age) => age >= 30);
+
+        const maxAttemptMap = categorize(allOrders, (order, age) => order.attempt >= 3 && age < 30);
+
+        const plannedSelfCollectMap = categorize(allOrders, (order, age) => {
+            return ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
+                order.grRemark && order.grRemark.toLowerCase().includes("self collect") &&
+                age <= 30;
+        });
+
+        // Group deliveries
+        const deliveriesMap = (() => {
+            const map = {};
+            const assigneeAreas = {};
+
+            deliveryOrders.forEach(order => {
+                const date = order.jobDate ? moment(order.jobDate, 'YYYY-MM-DD').format("DD-MM-YYYY") : "Unknown Date";
+                const assignee = order.assignedTo || "Unassigned";
+                const product = order.product || "Unknown";
+                const area = order.area || "Unknown";
+                const currentStatus = order.currentStatus || "Unknown";
+
+                if (!map[date]) map[date] = {};
+
+                if (assignee === 'Selfcollect') {
+                    // Handle Selfcollect differently
+                    if (!map[date][assignee]) map[date][assignee] = { __statuses: {} };
+
+                    if (!map[date][assignee].__statuses[currentStatus]) {
+                        map[date][assignee].__statuses[currentStatus] = [];
+                    }
+
+                    map[date][assignee].__statuses[currentStatus].push({
+                        doTrackingNumber: order.doTrackingNumber || '-',
+                        receiverName: order.receiverName || '-',
+                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                        grRemark: order.grRemark || '-'
+                    });
+
+                } else {
+                    // Normal dispatchers grouped by area and product
+                    if (!map[date][assignee]) map[date][assignee] = { __areas: new Set(), __products: {} };
+
+                    map[date][assignee].__areas.add(area);
+
+                    if (!map[date][assignee].__products[product]) {
+                        map[date][assignee].__products[product] = [];
+                    }
+
+                    map[date][assignee].__products[product].push({
+                        doTrackingNumber: order.doTrackingNumber || '-',
+                        area: area,
+                        receiverName: order.receiverName || '-',
+                        receiverPhoneNumber: order.receiverPhoneNumber || '-',
+                        grRemark: order.grRemark || '-'
+                    });
+                }
+            });
+
+            // Convert __areas Set to Array for frontend rendering
+            Object.keys(map).forEach(date => {
+                Object.keys(map[date]).forEach(assignee => {
+                    if (assignee !== 'Selfcollect') {
+                        map[date][assignee].__areas = Array.from(map[date][assignee].__areas);
+                    }
+                });
+
+                // Ensure Selfcollect always placed last by ordering keys manually
+                const ordered = {};
+                Object.keys(map[date]).sort((a, b) => {
+                    if (a === 'Selfcollect') return 1; // Move Selfcollect to bottom
+                    if (b === 'Selfcollect') return -1;
+                    return a.localeCompare(b);
+                }).forEach(key => {
+                    ordered[key] = map[date][key];
+                });
+
+                map[date] = ordered;
+            });
+
+            return map;
+        })();
+
+        res.render('dashboard', {
+            currentMap,
+            urgentMap,
+            overdueMap,
+            archivedMap,
+            maxAttemptMap,
+            deliveriesMap,
+            plannedSelfCollectMap,
+            moment,
+            user: req.user,
+            orders: []
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch orders');
+    }
+});
+
 // Optional: refresh route to clear urgent cache
 app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
     urgentCache.del('urgentMap');
@@ -1595,9 +1931,9 @@ app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
 });
 
 app.get('/login', ensureNotAuthenticated, (req, res) => {
-    res.render('login', { 
-        errors: req.flash('error'), 
-        user: null 
+    res.render('login', {
+        errors: req.flash('error'),
+        user: null
     });
 });
 

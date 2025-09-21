@@ -7,5 +7,4 @@ const waorderSchema = new mongoose.Schema({
     receiverPhoneNumber: String,
 }, { collection: 'wargaemasorder' });
 
-// Create a model for the "orders" collection
-module.exports = mongoose.model('WAORDERS', waorderSchema);
+module.exports = waorderSchema; // schema only

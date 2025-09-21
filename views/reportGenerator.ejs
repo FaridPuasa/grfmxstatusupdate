@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Generator</title>
+  <!-- Add your custom CSS here -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+<style>
+#formSection { margin-top: 20px; }
+.hidden { display: none; }
+td, th { vertical-align: middle; }
+table { border-collapse: collapse; width: auto; min-width: 300px; margin-bottom: 20px; }
+th, td { border: 1px solid black; padding: 5px; }
+th { background: yellow; font-weight: bold; text-align: center; }
+td { white-space: pre-line; text-align: center; }
+#reportLogoHeader img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
+#assignedByContainer { margin-top: 10px; font-weight: bold; }
+button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
+/* Custom CSS for your page */
+    .navbar-nav.flex-row {
+      flex-direction: row !important;
+    }
+
+    /* Make the navbar background transparent */
+    .navbar {
+      background-color: transparent;
+    }
+
+    /* Add background color to the container */
+    .container-bg {
+      background-color: #333;
+      /* You can use your desired background color here */
+    }
+
+    /* Add margin to the navigation links */
+    .navbar-nav.flex-row .nav-item {
+      margin-right: 10px;
+    }
+
+    /* Add any custom styles specific to your form here */
+    .container-bg {
+      background-color: #333;
+      /* You can use your desired background color here */
+    }
+
+    .logo {
+  height: 40px;
+  width: auto;
+  max-height: 40px;
+}
+
+@media (max-width: 768px) {
+  .logo {
+    height: 30px;
+    max-height: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo {
+    height: 25px;
+    max-height: 25px;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="container-bg">
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+            <nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container d-flex align-items-center">
+
+    <!-- Logo: left on mobile, center on desktop -->
+    <a class="navbar-brand d-lg-none" href="/">
+      <img src="/images/logoportalwhite.png" alt="Go Rush Logo" class="logo img-fluid">
+    </a>
+
+    <!-- Burger menu button -->
+    <button class="navbar-toggler ml-auto" type="button" data-toggle="collapse" data-target="#navbarResponsive"
+            aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Collapsible menu -->
+    <div class="collapse navbar-collapse w-100" id="navbarResponsive">
+
+      <!-- Desktop left menus -->
+      <ul class="navbar-nav d-none d-lg-flex">
+        <% if (['finance','warehouse','cs','dispatcher','manager','admin'].includes(user.role)) { %>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="desktopOperationDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
+            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                            <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                            <% } %>
+                            <% if (['warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://warehouse.gorushbn.com">Scan Parcel In Warehouse</a>
+                            <% } %>
+                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                            <% } %>
+                            <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
+                            <% } %>
+                                <% if (['manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
+                            <% } %>
+                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-header">POD</div>
+                                <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
+                                <a class="dropdown-item" href="/listofnoncodPod">EWE/PDU/MGLOBAL</a>
+                                <a class="dropdown-item" href="/listofldPod">LD/Pure51/KPT/ICARUS</a>
+                                <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
+                            <% } %>
+                        </div>
+          </li>
+        <% } %>
+        <% if (['moh','cs','manager','admin','warehouse'].includes(user.role)) { %>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="desktopMohDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
+            <div class="dropdown-menu" aria-labelledby="mohDropdown">
+                            <% if (['moh'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/mohsearch">Search</a>
+                            <% } %>
+                            <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
+                            <% } %>
+                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy Form List</a>
+                                <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
+                            <% } %>
+                        </div>
+          </li>
+        <% } %>
+      </ul>
+
+      <!-- Center logo for desktop -->
+      <a class="navbar-brand mx-auto d-none d-lg-flex" href="/">
+        <img src="/images/logoportalwhite.png" alt="Go Rush Logo" class="logo img-fluid">
+      </a>
+
+      <!-- Desktop right menus -->
+      <ul class="navbar-nav ms-auto d-none d-lg-flex">
+        <% if (user) { %>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="desktopAccountDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+              <%= user.name %> (<%= user.role.toUpperCase() %>)
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="desktopAccountDropdown">
+              <a class="dropdown-item" href="/">Dashboard</a>
+              <% if (['admin'].includes(user.role)) { %>
+                <a class="dropdown-item" href="/createUser">Create User</a>
+              <% } %>
+              <a class="dropdown-item" href="/logout">Logout</a>
+            </div>
+          </li>
+        <% } else { %>
+          <li class="nav-item">
+            <a class="nav-link" href="/login">Login</a>
+          </li>
+        <% } %>
+      </ul>
+
+      <!-- Mobile menus (visible when burger expands) -->
+      <ul class="navbar-nav d-lg-none mt-2">
+        <% if (['finance','warehouse','cs','dispatcher','manager','admin'].includes(user.role)) { %>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mobileOperationDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
+            <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                            <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                            <% } %>
+                            <% if (['warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://warehouse.gorushbn.com">Scan Parcel In Warehouse</a>
+                            <% } %>
+                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                            <% } %>
+                            <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
+                                <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
+                                <% } %>
+                                <% if (['manager' , 'admin'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
+                            <% } %>
+                            <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-header">POD</div>
+                                <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
+                                <a class="dropdown-item" href="/listofnoncodPod">EWE/PDU/MGLOBAL</a>
+                                <a class="dropdown-item" href="/listofldPod">LD/Pure51/KPT/ICARUS</a>
+                                <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
+                            <% } %>
+                        </div>
+          </li>
+        <% } %>
+        <% if (['moh','cs','manager','admin','warehouse'].includes(user.role)) { %>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mobileMohDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
+            <div class="dropdown-menu" aria-labelledby="mohDropdown">
+                            <% if (['moh'].includes(user.role)) { %>
+                                <a class="dropdown-item" href="/mohsearch">Search</a>
+                            <% } %>
+                            <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
+                            <% } %>
+                            <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                                <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy Form List</a>
+                                <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
+                            <% } %>
+                        </div>
+          </li>
+        <% } %>
+        <% if (user) { %>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="mobileAccountDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+              <%= user.name %> (<%= user.role.toUpperCase() %>)
+            </a>
+            <div class="dropdown-menu" aria-labelledby="mobileAccountDropdown">
+              <a class="dropdown-item" href="/">Dashboard</a>
+              <% if (['admin'].includes(user.role)) { %>
+                <a class="dropdown-item" href="/createUser">Create User</a>
+              <% } %>
+              <a class="dropdown-item" href="/logout">Logout</a>
+            </div>
+          </li>
+        <% } else { %>
+          <li class="nav-item">
+            <a class="nav-link" href="/login">Login</a>
+          </li>
+        <% } %>
+      </ul>
+
+    </div>
+  </div>
+</nav>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="container">
+<h1 class="text-center mt-4">Report Generator</h1>
+
+<div class="mb-3">
+  <label for="reportType" class="form-label">Select Report</label>
+  <select id="reportType" class="form-select">
+    <option value="">-- Select Report --</option>
+    <option value="Operation Morning Report">Operation Morning Report</option>
+    <!-- <option value="Operation End of Day Report">Operation End of Day Report</option> -->
+  </select>
+</div>
+
+<div id="morningReportSection" class="hidden">
+  <form id="reportForm">
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <label for="reportDate" class="form-label">Date</label>
+        <input type="date" id="reportDate" name="reportDate" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <label for="vehicle" class="form-label">Car</label>
+        <select id="vehicle" class="form-select">
+          <option value="">N/A</option>
+          <% vehicles.forEach(v => { %>
+            <option value="<%= v.plate %>"><%= v.plate %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="dispatcher" class="form-label">Dispatcher</label>
+        <select id="dispatcher" class="form-select" required>
+          <option value="">-- Select Dispatcher --</option>
+          <option value="Ghafar">Ghafar</option>
+          <option value="Wafi">Wafi</option>
+          <option value="Sowdeq">Sowdeq</option>
+          <option value="Zakwan">Zakwan</option>
+          <option value="Leo">Leo</option>
+          <option value="Agung">Agung</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="assignedJob" class="form-label">Assigned Job</label>
+        <textarea id="assignedJob" class="form-control" rows="3" placeholder="Enter one or more jobs, each in a new line"></textarea>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <button type="button" class="btn btn-primary" id="generateBtn">Generate</button>
+      <button type="button" class="btn btn-success hidden" id="saveBtn">Save</button>
+      <button type="button" class="btn btn-secondary hidden" id="printBtn">Print</button>
+      <button type="button" class="btn btn-danger hidden" id="resetBtn">Reset</button>
+    </div>
+  </form>
+
+  <!-- Report Parts -->
+  <div id="reportLogoHeader" class="text-center mb-3"></div>
+  <table id="dispatcherJobsTable" class="table table-bordered">
+    <thead id="dispatcherJobsHeader"></thead>
+    <tbody></tbody>
+  </table>
+  <table id="morningMileageTable" class="table table-bordered">
+    <thead id="morningMileageHeader"></thead>
+    <tbody></tbody>
+  </table>
+  <div id="assignedByContainer"></div>
+</div>
+
+<div id="endOfDayReportSection" class="hidden">
+  <form id="endOfDayForm">
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <label for="endReportDate" class="form-label">Date</label>
+        <input type="date" id="endReportDate" name="endReportDate" class="form-control" required>
+      </div>
+    </div>
+    <div class="mb-3">
+      <button type="button" class="btn btn-primary" id="endGenerateBtn">Generate</button>
+      <button type="button" class="btn btn-success hidden" id="endSaveBtn" disabled>Save</button>
+      <button type="button" class="btn btn-secondary hidden" id="endPrintBtn">Print</button>
+      <button type="button" class="btn btn-danger hidden" id="endResetBtn">Reset</button>
+    </div>
+  </form>
+
+  <!-- End of Day Report Parts -->
+  <div id="endReportLogoHeader" class="text-center mb-3"></div>
+  <table id="endStaffJobsTable" class="table table-bordered">
+    <thead id="endStaffJobsHeader"></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div id="loadingSpinner" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.7); z-index:9999; justify-content: center; align-items: center;">
+  <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+    <span class="visually-hidden"></span>
+  </div>
+</div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+const reportTypeEl = document.getElementById('reportType');
+const formSection = document.getElementById('formSection');
+const reportDateEl = document.getElementById('reportDate');
+const generateBtn = document.getElementById('generateBtn');
+const saveBtn = document.getElementById('saveBtn');
+const printBtn = document.getElementById('printBtn');
+const resetBtn = document.getElementById('resetBtn');
+const dispatcherJobsTable = document.getElementById('dispatcherJobsTable');
+const dispatcherJobsHeader = document.getElementById('dispatcherJobsHeader');
+const dispatcherJobsBody = dispatcherJobsTable.querySelector('tbody');
+const morningMileageTable = document.getElementById('morningMileageTable');
+const morningMileageHeader = document.getElementById('morningMileageHeader');
+const morningMileageBody = morningMileageTable.querySelector('tbody');
+const reportLogoHeader = document.getElementById('reportLogoHeader');
+const assignedByContainer = document.getElementById('assignedByContainer');
+const userId = "<%= user.name %>";
+const loadingSpinner = document.getElementById('loadingSpinner');
+
+function showLoading(){ loadingSpinner.style.display='flex'; }
+function hideLoading(){ loadingSpinner.style.display='none'; }
+
+function clearReport(){
+  reportLogoHeader.innerHTML='';
+  dispatcherJobsHeader.innerHTML='';
+  dispatcherJobsBody.innerHTML='';
+  morningMileageHeader.innerHTML='';
+  morningMileageBody.innerHTML='';
+  assignedByContainer.innerHTML='';
+  reportDateEl.removeAttribute('disabled');
+}
+
+reportTypeEl.addEventListener('change', () => {
+  clearReport(); // reset both
+  if (reportTypeEl.value === 'Operation Morning Report') {
+    morningReportSection.classList.remove('hidden');
+    endOfDayReportSection.classList.add('hidden');
+  } else if (reportTypeEl.value === 'Operation End of Day Report') {
+    morningReportSection.classList.add('hidden');
+    endOfDayReportSection.classList.remove('hidden');
+  } else {
+    morningReportSection.classList.add('hidden');
+    endOfDayReportSection.classList.add('hidden');
+  }
+});
+
+generateBtn.addEventListener('click', async ()=>{
+  const date = reportDateEl.value;
+  const vehicle = document.getElementById('vehicle').value || 'N/A';
+  const dispatcher = document.getElementById('dispatcher').value;
+  const assignedJob = document.getElementById('assignedJob').value;
+  if(!date || !dispatcher){ alert('Please pick a date and dispatcher'); return; }
+  reportDateEl.setAttribute('disabled','true');
+  showLoading();
+
+  try{
+    const res = await fetch('/api/getDispatcherJobSummary',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({dispatcher,date})
+    });
+    const data = await res.json();
+
+    const day = new Date(date).toLocaleDateString('en-GB',{weekday:'long'});
+    const formattedDate = new Date(date).toLocaleDateString('en-GB').replace(/\//g,'.');
+    const reportName = `Operation Morning Report ${day} ${formattedDate}`;
+    window.currentReportName = reportName;
+
+    // Logo + Header
+    reportLogoHeader.innerHTML = `<img src="https://portal.gorushbn.com/images/logo.png" alt="Logo"><h2>${reportName}</h2>`;
+
+    // Dispatcher Assigned Jobs Header
+    dispatcherJobsHeader.innerHTML = `
+      <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="5">Dispatcher Assigned Jobs</th></tr>
+      <tr>
+        <th>Vehicle No.</th>
+        <th>Dispatcher</th>
+        <th>Assigned Job</th>
+        <th>Area</th>
+        <th>Action</th>
+      </tr>
+    `;
+
+    // Dispatcher Assigned Jobs Row
+    let assignedJobContent = '';
+    if(data.totalOrders>0){
+      const productSummary = Object.entries(data.productCounts).map(([p,c])=>`${p} (${c})`).join(', ');
+      assignedJobContent = `- Deliver total (${data.totalOrders})`;
+      if(productSummary) assignedJobContent += ` | ${productSummary}`;
+    }
+    if(assignedJob){
+      const jobLines = assignedJob.split('\n').map(l=>l.trim()).filter(l=>l.length>0).map(l=>`- ${l}`).join('\n');
+      assignedJobContent += `${assignedJobContent?'\n':''}${jobLines}`;
+    }
+    const areaContent = data.totalOrders>0 ? (data.areas.join(',')||'N/A') : '';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td contenteditable="true">${vehicle}</td>
+      <td contenteditable="true">${dispatcher}</td>
+      <td contenteditable="true" style="white-space: pre-line;">${assignedJobContent||'N/A'}</td>
+      <td contenteditable="true">${areaContent}</td>
+      <td><button type="button" class="btn btn-danger btn-sm removeRow">Remove</button></td>
+    `;
+    row.querySelector('td:last-child').removeAttribute('contenteditable');
+    dispatcherJobsBody.appendChild(row);
+    row.querySelector('.removeRow').addEventListener('click', ()=>{ row.remove(); if(dispatcherJobsBody.children.length===0) clearReport(); });
+
+    // Morning Mileage Header
+    morningMileageHeader.innerHTML = `
+      <tr style="background:yellow;font-weight:bold;text-align:center;">
+<th colspan="5">Morning Mileage</th></tr>
+      <tr>
+        <th>Vehicle No.</th>
+        <th colspan="4">Latest Mileage</th>
+      </tr>
+    `;
+
+    // Morning Mileage Rows
+try {
+  const resM = await fetch('/api/getMorningMileage', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({date})
+  });
+  const mileageData = await resM.json();
+
+  // --- Sort descending, N/A last ---
+  mileageData.sort((a, b) => {
+    if (a.mileage === 'N/A') return 1;
+    if (b.mileage === 'N/A') return -1;
+    return b.mileage - a.mileage;
+  });
+
+  morningMileageBody.innerHTML = mileageData
+    .map(m => `<tr><td>${m.plate}</td><td colspan="4">${m.mileage}</td></tr>`)
+    .join('');
+} catch(e) {
+  morningMileageBody.innerHTML='<tr><td colspan="5">Error loading mileage</td></tr>';
+}
+
+    // Assigned by
+    assignedByContainer.innerText = `Assigned and checked by: ${userId}`;
+
+    document.getElementById('vehicle').value='';
+    document.getElementById('dispatcher').value='';
+    document.getElementById('assignedJob').value='';
+
+    // After Generate
+saveBtn.classList.remove('hidden');
+resetBtn.classList.remove('hidden');
+printBtn.classList.add('hidden'); // hide until saved
+
+
+  } catch(err){ console.error(err); alert('Failed to fetch job summary'); }
+  finally{ hideLoading(); }
+});
+
+// --- Save Button ---
+saveBtn.addEventListener('click', async () => {
+  if (dispatcherJobsBody.children.length === 0) {
+    alert('No report to save');
+    return;
+  }
+  showLoading();
+
+  // 🔹 Format date for reportName (dd.mm.yyyy, no day)
+  const dateStr = reportDateEl.value;
+  const dateObj = new Date(dateStr);
+  const formattedDate = dateObj.toLocaleDateString('en-GB').replace(/\//g, '.');
+  const reportName = `Operation Morning Report ${formattedDate}`;
+
+  // 🔹 Sort morning mileage rows: largest to smallest, N/A last
+  const rows = Array.from(morningMileageBody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    const aVal = a.children[1].innerText === 'N/A' ? -1 : parseInt(a.children[1].innerText, 10);
+    const bVal = b.children[1].innerText === 'N/A' ? -1 : parseInt(b.children[1].innerText, 10);
+    if (aVal === -1) return 1;
+    if (bVal === -1) return -1;
+    return bVal - aVal;
+  });
+  morningMileageBody.innerHTML = '';
+  rows.forEach(r => morningMileageBody.appendChild(r));
+
+  // 🔹 Build mileage lookup map
+  const mileageMap = {};
+  Array.from(morningMileageBody.querySelectorAll('tr')).forEach(row => {
+    const vehicle = row.children[0]?.innerText.trim();
+    const mileageText = row.children[1]?.innerText.trim();
+    let mileage = null;
+    if (mileageText && mileageText !== 'N/A') {
+      mileage = parseInt(mileageText, 10);
+    }
+    if (vehicle) mileageMap[vehicle] = mileage;
+  });
+
+  // 🔹 Build assignedDispatchers array (include assignedJob)
+const assignedDispatchers = [];
+Array.from(dispatcherJobsBody.querySelectorAll('tr')).forEach(row => {
+  const vehicle = row.children[0]?.innerText.trim();
+  const dispatcherName = row.children[1]?.innerText.trim();
+  const assignedJobText = row.children[2]?.innerText.trim(); // 🔹 Assigned Job column
+  const area = row.children[3]?.innerText.trim();
+
+  if (vehicle && dispatcherName) {
+    assignedDispatchers.push({
+      vehicle,
+      dispatcherName,
+      assignedJob: assignedJobText || '',   // 🔹 new field
+      area: area || "",
+      mileage: mileageMap[vehicle] || null
+    });
+  }
+});
+
+  // 🔹 Build report HTML
+  const reportHTML = `
+    <div>${reportLogoHeader.outerHTML}</div>
+    <div>${dispatcherJobsTable.outerHTML}</div>
+    <div>${morningMileageTable.outerHTML}</div>
+    <div>${assignedByContainer.outerHTML}</div>
+  `;
+
+  const reportType = reportTypeEl.value;
+
+  // 🔹 Function to save with optional forceReplace flag
+  async function saveReport(forceReplace = false) {
+    try {
+      const res = await fetch('/api/saveReport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportType,
+          reportContent: reportHTML,
+          reportName,
+          createdBy: userId,
+          assignedDispatchers,
+          forceReplace
+        })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+        printBtn.classList.remove('hidden'); // show only after save
+      } else if (result.duplicate) {
+        const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+        if (confirmReplace) {
+          await saveReport(true); // retry with forceReplace
+        }
+      } else {
+        alert('Failed to save report: ' + result.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error saving report');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // 🔹 Initial save attempt
+  await saveReport();
+});
+
+printBtn.addEventListener('click', () => {
+  showLoading();
+
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
+  const dispatcherClone = dispatcherJobsTable.cloneNode(true);
+  const morningClone = morningMileageTable.cloneNode(true);
+
+  // Remove Action column (header + cells)
+  Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
+    const cells = tr.children;
+    if(cells.length > 0) {
+      const lastCell = cells[cells.length - 1];
+      // Remove only if it's the "Action" column (header or cell with button)
+      if(lastCell.innerText.toLowerCase() === 'action' || lastCell.querySelector('button')){
+        tr.removeChild(lastCell);
+      }
+    }
+  });
+
+  const style = `
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      h2 { text-align: center; margin-bottom: 20px; }
+      table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+      th, td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; white-space: pre-line; }
+      th { font-weight: bold; text-align: center; }
+      #dispatcherJobsTable thead tr:first-child th,
+      #morningMileageTable thead tr:first-child th { background: yellow; }
+      #dispatcherJobsTable thead tr:nth-child(2) th,
+      #morningMileageTable thead tr:nth-child(2) th { background: white; }
+      img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
+    </style>
+  `;
+
+  const titleText = window.currentReportName || 'Report';
+
+printWindow.document.write(`
+  <html>
+    <head>
+      <title>${titleText}</title>
+      ${style}
+    </head>
+    <body>
+`);
+
+  // Insert logo as a new Image element to ensure it loads before printing
+  const logoSrc = reportLogoHeader.querySelector('img')?.src || '';
+  printWindow.document.write(`
+    <div id="logoHeader">
+      <img id="printLogo" src="${logoSrc}" alt="Logo">
+      <h2>${window.currentReportName}</h2>
+    </div>
+  `);
+
+  printWindow.document.write(dispatcherClone.outerHTML);
+  printWindow.document.write(morningClone.outerHTML);
+  printWindow.document.write(`<div style="font-weight:bold; margin-top:10px;">${assignedByContainer.innerText}</div>`);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+
+  // Wait for logo to fully load before printing
+  const logoImg = printWindow.document.getElementById('printLogo');
+  if(logoImg){
+    logoImg.onload = () => { printWindow.focus(); printWindow.print(); hideLoading(); };
+    logoImg.onerror = () => { printWindow.focus(); printWindow.print(); hideLoading(); };
+  } else {
+    printWindow.focus();
+    printWindow.print();
+    hideLoading();
+  }
+});
+
+// --- Reset Button ---
+resetBtn.addEventListener('click', ()=>{
+  showLoading();
+  setTimeout(()=>{
+    clearReport();
+    formSection.classList.add('hidden');
+    reportTypeEl.value='';
+    saveBtn.classList.add('hidden');
+    printBtn.classList.add('hidden');
+    resetBtn.classList.add('hidden');
+    hideLoading();
+  },100);
+});
+
+</script>
+</body>
+</html>
