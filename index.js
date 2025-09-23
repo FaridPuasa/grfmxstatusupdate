@@ -931,87 +931,91 @@ app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) =
 });
 
 app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
-  try {
-    const { reportType, date, dispatcher, car, assignedJob } = req.body;
-    if (reportType !== 'Operation Morning Report') {
-      return res.send('<p>Only Operation Morning Report supported.</p>');
-    }
-
-    // --- Fetch orders for dispatcher ---
-    const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
-    const filtered = orders.filter(o =>
-      o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date))
-    );
-
-    const total = filtered.length;
-    const productCounts = filtered.reduce((acc, o) => {
-      if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
-      return acc;
-    }, {});
-    const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
-
-    // --- Format date for header ---
-    const d = new Date(date);
-    const formattedDate = d.toLocaleDateString('en-GB').replace(/\//g, '.');
-    const headerTitle = `Operation Morning Report ${formattedDate}`;
-
-    // --- Fetch active vehicles ---
-    const vehicles = await VEHICLE.find({ status: 'active' }).lean();
-    const vehicleIds = vehicles.map(v => v._id);
-
-    const selectedDateEnd = new Date(date);
-    selectedDateEnd.setHours(23, 59, 59, 999);
-
-    // --- Get latest mileage for each vehicle on or before selected date ---
-    const latestMileages = await MILEAGELOGS.aggregate([
-      {
-        $match: {
-          vehicleId: { $in: vehicleIds },
-          date: { $lte: selectedDateEnd }
+    try {
+        const { reportType, date, dispatcher, car, assignedJob } = req.body;
+        if (reportType !== 'Operation Morning Report') {
+            return res.send('<p>Only Operation Morning Report supported.</p>');
         }
-      },
-      { $sort: { date: -1 } },
-      {
-        $group: {
-          _id: "$vehicleId",
-          mileage: { $first: "$mileage" },
-          date: { $first: "$date" }
+
+        // --- Fetch orders for dispatcher ---
+        const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
+        const filtered = orders.filter(o =>
+            o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date))
+        );
+
+        const total = filtered.length;
+        const productCounts = filtered.reduce((acc, o) => {
+            if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
+            return acc;
+        }, {});
+        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
+
+        // --- Format date for header ---
+        const d = new Date(date);
+        const formattedDate = d.toLocaleDateString('en-GB').replace(/\//g, '.');
+        const headerTitle = `Operation Morning Report ${formattedDate}`;
+
+        // --- Fetch active vehicles ---
+        const vehicles = await VEHICLE.find({ status: 'active' }).lean();
+        const vehicleIds = vehicles.map(v => v._id);
+
+        const selectedDateEnd = new Date(date);
+        selectedDateEnd.setHours(23, 59, 59, 999);
+
+        // --- Get latest mileage for each vehicle on or before selected date ---
+        const latestMileages = await MILEAGELOGS.aggregate([
+            {
+                $match: {
+                    vehicleId: { $in: vehicleIds },
+                    date: { $lte: selectedDateEnd }
+                }
+            },
+            { $sort: { date: -1 } },
+            {
+                $group: {
+                    _id: "$vehicleId",
+                    mileage: { $first: "$mileage" },
+                    date: { $first: "$date" }
+                }
+            }
+        ]);
+
+        const mileageMap = {};
+        latestMileages.forEach(m => {
+            mileageMap[m._id.toString()] = m.mileage;
+        });
+
+        // --- Sort vehicles by latest mileage descending, N/A last ---
+        const sortedVehicles = vehicles.sort((a, b) => {
+            const mA = mileageMap[a._id.toString()];
+            const mB = mileageMap[b._id.toString()];
+
+            if (mA === undefined) return 1; // N/A last
+            if (mB === undefined) return -1;
+            return mB - mA; // descending
+        });
+
+        // --- Build Assigned Job content ---
+        let assignedJobContent = '';
+        let totalDelivery = total > 0 ? total : '';
+
+        if (total > 0) {
+            const productSummary = Object.entries(productCounts)
+                .map(([p, c]) => `${p} (${c})`).join(', ');
+            if (productSummary) {
+                assignedJobContent = `- Deliver ${productSummary}`;
+            }
         }
-      }
-    ]);
 
-    const mileageMap = {};
-    latestMileages.forEach(m => {
-      mileageMap[m._id.toString()] = m.mileage;
-    });
+        if (assignedJob) {
+            const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines.map(l => `- ${l}`).join('\n')}`;
+        }
 
-    // --- Sort vehicles by latest mileage descending, N/A last ---
-    const sortedVehicles = vehicles.sort((a, b) => {
-      const mA = mileageMap[a._id.toString()];
-      const mB = mileageMap[b._id.toString()];
+        const areaContent = total > 0 ? (areas.join(', ') || 'N/A') : '';
 
-      if (mA === undefined) return 1; // N/A last
-      if (mB === undefined) return -1;
-      return mB - mA; // descending
-    });
-
-    // --- Build Assigned Job content ---
-    let assignedJobContent = '';
-    if (total > 0) {
-      const productSummary = Object.entries(productCounts)
-        .map(([p, c]) => `${p} (${c})`).join(', ');
-      assignedJobContent = `- Deliver total (${total})`;
-      if (productSummary) assignedJobContent += ` | ${productSummary}`;
-    }
-    if (assignedJob) {
-      const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines.map(l => `- ${l}`).join('\n')}`;
-    }
-
-    const areaContent = total > 0 ? (areas.join(', ') || 'N/A') : 'N/A';
-
-    // --- Build HTML ---
-    const html = `
+        // --- Build HTML ---
+        const html = `
       <!-- Logo -->
       <div style="text-align:center; margin-bottom:10px;">
         <img src="/images/logo.png" alt="Logo" style="height:60px;">
@@ -1070,54 +1074,54 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
       </div>
     `;
 
-    res.send(html);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error generating report');
-  }
+        res.send(html);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error generating report');
+    }
 });
 
 app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
-  try {
-    console.log("req.user:", req.user); // useful for debugging
+    try {
+        console.log("req.user:", req.user); // useful for debugging
 
-    const { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
-    if (!reportType || !reportContent || !reportName) {
-      return res.json({ success: false, message: 'Missing data' });
+        const { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
+        if (!reportType || !reportContent || !reportName) {
+            return res.json({ success: false, message: 'Missing data' });
+        }
+
+        // Check if a report with the same name exists
+        const existingReport = await REPORTS.findOne({ reportName });
+
+        if (existingReport && !forceReplace) {
+            // Duplicate found, inform frontend
+            return res.json({ success: false, duplicate: true, message: 'Report with this name already exists' });
+        }
+
+        if (existingReport && forceReplace) {
+            // Replace existing report
+            existingReport.reportType = reportType;
+            existingReport.reportContent = reportContent;
+            existingReport.assignedDispatchers = Array.isArray(assignedDispatchers) ? assignedDispatchers : [];
+            existingReport.createdBy = req.user.username || req.user.name || req.user.id || 'Unknown';
+            await existingReport.save();
+            return res.json({ success: true, message: 'Report replaced successfully' });
+        }
+
+        // No duplicate, create new report
+        await REPORTS.create({
+            reportType,
+            reportName,
+            reportContent,
+            assignedDispatchers: Array.isArray(assignedDispatchers) ? assignedDispatchers : [],
+            createdBy: req.user.username || req.user.name || req.user.id || 'Unknown'
+        });
+
+        res.json({ success: true, message: 'Report saved successfully' });
+    } catch (err) {
+        console.error('Error saving report:', err);
+        res.json({ success: false, message: err.message });
     }
-
-    // Check if a report with the same name exists
-    const existingReport = await REPORTS.findOne({ reportName });
-
-    if (existingReport && !forceReplace) {
-      // Duplicate found, inform frontend
-      return res.json({ success: false, duplicate: true, message: 'Report with this name already exists' });
-    }
-
-    if (existingReport && forceReplace) {
-      // Replace existing report
-      existingReport.reportType = reportType;
-      existingReport.reportContent = reportContent;
-      existingReport.assignedDispatchers = Array.isArray(assignedDispatchers) ? assignedDispatchers : [];
-      existingReport.createdBy = req.user.username || req.user.name || req.user.id || 'Unknown';
-      await existingReport.save();
-      return res.json({ success: true, message: 'Report replaced successfully' });
-    }
-
-    // No duplicate, create new report
-    await REPORTS.create({
-      reportType,
-      reportName,
-      reportContent,
-      assignedDispatchers: Array.isArray(assignedDispatchers) ? assignedDispatchers : [],
-      createdBy: req.user.username || req.user.name || req.user.id || 'Unknown'
-    });
-
-    res.json({ success: true, message: 'Report saved successfully' });
-  } catch (err) {
-    console.error('Error saving report:', err);
-    res.json({ success: false, message: err.message });
-  }
 });
 
 // Report Generator page
@@ -1132,58 +1136,56 @@ app.get('/reportGenerator', ensureAuthenticated, async (req, res) => {
 });
 
 app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
-  try {
-    const { date } = req.body;
-    if (!date) return res.json([]);
+    try {
+        const { date } = req.body;
+        if (!date) return res.json([]);
 
-    // --- Fetch active vehicles ---
-    const vehicles = await VEHICLE.find({ status: 'active' }).lean();
-    const vehicleIds = vehicles.map(v => v._id);
+        // --- Fetch active vehicles ---
+        const vehicles = await VEHICLE.find({ status: 'active' }).lean();
+        const vehicleIds = vehicles.map(v => v._id);
 
-    // --- Get latest mileage for each vehicle on or before selected date ---
-    const selectedDateEnd = new Date(date);
-    selectedDateEnd.setHours(23, 59, 59, 999);
+        // --- Get latest mileage for each vehicle on or before selected date ---
+        const selectedDateEnd = new Date(date);
+        selectedDateEnd.setHours(23, 59, 59, 999);
 
-    const latestMileages = await MILEAGELOGS.aggregate([
-      {
-        $match: {
-          vehicleId: { $in: vehicleIds },
-          date: { $lte: selectedDateEnd }
-        }
-      },
-      { $sort: { date: -1 } },
-      {
-        $group: {
-          _id: "$vehicleId",
-          mileage: { $first: "$mileage" },
-          date: { $first: "$date" }
-        }
-      }
-    ]);
+        const latestMileages = await MILEAGELOGS.aggregate([
+            {
+                $match: {
+                    vehicleId: { $in: vehicleIds },
+                    date: { $lte: selectedDateEnd }
+                }
+            },
+            { $sort: { date: -1 } },
+            {
+                $group: {
+                    _id: "$vehicleId",
+                    mileage: { $first: "$mileage" },
+                    date: { $first: "$date" }
+                }
+            }
+        ]);
 
-    const mileageMap = {};
-    latestMileages.forEach(m => {
-      mileageMap[m._id.toString()] = m.mileage;
-    });
+        const mileageMap = {};
+        latestMileages.forEach(m => {
+            mileageMap[m._id.toString()] = m.mileage;
+        });
 
-    // --- Build result for all vehicles ---
-    const result = vehicles.map(v => ({
-      plate: v.plate,
-      mileage: mileageMap[v._id.toString()] ?? 'N/A'
-    }));
+        // --- Build result for all vehicles with mileage ---
+        const result = vehicles
+            .map(v => ({
+                plate: v.plate,
+                mileage: mileageMap[v._id.toString()] ?? null  // Use null for missing
+            }))
+            .filter(v => v.mileage !== null); // 🔹 Filter out vehicles without mileage
 
-    // --- Sort descending mileage, N/A last ---
-    result.sort((a, b) => {
-      if (a.mileage === 'N/A') return 1;
-      if (b.mileage === 'N/A') return -1;
-      return b.mileage - a.mileage;
-    });
+        // --- Sort descending mileage ---
+        result.sort((a, b) => b.mileage - a.mileage);
 
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch mileage' });
-  }
+        res.json(result);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch mileage' });
+    }
 });
 
 // COD/BT Collected API with date filtering and caching

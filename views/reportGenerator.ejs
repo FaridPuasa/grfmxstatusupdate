@@ -397,24 +397,25 @@ reportTypeEl.addEventListener('change', () => {
   }
 });
 
-generateBtn.addEventListener('click', async ()=>{
+generateBtn.addEventListener('click', async () => {
   const date = reportDateEl.value;
   const vehicle = document.getElementById('vehicle').value || 'N/A';
   const dispatcher = document.getElementById('dispatcher').value;
   const assignedJob = document.getElementById('assignedJob').value;
-  if(!date || !dispatcher){ alert('Please pick a date and dispatcher'); return; }
-  reportDateEl.setAttribute('disabled','true');
+  if (!date || !dispatcher) { alert('Please pick a date and dispatcher'); return; }
+  reportDateEl.setAttribute('disabled', 'true');
   showLoading();
 
-  try{
-    const res = await fetch('/api/getDispatcherJobSummary',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({dispatcher,date})
+  try {
+    const res = await fetch('/api/getDispatcherJobSummary', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dispatcher, date })
     });
+
     const data = await res.json();
 
-    const day = new Date(date).toLocaleDateString('en-GB',{weekday:'long'});
-    const formattedDate = new Date(date).toLocaleDateString('en-GB').replace(/\//g,'.');
+    const day = new Date(date).toLocaleDateString('en-GB', { weekday: 'long' });
+    const formattedDate = new Date(date).toLocaleDateString('en-GB').replace(/\//g, '.');
     const reportName = `Operation Morning Report ${day} ${formattedDate}`;
     window.currentReportName = reportName;
 
@@ -423,44 +424,86 @@ generateBtn.addEventListener('click', async ()=>{
 
     // Dispatcher Assigned Jobs Header
     dispatcherJobsHeader.innerHTML = `
-      <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="5">Dispatcher Assigned Jobs</th></tr>
+      <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="6">Dispatcher Assigned Jobs</th></tr>
       <tr>
         <th>Vehicle No.</th>
         <th>Dispatcher</th>
         <th>Assigned Job</th>
         <th>Area</th>
+        <th>Total Delivery</th>
         <th>Action</th>
       </tr>
     `;
 
+    // Remove previous grand total row if exists
+    const existingFooter = dispatcherJobsBody.querySelector('tr.grandTotal');
+    if (existingFooter) existingFooter.remove();
+
     // Dispatcher Assigned Jobs Row
     let assignedJobContent = '';
-    if(data.totalOrders>0){
-      const productSummary = Object.entries(data.productCounts).map(([p,c])=>`${p} (${c})`).join(', ');
-      assignedJobContent = `- Deliver total (${data.totalOrders})`;
-      if(productSummary) assignedJobContent += ` | ${productSummary}`;
+    if (data.totalOrders > 0) {
+      assignedJobContent = Object.entries(data.productCounts)
+        .map(([p, c]) => `- Deliver ${p} (${c})`)
+        .join('\n');
     }
-    if(assignedJob){
-      const jobLines = assignedJob.split('\n').map(l=>l.trim()).filter(l=>l.length>0).map(l=>`- ${l}`).join('\n');
-      assignedJobContent += `${assignedJobContent?'\n':''}${jobLines}`;
+    if (assignedJob) {
+      const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0).map(l => `- ${l}`).join('\n');
+      assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines}`;
     }
-    const areaContent = data.totalOrders>0 ? (data.areas.join(',')||'N/A') : '';
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td contenteditable="true">${vehicle}</td>
-      <td contenteditable="true">${dispatcher}</td>
-      <td contenteditable="true" style="white-space: pre-line;">${assignedJobContent||'N/A'}</td>
-      <td contenteditable="true">${areaContent}</td>
-      <td><button type="button" class="btn btn-danger btn-sm removeRow">Remove</button></td>
-    `;
-    row.querySelector('td:last-child').removeAttribute('contenteditable');
-    dispatcherJobsBody.appendChild(row);
-    row.querySelector('.removeRow').addEventListener('click', ()=>{ row.remove(); if(dispatcherJobsBody.children.length===0) clearReport(); });
+
+    const areaContent = data.totalOrders > 0 ? (data.areas.join(',') || '') : '';
+
+    // Total delivery count for this dispatcher
+    const totalJobsCount = data.totalOrders || 0;
+
+    // Only add row if there is at least one assigned job
+    if (assignedJobContent || totalJobsCount > 0) {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td contenteditable="true">${vehicle}</td>
+        <td contenteditable="true">${dispatcher}</td>
+        <td contenteditable="true" style="white-space: pre-line;">${assignedJobContent || ''}</td>
+        <td contenteditable="true">${areaContent}</td>
+        <td>${totalJobsCount}</td>
+        <td><button type="button" class="btn btn-danger btn-sm removeRow">Remove</button></td>
+      `;
+      row.querySelector('td:last-child').removeAttribute('contenteditable');
+      dispatcherJobsBody.appendChild(row);
+
+      row.querySelector('.removeRow').addEventListener('click', () => {
+        row.remove();
+        updateGrandTotal();
+        if (dispatcherJobsBody.children.length === 0) clearReport();
+      });
+    }
+
+    // Grand total function
+    function updateGrandTotal() {
+      const existingFooter = dispatcherJobsBody.querySelector('tr.grandTotal');
+      if (existingFooter) existingFooter.remove();
+
+      const grandTotal = Array.from(dispatcherJobsBody.querySelectorAll('tr'))
+        .filter(tr => !tr.classList.contains('grandTotal'))
+        .reduce((sum, tr) => sum + (parseInt(tr.children[4].innerText || 0, 10) || 0), 0);
+
+      const footerRow = document.createElement('tr');
+      footerRow.classList.add('grandTotal');
+      footerRow.style.fontWeight = 'bold';
+      footerRow.innerHTML = `
+        <td colspan="4" style="text-align:right">Grand Total:</td>
+        <td>${grandTotal}</td>
+        <td></td>
+      `;
+      dispatcherJobsBody.appendChild(footerRow);
+    }
+
+    updateGrandTotal();
 
     // Morning Mileage Header
     morningMileageHeader.innerHTML = `
       <tr style="background:yellow;font-weight:bold;text-align:center;">
-<th colspan="5">Morning Mileage</th></tr>
+        <th colspan="5">Morning Mileage</th>
+      </tr>
       <tr>
         <th>Vehicle No.</th>
         <th colspan="4">Latest Mileage</th>
@@ -468,43 +511,41 @@ generateBtn.addEventListener('click', async ()=>{
     `;
 
     // Morning Mileage Rows
-try {
-  const resM = await fetch('/api/getMorningMileage', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({date})
-  });
-  const mileageData = await resM.json();
+    try {
+      const resM = await fetch('/api/getMorningMileage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date })
+      });
+      const mileageData = await resM.json();
 
-  // --- Sort descending, N/A last ---
-  mileageData.sort((a, b) => {
-    if (a.mileage === 'N/A') return 1;
-    if (b.mileage === 'N/A') return -1;
-    return b.mileage - a.mileage;
-  });
+      // Filter out N/A and sort descending
+      const validMileage = mileageData.filter(m => m.mileage !== 'N/A');
+      validMileage.sort((a, b) => b.mileage - a.mileage);
 
-  morningMileageBody.innerHTML = mileageData
-    .map(m => `<tr><td>${m.plate}</td><td colspan="4">${m.mileage}</td></tr>`)
-    .join('');
-} catch(e) {
-  morningMileageBody.innerHTML='<tr><td colspan="5">Error loading mileage</td></tr>';
-}
+      morningMileageBody.innerHTML = validMileage
+        .map(m => `<tr><td>${m.plate}</td><td colspan="4">${m.mileage}</td></tr>`)
+        .join('');
+    } catch (e) {
+      morningMileageBody.innerHTML = '<tr><td colspan="5">Error loading mileage</td></tr>';
+    }
 
     // Assigned by
     assignedByContainer.innerText = `Assigned and checked by: ${userId}`;
 
-    document.getElementById('vehicle').value='';
-    document.getElementById('dispatcher').value='';
-    document.getElementById('assignedJob').value='';
+    document.getElementById('vehicle').value = '';
+    document.getElementById('dispatcher').value = '';
+    document.getElementById('assignedJob').value = '';
 
-    // After Generate
-saveBtn.classList.remove('hidden');
-resetBtn.classList.remove('hidden');
-printBtn.classList.add('hidden'); // hide until saved
+    // Show buttons after generate
+    saveBtn.classList.remove('hidden');
+    resetBtn.classList.remove('hidden');
+    printBtn.classList.add('hidden'); // hide until saved
 
-
-  } catch(err){ console.error(err); alert('Failed to fetch job summary'); }
-  finally{ hideLoading(); }
+  } catch (err) {
+    console.error(err);
+    alert('Failed to fetch job summary');
+  } finally { hideLoading(); }
 });
 
 // --- Save Button ---
@@ -621,18 +662,40 @@ printBtn.addEventListener('click', () => {
   const dispatcherClone = dispatcherJobsTable.cloneNode(true);
   const morningClone = morningMileageTable.cloneNode(true);
 
-  // Remove Action column (header + cells)
-  Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
-    const cells = tr.children;
-    if(cells.length > 0) {
-      const lastCell = cells[cells.length - 1];
-      // Remove only if it's the "Action" column (header or cell with button)
-      if(lastCell.innerText.toLowerCase() === 'action' || lastCell.querySelector('button')){
-        tr.removeChild(lastCell);
-      }
-    }
+  // Remove Action column from all rows (header + body + footer)
+Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
+  const cells = tr.children;
+  if (cells.length > 1) { // 🔹 Only remove if more than 1 cell
+    const lastCell = cells[cells.length - 1];
+    tr.removeChild(lastCell);
+  }
+});
+
+  // Recalculate grand total for cloned table
+  const bodyRows = Array.from(dispatcherClone.querySelectorAll('tbody tr'))
+    .filter(tr => !tr.classList.contains('grandTotal'));
+
+  let grandTotal = 0;
+  bodyRows.forEach(tr => {
+    const td = tr.children[4]; // Total Delivery column
+    if(td) grandTotal += parseInt(td.innerText || 0, 10) || 0;
   });
 
+  // Remove old grand total if exists
+  const oldFooter = dispatcherClone.querySelector('tr.grandTotal');
+  if(oldFooter) oldFooter.remove();
+
+  // Append recalculated grand total row WITHOUT extra Action column
+  const footerRow = document.createElement('tr');
+  footerRow.classList.add('grandTotal');
+  footerRow.style.fontWeight = 'bold';
+  footerRow.innerHTML = `
+    <td colspan="4" style="text-align:right">Grand Total:</td>
+    <td>${grandTotal}</td>
+  `;
+  dispatcherClone.querySelector('tbody').appendChild(footerRow);
+
+  // Print style
   const style = `
     <style>
       body { font-family: Arial, sans-serif; padding: 20px; }
@@ -649,32 +712,25 @@ printBtn.addEventListener('click', () => {
   `;
 
   const titleText = window.currentReportName || 'Report';
-
-printWindow.document.write(`
-  <html>
-    <head>
-      <title>${titleText}</title>
-      ${style}
-    </head>
-    <body>
-`);
-
-  // Insert logo as a new Image element to ensure it loads before printing
-  const logoSrc = reportLogoHeader.querySelector('img')?.src || '';
   printWindow.document.write(`
-    <div id="logoHeader">
-      <img id="printLogo" src="${logoSrc}" alt="Logo">
-      <h2>${window.currentReportName}</h2>
-    </div>
+    <html>
+      <head>
+        <title>${titleText}</title>
+        ${style}
+      </head>
+      <body>
+        <div id="logoHeader">
+          <img id="printLogo" src="${reportLogoHeader.querySelector('img')?.src || ''}" alt="Logo">
+          <h2>${window.currentReportName}</h2>
+        </div>
+        ${dispatcherClone.outerHTML}
+        ${morningClone.outerHTML}
+        <div style="font-weight:bold; margin-top:10px;">${assignedByContainer.innerText}</div>
+      </body>
+    </html>
   `);
-
-  printWindow.document.write(dispatcherClone.outerHTML);
-  printWindow.document.write(morningClone.outerHTML);
-  printWindow.document.write(`<div style="font-weight:bold; margin-top:10px;">${assignedByContainer.innerText}</div>`);
-  printWindow.document.write('</body></html>');
   printWindow.document.close();
 
-  // Wait for logo to fully load before printing
   const logoImg = printWindow.document.getElementById('printLogo');
   if(logoImg){
     logoImg.onload = () => { printWindow.focus(); printWindow.print(); hideLoading(); };
