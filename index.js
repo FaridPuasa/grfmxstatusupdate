@@ -868,20 +868,29 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
 
-// --- Convert string dateUpdated to Brunei local date and check against selected date ---
-function isOutForDeliveryOnDate(historyItem, dispatcher, dateStr) {
-    if (!historyItem || historyItem.statusHistory !== "Out for Delivery") return false;
-    if (historyItem.lastAssignedTo !== dispatcher) return false;
-
-    const d = new Date(historyItem.dateUpdated); // parse string
-    const localTime = new Date(d.getTime() + 8 * 60 * 60 * 1000); // Brunei UTC+8
+// --- Get latest Out for Delivery entry for a given date ---
+function getLatestOutForDelivery(history, dateStr) {
+    if (!Array.isArray(history)) return null;
 
     const selected = new Date(dateStr);
     selected.setHours(0, 0, 0, 0);
 
-    return localTime.getFullYear() === selected.getFullYear() &&
-        localTime.getMonth() === selected.getMonth() &&
-        localTime.getDate() === selected.getDate();
+    // Get only Out for Delivery entries for that date
+    const entries = history.filter(h => {
+        if (h.statusHistory !== "Out for Delivery" || !h.dateUpdated) return false;
+        const d = new Date(h.dateUpdated);
+        const localTime = new Date(d.getTime() + 8 * 60 * 60 * 1000); // UTC+8
+        return localTime.getFullYear() === selected.getFullYear() &&
+            localTime.getMonth() === selected.getMonth() &&
+            localTime.getDate() === selected.getDate();
+    });
+
+    if (entries.length === 0) return null;
+
+    // Pick the latest by dateUpdated
+    return entries.reduce((a, b) =>
+        new Date(a.dateUpdated) > new Date(b.dateUpdated) ? a : b
+    );
 }
 
 // --- Fetch dispatcher areas ---
@@ -890,9 +899,11 @@ app.post('/api/getDispatcherAreas', ensureAuthenticated, async (req, res) => {
         const { dispatcher, date } = req.body;
         if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
 
-        const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
-
-        const filtered = orders.filter(o => o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date)));
+        const orders = await ORDERS.find({}).lean();
+        const filtered = orders.filter(o => {
+            const latest = getLatestOutForDelivery(o.history, date);
+            return latest && latest.lastAssignedTo === dispatcher;
+        });
 
         const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
         const productCounts = filtered.reduce((acc, o) => {
@@ -913,8 +924,11 @@ app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) =
         const { dispatcher, date } = req.body;
         if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
 
-        const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
-        const filtered = orders.filter(o => o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date)));
+        const orders = await ORDERS.find({}).lean();
+        const filtered = orders.filter(o => {
+            const latest = getLatestOutForDelivery(o.history, date);
+            return latest && latest.lastAssignedTo === dispatcher;
+        });
 
         const totalOrders = filtered.length;
         const productCounts = filtered.reduce((acc, o) => {
@@ -937,11 +951,11 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
             return res.send('<p>Only Operation Morning Report supported.</p>');
         }
 
-        // --- Fetch orders for dispatcher ---
-        const orders = await ORDERS.find({ "history.lastAssignedTo": dispatcher }).lean();
-        const filtered = orders.filter(o =>
-            o.history.some(h => isOutForDeliveryOnDate(h, dispatcher, date))
-        );
+        const orders = await ORDERS.find({}).lean();
+        const filtered = orders.filter(o => {
+            const latest = getLatestOutForDelivery(o.history, date);
+            return latest && latest.lastAssignedTo === dispatcher;
+        });
 
         const total = filtered.length;
         const productCounts = filtered.reduce((acc, o) => {

@@ -742,12 +742,12 @@ Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
   }
 });
 
-// --- Reset Button ---
 resetBtn.addEventListener('click', ()=>{
   showLoading();
   setTimeout(()=>{
     clearReport();
-    formSection.classList.add('hidden');
+    morningReportSection.classList.add('hidden');
+    endOfDayReportSection.classList.add('hidden');
     reportTypeEl.value='';
     saveBtn.classList.add('hidden');
     printBtn.classList.add('hidden');
