@@ -5966,7 +5966,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                        statusHistory: "Out for Delivery",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
@@ -5999,7 +5999,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                        statusHistory: "Out for Delivery",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers,
@@ -6033,7 +6033,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                                        statusHistory: "Out for Delivery",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
@@ -6067,7 +6067,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 $push: {
                                     history: {
-                                        statusHistory: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                                        statusHistory: "Out for Delivery",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastAssignedTo: req.body.dispatchers,
