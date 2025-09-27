@@ -9529,7 +9529,7 @@ app.post('/reorder', ensureAuthenticated, async (req, res) => {
             appointmentPlace: order.appointmentPlace,
             deliveryTypeCode,
             dateTimeSubmission: moment().utcOffset('+08:00').format('DD-MM-YYYY hh:mm a'),
-            lastUpdateDateTime: moment().utcOffset('+08:00').format('DD-MM-YYYY hh:mm a'),
+            lastUpdateDateTime: moment().utcOffset('+08:00'),
             receiverPostalCode: order.receiverPostalCode,
             appointmentDistrict: order.appointmentDistrict,
             pharmacyFormCreated: "No",
