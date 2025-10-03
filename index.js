@@ -868,17 +868,18 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
 
+// --- Helper: get latest Out for Delivery / Self Collect entry (timezone-safe) ---
 function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
     if (!Array.isArray(history)) return null;
 
-    // Target Brunei date in UTC milliseconds
+    // Target Brunei date in UTC
     const selectedDate = new Date(`${bruneiDateStr}T00:00:00+08:00`);
 
     const entries = history
         .filter(h => (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") && h.dateUpdated)
         .filter(h => {
             const dateUpdated = new Date(h.dateUpdated);
-            // Brunei offset +8 hours
+            // Apply Brunei offset +8 hours
             const bruneiTime = new Date(dateUpdated.getTime() + 8 * 60 * 60 * 1000);
             return bruneiTime.getFullYear() === selectedDate.getFullYear() &&
                    bruneiTime.getMonth() === selectedDate.getMonth() &&
@@ -887,6 +888,7 @@ function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
 
     if (!entries.length) return null;
 
+    // Return the latest by dateUpdated
     return entries.reduce((a, b) => new Date(a.dateUpdated) > new Date(b.dateUpdated) ? a : b);
 }
 
@@ -919,25 +921,31 @@ app.post('/api/getDispatcherAreas', ensureAuthenticated, async (req, res) => {
     }
 });
 
+// --- Dispatcher Job Summary API (timezone-safe) ---
 app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) => {
     try {
         const { dispatcher, date } = req.body;
         if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
 
+        // Fetch orders for the selected jobDate
         const orders = await ORDERS.find({ jobDate: date }).lean();
 
-        const filtered = orders.map(o => {
-            const latest = getLatestOutForDeliveryEntry(o.history, date);
-            if (!latest) return null;
-            if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
-            return { ...o, latestOutForDelivery: latest };
-        }).filter(Boolean);
+        const filtered = orders
+            .map(o => {
+                const latest = getLatestOutForDeliveryEntry(o.history, date);
+                if (!latest) return null;
+                if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
+                return { ...o, latestOutForDelivery: latest };
+            })
+            .filter(Boolean);
 
         const totalOrders = filtered.length;
+
         const productCounts = filtered.reduce((acc, o) => {
             if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
             return acc;
         }, {});
+
         const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
 
         res.json({ totalOrders, productCounts, areas });
