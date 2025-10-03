@@ -868,29 +868,27 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
 
-// --- Get latest Out for Delivery entry for a given date ---
-function getLatestOutForDelivery(history, dateStr) {
+// --- Helper: get latest Out for Delivery / Self Collect entry ---
+function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
     if (!Array.isArray(history)) return null;
 
-    const selected = new Date(dateStr);
-    selected.setHours(0, 0, 0, 0);
+    const selected = new Date(`${bruneiDateStr}T00:00:00+08:00`);
 
-    // Get only Out for Delivery entries for that date
-    const entries = history.filter(h => {
-        if (h.statusHistory !== "Out for Delivery" || !h.dateUpdated) return false;
-        const d = new Date(h.dateUpdated);
-        const localTime = new Date(d.getTime() + 8 * 60 * 60 * 1000); // UTC+8
-        return localTime.getFullYear() === selected.getFullYear() &&
-            localTime.getMonth() === selected.getMonth() &&
-            localTime.getDate() === selected.getDate();
-    });
+    const entries = history
+        .filter(h => (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") && h.dateUpdated)
+        .map(h => ({
+            ...h,
+            bruneiDate: new Date(new Date(h.dateUpdated).toLocaleString("en-US", { timeZone: "Asia/Brunei" }))
+        }))
+        .filter(h =>
+            h.bruneiDate.getFullYear() === selected.getFullYear() &&
+            h.bruneiDate.getMonth() === selected.getMonth() &&
+            h.bruneiDate.getDate() === selected.getDate()
+        );
 
-    if (entries.length === 0) return null;
+    if (!entries.length) return null;
 
-    // Pick the latest by dateUpdated
-    return entries.reduce((a, b) =>
-        new Date(a.dateUpdated) > new Date(b.dateUpdated) ? a : b
-    );
+    return entries.reduce((a, b) => new Date(a.dateUpdated) > new Date(b.dateUpdated) ? a : b);
 }
 
 // --- Fetch dispatcher areas ---
@@ -899,17 +897,21 @@ app.post('/api/getDispatcherAreas', ensureAuthenticated, async (req, res) => {
         const { dispatcher, date } = req.body;
         if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
 
-        const orders = await ORDERS.find({}).lean();
-        const filtered = orders.filter(o => {
-            const latest = getLatestOutForDelivery(o.history, date);
-            return latest && latest.lastAssignedTo === dispatcher;
-        });
+        const orders = await ORDERS.find({ jobDate: date }).lean();
 
-        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
+        const filtered = orders.map(o => {
+            const latest = getLatestOutForDeliveryEntry(o.history, date);
+            if (!latest) return null;
+            if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
+            return { ...o, latestOutForDelivery: latest };
+        }).filter(Boolean);
+
         const productCounts = filtered.reduce((acc, o) => {
             if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
             return acc;
         }, {});
+
+        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
 
         res.json({ areas, totalOrders: filtered.length, productCounts });
     } catch (err) {
@@ -918,17 +920,19 @@ app.post('/api/getDispatcherAreas', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// --- Fetch dispatcher job summary ---
 app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) => {
     try {
         const { dispatcher, date } = req.body;
         if (!dispatcher || !date) return res.status(400).json({ error: 'Dispatcher and date are required' });
 
-        const orders = await ORDERS.find({}).lean();
-        const filtered = orders.filter(o => {
-            const latest = getLatestOutForDelivery(o.history, date);
-            return latest && latest.lastAssignedTo === dispatcher;
-        });
+        const orders = await ORDERS.find({ jobDate: date }).lean();
+
+        const filtered = orders.map(o => {
+            const latest = getLatestOutForDeliveryEntry(o.history, date);
+            if (!latest) return null;
+            if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
+            return { ...o, latestOutForDelivery: latest };
+        }).filter(Boolean);
 
         const totalOrders = filtered.length;
         const productCounts = filtered.reduce((acc, o) => {
@@ -951,11 +955,14 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
             return res.send('<p>Only Operation Morning Report supported.</p>');
         }
 
-        const orders = await ORDERS.find({}).lean();
-        const filtered = orders.filter(o => {
-            const latest = getLatestOutForDelivery(o.history, date);
-            return latest && latest.lastAssignedTo === dispatcher;
-        });
+        const orders = await ORDERS.find({ jobDate: date }).lean();
+
+        const filtered = orders.map(o => {
+            const latest = getLatestOutForDeliveryEntry(o.history, date);
+            if (!latest) return null;
+            if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
+            return { ...o, latestOutForDelivery: latest };
+        }).filter(Boolean);
 
         const total = filtered.length;
         const productCounts = filtered.reduce((acc, o) => {
@@ -964,7 +971,6 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
         }, {});
         const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
 
-        // --- Format date for header ---
         const d = new Date(date);
         const formattedDate = d.toLocaleDateString('en-GB').replace(/\//g, '.');
         const headerTitle = `Operation Morning Report ${formattedDate}`;
@@ -999,20 +1005,15 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
             mileageMap[m._id.toString()] = m.mileage;
         });
 
-        // --- Sort vehicles by latest mileage descending, N/A last ---
         const sortedVehicles = vehicles.sort((a, b) => {
             const mA = mileageMap[a._id.toString()];
             const mB = mileageMap[b._id.toString()];
-
-            if (mA === undefined) return 1; // N/A last
+            if (mA === undefined) return 1;
             if (mB === undefined) return -1;
-            return mB - mA; // descending
+            return mB - mA;
         });
 
-        // --- Build Assigned Job content ---
         let assignedJobContent = '';
-        let totalDelivery = total > 0 ? total : '';
-
         if (total > 0) {
             const productSummary = Object.entries(productCounts)
                 .map(([p, c]) => `${p} (${c})`).join(', ');
@@ -1028,7 +1029,6 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
 
         const areaContent = total > 0 ? (areas.join(', ') || 'N/A') : '';
 
-        // --- Build HTML ---
         const html = `
       <!-- Logo -->
       <div style="text-align:center; margin-bottom:10px;">
@@ -1089,9 +1089,130 @@ app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
     `;
 
         res.send(html);
+
     } catch (err) {
         console.error(err);
         res.status(500).send('Error generating report');
+    }
+});
+
+// Operation End of Day Report (POST)
+app.post('/api/endofday-report', async (req, res) => {
+    try {
+        const { date, user } = req.body;
+        if (!date) {
+            return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+        }
+
+        const startOfDay = moment(date, 'YYYY-MM-DD').startOf('day').toDate();
+        const endOfDay = moment(date, 'YYYY-MM-DD').endOf('day').toDate();
+
+        const reports = await Reports.find({
+            datetimeUpdated: { $gte: startOfDay, $lte: endOfDay }
+        }).lean();
+
+        if (!reports || reports.length === 0) {
+            return res.json({
+                title: `Operation End of Day Report ${moment(date).format('DD.MM.YYYY')}`,
+                staffs: []
+            });
+        }
+
+        const staffJobs = [];
+
+        // Logged-in user jobs
+        if (user) {
+            staffJobs.push({
+                name: user,
+                jobs: [
+                    'Assigned dispatchers and prepare for delivery',
+                    'Count COD from dispatchers'
+                ]
+            });
+        }
+
+        // Assigned dispatchers from reports
+        reports.forEach(report => {
+            if (Array.isArray(report.assignedDispatchers)) {
+                report.assignedDispatchers.forEach(d => {
+                    if (!d.dispatcherName) return;
+
+                    // If assignedJob is a string, normalize to array
+                    let jobs = [];
+                    if (typeof d.assignedJob === 'string') {
+                        jobs = [d.assignedJob];
+                    } else if (Array.isArray(d.assignedJob)) {
+                        jobs = d.assignedJob;
+                    }
+
+                    // Filter jobs (exclude "- Deliver ")
+                    const validJobs = jobs.filter(
+                        job => typeof job === 'string' && !job.includes('- Deliver ')
+                    );
+
+                    if (validJobs.length > 0) {
+                        staffJobs.push({
+                            name: d.dispatcherName,
+                            jobs: validJobs
+                        });
+                    }
+                });
+            }
+        });
+
+        res.json({
+            title: `Operation End of Day Report ${moment(date).format('DD.MM.YYYY')}`,
+            staffs: staffJobs
+        });
+
+    } catch (err) {
+        console.error('Error generating End of Day Report:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/getEndOfDaySummary', async (req, res) => {
+    const { date } = req.body;
+    if (!date) return res.status(400).json({ error: 'Date is required' });
+
+    try {
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+
+        // Find reports updated on that date
+        const reports = await REPORTS.find({
+            datetimeUpdated: { $gte: start, $lte: end }
+        });
+
+        // Process assignedDispatchers to exclude "- Deliver " jobs
+        const processedReports = reports.map(report => {
+            const filteredDispatchers = (report.assignedDispatchers || []).map(d => {
+                const filteredJobs = (d.assignedJob || '')
+                    .split('\n')
+                    .map(j => j.trim())
+                    .filter(j => j.length > 0 && !j.startsWith('- Deliver '));
+
+                if (filteredJobs.length === 0) return null;
+
+                return {
+                    dispatcherName: d.dispatcherName,
+                    assignedJob: filteredJobs.join('\n')
+                };
+            }).filter(Boolean); // remove null entries
+
+            return {
+                createdBy: report.createdBy,
+                assignedDispatchers: filteredDispatchers
+            };
+        }).filter(r => r.assignedDispatchers.length > 0); // remove empty reports
+
+        res.json({ success: true, reports: processedReports });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -1199,6 +1320,437 @@ app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch mileage' });
+    }
+});
+
+app.post('/api/generateEndOfDayDeliveryResult', async (req, res) => {
+    try {
+        const { date } = req.body;
+        if (!date) return res.status(400).json({ error: 'Date is required' });
+
+        const startOfDay = moment(date, 'YYYY-MM-DD').startOf('day').toDate();
+        const endOfDay = moment(date, 'YYYY-MM-DD').endOf('day').toDate();
+
+        // Fetch all orders that have history entries on that date
+        const orders = await ORDERS.find({}).lean();
+
+        // Map: dispatcher -> product -> counts
+        const dispatchersMap = {}; // { dispatcherName: { areaSet: Set(), productCounts: {}, completedCounts: {}, failedCounts: {}, total: number } }
+        const productsSet = new Set();
+
+        orders.forEach(order => {
+            if (!order.history || !order.lastAssignedTo) return;
+
+            const dispatcher = order.lastAssignedTo;
+
+            // Filter history entries for the given date
+            const historiesOnDate = order.history.filter(h => {
+                if (!h.dateUpdated || !h.statusHistory) return false;
+                const d = new Date(h.dateUpdated);
+                const localTime = new Date(d.getTime() + 8 * 60 * 60 * 1000); // UTC+8
+                return localTime >= startOfDay && localTime <= endOfDay;
+            });
+
+            if (!historiesOnDate.length) return;
+
+            // Initialize dispatcher map
+            if (!dispatchersMap[dispatcher]) {
+                dispatchersMap[dispatcher] = {
+                    areaSet: new Set(),
+                    productCounts: {},       // Current jobs (Out for Delivery / Self Collect)
+                    completedCounts: {},     // Completed
+                    failedCounts: {},        // Failed
+                    total: 0
+                };
+            }
+
+            // Update areas
+            if (order.area) dispatchersMap[dispatcher].areaSet.add(order.area);
+
+            // Update products set
+            if (order.product) productsSet.add(order.product);
+
+            historiesOnDate.forEach(h => {
+                const product = order.product || 'N/A';
+                const status = h.statusHistory;
+
+                // Current jobs
+                if (status === 'Out for Delivery' || status === 'Self Collect') {
+                    dispatchersMap[dispatcher].productCounts[product] = (dispatchersMap[dispatcher].productCounts[product] || 0) + 1;
+                    dispatchersMap[dispatcher].total += 1;
+                }
+
+                // Completed
+                if (status === 'Completed') {
+                    dispatchersMap[dispatcher].completedCounts[product] = (dispatchersMap[dispatcher].completedCounts[product] || 0) + 1;
+                }
+
+                // Failed
+                if (status === 'Failed Delivery') {
+                    dispatchersMap[dispatcher].failedCounts[product] = (dispatchersMap[dispatcher].failedCounts[product] || 0) + 1;
+                }
+            });
+        });
+
+        const products = Array.from(productsSet).sort(); // sort alphabetically
+
+        // Build HTML
+        let html = `
+      <h4 style="background-color: #d9f2d9; font-weight:bold; padding:5px;">2. Delivery Result</h4>
+      <table class="table table-bordered" style="border-collapse:collapse; width:100%; text-align:center;">
+        <thead>
+          <tr style="background-color: #d9f2d9; font-weight:bold;">
+            <th>Staff</th>
+            <th>Area</th>
+            ${products.map(p => `<th>${p}</th>`).join('')}
+            <th>Total</th>
+            <th rowspan="3">Success Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+        for (const [dispatcher, data] of Object.entries(dispatchersMap)) {
+            const areas = Array.from(data.areaSet).join(',');
+
+            // Current jobs row (same as Staff row)
+            const currentCounts = products.map(p => data.productCounts[p] || 0);
+            const totalJobs = currentCounts.reduce((a, b) => a + b, 0);
+
+            // Completed row
+            const completedCounts = products.map(p => data.completedCounts[p] || 0);
+            const totalCompleted = completedCounts.reduce((a, b) => a + b, 0);
+
+            // Failed row
+            const failedCounts = products.map(p => data.failedCounts[p] || 0);
+            const totalFailed = failedCounts.reduce((a, b) => a + b, 0);
+
+            // Success rate
+            const successRate = totalCompleted + totalFailed > 0
+                ? Math.round((totalCompleted / (totalCompleted + totalFailed)) * 100)
+                : 0;
+
+            html += `
+        <tr>
+          <td>${dispatcher}</td>
+          <td>${areas}</td>
+          ${currentCounts.map(c => `<td>${c}</td>`).join('')}
+          <td>${totalJobs}</td>
+          <td rowspan="3">${successRate}%</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-weight:bold;">Completed</td>
+          ${completedCounts.map(c => `<td>${c}</td>`).join('')}
+          <td>${totalCompleted}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-weight:bold;">Failed</td>
+          ${failedCounts.map(c => `<td>${c}</td>`).join('')}
+          <td>${totalFailed}</td>
+        </tr>
+      `;
+        }
+
+        html += '</tbody></table>';
+
+        res.send(html);
+    } catch (err) {
+        console.error('Error generating Delivery Result:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- Delivery Result Report ---
+app.get('/api/delivery-result-report', async (req, res) => {
+    try {
+        const { date } = req.query; // YYYY-MM-DD
+        if (!date) return res.status(400).json({ error: "Missing date" });
+
+        const start = new Date(date + "T00:00:00+08:00"); // Brunei time
+        const end = new Date(date + "T23:59:59+08:00");
+
+        // Fetch orders with jobDate matching the selected date
+        const orders = await ORDERS.find({
+            jobDate: date // direct string match, e.g., "2025-09-30"
+        }).lean();
+
+        // Fetch matching morning report for this date
+        const reportDateFormatted = new Date(date).toLocaleDateString("en-GB").replace(/\//g, "."); // 30.09.2025
+        const reportName = `Operation Morning Report ${reportDateFormatted}`;
+        const reportDoc = await REPORTS.findOne({ reportName }).lean();
+
+        // Map dispatcherName -> vehicle & area
+        const dispatcherMap = {};
+        if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
+            for (const d of reportDoc.assignedDispatchers) {
+                dispatcherMap[d.dispatcherName] = {
+                    vehicle: d.vehicle || "-",
+                    area: d.area || "-"
+                };
+            }
+        }
+
+        const staffMap = {};
+        const allProducts = new Set();
+
+        for (const order of orders) {
+            const product = order.product || "N/A";
+            allProducts.add(product);
+
+            // Filter histories within the date range
+            const histories = (order.history || [])
+                .filter(h => {
+                    const d = new Date(h.dateUpdated);
+                    return d >= start && d <= end;
+                });
+
+            // Deduplicate per date with rules (allow up to 2 per day: current + final)
+            const perDay = {};
+
+            histories.forEach(h => {
+                const d = new Date(h.dateUpdated);
+                const dateKey = d.toISOString().split('T')[0]; // YYYY-MM-DD
+
+                if (!perDay[dateKey]) {
+                    perDay[dateKey] = { current: null, final: null };
+                }
+
+                const existing = perDay[dateKey];
+
+                if (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") {
+                    // Keep only the latest current
+                    if (!existing.current || d > new Date(existing.current.dateUpdated)) {
+                        existing.current = h;
+                    }
+                } else if (h.statusHistory === "Completed" || h.statusHistory === "Failed Delivery") {
+                    // Keep only the latest final
+                    if (!existing.final || d > new Date(existing.final.dateUpdated)) {
+                        existing.final = h;
+                    }
+                }
+            });
+
+            // Flatten into list of histories to process
+            const dedupedHistories = [];
+            Object.values(perDay).forEach(({ current, final }) => {
+                if (current) dedupedHistories.push(current);
+                if (final) dedupedHistories.push(final);
+            });
+
+            // Process each deduped history
+            for (const h of dedupedHistories) {
+                const staff = h.lastAssignedTo || "Unassigned";
+                if (!staffMap[staff]) {
+                    staffMap[staff] = {
+                        products: {},
+                        totals: { current: 0, completed: 0, failed: 0 }
+                    };
+                }
+
+                if (!staffMap[staff].products[product]) {
+                    staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
+                }
+
+                if (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") {
+                    staffMap[staff].products[product].current += 1;
+                    staffMap[staff].totals.current += 1;
+                } else if (h.statusHistory === "Completed") {
+                    staffMap[staff].products[product].completed += 1;
+                    staffMap[staff].totals.completed += 1;
+                } else if (h.statusHistory === "Failed Delivery") {
+                    staffMap[staff].products[product].failed += 1;
+                    staffMap[staff].totals.failed += 1;
+                }
+            }
+        }
+
+        // Only keep products that have at least 1 count
+        const products = Array.from(allProducts).filter(p =>
+            Object.values(staffMap).some(data =>
+                data.products[p] &&
+                (data.products[p].current > 0 ||
+                    data.products[p].completed > 0 ||
+                    data.products[p].failed > 0)
+            )
+        );
+
+        const results = Object.entries(staffMap).map(([staff, data]) => {
+            const productCounts = {};
+            for (const p of products) {
+                productCounts[p] = data.products[p] || { current: 0, completed: 0, failed: 0 };
+            }
+            const total = data.totals.current + data.totals.completed + data.totals.failed;
+            const successRate =
+                data.totals.completed + data.totals.failed > 0
+                    ? Math.round(
+                        (data.totals.completed / (data.totals.completed + data.totals.failed)) *
+                        100
+                    )
+                    : 0;
+
+            // Vehicle & Area from REPORTS
+            let vehicle = "-";
+            let area = "-";
+            if (staff === "Selfcollect") {
+                area = "-"; // special case
+            } else if (dispatcherMap[staff]) {
+                vehicle = dispatcherMap[staff].vehicle;
+                area = dispatcherMap[staff].area;
+            }
+
+            return {
+                staff,
+                vehicle,
+                area,
+                productCounts,
+                totals: data.totals,
+                total,
+                successRate
+            };
+        });
+
+        res.json({ products, results });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+app.post('/api/cod-bt-collection', async (req, res) => {
+    try {
+        const { date } = req.body;
+        if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+
+        const orders = await ORDERS.find({
+            jobDate: date,
+            currentStatus: "Completed"
+        }).lean();
+
+        const productTotals = {};
+        orders.forEach(o => {
+            const amount = Number(o.totalPrice) || 0;
+            if (amount <= 0) return;
+
+            const pm = (o.paymentMethod || '').toLowerCase();
+            if (!['cash', 'bank transfer (bibd)', 'bank transfer (baiduri)', 'bill payment (bibd)'].includes(pm)) return;
+
+            const prod = o.product || 'N/A';
+            if (!productTotals[prod]) productTotals[prod] = { cash: 0, bt: 0, total: 0 };
+
+            if (pm === 'cash') {
+                productTotals[prod].cash += amount;
+                productTotals[prod].total += amount;
+            } else {
+                productTotals[prod].bt += amount;
+                productTotals[prod].total += amount;
+            }
+        });
+
+        const products = Object.keys(productTotals).filter(p => productTotals[p].total > 0).sort();
+        if (products.length === 0) return res.send('<p>No COD/BT data available for this date.</p>');
+
+        const staffMap = {};
+        orders.forEach(o => {
+            const amount = Number(o.totalPrice) || 0;
+            if (amount <= 0) return;
+
+            const pm = (o.paymentMethod || '').toLowerCase();
+            if (!['cash', 'bank transfer (bibd)', 'bank transfer (baiduri)', 'bill payment (bibd)'].includes(pm)) return;
+
+            let staff = o.assignedTo || "Unassigned";
+            if (!staffMap[staff]) staffMap[staff] = { products: {}, totalAll: 0 };
+
+            const prod = o.product || 'N/A';
+            if (!products.includes(prod)) return;
+            if (!staffMap[staff].products[prod]) staffMap[staff].products[prod] = { cash: 0, bt: 0, total: 0 };
+
+            if (pm === 'cash') {
+                staffMap[staff].products[prod].cash += amount;
+                staffMap[staff].products[prod].total += amount;
+                staffMap[staff].totalAll += amount;
+            } else {
+                staffMap[staff].products[prod].bt += amount;
+                staffMap[staff].products[prod].total += amount;
+                staffMap[staff].totalAll += amount;
+            }
+        });
+
+        const totalByProduct = {};
+        products.forEach(p => totalByProduct[p] = { total: 0, cash: 0, bt: 0 });
+        for (const staff of Object.keys(staffMap)) {
+            const data = staffMap[staff].products;
+            products.forEach(p => {
+                const vals = data[p] || { cash: 0, bt: 0, total: 0 };
+                totalByProduct[p].cash += vals.cash;
+                totalByProduct[p].bt += vals.bt;
+                totalByProduct[p].total += vals.total;
+            });
+        }
+
+        const selfcollect = staffMap['Selfcollect'];
+        if (selfcollect) delete staffMap['Selfcollect'];
+
+        let html = `
+  <table class="table table-bordered">
+    <thead>
+      <tr style="background-color: lightblue; font-weight: bold;">
+        <th colspan="${1 + products.length * 3}" style="text-align:left;">3. COD/BT Collection</th>
+      </tr>
+      <tr>
+        <th rowspan="2">Staff/Product</th>
+        ${products.map(p => `<th colspan="3">${p}</th>`).join('')}
+      </tr>
+      <tr>
+        ${products.map(_ => `<th>Total Amount</th><th>Cash</th><th>BT</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>
+`;
+
+        const staffNames = Object.keys(staffMap).sort();
+        for (const staff of staffNames) {
+            html += `<tr><td>${staff}</td>`;
+            const data = staffMap[staff].products;
+            products.forEach(p => {
+                const vals = data[p] || { total: 0, cash: 0, bt: 0 };
+                html += `<td>${vals.total}</td><td>${vals.cash}</td><td>${vals.bt}</td>`;
+            });
+            html += `</tr>`;
+        }
+
+        if (selfcollect) {
+            html += `<tr><td>Selfcollect</td>`;
+            products.forEach(p => {
+                const vals = selfcollect.products[p] || { total: 0, cash: 0, bt: 0 };
+                html += `<td>${vals.total}</td><td>${vals.cash}</td><td>${vals.bt}</td>`;
+            });
+            html += `</tr>`;
+        }
+
+        // Total row with light green background
+        html += `<tr style="font-weight:bold; background-color:#d4f4d4;"><td>Total</td>`;
+        products.forEach(p => {
+            const vals = totalByProduct[p];
+            html += `<td>${vals.total}</td><td>${vals.cash}</td><td>${vals.bt}</td>`;
+        });
+        html += `</tr>`;
+
+        const grandTotalCash = products.reduce((sum, p) => sum + totalByProduct[p].cash, 0);
+        const grandTotalBT = products.reduce((sum, p) => sum + totalByProduct[p].bt, 0);
+        const grandTotal = grandTotalCash + grandTotalBT;
+
+        // Grand Totals bold
+        html += `<tr><td>Grand Total Cash</td><td colspan="${products.length * 3}"><b>${grandTotalCash}</b></td></tr>`;
+        html += `<tr><td>Grand Total BT</td><td colspan="${products.length * 3}"><b>${grandTotalBT}</b></td></tr>`;
+        html += `<tr><td>Grand Total Cash and BT</td><td colspan="${products.length * 3}"><b>${grandTotal}</b></td></tr>`;
+
+        html += '</tbody></table>';
+
+        res.send(html);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -4778,7 +5330,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                 mongoDBrun = 2; */
 
-                newOrder = new ORDERS({
+                /* newOrder = new ORDERS({
                     area: area,
                     items: itemsArray, // Use the dynamically created items array
                     attempt: data.data.attempt,
@@ -4817,8 +5369,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     receiverPostalCode: postalCode,
                     jobType: data.data.type,
                     jobMethod: data.data.job_type,
-                });
-
+                }); */
 
                 /* update = {
                     currentStatus: "Return to Warehouse",
@@ -5038,7 +5589,21 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     area: area
                 } */
 
-                mongoDBrun = 1;
+                update = {
+                    /* paymentMethod: "Cash",
+                    totalPrice: data.data.payment_amount, */
+                    paymentAmount: data.data.payment_amount,
+                }
+
+                /* var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        total_price: data.data.payment_amount,
+                        payment_mode: "Cash"
+                    }
+                }; */
+
+                mongoDBrun = 2;
 
                 /* DetrackAPIrun = 1; */
 
@@ -5843,40 +6408,80 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                             mongoDBrun = 1;
                         } else {
-                            update = {
-                                area: finalArea,
-                                currentStatus: "Out for Delivery",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                attempt: data.data.attempt,
-                                jobDate: req.body.assignDate,
-                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                            if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                                update = {
+                                    area: finalArea,
+                                    currentStatus: "Out for Delivery",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    attempt: data.data.attempt,
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                    lastUpdatedBy: req.user.name,
+                                    paymentMethod: "Cash",
+                                    totalPrice: data.data.payment_amount,
+                                    paymentAmount: data.data.payment_amount,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Out for Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                            lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                        }
                                     }
                                 }
-                            }
+                                mongoDBrun = 2;
 
-                            mongoDBrun = 2;
+                            } else {
+                                update = {
+                                    area: finalArea,
+                                    currentStatus: "Out for Delivery",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    attempt: data.data.attempt,
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                    lastUpdatedBy: req.user.name,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Out for Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                            lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                        }
+                                    }
+                                }
+                                mongoDBrun = 2;
+                            }
                         }
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                status: "dispatched",
-                                zone: finalArea,
-                            }
-                        };
-
+                        if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                    status: "dispatched",
+                                    zone: finalArea,
+                                    total_price: data.data.payment_amount,
+                                    payment_mode: "Cash"
+                                }
+                            };
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                    status: "dispatched",
+                                    zone: finalArea,
+                                }
+                            };
+                        }
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
@@ -5923,41 +6528,83 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                             mongoDBrun = 1;
                         } else {
-                            update = {
-                                area: finalArea,
-                                currentStatus: "Out for Delivery",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: req.body.dispatchers,
-                                attempt: data.data.attempt,
-                                jobDate: req.body.assignDate,
-                                latestLocation: req.body.dispatchers,
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers,
-                                        reason: "N/A",
-                                        lastLocation: req.body.dispatchers,
+                            if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                                update = {
+                                    area: finalArea,
+                                    currentStatus: "Out for Delivery",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: req.body.dispatchers,
+                                    attempt: data.data.attempt,
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: req.body.dispatchers,
+                                    lastUpdatedBy: req.user.name,
+                                    paymentMethod: "Cash",
+                                    totalPrice: data.data.payment_amount,
+                                    paymentAmount: data.data.payment_amount,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Out for Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: req.body.dispatchers,
+                                            reason: "N/A",
+                                            lastLocation: req.body.dispatchers,
+                                        }
                                     }
                                 }
-                            }
 
-                            mongoDBrun = 2;
+                                mongoDBrun = 2;
+                            } else {
+                                update = {
+                                    area: finalArea,
+                                    currentStatus: "Out for Delivery",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: req.body.dispatchers,
+                                    attempt: data.data.attempt,
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: req.body.dispatchers,
+                                    lastUpdatedBy: req.user.name,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Out for Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: req.body.dispatchers,
+                                            reason: "N/A",
+                                            lastLocation: req.body.dispatchers,
+                                        }
+                                    }
+                                }
+
+                                mongoDBrun = 2;
+                            }
                         }
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                date: req.body.assignDate, // Get the Assign Date from the form
-                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                status: "dispatched",
-                                zone: finalArea,
-                            }
-                        };
-
+                        if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                    status: "dispatched",
+                                    zone: finalArea,
+                                    total_price: data.data.payment_amount,
+                                    payment_mode: "Cash"
+                                }
+                            };
+                        } else {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                                    status: "dispatched",
+                                    zone: finalArea,
+                                }
+                            };
+                        }
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                     }
 
@@ -6679,36 +7326,72 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 };
                             }
                         } else {
-                            update = {
-                                currentStatus: "Self Collect",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: "Selfcollect",
-                                jobDate: req.body.assignDate,
-                                latestLocation: "Go Rush Office",
-                                lastUpdatedBy: req.user.name,
-                                jobMethod: "Self Collect",
-                                $push: {
-                                    history: {
-                                        statusHistory: "Self Collect",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: "Selfcollect",
-                                        lastLocation: "Go Rush Office",
+                            if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                                update = {
+                                    currentStatus: "Self Collect",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: "Selfcollect",
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: "Go Rush Office",
+                                    lastUpdatedBy: req.user.name,
+                                    jobMethod: "Self Collect",
+                                    paymentMethod: "Cash",
+                                    totalPrice: data.data.payment_amount,
+                                    paymentAmount: data.data.payment_amount,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Self Collect",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: "Selfcollect",
+                                            lastLocation: "Go Rush Office",
+                                        }
                                     }
                                 }
-                            }
 
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                                    status: "dispatched", // Use the calculated dStatus
-                                    job_type: "Self Collect"
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        date: req.body.assignDate, // Get the Assign Date from the form
+                                        assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                        status: "dispatched", // Use the calculated dStatus
+                                        job_type: "Self Collect",
+                                        total_price: data.data.payment_amount,
+                                        payment_mode: "Cash"
+                                    }
+                                };
+                            } else {
+                                update = {
+                                    currentStatus: "Self Collect",
+                                    lastUpdateDateTime: moment().format(),
+                                    instructions: data.data.remarks,
+                                    assignedTo: "Selfcollect",
+                                    jobDate: req.body.assignDate,
+                                    latestLocation: "Go Rush Office",
+                                    lastUpdatedBy: req.user.name,
+                                    jobMethod: "Self Collect",
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Self Collect",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: "Selfcollect",
+                                            lastLocation: "Go Rush Office",
+                                        }
+                                    }
                                 }
-                            };
 
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        date: req.body.assignDate, // Get the Assign Date from the form
+                                        assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                        status: "dispatched", // Use the calculated dStatus
+                                        job_type: "Self Collect"
+                                    }
+                                };
+                            }
                         }
 
                         portalUpdate = "Portal and Detrack status updated for Self Collect. ";

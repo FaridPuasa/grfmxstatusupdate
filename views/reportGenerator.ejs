@@ -291,7 +291,7 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
         </select>
       </div>
       <div class="col-md-3">
-        <label for="assignedJob" class="form-label">Assigned Job</label>
+        <label for="assignedJob" class="form-label">Assigned Task</label>
         <textarea id="assignedJob" class="form-control" rows="3" placeholder="Enter one or more jobs, each in a new line"></textarea>
       </div>
     </div>
@@ -318,27 +318,34 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
 </div>
 
 <div id="endOfDayReportSection" class="hidden">
-  <form id="endOfDayForm">
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <label for="endReportDate" class="form-label">Date</label>
-        <input type="date" id="endReportDate" name="endReportDate" class="form-control" required>
+  <div id="reportContainer">
+    <form id="endOfDayForm">
+      <div class="row mb-3">
+        <div class="col-md-3">
+          <label for="endReportDate" class="form-label">Date</label>
+          <input type="date" id="endReportDate" name="endReportDate" class="form-control" required>
+        </div>
       </div>
-    </div>
-    <div class="mb-3">
-      <button type="button" class="btn btn-primary" id="endGenerateBtn">Generate</button>
-      <button type="button" class="btn btn-success hidden" id="endSaveBtn" disabled>Save</button>
-      <button type="button" class="btn btn-secondary hidden" id="endPrintBtn">Print</button>
-      <button type="button" class="btn btn-danger hidden" id="endResetBtn">Reset</button>
-    </div>
-  </form>
+      <div class="mb-3">
+        <button type="button" class="btn btn-primary" id="endGenerateBtn">Generate</button>
+        <button type="button" class="btn btn-success hidden" id="endSaveBtn" disabled>Save</button>
+        <button type="button" class="btn btn-secondary hidden" id="endPrintBtn">Print</button>
+        <button type="button" class="btn btn-danger hidden" id="endResetBtn">Reset</button>
+      </div>
+    </form>
 
-  <!-- End of Day Report Parts -->
-  <div id="endReportLogoHeader" class="text-center mb-3"></div>
-  <table id="endStaffJobsTable" class="table table-bordered">
-    <thead id="endStaffJobsHeader"></thead>
-    <tbody></tbody>
-  </table>
+    <!-- End of Day Report Parts -->
+    <div id="endReportLogoHeader" class="text-center mb-3"></div>
+    <table id="endStaffJobsTable" class="table table-bordered">
+      <thead id="endStaffJobsHeader"></thead>
+      <tbody></tbody>
+    </table>
+
+    <table id="endDeliveryResultTable" border="1">
+      <thead id="endDeliveryResultHeader"></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 <div id="loadingSpinner" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.7); z-index:9999; justify-content: center; align-items: center;">
@@ -424,11 +431,11 @@ generateBtn.addEventListener('click', async () => {
 
     // Dispatcher Assigned Jobs Header
     dispatcherJobsHeader.innerHTML = `
-      <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="6">Dispatcher Assigned Jobs</th></tr>
+      <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="6">Dispatcher Assigned Tasks</th></tr>
       <tr>
         <th>Vehicle No.</th>
         <th>Dispatcher</th>
-        <th>Assigned Job</th>
+        <th>Assigned Task</th>
         <th>Area</th>
         <th>Total Delivery</th>
         <th>Action</th>
@@ -754,6 +761,370 @@ resetBtn.addEventListener('click', ()=>{
     resetBtn.classList.add('hidden');
     hideLoading();
   },100);
+});
+
+const endGenerateBtn = document.getElementById('endGenerateBtn');
+const endSaveBtn = document.getElementById('endSaveBtn');
+const endPrintBtn = document.getElementById('endPrintBtn');
+const endResetBtn = document.getElementById('endResetBtn');
+
+const endReportLogoHeader = document.getElementById('endReportLogoHeader');
+const endStaffJobsTable = document.getElementById('endStaffJobsTable');
+const endStaffJobsHeader = document.getElementById('endStaffJobsHeader');
+
+endGenerateBtn.addEventListener('click', async () => {
+  const endReportDate = document.getElementById('endReportDate').value;
+  if (!endReportDate) { alert('Please pick a date'); return; }
+
+  try {
+    const res = await fetch('/api/getEndOfDaySummary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: endReportDate })
+    });
+
+    const data = await res.json();
+    if (!data.success) { alert('Failed to fetch report'); return; }
+
+    const formattedDate = new Date(endReportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
+    const reportTitle = `Operation End of Day Report ${formattedDate}`;
+
+    // Logo + Title
+endReportLogoHeader.innerHTML = `
+  <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
+  <h2>${reportTitle}</h2>
+`;
+
+    // Table header (Staff's Jobs, left-aligned)
+endStaffJobsHeader.innerHTML = `
+  <tr style="background:lightblue;font-weight:bold;">
+    <th colspan="2" style="text-align:left;">1. Staff's Tasks</th>
+  </tr>
+  <tr>
+    <th>Staff Name</th>
+    <th>Assigned Task</th>
+  </tr>
+`;
+
+    // Table body
+    const tbody = endStaffJobsTable.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    data.reports.forEach(report => {
+      // Staff row (currently logged-in user)
+      const staffRow = document.createElement('tr');
+      staffRow.innerHTML = `
+        <td contenteditable="true">${userId}</td>
+        <td contenteditable="true" style="white-space: pre-line;">- Assigned dispatchers and prepare for delivery
+- Count COD from dispatchers</td>
+      `;
+      tbody.appendChild(staffRow);
+
+      // Dispatcher rows
+      report.assignedDispatchers.forEach(d => {
+        const filteredJobs = d.assignedJob
+          .split('\n')
+          .filter(line => !line.startsWith('- Deliver '))
+          .join('\n');
+
+        if (filteredJobs.trim().length === 0) return; // skip if no other jobs
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td contenteditable="true">${d.dispatcherName}</td>
+          <td contenteditable="true" style="white-space: pre-line;">${filteredJobs}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    });
+
+    await loadDeliveryResult(endReportDate);
+    await loadCodBtCollection(endReportDate);
+
+  } catch (err) {
+    console.error(err);
+    alert('Error fetching report');
+  }
+});
+
+async function loadDeliveryResult(date) {
+  const reportContainer = document.getElementById('reportContainer');
+  if (!reportContainer) return console.error('reportContainer element not found in DOM.');
+
+  try {
+    const res = await fetch(`/api/delivery-result-report?date=${date}`);
+    const { products, results } = await res.json();
+
+    // Spacer
+    const spacer = document.createElement("div");
+    spacer.style.marginTop = "30px";
+    reportContainer.appendChild(spacer);
+
+    // Table
+    const table = document.createElement("table");
+    table.className = "table table-bordered";
+
+    // Table header
+    const thead = document.createElement("thead");
+
+    const headerRow = document.createElement("tr");
+    headerRow.style.backgroundColor = "lightblue";
+    headerRow.style.fontWeight = "bold";
+    const headerCell = document.createElement("th");
+    headerCell.colSpan = 2 + products.length + 4;
+    headerCell.style.textAlign = "left";
+    headerCell.innerText = "2. Job Result";
+    headerRow.appendChild(headerCell);
+    thead.appendChild(headerRow);
+
+    const colRow = document.createElement("tr");
+    ["Staff", "Area", "Vehicle", "Jobs", ...products, "Total", "Success Rate"].forEach(h => {
+      const th = document.createElement("th");
+      th.innerText = h;
+      colRow.appendChild(th);
+    });
+    thead.appendChild(colRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    const filteredResults = results
+      .filter(r => r.staff !== "N/A" && r.staff !== "Unassigned")
+      .sort((a, b) => (a.staff === "Selfcollect" ? 1 : b.staff === "Selfcollect" ? -1 : 0));
+
+    filteredResults.forEach(r => {
+      const tdSR = document.createElement("td"); // Success Rate cell, rowspan=3
+      tdSR.rowSpan = 3;
+      tdSR.contentEditable = false;
+
+      const rowCells = {}; // product -> {current, completed, failed}
+
+      ["current", "completed", "failed"].forEach((type, idx) => {
+        const row = document.createElement("tr");
+
+        // Staff, Area, Vehicle
+        if (idx === 0) {
+          const tdStaff = document.createElement("td");
+          tdStaff.rowSpan = 3;
+          tdStaff.innerText = r.staff;
+          row.appendChild(tdStaff);
+
+          const tdArea = document.createElement("td");
+          tdArea.rowSpan = 3;
+          tdArea.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
+          row.appendChild(tdArea);
+
+          const tdVehicle = document.createElement("td");
+          tdVehicle.rowSpan = 3;
+          tdVehicle.innerText = r.vehicle || "-";
+          row.appendChild(tdVehicle);
+        }
+
+        // Jobs column
+        const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
+        const tdJobs = document.createElement("td");
+        tdJobs.innerText = displayNames[type];
+        tdJobs.style.fontWeight = "bold";
+        row.appendChild(tdJobs);
+
+        // Product cells
+        const productTds = [];
+        products.forEach((p, i) => {
+          const td = document.createElement("td");
+          td.contentEditable = true;
+          td.innerText = r.productCounts[p][type];
+
+          if (!rowCells[p]) rowCells[p] = {};
+          rowCells[p][type] = td;
+
+          // Initial highlight if value exists
+          if (type === "completed" && parseInt(td.innerText) > 0) td.style.backgroundColor = "#d4f4d4";
+          if (type === "failed" && parseInt(td.innerText) > 0) td.style.backgroundColor = "#f4d4d4";
+
+          // Add input listener to dynamically highlight on change
+          td.addEventListener("input", () => {
+            const val = parseInt(td.innerText) || 0;
+            if (type === "completed") td.style.backgroundColor = val > 0 ? "#d4f4d4" : "";
+            if (type === "failed") td.style.backgroundColor = val > 0 ? "#f4d4d4" : "";
+
+            // Assigned row constraint: Assigned >= Completed + Failed
+            if (type === "current") {
+              const completedVal = parseInt(rowCells[p]["completed"]?.innerText || 0);
+              const failedVal = parseInt(rowCells[p]["failed"]?.innerText || 0);
+              if (val < completedVal + failedVal) td.innerText = completedVal + failedVal;
+            }
+
+            calculateTotal();
+          });
+
+          row.appendChild(td);
+          productTds.push(td);
+        });
+
+        // Total column
+        const tdTotal = document.createElement("td");
+        const calculateTotal = () => {
+          const total = productTds.reduce((sum, td) => sum + (parseInt(td.innerText) || 0), 0);
+          tdTotal.innerText = total;
+
+          // Highlight Total column only if value > 0
+          if (type === "completed" && total > 0) tdTotal.style.backgroundColor = "#d4f4d4";
+          else if (type === "failed" && total > 0) tdTotal.style.backgroundColor = "#f4d4d4";
+          else tdTotal.style.backgroundColor = "";
+
+          // Calculate Success Rate
+          let completedTotal = 0;
+          let assignedTotal = 0;
+          products.forEach(p => {
+            const c = parseInt(rowCells[p]["completed"]?.innerText || 0);
+            const a = parseInt(rowCells[p]["current"]?.innerText || 0);
+            completedTotal += c;
+            assignedTotal += a;
+          });
+          const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
+          tdSR.innerText = successRate + "%";
+          tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
+        };
+        calculateTotal();
+        row.appendChild(tdTotal);
+
+        // Append Success Rate to first row
+        if (idx === 0) row.appendChild(tdSR);
+
+        tbody.appendChild(row);
+      });
+    });
+
+    table.appendChild(tbody);
+    reportContainer.appendChild(table);
+    
+  } catch (err) {
+    console.error('Error loading delivery results:', err);
+  }
+}
+
+async function loadCodBtCollection(date) {
+  try {
+    const res = await fetch('/api/cod-bt-collection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date })
+    });
+
+    const html = await res.text(); // get as text, not JSON
+    const reportContainer = document.getElementById('reportContainer');
+    if (!reportContainer) return console.error('reportContainer not found');
+
+    // Spacer
+    const spacer = document.createElement("div");
+    spacer.style.marginTop = "30px";
+    reportContainer.appendChild(spacer);
+
+    // Insert HTML
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    reportContainer.appendChild(wrapper);
+
+  } catch (err) {
+    console.error('Error loading COD/BT Collection:', err);
+  }
+}
+
+endSaveBtn.addEventListener('click', async () => {
+  if (endStaffJobsBody.children.length === 0) { alert('No report to save'); return; }
+  showLoading();
+
+  const dateStr = document.getElementById('endReportDate').value;
+  const formattedDate = new Date(dateStr).toLocaleDateString('en-GB').replace(/\//g, '.');
+  const reportName = `Operation End of Day Report ${formattedDate}`;
+
+  // Build assignedDispatchers array from table
+  const assignedDispatchers = Array.from(endStaffJobsBody.querySelectorAll('tr')).map(row => ({
+    dispatcherName: row.children[0]?.innerText.trim(),
+    delivered: parseInt(row.children[1]?.innerText || 0, 10),
+    pending: parseInt(row.children[2]?.innerText || 0, 10),
+    failed: parseInt(row.children[3]?.innerText || 0, 10),
+    remarks: row.children[4]?.innerText.trim()
+  }));
+
+  const reportHTML = `
+    <div>${endReportLogoHeader.outerHTML}</div>
+    <div>${endStaffJobsTable.outerHTML}</div>
+  `;
+
+  try {
+    const res = await fetch('/api/saveReport', {  // 👈 Use same save API
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reportType: 'Operation End of Day Report',
+        reportContent: reportHTML,
+        reportName,
+        createdBy: "<%= user.name %>",
+        assignedDispatchers
+      })
+    });
+    const result = await res.json();
+    if(result.success) {
+      alert('End of Day report saved!');
+      endPrintBtn.classList.remove('hidden');
+    } else {
+      alert('Failed to save report');
+    }
+  } catch(err){
+    console.error(err);
+    alert('Error saving report');
+  } finally { hideLoading(); }
+});
+
+endPrintBtn.addEventListener('click', () => {
+  showLoading();
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
+  const cloneTable = endStaffJobsTable.cloneNode(true);
+
+  // Remove Action column
+  Array.from(cloneTable.querySelectorAll('tr')).forEach(tr => {
+    const cells = tr.children;
+    if(cells.length > 1) tr.removeChild(cells[cells.length-1]);
+  });
+
+  const style = `
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      h2 { text-align: center; margin-bottom: 20px; }
+      table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+      th, td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; }
+      th { font-weight: bold; background: yellow; }
+    </style>
+  `;
+
+  printWindow.document.write(`
+    <html>
+      <head><title>${window.currentReportName}</title>${style}</head>
+      <body>
+        ${endReportLogoHeader.outerHTML}
+        ${cloneTable.outerHTML}
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  hideLoading();
+});
+
+endResetBtn.addEventListener('click', () => {
+  showLoading();
+  setTimeout(() => {
+    endStaffJobsTable.querySelector('tbody').innerHTML = '';
+    endReportLogoHeader.innerHTML = '';
+    document.getElementById('endReportDate').value = '';
+    endSaveBtn.classList.add('hidden');
+    endPrintBtn.classList.add('hidden');
+    endResetBtn.classList.add('hidden');
+    hideLoading();
+  }, 100);
 });
 
 </script>
