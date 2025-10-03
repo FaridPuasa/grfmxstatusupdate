@@ -868,23 +868,22 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
 
-// --- Helper: get latest Out for Delivery / Self Collect entry ---
 function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
     if (!Array.isArray(history)) return null;
 
-    const selected = new Date(`${bruneiDateStr}T00:00:00+08:00`);
+    // Target Brunei date in UTC milliseconds
+    const selectedDate = new Date(`${bruneiDateStr}T00:00:00+08:00`);
 
     const entries = history
         .filter(h => (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") && h.dateUpdated)
-        .map(h => ({
-            ...h,
-            bruneiDate: new Date(new Date(h.dateUpdated).toLocaleString("en-US", { timeZone: "Asia/Brunei" }))
-        }))
-        .filter(h =>
-            h.bruneiDate.getFullYear() === selected.getFullYear() &&
-            h.bruneiDate.getMonth() === selected.getMonth() &&
-            h.bruneiDate.getDate() === selected.getDate()
-        );
+        .filter(h => {
+            const dateUpdated = new Date(h.dateUpdated);
+            // Brunei offset +8 hours
+            const bruneiTime = new Date(dateUpdated.getTime() + 8 * 60 * 60 * 1000);
+            return bruneiTime.getFullYear() === selectedDate.getFullYear() &&
+                   bruneiTime.getMonth() === selectedDate.getMonth() &&
+                   bruneiTime.getDate() === selectedDate.getDate();
+        });
 
     if (!entries.length) return null;
 
@@ -10256,14 +10255,14 @@ const queue = [];
 let isProcessing = false;
 
 // Watch for new order inserts
-orderWatch.on('change', async (change) => {
+/* orderWatch.on('change', async (change) => {
     if (change.operationType === "insert") {
         queue.push(change);
         if (!isProcessing) {
             processQueue();
         }
     }
-});
+}); */
 
 async function processQueue() {
     isProcessing = true;
