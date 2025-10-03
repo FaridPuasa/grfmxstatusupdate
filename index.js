@@ -933,6 +933,7 @@ app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) =
         const filtered = orders
             .map(o => {
                 const latest = getLatestOutForDeliveryEntry(o.history, date);
+                console.log('Latest entry for order', o._id, latest);
                 if (!latest) return null;
                 if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
                 return { ...o, latestOutForDelivery: latest };
