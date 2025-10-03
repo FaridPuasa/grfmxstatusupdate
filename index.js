@@ -10255,14 +10255,14 @@ const queue = [];
 let isProcessing = false;
 
 // Watch for new order inserts
-/* orderWatch.on('change', async (change) => {
+orderWatch.on('change', async (change) => {
     if (change.operationType === "insert") {
         queue.push(change);
         if (!isProcessing) {
             processQueue();
         }
     }
-}); */
+});
 
 async function processQueue() {
     isProcessing = true;
