@@ -860,10 +860,10 @@ async function checkAndUpdateEmptyAreaOrders() {
 }
 
 setInterval(checkActiveDeliveriesStatus, 600000);
-checkActiveDeliveriesStatus(); // Run once on server start
 setInterval(checkStaleInfoReceivedJobs, 86400000);
-checkStaleInfoReceivedJobs();
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
+checkActiveDeliveriesStatus();
+checkStaleInfoReceivedJobs();
 checkAndUpdateEmptyAreaOrders();
 
 // --- Utility: normalize Mongo date field (string or {$date}) ---
