@@ -1512,10 +1512,13 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const dispatcherMap = {};
         if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
             for (const d of reportDoc.assignedDispatchers) {
-                dispatcherMap[d.dispatcherName] = {
-                    vehicle: d.vehicle || "-",
-                    area: d.area || "-"
-                };
+                const names = d.dispatcherName.split('/').map(n => n.trim());
+                names.forEach(name => {
+                    dispatcherMap[name] = {
+                        vehicle: d.vehicle || "-",
+                        area: d.area || "-"
+                    };
+                });
             }
         }
 
@@ -1620,15 +1623,24 @@ app.get('/api/delivery-result-report', async (req, res) => {
             // Vehicle & Area from REPORTS
             let vehicle = "-";
             let area = "-";
+            let reportStaffName = staff; // fallback to single staff name
+
             if (staff === "Selfcollect") {
                 area = "-"; // special case
-            } else if (dispatcherMap[staff]) {
-                vehicle = dispatcherMap[staff].vehicle;
-                area = dispatcherMap[staff].area;
+            } else if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
+                // Find dispatcher entry whose dispatcherName contains staff
+                const dispatcherEntry = reportDoc.assignedDispatchers.find(d =>
+                    d.dispatcherName.includes(staff)
+                );
+                if (dispatcherEntry) {
+                    vehicle = dispatcherEntry.vehicle || "-";
+                    area = dispatcherEntry.area || "-";
+                    reportStaffName = dispatcherEntry.dispatcherName; // use multi-name
+                }
             }
 
             return {
-                staff,
+                staff: reportStaffName, // <-- this will appear on frontend
                 vehicle,
                 area,
                 productCounts,
@@ -1650,11 +1662,18 @@ app.post('/api/cod-bt-collection', async (req, res) => {
         const { date } = req.body;
         if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
 
+        // Fetch orders for the date
         const orders = await ORDERS.find({
             jobDate: date,
             currentStatus: "Completed"
         }).lean();
 
+        // Fetch morning report for the same date
+        const reportDateFormatted = new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".");
+        const reportName = `Operation Morning Report ${reportDateFormatted}`;
+        const reportDoc = await REPORTS.findOne({ reportName }).lean();
+
+        // Aggregate total per product
         const productTotals = {};
         orders.forEach(o => {
             const amount = Number(o.totalPrice) || 0;
@@ -1678,6 +1697,7 @@ app.post('/api/cod-bt-collection', async (req, res) => {
         const products = Object.keys(productTotals).filter(p => productTotals[p].total > 0).sort();
         if (products.length === 0) return res.send('<p>No COD/BT data available for this date.</p>');
 
+        // Aggregate per staff
         const staffMap = {};
         orders.forEach(o => {
             const amount = Number(o.totalPrice) || 0;
@@ -1686,7 +1706,15 @@ app.post('/api/cod-bt-collection', async (req, res) => {
             const pm = (o.paymentMethod || '').toLowerCase();
             if (!['cash', 'bank transfer (bibd)', 'bank transfer (baiduri)', 'bill payment (bibd)'].includes(pm)) return;
 
+            // Use multi-name from REPORTS if exists
             let staff = o.assignedTo || "Unassigned";
+            if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
+                const matchingDispatcher = reportDoc.assignedDispatchers.find(d =>
+                    d.dispatcherName.includes(staff)
+                );
+                if (matchingDispatcher) staff = matchingDispatcher.dispatcherName;
+            }
+
             if (!staffMap[staff]) staffMap[staff] = { products: {}, totalAll: 0 };
 
             const prod = o.product || 'N/A';
@@ -1704,6 +1732,7 @@ app.post('/api/cod-bt-collection', async (req, res) => {
             }
         });
 
+        // Total per product
         const totalByProduct = {};
         products.forEach(p => totalByProduct[p] = { total: 0, cash: 0, bt: 0 });
         for (const staff of Object.keys(staffMap)) {
@@ -1716,9 +1745,11 @@ app.post('/api/cod-bt-collection', async (req, res) => {
             });
         }
 
+        // Handle Selfcollect separately
         const selfcollect = staffMap['Selfcollect'];
         if (selfcollect) delete staffMap['Selfcollect'];
 
+        // Build HTML table
         let html = `
   <table class="table table-bordered">
     <thead>
