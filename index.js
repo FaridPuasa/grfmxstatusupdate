@@ -368,9 +368,6 @@ async function checkStaleInfoReceivedJobs() {
     }
 }
 
-setInterval(checkStaleInfoReceivedJobs, 86400000);
-checkStaleInfoReceivedJobs();
-
 async function checkActiveDeliveriesStatus() {
     try {
         const activeOrders = await ORDERS.find(
@@ -459,9 +456,6 @@ async function checkActiveDeliveriesStatus() {
         console.error('Watcher encountered an error:', error);
     }
 }
-
-setInterval(checkActiveDeliveriesStatus, 600000);
-checkActiveDeliveriesStatus(); // Run once on server start
 
 // Function 2: Check and Update Orders with Empty Area
 async function checkAndUpdateEmptyAreaOrders() {
@@ -865,6 +859,10 @@ async function checkAndUpdateEmptyAreaOrders() {
     }
 }
 
+setInterval(checkActiveDeliveriesStatus, 600000);
+checkActiveDeliveriesStatus(); // Run once on server start
+setInterval(checkStaleInfoReceivedJobs, 86400000);
+checkStaleInfoReceivedJobs();
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkAndUpdateEmptyAreaOrders();
 
@@ -876,11 +874,8 @@ function normalizeDate(raw) {
     return new Date(raw); // fallback
 }
 
-// --- Helper: get latest Out for Delivery / Self Collect entry (timezone-safe) ---
 function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
     if (!Array.isArray(history)) return null;
-
-    const selectedDate = new Date(`${bruneiDateStr}T00:00:00+08:00`);
 
     const entries = history
         .filter(
@@ -890,28 +885,24 @@ function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
                 h.dateUpdated
         )
         .map(h => {
-            const dateUpdated = normalizeDate(h.dateUpdated);
-            return { ...h, _normalizedDate: dateUpdated };
+            const dt = normalizeDate(h.dateUpdated);
+            if (!dt || isNaN(dt)) return null;
+
+            // Convert to Brunei time
+            const bruneiTime = new Date(dt.getTime() + 8 * 60 * 60 * 1000);
+
+            // Convert to YYYY-MM-DD string
+            const yyyy = bruneiTime.getFullYear();
+            const mm = String(bruneiTime.getMonth() + 1).padStart(2, "0");
+            const dd = String(bruneiTime.getDate()).padStart(2, "0");
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            return { ...h, _bruneiDateStr: dateStr, _normalizedDate: dt };
         })
-        .filter(h => {
-            const dateUpdated = h._normalizedDate;
-            if (!dateUpdated || isNaN(dateUpdated)) return false;
-
-            // Adjust to Brunei timezone (+8)
-            const bruneiTime = new Date(
-                dateUpdated.getTime() + 8 * 60 * 60 * 1000
-            );
-
-            return (
-                bruneiTime.getFullYear() === selectedDate.getFullYear() &&
-                bruneiTime.getMonth() === selectedDate.getMonth() &&
-                bruneiTime.getDate() === selectedDate.getDate()
-            );
-        });
+        .filter(h => h && h._bruneiDateStr === bruneiDateStr);
 
     if (!entries.length) return null;
 
-    // Return the latest entry by normalized date
     return entries.reduce((a, b) =>
         a._normalizedDate > b._normalizedDate ? a : b
     );
