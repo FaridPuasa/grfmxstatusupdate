@@ -785,6 +785,43 @@ resetBtn.addEventListener('click', ()=>{
     return await res.json();
   }
 
+  // --- Universal Save Handler ---
+  async function handleSave({ reportType, reportDate, reportContent, assignedDispatchers, saveBtn, printBtn, resetBtn }) {
+    if (!reportDate) return alert("Please select a date first.");
+
+    const reportName = `${reportType} ${reportDate}`;
+    let response = await saveReportToServer({
+      reportType,
+      reportName,
+      reportContent,
+      assignedDispatchers,
+    });
+
+    // Duplicate? Ask to replace
+    if (response.duplicate) {
+      if (confirm(`A ${reportType} already exists for ${reportDate}. Replace it?`)) {
+        response = await saveReportToServer({
+          reportType,
+          reportName,
+          reportContent,
+          assignedDispatchers,
+          forceReplace: true,
+        });
+        if (response.success) alert("Report replaced successfully.");
+        else alert(response.message || "Failed to replace report.");
+      } else return;
+    } else if (response.success) {
+      alert("Report saved successfully.");
+    } else {
+      return alert(response.message || "Failed to save report.");
+    }
+
+    // After save success
+    saveBtn.classList.add("hidden");
+    printBtn.classList.remove("hidden");
+    resetBtn.classList.remove("hidden");
+  }
+
 function handleReset({ sectionId, saveBtn, printBtn, resetBtn }) {
   if (!confirm("Are you sure you want to reset this report?")) return;
 
