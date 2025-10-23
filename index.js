@@ -908,6 +908,7 @@ function getLatestOutForDeliveryEntry(history, bruneiDateStr) {
     );
 }
 
+//yes
 app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) => {
     try {
         const { dispatcher, date } = req.body;
@@ -940,263 +941,6 @@ app.post('/api/getDispatcherJobSummary', ensureAuthenticated, async (req, res) =
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch job summary' });
-    }
-});
-
-app.post('/api/getDispatcherAreas', ensureAuthenticated, async (req, res) => {
-    try {
-        const { dispatcher, date } = req.body;
-        if (!dispatcher || !date) {
-            return res.status(400).json({ error: 'Dispatcher and date are required' });
-        }
-
-        const orders = await ORDERS.find({ jobDate: date }).lean();
-
-        const filtered = orders
-            .map(o => {
-                const latest = getLatestOutForDeliveryEntry(o.history, date);
-                if (!latest) return null;
-                if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
-                return { ...o, latestOutForDelivery: latest };
-            })
-            .filter(Boolean);
-
-        const productCounts = filtered.reduce((acc, o) => {
-            if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
-            return acc;
-        }, {});
-
-        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
-
-        res.json({ areas, totalOrders: filtered.length, productCounts });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to fetch areas' });
-    }
-});
-
-app.post('/api/generateReport', ensureAuthenticated, async (req, res) => {
-    try {
-        const { reportType, date, dispatcher, car, assignedJob } = req.body;
-        if (reportType !== 'Operation Morning Report') {
-            return res.send('<p>Only Operation Morning Report supported.</p>');
-        }
-
-        const orders = await ORDERS.find({ jobDate: date }).lean();
-
-        const filtered = orders
-            .map(o => {
-                const latest = getLatestOutForDeliveryEntry(o.history, date);
-                if (!latest) return null;
-                if (dispatcher && latest.lastAssignedTo !== dispatcher) return null;
-                return { ...o, latestOutForDelivery: latest };
-            })
-            .filter(Boolean);
-
-        const total = filtered.length;
-        const productCounts = filtered.reduce((acc, o) => {
-            if (o.product) acc[o.product] = (acc[o.product] || 0) + 1;
-            return acc;
-        }, {});
-        const areas = [...new Set(filtered.map(o => o.area).filter(Boolean))];
-
-        const d = new Date(date);
-        const formattedDate = d.toLocaleDateString('en-GB').replace(/\//g, '.');
-        const headerTitle = `Operation Morning Report ${formattedDate}`;
-
-        // --- Fetch active vehicles ---
-        const vehicles = await VEHICLE.find({ status: 'active' }).lean();
-        const vehicleIds = vehicles.map(v => v._id);
-
-        const selectedDateEnd = new Date(date);
-        selectedDateEnd.setHours(23, 59, 59, 999);
-
-        // --- Get latest mileage for each vehicle on or before selected date ---
-        const latestMileages = await MILEAGELOGS.aggregate([
-            {
-                $match: {
-                    vehicleId: { $in: vehicleIds },
-                    date: { $lte: selectedDateEnd }
-                }
-            },
-            { $sort: { date: -1 } },
-            {
-                $group: {
-                    _id: "$vehicleId",
-                    mileage: { $first: "$mileage" },
-                    date: { $first: "$date" }
-                }
-            }
-        ]);
-
-        const mileageMap = {};
-        latestMileages.forEach(m => {
-            mileageMap[m._id.toString()] = m.mileage;
-        });
-
-        const sortedVehicles = vehicles.sort((a, b) => {
-            const mA = mileageMap[a._id.toString()];
-            const mB = mileageMap[b._id.toString()];
-            if (mA === undefined) return 1;
-            if (mB === undefined) return -1;
-            return mB - mA;
-        });
-
-        let assignedJobContent = '';
-        if (total > 0) {
-            const productSummary = Object.entries(productCounts)
-                .map(([p, c]) => `${p} (${c})`).join(', ');
-            if (productSummary) {
-                assignedJobContent = `- Deliver ${productSummary}`;
-            }
-        }
-
-        if (assignedJob) {
-            const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines.map(l => `- ${l}`).join('\n')}`;
-        }
-
-        const areaContent = total > 0 ? (areas.join(', ') || 'N/A') : '';
-
-        const html = `
-      <!-- Logo -->
-      <div style="text-align:center; margin-bottom:10px;">
-        <img src="/images/logo.png" alt="Logo" style="height:60px;">
-      </div>
-
-      <!-- Report Header -->
-      <h2 style="text-align:center; font-weight:bold; margin-bottom:20px;">${headerTitle}</h2>
-
-      <!-- Dispatcher Assigned Jobs Table -->
-      <table class="table table-bordered" style="border-collapse:collapse; width:auto; margin-bottom:30px;">
-        <thead>
-          <tr style="background:yellow; font-weight:bold; text-align:center;">
-            <th colspan="4">Dispatcher Assigned Jobs</th>
-          </tr>
-          <tr>
-            <th>Vehicle No.</th>
-            <th>Dispatcher</th>
-            <th>Assigned Job</th>
-            <th>Area</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>${car || 'N/A'}</td>
-            <td>${dispatcher}</td>
-            <td style="white-space:pre-line;">${assignedJobContent || 'N/A'}</td>
-            <td>${areaContent}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Morning Mileage Table -->
-      <table class="table table-bordered" style="border-collapse:collapse; width:auto; margin-bottom:20px;">
-        <thead>
-          <tr style="background:white; font-weight:bold; text-align:center;">
-            <td colspan="2">Morning Mileage</td>
-          </tr>
-          <tr style="background:yellow; font-weight:bold; text-align:center;">
-            <th>Vehicle No.</th>
-            <th>Latest Mileage</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${sortedVehicles.map(v => `
-            <tr>
-              <td>${v.plate}</td>
-              <td>${mileageMap[v._id.toString()] ?? 'N/A'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <!-- Assigned & Checked By -->
-      <div style="font-weight:bold; margin-top:20px;">
-        Assigned & Checked by: ${req.user.username}
-      </div>
-    `;
-
-        res.send(html);
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error generating report');
-    }
-});
-
-// Operation End of Day Report (POST)
-app.post('/api/endofday-report', async (req, res) => {
-    try {
-        const { date, user } = req.body;
-        if (!date) {
-            return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
-        }
-
-        const startOfDay = moment(date, 'YYYY-MM-DD').startOf('day').toDate();
-        const endOfDay = moment(date, 'YYYY-MM-DD').endOf('day').toDate();
-
-        const reports = await Reports.find({
-            datetimeUpdated: { $gte: startOfDay, $lte: endOfDay }
-        }).lean();
-
-        if (!reports || reports.length === 0) {
-            return res.json({
-                title: `Operation End of Day Report ${moment(date).format('DD.MM.YYYY')}`,
-                staffs: []
-            });
-        }
-
-        const staffJobs = [];
-
-        // Logged-in user jobs
-        if (user) {
-            staffJobs.push({
-                name: user,
-                jobs: [
-                    'Assigned dispatchers and prepare for delivery',
-                    'Count COD from dispatchers'
-                ]
-            });
-        }
-
-        // Assigned dispatchers from reports
-        reports.forEach(report => {
-            if (Array.isArray(report.assignedDispatchers)) {
-                report.assignedDispatchers.forEach(d => {
-                    if (!d.dispatcherName) return;
-
-                    // If assignedJob is a string, normalize to array
-                    let jobs = [];
-                    if (typeof d.assignedJob === 'string') {
-                        jobs = [d.assignedJob];
-                    } else if (Array.isArray(d.assignedJob)) {
-                        jobs = d.assignedJob;
-                    }
-
-                    // Filter jobs (exclude "- Deliver ")
-                    const validJobs = jobs.filter(
-                        job => typeof job === 'string' && !job.includes('- Deliver ')
-                    );
-
-                    if (validJobs.length > 0) {
-                        staffJobs.push({
-                            name: d.dispatcherName,
-                            jobs: validJobs
-                        });
-                    }
-                });
-            }
-        });
-
-        res.json({
-            title: `Operation End of Day Report ${moment(date).format('DD.MM.YYYY')}`,
-            staffs: staffJobs
-        });
-
-    } catch (err) {
-        console.error('Error generating End of Day Report:', err);
-        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -1247,41 +991,72 @@ app.post('/api/getEndOfDaySummary', async (req, res) => {
 
 app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
     try {
-        console.log("req.user:", req.user); // useful for debugging
+        console.log("req.user:", req.user);
 
-        const { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
+        let { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
+
         if (!reportType || !reportContent || !reportName) {
             return res.json({ success: false, message: 'Missing data' });
         }
 
-        // Check if a report with the same name exists
-        const existingReport = await REPORTS.findOne({ reportName });
+        // --- Filter out "Grand Total" or invalid rows before saving ---
+        if (Array.isArray(assignedDispatchers)) {
+            assignedDispatchers = assignedDispatchers.filter(d =>
+                d &&
+                typeof d === 'object' &&
+                d.vehicle &&
+                d.vehicle.toLowerCase().trim() !== 'grand total:' &&
+                !d.vehicle.toLowerCase().includes('grand total') &&
+                !d.dispatcherName?.toLowerCase().includes('grand total')
+            );
+        } else {
+            assignedDispatchers = [];
+        }
 
+        // --- Determine today's date for "one report per day" logic ---
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+        // --- Check for existing same-type report created today ---
+        const existingReport = await REPORTS.findOne({
+            reportType,
+            createdAt: {
+                $gte: new Date(`${todayStr}T00:00:00.000Z`),
+                $lte: new Date(`${todayStr}T23:59:59.999Z`)
+            }
+        });
+
+        // --- If found and not replacing ---
         if (existingReport && !forceReplace) {
-            // Duplicate found, inform frontend
-            return res.json({ success: false, duplicate: true, message: 'Report with this name already exists' });
+            return res.json({
+                success: false,
+                duplicate: true,
+                message: `A ${reportType} already exists for today.`
+            });
         }
 
+        // --- If found and replacing ---
         if (existingReport && forceReplace) {
-            // Replace existing report
-            existingReport.reportType = reportType;
+            existingReport.reportName = reportName;
             existingReport.reportContent = reportContent;
-            existingReport.assignedDispatchers = Array.isArray(assignedDispatchers) ? assignedDispatchers : [];
+            existingReport.assignedDispatchers = assignedDispatchers;
             existingReport.createdBy = req.user.username || req.user.name || req.user.id || 'Unknown';
+            existingReport.datetimeUpdated = new Date();
             await existingReport.save();
-            return res.json({ success: true, message: 'Report replaced successfully' });
+            return res.json({ success: true, replaced: true, message: 'Report replaced successfully.' });
         }
 
-        // No duplicate, create new report
+        // --- Create new report ---
         await REPORTS.create({
             reportType,
             reportName,
             reportContent,
-            assignedDispatchers: Array.isArray(assignedDispatchers) ? assignedDispatchers : [],
-            createdBy: req.user.username || req.user.name || req.user.id || 'Unknown'
+            assignedDispatchers,
+            createdBy: req.user.username || req.user.name || req.user.id || 'Unknown',
+            datetimeUpdated: new Date()
         });
 
-        res.json({ success: true, message: 'Report saved successfully' });
+        res.json({ success: true, message: 'Report saved successfully.' });
     } catch (err) {
         console.error('Error saving report:', err);
         res.json({ success: false, message: err.message });
@@ -1299,6 +1074,7 @@ app.get('/reportGenerator', ensureAuthenticated, async (req, res) => {
     }
 });
 
+//yes
 app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
     try {
         const { date } = req.body;
@@ -1349,143 +1125,6 @@ app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch mileage' });
-    }
-});
-
-app.post('/api/generateEndOfDayDeliveryResult', async (req, res) => {
-    try {
-        const { date } = req.body;
-        if (!date) return res.status(400).json({ error: 'Date is required' });
-
-        const startOfDay = moment(date, 'YYYY-MM-DD').startOf('day').toDate();
-        const endOfDay = moment(date, 'YYYY-MM-DD').endOf('day').toDate();
-
-        // Fetch all orders that have history entries on that date
-        const orders = await ORDERS.find({}).lean();
-
-        // Map: dispatcher -> product -> counts
-        const dispatchersMap = {}; // { dispatcherName: { areaSet: Set(), productCounts: {}, completedCounts: {}, failedCounts: {}, total: number } }
-        const productsSet = new Set();
-
-        orders.forEach(order => {
-            if (!order.history || !order.lastAssignedTo) return;
-
-            const dispatcher = order.lastAssignedTo;
-
-            // Filter history entries for the given date
-            const historiesOnDate = order.history.filter(h => {
-                if (!h.dateUpdated || !h.statusHistory) return false;
-                const d = new Date(h.dateUpdated);
-                const localTime = new Date(d.getTime() + 8 * 60 * 60 * 1000); // UTC+8
-                return localTime >= startOfDay && localTime <= endOfDay;
-            });
-
-            if (!historiesOnDate.length) return;
-
-            // Initialize dispatcher map
-            if (!dispatchersMap[dispatcher]) {
-                dispatchersMap[dispatcher] = {
-                    areaSet: new Set(),
-                    productCounts: {},       // Current jobs (Out for Delivery / Self Collect)
-                    completedCounts: {},     // Completed
-                    failedCounts: {},        // Failed
-                    total: 0
-                };
-            }
-
-            // Update areas
-            if (order.area) dispatchersMap[dispatcher].areaSet.add(order.area);
-
-            // Update products set
-            if (order.product) productsSet.add(order.product);
-
-            historiesOnDate.forEach(h => {
-                const product = order.product || 'N/A';
-                const status = h.statusHistory;
-
-                // Current jobs
-                if (status === 'Out for Delivery' || status === 'Self Collect') {
-                    dispatchersMap[dispatcher].productCounts[product] = (dispatchersMap[dispatcher].productCounts[product] || 0) + 1;
-                    dispatchersMap[dispatcher].total += 1;
-                }
-
-                // Completed
-                if (status === 'Completed') {
-                    dispatchersMap[dispatcher].completedCounts[product] = (dispatchersMap[dispatcher].completedCounts[product] || 0) + 1;
-                }
-
-                // Failed
-                if (status === 'Failed Delivery') {
-                    dispatchersMap[dispatcher].failedCounts[product] = (dispatchersMap[dispatcher].failedCounts[product] || 0) + 1;
-                }
-            });
-        });
-
-        const products = Array.from(productsSet).sort(); // sort alphabetically
-
-        // Build HTML
-        let html = `
-      <h4 style="background-color: #d9f2d9; font-weight:bold; padding:5px;">2. Delivery Result</h4>
-      <table class="table table-bordered" style="border-collapse:collapse; width:100%; text-align:center;">
-        <thead>
-          <tr style="background-color: #d9f2d9; font-weight:bold;">
-            <th>Staff</th>
-            <th>Area</th>
-            ${products.map(p => `<th>${p}</th>`).join('')}
-            <th>Total</th>
-            <th rowspan="3">Success Rate</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-        for (const [dispatcher, data] of Object.entries(dispatchersMap)) {
-            const areas = Array.from(data.areaSet).join(',');
-
-            // Current jobs row (same as Staff row)
-            const currentCounts = products.map(p => data.productCounts[p] || 0);
-            const totalJobs = currentCounts.reduce((a, b) => a + b, 0);
-
-            // Completed row
-            const completedCounts = products.map(p => data.completedCounts[p] || 0);
-            const totalCompleted = completedCounts.reduce((a, b) => a + b, 0);
-
-            // Failed row
-            const failedCounts = products.map(p => data.failedCounts[p] || 0);
-            const totalFailed = failedCounts.reduce((a, b) => a + b, 0);
-
-            // Success rate
-            const successRate = totalCompleted + totalFailed > 0
-                ? Math.round((totalCompleted / (totalCompleted + totalFailed)) * 100)
-                : 0;
-
-            html += `
-        <tr>
-          <td>${dispatcher}</td>
-          <td>${areas}</td>
-          ${currentCounts.map(c => `<td>${c}</td>`).join('')}
-          <td>${totalJobs}</td>
-          <td rowspan="3">${successRate}%</td>
-        </tr>
-        <tr>
-          <td colspan="2" style="font-weight:bold;">Completed</td>
-          ${completedCounts.map(c => `<td>${c}</td>`).join('')}
-          <td>${totalCompleted}</td>
-        </tr>
-        <tr>
-          <td colspan="2" style="font-weight:bold;">Failed</td>
-          ${failedCounts.map(c => `<td>${c}</td>`).join('')}
-          <td>${totalFailed}</td>
-        </tr>
-      `;
-        }
-
-        html += '</tbody></table>';
-
-        res.send(html);
-    } catch (err) {
-        console.error('Error generating Delivery Result:', err);
-        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -1657,23 +1296,31 @@ app.get('/api/delivery-result-report', async (req, res) => {
     }
 });
 
-app.post('/api/cod-bt-collection', async (req, res) => {
+app.post('/api/cod-bt-collected', async (req, res) => {
     try {
         const { date } = req.body;
         if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
 
-        // Fetch orders for the date
-        const orders = await ORDERS.find({
-            jobDate: date,
-            currentStatus: "Completed"
-        }).lean();
+        const formatCurrency = (num) => `$ ${Number(num || 0).toFixed(2)}`;
 
-        // Fetch morning report for the same date
+        // Fetch completed orders for the date
+        const orders = await ORDERS.find({ jobDate: date, currentStatus: "Completed" }).lean();
+
+        // Fetch morning report to map staff names
         const reportDateFormatted = new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".");
         const reportName = `Operation Morning Report ${reportDateFormatted}`;
         const reportDoc = await REPORTS.findOne({ reportName }).lean();
 
-        // Aggregate total per product
+        // Build dispatcher map: single name -> full dispatcherName
+        const dispatcherMap = {};
+        if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
+            reportDoc.assignedDispatchers.forEach(d => {
+                const names = d.dispatcherName.split('/').map(n => n.trim());
+                names.forEach(name => dispatcherMap[name] = d.dispatcherName);
+            });
+        }
+
+        // Aggregate per product
         const productTotals = {};
         orders.forEach(o => {
             const amount = Number(o.totalPrice) || 0;
@@ -1685,17 +1332,13 @@ app.post('/api/cod-bt-collection', async (req, res) => {
             const prod = o.product || 'N/A';
             if (!productTotals[prod]) productTotals[prod] = { cash: 0, bt: 0, total: 0 };
 
-            if (pm === 'cash') {
-                productTotals[prod].cash += amount;
-                productTotals[prod].total += amount;
-            } else {
-                productTotals[prod].bt += amount;
-                productTotals[prod].total += amount;
-            }
+            if (pm === 'cash') productTotals[prod].cash += amount;
+            else productTotals[prod].bt += amount;
+            productTotals[prod].total += amount;
         });
 
         const products = Object.keys(productTotals).filter(p => productTotals[p].total > 0).sort();
-        if (products.length === 0) return res.send('<p>No COD/BT data available for this date.</p>');
+        if (!products.length) return res.send('<p>No COD/BT data available for this date.</p>');
 
         // Aggregate per staff
         const staffMap = {};
@@ -1706,92 +1349,77 @@ app.post('/api/cod-bt-collection', async (req, res) => {
             const pm = (o.paymentMethod || '').toLowerCase();
             if (!['cash', 'bank transfer (bibd)', 'bank transfer (baiduri)', 'bill payment (bibd)'].includes(pm)) return;
 
-            // Use multi-name from REPORTS if exists
             let staff = o.assignedTo || "Unassigned";
-            if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
-                const matchingDispatcher = reportDoc.assignedDispatchers.find(d =>
-                    d.dispatcherName.includes(staff)
-                );
-                if (matchingDispatcher) staff = matchingDispatcher.dispatcherName;
-            }
-
             if (!staffMap[staff]) staffMap[staff] = { products: {}, totalAll: 0 };
-
             const prod = o.product || 'N/A';
             if (!products.includes(prod)) return;
             if (!staffMap[staff].products[prod]) staffMap[staff].products[prod] = { cash: 0, bt: 0, total: 0 };
 
-            if (pm === 'cash') {
-                staffMap[staff].products[prod].cash += amount;
-                staffMap[staff].products[prod].total += amount;
-                staffMap[staff].totalAll += amount;
-            } else {
-                staffMap[staff].products[prod].bt += amount;
-                staffMap[staff].products[prod].total += amount;
-                staffMap[staff].totalAll += amount;
-            }
+            if (pm === 'cash') staffMap[staff].products[prod].cash += amount;
+            else staffMap[staff].products[prod].bt += amount;
+            staffMap[staff].products[prod].total += amount;
+            staffMap[staff].totalAll += amount;
         });
+
+        // Separate Selfcollect
+        const selfcollect = staffMap['Selfcollect'];
+        if (selfcollect) delete staffMap['Selfcollect'];
 
         // Total per product
         const totalByProduct = {};
         products.forEach(p => totalByProduct[p] = { total: 0, cash: 0, bt: 0 });
-        for (const staff of Object.keys(staffMap)) {
-            const data = staffMap[staff].products;
+        Object.values(staffMap).forEach(staffData => {
             products.forEach(p => {
-                const vals = data[p] || { cash: 0, bt: 0, total: 0 };
+                const vals = staffData.products[p] || { total: 0, cash: 0, bt: 0 };
                 totalByProduct[p].cash += vals.cash;
                 totalByProduct[p].bt += vals.bt;
                 totalByProduct[p].total += vals.total;
             });
-        }
+        });
 
-        // Handle Selfcollect separately
-        const selfcollect = staffMap['Selfcollect'];
-        if (selfcollect) delete staffMap['Selfcollect'];
+        // Build HTML
+        let html = `<table class="table table-bordered">
+<thead>
+<tr style="background-color: lightblue; font-weight: bold;">
+<th colspan="${1 + products.length * 3}" style="text-align:left;">3. COD/BT Collection</th>
+</tr>
+<tr>
+<th rowspan="2">Staff/Product</th>
+${products.map(p => `<th colspan="3">${p}</th>`).join('')}
+</tr>
+<tr>
+${products.map(_ => `<th>Cash</th><th>BT</th><th>Total Amount</th>`).join('')}
+</tr>
+</thead>
+<tbody>`;
 
-        // Build HTML table
-        let html = `
-  <table class="table table-bordered">
-    <thead>
-      <tr style="background-color: lightblue; font-weight: bold;">
-        <th colspan="${1 + products.length * 3}" style="text-align:left;">3. COD/BT Collection</th>
-      </tr>
-      <tr>
-        <th rowspan="2">Staff/Product</th>
-        ${products.map(p => `<th colspan="3">${p}</th>`).join('')}
-      </tr>
-      <tr>
-        ${products.map(_ => `<th>Total Amount</th><th>Cash</th><th>BT</th>`).join('')}
-      </tr>
-    </thead>
-    <tbody>
-`;
-
-        const staffNames = Object.keys(staffMap).sort();
-        for (const staff of staffNames) {
-            html += `<tr><td>${staff}</td>`;
+        // Table body per staff
+        Object.keys(staffMap).sort().forEach(staff => {
+            const displayName = dispatcherMap[staff] || staff;
+            html += `<tr><td>${displayName}</td>`;
             const data = staffMap[staff].products;
             products.forEach(p => {
                 const vals = data[p] || { total: 0, cash: 0, bt: 0 };
-                html += `<td>${vals.total}</td><td>${vals.cash}</td><td>${vals.bt}</td>`;
+                html += `<td>${formatCurrency(vals.cash)}</td><td>${formatCurrency(vals.bt)}</td><td>${formatCurrency(vals.total)}</td>`;
             });
             html += `</tr>`;
-        }
+        });
 
+        // Selfcollect row
         if (selfcollect) {
             html += `<tr><td>Selfcollect</td>`;
             products.forEach(p => {
                 const vals = selfcollect.products[p] || { total: 0, cash: 0, bt: 0 };
-                html += `<td>${vals.total}</td><td>${vals.cash}</td><td>${vals.bt}</td>`;
+                html += `<td>${formatCurrency(vals.cash)}</td><td>${formatCurrency(vals.bt)}</td><td>${formatCurrency(vals.total)}</td>`;
             });
             html += `</tr>`;
         }
 
-        // Total row with light green background
+        // Totals row
         html += `<tr style="font-weight:bold; background-color:#d4f4d4;"><td>Total</td>`;
         products.forEach(p => {
             const vals = totalByProduct[p];
-            html += `<td>${vals.total}</td><td>${vals.cash}</td><td>${vals.bt}</td>`;
+            html += `<td>${formatCurrency(vals.cash)}</td><td>${formatCurrency(vals.bt)}</td><td>${formatCurrency(vals.total)}</td>`;
         });
         html += `</tr>`;
 
@@ -1799,19 +1427,350 @@ app.post('/api/cod-bt-collection', async (req, res) => {
         const grandTotalBT = products.reduce((sum, p) => sum + totalByProduct[p].bt, 0);
         const grandTotal = grandTotalCash + grandTotalBT;
 
-        // Grand Totals bold
-        html += `<tr><td>Grand Total Cash</td><td colspan="${products.length * 3}"><b>${grandTotalCash}</b></td></tr>`;
-        html += `<tr><td>Grand Total BT</td><td colspan="${products.length * 3}"><b>${grandTotalBT}</b></td></tr>`;
-        html += `<tr><td>Grand Total Cash and BT</td><td colspan="${products.length * 3}"><b>${grandTotal}</b></td></tr>`;
+        html += `<tr><td>Grand Total Cash</td><td colspan="${products.length * 3}"><b>${formatCurrency(grandTotalCash)}</b></td></tr>`;
+        html += `<tr><td>Grand Total BT</td><td colspan="${products.length * 3}"><b>${formatCurrency(grandTotalBT)}</b></td></tr>`;
+        html += `<tr><td>Grand Total Cash and BT</td><td colspan="${products.length * 3}"><b>${formatCurrency(grandTotal)}</b></td></tr>`;
 
-        html += '</tbody></table>';
-
+        html += `</tbody></table>`;
         res.send(html);
 
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
+});
+
+app.post('/api/warehouseTableGenerate', async (req, res) => {
+    try {
+        const { date } = req.body;
+        if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+
+        const relevantProducts = ["mglobal", "pdu", "ewe"];
+
+        // --- Warehouse Table (with both Total Jobs & Completed counts correct) ---
+        const warehouseOrders = await ORDERS.find({
+            currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] }
+        }).lean();
+
+        const today = new Date(date + "T23:59:59+08:00");
+        const maxDays = 30;
+
+        const filteredWarehouseOrders = warehouseOrders.filter(o => {
+            if (!o.warehouseEntryDateTime) return false;
+            const entryDate = new Date(o.warehouseEntryDateTime);
+            const diffDays = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
+            return diffDays <= maxDays;
+        });
+
+        const warehouseMap = {};
+        filteredWarehouseOrders.forEach(o => {
+            const prod = o.product || "N/A";
+            if (!warehouseMap[prod]) warehouseMap[prod] = [];
+            warehouseMap[prod].push(o);
+        });
+
+        const allAreas = ["JT", "G", "B", "TUTONG", "KB", "TEMBURONG"];
+        let areasInTable = allAreas.filter(area =>
+            filteredWarehouseOrders.some(o => area === "KB"
+                ? o.area && (o.area.toUpperCase().includes("KB") || o.area.toUpperCase().includes("LUMUT") || o.area.toUpperCase().includes("SERIA"))
+                : o.area === area)
+        );
+        if (filteredWarehouseOrders.some(o => o.area === "N/A")) areasInTable.push("N/A");
+
+        let html = `<table class="table table-bordered">
+<thead>
+<tr style="background-color: lightblue; font-weight: bold;">
+<th colspan="${10 + areasInTable.length}" style="text-align:left;">4. Warehouse</th>
+</tr>
+<tr>
+<th rowspan="2">Product</th>
+<th rowspan="2">AWB</th>
+<th rowspan="2">Aging</th>
+<th rowspan="2">Total Jobs</th>
+<th rowspan="2">Completed</th>
+<th colspan="3">In Store</th>
+<th colspan="${areasInTable.length}">Area (In Store)</th>
+<th colspan="2">Today's Job Result</th>
+</tr>
+<tr>
+<th>K1</th><th>K2</th><th>Total</th>
+${areasInTable.map(a => `<th>${a}</th>`).join('')}
+<th>Delivered</th><th>Returned</th>
+</tr>
+</thead>
+<tbody>`;
+
+        const awbProducts = ["mglobal", "ewe", "pdu"];
+        const sortedProducts = Object.keys(warehouseMap).sort((a, b) => {
+            const getMaxAging = prod => Math.max(...warehouseMap[prod].map(o => Math.floor((today - new Date(o.warehouseEntryDateTime)) / (1000 * 60 * 60 * 24))));
+            return getMaxAging(b) - getMaxAging(a);
+        });
+
+        // --- Completed counts map ---
+        const completedOrders = await ORDERS.find({
+            currentStatus: "Completed",
+            $or: [
+                { mawbNo: { $exists: true, $ne: "" } },
+                { hawbNo: { $exists: true, $ne: "" } }
+            ]
+        }).lean();
+
+        const completedCountsMap = {};
+        completedOrders.forEach(o => {
+            if (!o.product || !relevantProducts.includes(o.product.toLowerCase())) return;
+            const awbs = [];
+            if (o.mawbNo) awbs.push(o.mawbNo.trim());
+            if (o.hawbNo) awbs.push(o.hawbNo.trim());
+            awbs.forEach(a => {
+                if (!completedCountsMap[a]) completedCountsMap[a] = 0;
+                completedCountsMap[a]++;
+            });
+        });
+
+        for (const prod of sortedProducts) {
+            const ordersByProduct = warehouseMap[prod];
+            const isAwbProduct = awbProducts.includes(prod.toLowerCase());
+            let rowsData = [];
+
+            if (isAwbProduct) {
+                const mawbMap = {};
+                ordersByProduct.forEach(o => {
+                    const mawb = o.mawbNo || "-";
+                    if (!mawbMap[mawb]) mawbMap[mawb] = [];
+                    mawbMap[mawb].push(o);
+                });
+
+                const sortedMawb = Object.keys(mawbMap).sort((a, b) => {
+                    const maxAging = arr => Math.max(...arr.map(o => Math.floor((today - new Date(o.warehouseEntryDateTime)) / (1000 * 60 * 60 * 24))));
+                    return maxAging(mawbMap[b]) - maxAging(mawbMap[a]);
+                });
+
+                // --- Total Jobs per AWB ---
+                const uniqueAwbs = sortedMawb.filter(m => m && m !== "-").map(m => m.trim());
+                const totalCountsMap = {};
+                if (uniqueAwbs.length) {
+                    const mawbCounts = await ORDERS.aggregate([
+                        { $project: { mawbNoTrim: { $trim: { input: { $ifNull: ["$mawbNo", ""] } } } } },
+                        { $match: { mawbNoTrim: { $in: uniqueAwbs } } },
+                        { $group: { _id: "$mawbNoTrim", count: { $sum: 1 } } }
+                    ]);
+                    mawbCounts.forEach(r => { if (r._id) totalCountsMap[r._id] = (totalCountsMap[r._id] || 0) + r.count; });
+
+                    const hawbCounts = await ORDERS.aggregate([
+                        { $project: { hawbNoTrim: { $trim: { input: { $ifNull: ["$hawbNo", ""] } } } } },
+                        { $match: { hawbNoTrim: { $in: uniqueAwbs } } },
+                        { $group: { _id: "$hawbNoTrim", count: { $sum: 1 } } }
+                    ]);
+                    hawbCounts.forEach(r => { if (r._id) totalCountsMap[r._id] = (totalCountsMap[r._id] || 0) + r.count; });
+                }
+
+                for (const mawb of sortedMawb) {
+                    const ordersList = mawbMap[mawb];
+                    const dates = ordersList.map(o => new Date(o.warehouseEntryDateTime).toISOString().split("T")[0]);
+                    const freqMap = {};
+                    dates.forEach(d => freqMap[d] = (freqMap[d] || 0) + 1);
+                    const majorityDate = Object.keys(freqMap).reduce((a, b) => freqMap[a] > freqMap[b] ? a : b);
+                    const aging = Math.floor((today - new Date(majorityDate)) / (1000 * 60 * 60 * 24));
+
+                    const k1 = ordersList.filter(o => o.latestLocation === "Warehouse K1").length;
+                    const k2 = ordersList.filter(o => o.latestLocation === "Warehouse K2").length;
+                    const totalInStore = k1 + k2;
+
+                    const areaCounts = {};
+                    areasInTable.forEach(a => {
+                        if (a === "KB") {
+                            areaCounts[a] = ordersList.filter(o => {
+                                if (!o.area) return false;
+                                const areaNormalized = o.area.toUpperCase().replace(/\s/g, '');
+                                return areaNormalized.includes("KB") || areaNormalized.includes("LUMUT") || areaNormalized.includes("SERIA");
+                            }).length;
+                        } else if (a === "N/A") {
+                            areaCounts[a] = ordersList.filter(o => o.area && o.area.toUpperCase().includes("N/A")).length;
+                        } else {
+                            areaCounts[a] = ordersList.filter(o => o.area === a).length;
+                        }
+                    });
+
+                    if (prod.toLowerCase() === "ewe" && mawb === "UNMANIFESTED") {
+                        totalJobs = "-";
+                        completedJobs = "-";
+                    } else {
+                        totalJobs = mawb === "-" ? ordersList.length : totalCountsMap[mawb.trim()] || 0;
+                        completedJobs = (mawb && mawb !== "-") ? (completedCountsMap[mawb.trim()] || 0) : "-";
+                    }
+
+                    const delivered = await ORDERS.countDocuments({
+                        product: prod,
+                        mawbNo: mawb !== "-" ? mawb : { $exists: true },
+                        jobDate: date,
+                        currentStatus: "Completed"
+                    });
+
+                    const returned = ordersList.filter(o => o.currentStatus === "Return to Warehouse" && o.jobDate === date).length;
+
+                    rowsData.push({ mawb, aging, totalJobs, completedJobs, k1, k2, totalInStore, areaCounts, delivered, returned });
+                }
+
+            } else {
+                // Non-AWB products
+                const entryDates = ordersByProduct.map(o => new Date(o.warehouseEntryDateTime));
+                const minDays = Math.min(...entryDates.map(d => Math.floor((today - d) / (1000 * 60 * 60 * 24))));
+                const maxDays = Math.max(...entryDates.map(d => Math.floor((today - d) / (1000 * 60 * 60 * 24))));
+                const aging = minDays === maxDays ? `${minDays}` : `${minDays}-${maxDays}`;
+
+                const k1 = ordersByProduct.filter(o => o.latestLocation === "Warehouse K1").length;
+                const k2 = ordersByProduct.filter(o => o.latestLocation === "Warehouse K2").length;
+                const totalInStore = k1 + k2;
+
+                const areaCounts = {};
+                areasInTable.forEach(a => {
+                    if (a === "KB") {
+                        areaCounts[a] = ordersByProduct.filter(o => {
+                            if (!o.area) return false;
+                            const areaNormalized = o.area.toUpperCase().replace(/\s/g, '');
+                            return areaNormalized.includes("KB") || areaNormalized.includes("LUMUT") || areaNormalized.includes("SERIA");
+                        }).length;
+                    } else if (a === "N/A") {
+                        areaCounts[a] = ordersByProduct.filter(o => o.area && o.area.toUpperCase().includes("N/A")).length;
+                    } else {
+                        areaCounts[a] = ordersByProduct.filter(o => o.area === a).length;
+                    }
+                });
+
+                const delivered = await ORDERS.countDocuments({
+                    product: prod,
+                    jobDate: date,
+                    currentStatus: "Completed"
+                });
+
+                const returned = ordersByProduct.filter(o => o.currentStatus === "Return to Warehouse" && o.jobDate === date).length;
+
+                rowsData.push({
+                    mawb: "-",
+                    aging,
+                    totalJobs: ordersByProduct.length,
+                    completedJobs: "-", // non-AWB products
+                    k1, k2, totalInStore, areaCounts, delivered, returned
+                });
+            }
+
+            rowsData.forEach((row, index) => {
+                html += '<tr>';
+                if (index === 0) html += `<td rowspan="${rowsData.length}">${prod}</td>`;
+                html += `<td>${row.mawb}</td>
+<td>${row.aging}</td>
+<td>${row.totalJobs}</td>
+<td>${row.completedJobs}</td>
+<td>${row.k1}</td><td>${row.k2}</td><td>${row.totalInStore}</td>
+${areasInTable.map(a => `<td>${row.areaCounts[a]}</td>`).join('')}
+<td>${row.delivered}</td><td>${row.returned}</td>`;
+                html += '</tr>';
+            });
+        }
+
+        html += `</tbody></table>`;
+        res.send(html);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ==================================================
+// 🚗 Vehicle Report (Table 5)
+// ==================================================
+app.post('/api/vehicle-report', async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) return res.status(400).send('Missing date');
+
+    const start = new Date(date + "T00:00:00+08:00");
+    const end = new Date(date + "T23:59:59+08:00");
+
+    // 1️⃣ Fetch report data for that date
+    const reports = await REPORTS.find({
+      datetimeUpdated: { $gte: start, $lte: end }
+    });
+
+    // 2️⃣ Fetch all vehicle data
+    const vehicles = await VEHICLE.find({});
+    const vehicleMap = {};
+    vehicles.forEach(v => {
+      vehicleMap[v._id.toString()] = v.plate;
+    });
+
+    // 3️⃣ Build rows
+    let rowsHTML = '';
+
+    reports.forEach(r => {
+      if (!r.assignedDispatchers || !Array.isArray(r.assignedDispatchers)) return;
+
+      r.assignedDispatchers.forEach(d => {
+        const vehicle = d.vehicle || '-';
+        const dispatcher = d.dispatcherName || '-';
+        const morningMileage = d.mileage || 0;   // Morning Mileage
+        const eodMileage = '';                   // Start empty
+        const mileageUsed = 0;                   // Will be calculated in frontend
+
+        rowsHTML += `
+          <tr>
+            <td contenteditable="true">${vehicle}</td>
+            <td contenteditable="true">${dispatcher}</td>
+            <td><input type="number" class="morningMileage" value="${morningMileage}" readonly></td>
+            <td><input type="number" class="eodMileage" placeholder="Enter EOD"></td>
+            <td><input type="number" class="mileageUsed" value="${mileageUsed}" readonly></td>
+            <td>
+              <select class="form-select">
+                <option value="">-</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+          </tr>
+        `;
+      });
+    });
+
+    // 4️⃣ Return full HTML table
+    const tableHTML = `
+      <div style="margin-top:30px;">
+        <table class="table table-bordered" id="vehicleReportTable">
+          <thead>
+            <tr style="background:lightblue;font-weight:bold;">
+              <th colspan="11" style="text-align:left;">5. Vehicle Report</th>
+            </tr>
+            <tr>
+              <th>Vehicle No.</th>
+              <th>Dispatcher</th>
+              <th>Morning Mileage</th>
+              <th>EOD Mileage</th>
+              <th>Mileage Used</th>
+              <th>Refilled Fuel?</th>
+              <th>Receipt No.</th>
+              <th>Paid Amount</th>
+              <th>Refilled Amount</th>
+              <th>Location</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHTML || '<tr><td colspan="11" class="text-center">No vehicle data found.</td></tr>'}</tbody>
+        </table>
+
+        <button id="addVehicleRowBtn" class="btn btn-primary btn-sm">➕ Add Row</button>
+      </div>
+    `;
+
+    res.send(tableHTML);
+  } catch (err) {
+    console.error('Error generating vehicle report:', err);
+    res.status(500).send('Error generating vehicle report');
+  }
 });
 
 // COD/BT Collected API with date filtering and caching

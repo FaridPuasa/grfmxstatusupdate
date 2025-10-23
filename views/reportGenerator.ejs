@@ -258,7 +258,7 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
   <select id="reportType" class="form-select">
     <option value="">-- Select Report --</option>
     <option value="Operation Morning Report">Operation Morning Report</option>
-    <!-- <option value="Operation End of Day Report">Operation End of Day Report</option> -->
+    <option value="Operation End of Day Report">Operation End of Day Report</option>
   </select>
 </div>
 
@@ -345,6 +345,11 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
       <thead id="endDeliveryResultHeader"></thead>
       <tbody></tbody>
     </table>
+
+    <!-- COD/BT Tables -->
+    <div id="codBtCollectedContainer" style="margin-top:30px;"></div>
+    <div id="warehouseReportContainer"></div>
+
   </div>
 </div>
 
@@ -359,7 +364,8 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
   <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-const reportTypeEl = document.getElementById('reportType');
+  document.addEventListener("DOMContentLoaded", function () {
+    const reportTypeEl = document.getElementById('reportType');
 const formSection = document.getElementById('formSection');
 const reportDateEl = document.getElementById('reportDate');
 const generateBtn = document.getElementById('generateBtn');
@@ -763,6 +769,51 @@ resetBtn.addEventListener('click', ()=>{
   },100);
 });
 
+// --- Reusable Save Function ---
+  async function saveReportToServer({ reportType, reportName, reportContent, assignedDispatchers, forceReplace = false }) {
+    const res = await fetch("/api/saveReport", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reportType,
+        reportName,
+        reportContent,
+        assignedDispatchers,
+        forceReplace,
+      }),
+    });
+    return await res.json();
+  }
+
+function handleReset({ sectionId, saveBtn, printBtn, resetBtn }) {
+  if (!confirm("Are you sure you want to reset this report?")) return;
+
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+
+  // Keep only the form
+  const form = section.querySelector("#endOfDayForm");
+  if (!form) return;
+
+  // Remove all other children except the form
+  Array.from(section.children).forEach((child) => {
+    if (child !== form) {
+      child.remove();
+    }
+  });
+
+  // Hide buttons (Save, Print, Reset)
+  if (saveBtn) saveBtn.classList.add("hidden");
+  if (printBtn) printBtn.classList.add("hidden");
+  if (resetBtn) resetBtn.classList.add("hidden");
+
+  // Re-enable Generate button
+  const generateBtn = form.querySelector("#endGenerateBtn");
+  if (generateBtn) generateBtn.disabled = false;
+
+  alert("All report contents cleared successfully.");
+}
+
 const endGenerateBtn = document.getElementById('endGenerateBtn');
 const endSaveBtn = document.getElementById('endSaveBtn');
 const endPrintBtn = document.getElementById('endPrintBtn');
@@ -790,21 +841,22 @@ endGenerateBtn.addEventListener('click', async () => {
     const reportTitle = `Operation End of Day Report ${formattedDate}`;
 
     // Logo + Title
-endReportLogoHeader.innerHTML = `
-  <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
-  <h2>${reportTitle}</h2>
-`;
+    endReportLogoHeader.innerHTML = `
+      <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
+      <h2>${reportTitle}</h2>
+    `;
 
-    // Table header (Staff's Jobs, left-aligned)
-endStaffJobsHeader.innerHTML = `
-  <tr style="background:lightblue;font-weight:bold;">
-    <th colspan="2" style="text-align:left;">1. Staff's Tasks</th>
-  </tr>
-  <tr>
-    <th>Staff Name</th>
-    <th>Assigned Task</th>
-  </tr>
-`;
+    // Table header (Staff's Tasks)
+    endStaffJobsHeader.innerHTML = `
+      <tr style="background:lightblue;font-weight:bold;">
+        <th colspan="3" style="text-align:left;">1. Staff's Tasks</th>
+      </tr>
+      <tr>
+        <th>Staff Name</th>
+        <th>Assigned Task</th>
+        <th>Action</th>
+      </tr>
+    `;
 
     // Table body
     const tbody = endStaffJobsTable.querySelector('tbody');
@@ -816,7 +868,9 @@ endStaffJobsHeader.innerHTML = `
       staffRow.innerHTML = `
         <td contenteditable="true">${userId}</td>
         <td contenteditable="true" style="white-space: pre-line;">- Assigned dispatchers and prepare for delivery
-- Count COD from dispatchers</td>
+- Count COD from dispatchers
+</td>
+        <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
       `;
       tbody.appendChild(staffRow);
 
@@ -827,20 +881,91 @@ endStaffJobsHeader.innerHTML = `
           .filter(line => !line.startsWith('- Deliver '))
           .join('\n');
 
-        if (filteredJobs.trim().length === 0) return; // skip if no other jobs
+        if (filteredJobs.trim().length === 0) return;
 
         const row = document.createElement('tr');
         row.innerHTML = `
           <td contenteditable="true">${d.dispatcherName}</td>
           <td contenteditable="true" style="white-space: pre-line;">${filteredJobs}</td>
+          <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
         `;
         tbody.appendChild(row);
       });
     });
 
-    await loadDeliveryResult(endReportDate);
-    await loadCodBtCollection(endReportDate);
+    // Attach remove button to all rows
+    tbody.querySelectorAll('tr').forEach(row => {
+      const delBtn = row.querySelector('.removeRowBtn');
+      if (delBtn) delBtn.addEventListener('click', () => row.remove());
+    });
 
+    // Add "Add Row" button below table
+    let addBtn = document.getElementById('addStaffRowBtn');
+    if (!addBtn) {
+      addBtn = document.createElement('button');
+      addBtn.id = 'addStaffRowBtn';
+      addBtn.className = 'btn btn-primary btn-sm mt-2';
+      addBtn.textContent = '➕ Add Row';
+      endStaffJobsTable.parentNode.appendChild(addBtn);
+
+      addBtn.addEventListener('click', () => {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+        `;
+        tbody.appendChild(newRow);
+        newRow.querySelector('.removeRowBtn').addEventListener('click', () => newRow.remove());
+      });
+    }
+
+    // Load other tables
+    await loadDeliveryResult(endReportDate);
+    await loadCodBtCollected(endReportDate);
+    await loadWarehouseTable(endReportDate);
+
+// Insert Pure51 Inventory Stock table
+const pure51Container = document.createElement('div');
+pure51Container.style.marginTop = "30px";
+pure51Container.innerHTML = `
+  <table class="table table-bordered" id="pure51StockTable">
+    <thead>
+      <tr style="background:lightblue;font-weight:bold;">
+        <th colspan="2" style="text-align:left;">4.1. Pure51 Inventory Stock</th>
+      </tr>
+      <tr>
+        <th>Item</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Feminine Wash 200ml</td>
+        <td contenteditable="true"></td>
+      </tr>
+      <tr>
+        <td>Feminine Wash 75ml</td>
+        <td contenteditable="true"></td>
+      </tr>
+      <tr>
+        <td>Lingerie Wash 100ml</td>
+        <td contenteditable="true"></td>
+      </tr>
+    </tbody>
+  </table>
+`;
+reportContainer.appendChild(pure51Container);
+
+    await loadVehicleReport(endReportDate);
+
+    // (Assume your existing logic builds the report tables here)
+    alert("End of Day Report generated successfully.");
+
+    endSaveBtn.classList.remove("hidden");
+    endResetBtn.classList.remove("hidden");
+    endPrintBtn.classList.add("hidden");
+    endSaveBtn.removeAttribute("disabled");
   } catch (err) {
     console.error(err);
     alert('Error fetching report');
@@ -1003,130 +1128,262 @@ async function loadDeliveryResult(date) {
   }
 }
 
-async function loadCodBtCollection(date) {
+async function loadCodBtCollected(date) {
+  const reportContainer = document.getElementById('reportContainer');
+  if (!reportContainer) return console.error('reportContainer not found');
+
   try {
-    const res = await fetch('/api/cod-bt-collection', {
+    const res = await fetch('/api/cod-bt-collected', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date })
     });
-
-    const html = await res.text(); // get as text, not JSON
-    const reportContainer = document.getElementById('reportContainer');
-    if (!reportContainer) return console.error('reportContainer not found');
+    const html = await res.text();
 
     // Spacer
     const spacer = document.createElement("div");
     spacer.style.marginTop = "30px";
     reportContainer.appendChild(spacer);
 
-    // Insert HTML
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = html;
-    reportContainer.appendChild(wrapper);
+    // Container for COD/BT table
+    const codContainer = document.createElement("div");
+    codContainer.innerHTML = html;
+    reportContainer.appendChild(codContainer);
 
   } catch (err) {
-    console.error('Error loading COD/BT Collection:', err);
+    console.error('Error loading COD/BT Collected:', err);
   }
 }
 
-endSaveBtn.addEventListener('click', async () => {
-  if (endStaffJobsBody.children.length === 0) { alert('No report to save'); return; }
-  showLoading();
-
-  const dateStr = document.getElementById('endReportDate').value;
-  const formattedDate = new Date(dateStr).toLocaleDateString('en-GB').replace(/\//g, '.');
-  const reportName = `Operation End of Day Report ${formattedDate}`;
-
-  // Build assignedDispatchers array from table
-  const assignedDispatchers = Array.from(endStaffJobsBody.querySelectorAll('tr')).map(row => ({
-    dispatcherName: row.children[0]?.innerText.trim(),
-    delivered: parseInt(row.children[1]?.innerText || 0, 10),
-    pending: parseInt(row.children[2]?.innerText || 0, 10),
-    failed: parseInt(row.children[3]?.innerText || 0, 10),
-    remarks: row.children[4]?.innerText.trim()
-  }));
-
-  const reportHTML = `
-    <div>${endReportLogoHeader.outerHTML}</div>
-    <div>${endStaffJobsTable.outerHTML}</div>
-  `;
+async function loadWarehouseTable(date) {
+  const reportContainer = document.getElementById('reportContainer');
+  if (!reportContainer) return console.error('reportContainer not found');
 
   try {
-    const res = await fetch('/api/saveReport', {  // 👈 Use same save API
+    const res = await fetch('/api/warehouseTableGenerate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        reportType: 'Operation End of Day Report',
-        reportContent: reportHTML,
-        reportName,
-        createdBy: "<%= user.name %>",
-        assignedDispatchers
-      })
+      body: JSON.stringify({ date })
     });
-    const result = await res.json();
-    if(result.success) {
-      alert('End of Day report saved!');
-      endPrintBtn.classList.remove('hidden');
-    } else {
-      alert('Failed to save report');
-    }
-  } catch(err){
-    console.error(err);
-    alert('Error saving report');
-  } finally { hideLoading(); }
+    const html = await res.text();
+
+    // Spacer
+    const spacer = document.createElement("div");
+    spacer.style.marginTop = "30px";
+    reportContainer.appendChild(spacer);
+
+    // Container for Warehouse table
+    const whContainer = document.createElement("div");
+    whContainer.innerHTML = html;
+    reportContainer.appendChild(whContainer);
+
+  } catch (err) {
+    console.error('Error loading Warehouse table:', err);
+  }
+}
+
+async function loadVehicleReport(date) {
+  const reportContainer = document.getElementById('reportContainer');
+  if (!reportContainer) return console.error('reportContainer not found');
+
+  try {
+    const res = await fetch('/api/vehicle-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date })
+    });
+    const html = await res.text();
+
+    const spacer = document.createElement("div");
+    spacer.style.marginTop = "30px";
+    reportContainer.appendChild(spacer);
+
+    const vehicleContainer = document.createElement("div");
+    vehicleContainer.innerHTML = html;
+    reportContainer.appendChild(vehicleContainer);
+
+    const table = vehicleContainer.querySelector('#vehicleReportTable');
+    const tbody = table.querySelector('tbody');
+    const addRowBtn = vehicleContainer.querySelector('#addVehicleRowBtn');
+
+    addRowBtn.addEventListener('click', () => {
+  const newRow = document.createElement('tr');
+  newRow.innerHTML = `
+    <td contenteditable="true"></td>
+    <td contenteditable="true"></td>
+    <td><input type="number" class="morningMileage" value="0"></td>
+    <td><input type="number" class="eodMileage" placeholder="Enter EOD Mileage"></td>
+    <td><input type="number" class="mileageUsed" value="0" readonly></td>
+    <td>
+      <select class="form-select">
+        <option value="">-</option>
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    </td>
+    <td contenteditable="true"></td>
+    <td contenteditable="true"></td>
+    <td contenteditable="true"></td>
+    <td contenteditable="true"></td>
+    <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+  `;
+  tbody.appendChild(newRow);
+  attachRowEvents(newRow);
 });
 
-endPrintBtn.addEventListener('click', () => {
-  showLoading();
-  const printWindow = window.open('', '_blank', 'width=900,height=700');
-  const cloneTable = endStaffJobsTable.cloneNode(true);
+    // Attach delete & mileage calculation to all existing rows
+    tbody.querySelectorAll('tr').forEach(row => attachRowEvents(row));
 
-  // Remove Action column
-  Array.from(cloneTable.querySelectorAll('tr')).forEach(tr => {
-    const cells = tr.children;
-    if(cells.length > 1) tr.removeChild(cells[cells.length-1]);
+    function attachRowEvents(row) {
+  const delBtn = row.querySelector('.removeRowBtn');
+  if (delBtn) delBtn.addEventListener('click', () => row.remove());
+
+  const morningInput = row.querySelector('.morningMileage');
+  const eodInput = row.querySelector('.eodMileage');
+  const usedInput = row.querySelector('.mileageUsed');
+
+  function recalc() {
+    const morningVal = parseFloat(morningInput.value) || 0;
+    const eodVal = parseFloat(eodInput.value) || 0;
+    usedInput.value = isNaN(eodVal - morningVal) ? '' : (eodVal - morningVal);
+  }
+
+  morningInput.addEventListener('input', recalc);
+  eodInput.addEventListener('input', recalc);
+}
+
+  } catch (err) {
+    console.error('Error loading Vehicle Report:', err);
+  }
+}
+
+// --- Save Button ---
+  endSaveBtn?.addEventListener("click", async () => {
+    const reportDate = document.getElementById("endReportDate").value;
+    const reportContent = document.getElementById("endOfDayReportSection").innerHTML;
+    const assignedDispatchers = []; // (Optional) add dispatchers if available
+
+    await handleSave({
+      reportType: "Operation End of Day Report",
+      reportDate,
+      reportContent,
+      assignedDispatchers,
+      saveBtn: endSaveBtn,
+      printBtn: endPrintBtn,
+      resetBtn: endResetBtn,
+    });
   });
 
-  const style = `
-    <style>
-      body { font-family: Arial, sans-serif; padding: 20px; }
-      h2 { text-align: center; margin-bottom: 20px; }
-      table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-      th, td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; }
-      th { font-weight: bold; background: yellow; }
-    </style>
-  `;
+  document.getElementById("endPrintBtn").addEventListener("click", function () {
+  showLoading();
 
-  printWindow.document.write(`
+  // --- 1️⃣ Hide elements not needed in print ---
+  const hiddenElements = [
+    document.querySelector("#endOfDayForm"),
+    document.querySelector("#addStaffRowBtn"),
+    document.querySelector("#addVehicleRowBtn"),
+  ];
+  hiddenElements.forEach(el => el && (el.style.display = "none"));
+
+  // Hide "Action" columns
+  const actionSelectors = [
+    "#endStaffJobsTable th:last-child",
+    "#endStaffJobsTable td:last-child",
+    "#vehicleReportTable th:last-child",
+    "#vehicleReportTable td:last-child",
+  ];
+  const hiddenCols = document.querySelectorAll(actionSelectors.join(","));
+  hiddenCols.forEach(el => (el.style.display = "none"));
+
+  // --- 2️⃣ Clone section for printing ---
+  const sectionClone = document.querySelector("#endOfDayReportSection").cloneNode(true);
+
+  // --- 3️⃣ Restore the "5. Vehicle Report" header visibility ---
+  const vehicleHeader = sectionClone.querySelector("#vehicleReportTable thead tr:first-child th");
+  if (vehicleHeader) vehicleHeader.style.display = "table-cell";
+
+  // --- 4️⃣ Replace inputs and selects with their text values ---
+  sectionClone.querySelectorAll("input, select").forEach(el => {
+    const value =
+      el.tagName === "SELECT"
+        ? el.options[el.selectedIndex]?.text || ""
+        : el.value || "";
+    const span = document.createElement("span");
+    span.textContent = value;
+    span.style.whiteSpace = "pre-wrap";
+    el.parentNode.replaceChild(span, el);
+  });
+
+  // --- 5️⃣ Generate dynamic filename ---
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, "0");
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const yyyy = today.getFullYear();
+  const fileName = `End of Day Report ${dd}.${mm}.${yyyy}`;
+
+  // --- 6️⃣ Prepare printable HTML ---
+  const printHTML = `
     <html>
-      <head><title>${window.currentReportName}</title>${style}</head>
+      <head>
+        <title>${fileName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 25px; }
+          h2 { text-align: center; margin: 10px 0 20px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+          th, td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 14px;
+            text-align: center;
+            vertical-align: middle;
+          }
+          th { background-color: #e6f2ff; font-weight: bold; }
+          tr:first-child th[colspan] {
+            background-color: lightblue !important;
+            text-align: left;
+            font-size: 15px;
+          }
+          img { display: block; margin: 0 auto; max-height: 80px; }
+          @media print {
+            body { zoom: 90%; }
+          }
+        </style>
+      </head>
       <body>
-        ${endReportLogoHeader.outerHTML}
-        ${cloneTable.outerHTML}
+        ${sectionClone.innerHTML}
       </body>
     </html>
-  `);
+  `;
 
+  // --- 7️⃣ Open print window ---
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  printWindow.document.open();
+  printWindow.document.write(printHTML);
   printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  hideLoading();
-});
 
-endResetBtn.addEventListener('click', () => {
-  showLoading();
-  setTimeout(() => {
-    endStaffJobsTable.querySelector('tbody').innerHTML = '';
-    endReportLogoHeader.innerHTML = '';
-    document.getElementById('endReportDate').value = '';
-    endSaveBtn.classList.add('hidden');
-    endPrintBtn.classList.add('hidden');
-    endResetBtn.classList.add('hidden');
+  printWindow.onload = function () {
+    // ✅ Set filename hint before printing
+    printWindow.document.title = fileName;
+    printWindow.focus();
+    printWindow.print();
     hideLoading();
-  }, 100);
+  };
+
+  // --- 8️⃣ Restore hidden elements after print ---
+  hiddenElements.forEach(el => el && (el.style.display = ""));
+  hiddenCols.forEach(el => (el.style.display = ""));
 });
 
+  // --- Reset Button ---
+  endResetBtn?.addEventListener("click", () => {
+    handleReset({
+      sectionId: "endOfDayReportSection",
+      saveBtn: endSaveBtn,
+      printBtn: endPrintBtn,
+      resetBtn: endResetBtn,
+    });
+  });
+    });
 </script>
 </body>
 </html>
