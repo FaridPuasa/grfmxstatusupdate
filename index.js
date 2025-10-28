@@ -372,16 +372,13 @@ async function checkActiveDeliveriesStatus() {
     try {
         const activeOrders = await ORDERS.find(
             { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
-            { doTrackingNumber: 1, currentStatus: 1 }
+            { doTrackingNumber: 1, currentStatus: 1, assignedTo: 1 }
         );
 
         for (let order of activeOrders) {
-            const trackingNumber = order.doTrackingNumber;
-            const currentStatus = order.currentStatus;
+            const { doTrackingNumber: trackingNumber, currentStatus } = order;
 
-            if (!trackingNumber) {
-                continue;
-            }
+            if (!trackingNumber) continue;
 
             try {
                 const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/`, {
@@ -393,43 +390,49 @@ async function checkActiveDeliveriesStatus() {
                 });
 
                 const data = response.data;
+                const now = moment().format();
 
-                if (data.data.status && data.data.status.toLowerCase() === 'completed') {
-                    let filter = { doTrackingNumber: trackingNumber };
+                if (data.data.status?.toLowerCase() === 'completed') {
+                    const filter = { doTrackingNumber: trackingNumber };
                     let update = {};
-                    let options = { upsert: false, new: false };
+                    const options = { upsert: false, new: false };
 
-                    if (currentStatus === "Out for Delivery" || currentStatus === "Self Collect") {
+                    if (["Out for Delivery", "Self Collect"].includes(currentStatus)) {
+                        // Preserve assignedTo if Out for Delivery and contains FL1
+                        const assigned = currentStatus === "Out for Delivery" && order.assignedTo?.includes("FL1")
+                            ? order.assignedTo
+                            : data.data.assign_to || '-';
+
                         update = {
                             currentStatus: "Completed",
-                            lastUpdateDateTime: moment().format(),
+                            lastUpdateDateTime: now,
                             latestLocation: "Customer",
                             lastUpdatedBy: "System",
-                            assignedTo: data.data.assign_to || '-',
+                            assignedTo: assigned,
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
-                                    dateUpdated: moment().format(),
+                                    dateUpdated: now,
                                     updatedBy: "System",
-                                    lastAssignedTo: data.data.assign_to || '-',
+                                    lastAssignedTo: assigned,
                                     lastLocation: "Customer"
                                 }
                             }
                         };
+
                     } else if (currentStatus === "Drop Off") {
-                        const warehouseEntryCheckDateTime = moment().format();
                         update = {
                             currentStatus: "Completed",
-                            lastUpdateDateTime: moment().format(),
+                            lastUpdateDateTime: now,
                             latestLocation: "K1 Warehouse",
                             lastUpdatedBy: "System",
                             warehouseEntry: "Yes",
-                            warehouseEntryDateTime: warehouseEntryCheckDateTime,
+                            warehouseEntryDateTime: now,
                             assignedTo: "Selfcollect",
                             $push: {
                                 history: {
                                     statusHistory: "Completed",
-                                    dateUpdated: moment().format(),
+                                    dateUpdated: now,
                                     updatedBy: "System",
                                     lastAssignedTo: "Selfcollect",
                                     lastLocation: "K1 Warehouse"
@@ -438,14 +441,14 @@ async function checkActiveDeliveriesStatus() {
                         };
                     }
 
-                    const result = await ORDERS.findOneAndUpdate(filter, update, options);
+                    await ORDERS.findOneAndUpdate(filter, update, options);
                     console.log(`Order ${trackingNumber} updated successfully.`);
                 } else {
                     console.log(`Order ${trackingNumber} is not completed yet.`);
                 }
 
             } catch (apiError) {
-                console.error(`Error checking tracking ${trackingNumber}:`, apiError.response ? apiError.response.data : apiError.message);
+                console.error(`Error checking tracking ${trackingNumber}:`, apiError.response?.data || apiError.message);
             }
 
             // Delay between requests to avoid API rate limit
@@ -1477,10 +1480,10 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
         );
         if (filteredWarehouseOrders.some(o => o.area === "N/A")) areasInTable.push("N/A");
 
-        let html = `<table class="table table-bordered">
+        let html = `<table id="warehouseTable" class="table table-bordered">
 <thead>
 <tr style="background-color: lightblue; font-weight: bold;">
-<th colspan="${10 + areasInTable.length}" style="text-align:left;">4. Warehouse</th>
+<th colspan="${10 + areasInTable.length + 1}" style="text-align:left;">4. Warehouse</th>
 </tr>
 <tr>
 <th rowspan="2">Product</th>
@@ -1491,6 +1494,7 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
 <th colspan="3">In Store</th>
 <th colspan="${areasInTable.length}">Area (In Store)</th>
 <th colspan="2">Today's Job Result</th>
+<th rowspan="2">Action</th> <!-- <-- Added Action column -->
 </tr>
 <tr>
 <th>K1</th><th>K2</th><th>Total</th>
@@ -1663,9 +1667,11 @@ ${areasInTable.map(a => `<th>${a}</th>`).join('')}
 <td>${row.completedJobs}</td>
 <td>${row.k1}</td><td>${row.k2}</td><td>${row.totalInStore}</td>
 ${areasInTable.map(a => `<td>${row.areaCounts[a]}</td>`).join('')}
-<td>${row.delivered}</td><td>${row.returned}</td>`;
+<td>${row.delivered}</td><td>${row.returned}</td>
+<td><button class="btn btn-sm btn-danger removeWarehouseRowBtn">🗑️</button></td>`; // <-- Action button
                 html += '</tr>';
             });
+
         }
 
         html += `</tbody></table>`;
@@ -1681,64 +1687,58 @@ ${areasInTable.map(a => `<td>${row.areaCounts[a]}</td>`).join('')}
 // 🚗 Vehicle Report (Table 5)
 // ==================================================
 app.post('/api/vehicle-report', async (req, res) => {
-  try {
-    const { date } = req.body;
-    if (!date) return res.status(400).send('Missing date');
+    try {
+        const { date } = req.body;
+        if (!date) return res.status(400).send('Missing date');
 
-    const start = new Date(date + "T00:00:00+08:00");
-    const end = new Date(date + "T23:59:59+08:00");
+        const start = new Date(date + "T00:00:00+08:00");
+        const end = new Date(date + "T23:59:59+08:00");
 
-    // 1️⃣ Fetch report data for that date
-    const reports = await REPORTS.find({
-      datetimeUpdated: { $gte: start, $lte: end }
-    });
+        // 1️⃣ Fetch report data for that date
+        const reports = await REPORTS.find({
+            datetimeUpdated: { $gte: start, $lte: end }
+        });
 
-    // 2️⃣ Fetch all vehicle data
-    const vehicles = await VEHICLE.find({});
-    const vehicleMap = {};
-    vehicles.forEach(v => {
-      vehicleMap[v._id.toString()] = v.plate;
-    });
+        // 2️⃣ Fetch all vehicle data
+        const vehicles = await VEHICLE.find({});
+        const vehicleMap = {};
+        vehicles.forEach(v => {
+            vehicleMap[v._id.toString()] = v.plate;
+        });
 
-    // 3️⃣ Build rows
-    let rowsHTML = '';
+        // 3️⃣ Build rows
+        let rowsHTML = '';
 
-    reports.forEach(r => {
-      if (!r.assignedDispatchers || !Array.isArray(r.assignedDispatchers)) return;
+        reports.forEach(r => {
+            if (!r.assignedDispatchers || !Array.isArray(r.assignedDispatchers)) return;
 
-      r.assignedDispatchers.forEach(d => {
-        const vehicle = d.vehicle || '-';
-        const dispatcher = d.dispatcherName || '-';
-        const morningMileage = d.mileage || 0;   // Morning Mileage
-        const eodMileage = '';                   // Start empty
-        const mileageUsed = 0;                   // Will be calculated in frontend
+            r.assignedDispatchers.forEach(d => {
+                const vehicle = d.vehicle || '-';
+                const dispatcher = d.dispatcherName || '-';
+                const morningMileage = d.mileage || 0;   // Morning Mileage
+                const eodMileage = '';                   // Start empty
+                const mileageUsed = 0;                   // Will be calculated in frontend
 
-        rowsHTML += `
+                rowsHTML += `
           <tr>
             <td contenteditable="true">${vehicle}</td>
             <td contenteditable="true">${dispatcher}</td>
             <td><input type="number" class="morningMileage" value="${morningMileage}" readonly></td>
-            <td><input type="number" class="eodMileage" placeholder="Enter EOD"></td>
+            <td><input type="number" class="eodMileage"></td>
             <td><input type="number" class="mileageUsed" value="${mileageUsed}" readonly></td>
-            <td>
-              <select class="form-select">
-                <option value="">-</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-            </td>
+            <td contenteditable="true">No</td>
             <td contenteditable="true"></td>
-            <td contenteditable="true"></td>
+            <td contenteditable="true" class="paidAmount"></td>
             <td contenteditable="true"></td>
             <td contenteditable="true"></td>
             <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
           </tr>
         `;
-      });
-    });
+            });
+        });
 
-    // 4️⃣ Return full HTML table
-    const tableHTML = `
+        // 4️⃣ Return full HTML table
+        const tableHTML = `
       <div style="margin-top:30px;">
         <table class="table table-bordered" id="vehicleReportTable">
           <thead>
@@ -1748,9 +1748,9 @@ app.post('/api/vehicle-report', async (req, res) => {
             <tr>
               <th>Vehicle No.</th>
               <th>Dispatcher</th>
-              <th>Morning Mileage</th>
-              <th>EOD Mileage</th>
-              <th>Mileage Used</th>
+              <th>Morning Mileage (km)</th>
+              <th>EOD Mileage (km)</th>
+              <th>Mileage Used (km)</th>
               <th>Refilled Fuel?</th>
               <th>Receipt No.</th>
               <th>Paid Amount</th>
@@ -1766,11 +1766,11 @@ app.post('/api/vehicle-report', async (req, res) => {
       </div>
     `;
 
-    res.send(tableHTML);
-  } catch (err) {
-    console.error('Error generating vehicle report:', err);
-    res.status(500).send('Error generating vehicle report');
-  }
+        res.send(tableHTML);
+    } catch (err) {
+        console.error('Error generating vehicle report:', err);
+        res.status(500).send('Error generating vehicle report');
+    }
 });
 
 // COD/BT Collected API with date filtering and caching

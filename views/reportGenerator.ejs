@@ -755,18 +755,10 @@ Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
   }
 });
 
-resetBtn.addEventListener('click', ()=>{
-  showLoading();
-  setTimeout(()=>{
-    clearReport();
-    morningReportSection.classList.add('hidden');
-    endOfDayReportSection.classList.add('hidden');
-    reportTypeEl.value='';
-    saveBtn.classList.add('hidden');
-    printBtn.classList.add('hidden');
-    resetBtn.classList.add('hidden');
-    hideLoading();
-  },100);
+resetBtn.addEventListener('click', () => {
+  if (confirm("Are you sure you want to reset the report?")) {
+    location.reload();
+  }
 });
 
 // --- Reusable Save Function ---
@@ -822,35 +814,6 @@ resetBtn.addEventListener('click', ()=>{
     resetBtn.classList.remove("hidden");
   }
 
-function handleReset({ sectionId, saveBtn, printBtn, resetBtn }) {
-  if (!confirm("Are you sure you want to reset this report?")) return;
-
-  const section = document.getElementById(sectionId);
-  if (!section) return;
-
-  // Keep only the form
-  const form = section.querySelector("#endOfDayForm");
-  if (!form) return;
-
-  // Remove all other children except the form
-  Array.from(section.children).forEach((child) => {
-    if (child !== form) {
-      child.remove();
-    }
-  });
-
-  // Hide buttons (Save, Print, Reset)
-  if (saveBtn) saveBtn.classList.add("hidden");
-  if (printBtn) printBtn.classList.add("hidden");
-  if (resetBtn) resetBtn.classList.add("hidden");
-
-  // Re-enable Generate button
-  const generateBtn = form.querySelector("#endGenerateBtn");
-  if (generateBtn) generateBtn.disabled = false;
-
-  alert("All report contents cleared successfully.");
-}
-
 const endGenerateBtn = document.getElementById('endGenerateBtn');
 const endSaveBtn = document.getElementById('endSaveBtn');
 const endPrintBtn = document.getElementById('endPrintBtn');
@@ -860,7 +823,15 @@ const endReportLogoHeader = document.getElementById('endReportLogoHeader');
 const endStaffJobsTable = document.getElementById('endStaffJobsTable');
 const endStaffJobsHeader = document.getElementById('endStaffJobsHeader');
 
+endResetBtn.addEventListener('click', () => {
+  if (confirm("Are you sure you want to reset the report?")) {
+    location.reload();
+  }
+});
+
 endGenerateBtn.addEventListener('click', async () => {
+  endGenerateBtn.style.display = "none";
+  showLoading()
   const endReportDate = document.getElementById('endReportDate').value;
   if (!endReportDate) { alert('Please pick a date'); return; }
 
@@ -999,6 +970,8 @@ reportContainer.appendChild(pure51Container);
     // (Assume your existing logic builds the report tables here)
     alert("End of Day Report generated successfully.");
 
+    hideLoading();
+
     endSaveBtn.classList.remove("hidden");
     endResetBtn.classList.remove("hidden");
     endPrintBtn.classList.add("hidden");
@@ -1072,14 +1045,16 @@ async function loadDeliveryResult(date) {
           row.appendChild(tdStaff);
 
           const tdArea = document.createElement("td");
-          tdArea.rowSpan = 3;
-          tdArea.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
-          row.appendChild(tdArea);
+tdArea.rowSpan = 3;
+tdArea.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
+tdArea.contentEditable = true;  // <-- Make editable
+row.appendChild(tdArea);
 
-          const tdVehicle = document.createElement("td");
-          tdVehicle.rowSpan = 3;
-          tdVehicle.innerText = r.vehicle || "-";
-          row.appendChild(tdVehicle);
+const tdVehicle = document.createElement("td");
+tdVehicle.rowSpan = 3;
+tdVehicle.innerText = r.vehicle || "-";
+tdVehicle.contentEditable = true;  // <-- Make editable
+row.appendChild(tdVehicle);
         }
 
         // Jobs column
@@ -1243,75 +1218,139 @@ async function loadVehicleReport(date) {
     const tbody = table.querySelector('tbody');
     const addRowBtn = vehicleContainer.querySelector('#addVehicleRowBtn');
 
-    addRowBtn.addEventListener('click', () => {
-  const newRow = document.createElement('tr');
-  newRow.innerHTML = `
-    <td contenteditable="true"></td>
-    <td contenteditable="true"></td>
-    <td><input type="number" class="morningMileage" value="0"></td>
-    <td><input type="number" class="eodMileage" placeholder="Enter EOD Mileage"></td>
-    <td><input type="number" class="mileageUsed" value="0" readonly></td>
-    <td>
-      <select class="form-select">
-        <option value="">-</option>
-        <option value="Yes">Yes</option>
-        <option value="No">No</option>
-      </select>
-    </td>
-    <td contenteditable="true"></td>
-    <td contenteditable="true"></td>
-    <td contenteditable="true"></td>
-    <td contenteditable="true"></td>
-    <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
-  `;
-  tbody.appendChild(newRow);
-  attachRowEvents(newRow);
-});
+    // Function to attach events to a row
+    function attachRowEvents(row) {
+      // Delete row
+      const delBtn = row.querySelector('.removeRowBtn');
+      if (delBtn) delBtn.addEventListener('click', () => row.remove());
 
-    // Attach delete & mileage calculation to all existing rows
+      // Mileage calculation
+      const morningInput = row.querySelector('.morningMileage');
+      const eodInput = row.querySelector('.eodMileage');
+      const usedInput = row.querySelector('.mileageUsed');
+
+      function recalc() {
+        const morningVal = parseFloat(morningInput.value) || 0;
+        const eodVal = parseFloat(eodInput.value) || 0;
+        usedInput.value = isNaN(eodVal - morningVal) ? '' : (eodVal - morningVal);
+      }
+
+      if (morningInput && eodInput) {
+        morningInput.addEventListener('input', recalc);
+        eodInput.addEventListener('input', recalc);
+      }
+
+      // Paid Amount formatting
+      const paidCell = row.querySelector('td:nth-child(8)'); // 8th column
+      if (paidCell) {
+        paidCell.addEventListener('input', () => {
+          let val = paidCell.innerText.replace(/[^\d.]/g, ''); // remove anything except digits & dot
+          if (val === '') {
+            paidCell.innerText = '';
+            return;
+          }
+          val = parseFloat(val);
+          if (isNaN(val)) {
+            paidCell.innerText = '';
+            return;
+          }
+          paidCell.innerText = `$${val.toFixed(2)}`;
+        });
+      }
+    }
+
+    // Attach events to existing rows
     tbody.querySelectorAll('tr').forEach(row => attachRowEvents(row));
 
-    function attachRowEvents(row) {
-  const delBtn = row.querySelector('.removeRowBtn');
-  if (delBtn) delBtn.addEventListener('click', () => row.remove());
-
-  const morningInput = row.querySelector('.morningMileage');
-  const eodInput = row.querySelector('.eodMileage');
-  const usedInput = row.querySelector('.mileageUsed');
-
-  function recalc() {
-    const morningVal = parseFloat(morningInput.value) || 0;
-    const eodVal = parseFloat(eodInput.value) || 0;
-    usedInput.value = isNaN(eodVal - morningVal) ? '' : (eodVal - morningVal);
-  }
-
-  morningInput.addEventListener('input', recalc);
-  eodInput.addEventListener('input', recalc);
-}
+    // Add new row
+    addRowBtn.addEventListener('click', () => {
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+        <td><input type="number" class="morningMileage" value="0" readonly></td>
+        <td><input type="number" class="eodMileage"></td>
+        <td><input type="number" class="mileageUsed" value="0" readonly></td>
+        <td contenteditable="true">No</td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+        <td contenteditable="true"></td>
+        <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+      `;
+      tbody.appendChild(newRow);
+      attachRowEvents(newRow);
+    });
 
   } catch (err) {
     console.error('Error loading Vehicle Report:', err);
   }
 }
 
-// --- Save Button ---
-  endSaveBtn?.addEventListener("click", async () => {
-    const reportDate = document.getElementById("endReportDate").value;
-    const reportContent = document.getElementById("endOfDayReportSection").innerHTML;
-    const assignedDispatchers = []; // (Optional) add dispatchers if available
+document.addEventListener('click', function(e) {
+  if (!e.target.classList.contains('removeWarehouseRowBtn')) return;
 
-    await handleSave({
-      reportType: "Operation End of Day Report",
-      reportDate,
-      reportContent,
-      assignedDispatchers,
-      saveBtn: endSaveBtn,
-      printBtn: endPrintBtn,
-      resetBtn: endResetBtn,
-    });
+  const row = e.target.closest('tr');
+  const table = row.closest('table');
+
+  // Find if this row has the Product cell with rowspan
+  const productCell = row.querySelector('td[rowspan]');
+
+  if (productCell) {
+    // This is the first row of a merged product
+    let rowspan = parseInt(productCell.getAttribute('rowspan'));
+
+    if (rowspan > 1) {
+      // Move the productCell to the next row and reduce rowspan
+      const nextRow = row.nextElementSibling;
+      nextRow.insertBefore(productCell, nextRow.firstChild);
+      productCell.setAttribute('rowspan', rowspan - 1);
+    }
+    // else rowspan = 1, just remove row
+  } else {
+    // Middle or last row of merged product
+    // Find the first row of this merged product
+    let prevRow = row.previousElementSibling;
+    while(prevRow && !prevRow.querySelector('td[rowspan]')) {
+      prevRow = prevRow.previousElementSibling;
+    }
+
+    if (prevRow) {
+      const firstProductCell = prevRow.querySelector('td[rowspan]');
+      if (firstProductCell) {
+        // Decrease rowspan by 1
+        let rowspan = parseInt(firstProductCell.getAttribute('rowspan'));
+        firstProductCell.setAttribute('rowspan', rowspan - 1);
+      }
+    }
+  }
+
+  // Remove the row
+  row.remove();
+});
+
+endSaveBtn?.addEventListener("click", async () => {
+  const reportDate = document.getElementById("endReportDate").value; // e.g., "2025-10-28"
+  const reportContent = document.getElementById("endOfDayReportSection").innerHTML;
+  const assignedDispatchers = []; // optional
+
+  // Reformat date to dd.mm.yyyy
+  const [year, month, day] = reportDate.split("-");
+  const formattedDate = `${day}.${month}.${year}`;
+
+  await handleSave({
+    reportType: "Operation End of Day Report", // static
+    reportName: `Operation End of Day Report ${formattedDate}`, // dynamic with dd.mm.yyyy
+    reportDate,
+    reportContent,
+    assignedDispatchers,
+    saveBtn: endSaveBtn,
+    printBtn: endPrintBtn,
+    resetBtn: endResetBtn,
   });
+});
 
-  document.getElementById("endPrintBtn").addEventListener("click", function () {
+ document.getElementById("endPrintBtn").addEventListener("click", function () {
   showLoading();
 
   // --- 1️⃣ Hide elements not needed in print ---
@@ -1322,43 +1361,63 @@ async function loadVehicleReport(date) {
   ];
   hiddenElements.forEach(el => el && (el.style.display = "none"));
 
-  // Hide "Action" columns
-  const actionSelectors = [
-    "#endStaffJobsTable th:last-child",
-    "#endStaffJobsTable td:last-child",
-    "#vehicleReportTable th:last-child",
-    "#vehicleReportTable td:last-child",
-  ];
-  const hiddenCols = document.querySelectorAll(actionSelectors.join(","));
+  // --- Hide "Action" columns but keep header rows visible ---
+  const hiddenCols = document.querySelectorAll(
+    "#endStaffJobsTable thead tr:not(:first-child) th:last-child, " +
+    "#endStaffJobsTable tbody td:last-child, " +
+    "#vehicleReportTable thead tr:not(:first-child) th:last-child, " +
+    "#vehicleReportTable tbody td:last-child"
+  );
   hiddenCols.forEach(el => (el.style.display = "none"));
 
   // --- 2️⃣ Clone section for printing ---
-  const sectionClone = document.querySelector("#endOfDayReportSection").cloneNode(true);
+const sectionClone = document.querySelector("#endOfDayReportSection").cloneNode(true);
 
-  // --- 3️⃣ Restore the "5. Vehicle Report" header visibility ---
-  const vehicleHeader = sectionClone.querySelector("#vehicleReportTable thead tr:first-child th");
-  if (vehicleHeader) vehicleHeader.style.display = "table-cell";
+// --- Hide "Action" column in 4. Warehouse table in the cloned section ---
+const warehouseTable = sectionClone.querySelector("#warehouseTable");
+if (warehouseTable) {
+  // hide last th in header rows
+  warehouseTable.querySelectorAll("thead tr").forEach(tr => {
+    const lastTh = tr.lastElementChild;
+    if (lastTh && lastTh.textContent.trim() === "Action") lastTh.style.display = "none";
+  });
+  // hide last td in body rows
+  warehouseTable.querySelectorAll("tbody tr").forEach(tr => {
+    const lastTd = tr.lastElementChild;
+    if (lastTd) lastTd.style.display = "none";
+  });
+}
 
-  // --- 4️⃣ Replace inputs and selects with their text values ---
-  sectionClone.querySelectorAll("input, select").forEach(el => {
-    const value =
-      el.tagName === "SELECT"
-        ? el.options[el.selectedIndex]?.text || ""
-        : el.value || "";
+// --- 3️⃣ Restore the "5. Vehicle Report" header visibility ---
+const vehicleHeader = sectionClone.querySelector("#vehicleReportTable thead tr:first-child th");
+if (vehicleHeader) vehicleHeader.style.display = "table-cell";
+
+
+  // --- 4️⃣ Replace inputs with their values ---
+  sectionClone.querySelectorAll("input").forEach(input => {
     const span = document.createElement("span");
-    span.textContent = value;
+    span.textContent = input.value || "";
     span.style.whiteSpace = "pre-wrap";
-    el.parentNode.replaceChild(span, el);
+    input.parentNode.replaceChild(span, input);
   });
 
-  // --- 5️⃣ Generate dynamic filename ---
+  sectionClone.querySelectorAll("select").forEach(sel => {
+  const span = document.createElement("span");
+  const selectedText = sel.options[sel.selectedIndex]?.text || "-";
+  span.textContent = selectedText;
+  span.style.whiteSpace = "pre-wrap";
+  sel.parentNode.replaceChild(span, sel);
+});
+
+
+  // --- 6️⃣ Generate dynamic filename ---
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, "0");
   const mm = String(today.getMonth() + 1).padStart(2, "0");
   const yyyy = today.getFullYear();
   const fileName = `End of Day Report ${dd}.${mm}.${yyyy}`;
 
-  // --- 6️⃣ Prepare printable HTML ---
+  // --- 7️⃣ Prepare printable HTML ---
   const printHTML = `
     <html>
       <head>
@@ -1392,34 +1451,24 @@ async function loadVehicleReport(date) {
     </html>
   `;
 
-  // --- 7️⃣ Open print window ---
+  // --- 8️⃣ Open print window ---
   const printWindow = window.open("", "_blank", "width=900,height=700");
   printWindow.document.open();
   printWindow.document.write(printHTML);
   printWindow.document.close();
 
   printWindow.onload = function () {
-    // ✅ Set filename hint before printing
     printWindow.document.title = fileName;
     printWindow.focus();
     printWindow.print();
     hideLoading();
   };
 
-  // --- 8️⃣ Restore hidden elements after print ---
+  // --- 9️⃣ Restore hidden elements after print ---
   hiddenElements.forEach(el => el && (el.style.display = ""));
   hiddenCols.forEach(el => (el.style.display = ""));
 });
 
-  // --- Reset Button ---
-  endResetBtn?.addEventListener("click", () => {
-    handleReset({
-      sectionId: "endOfDayReportSection",
-      saveBtn: endSaveBtn,
-      printBtn: endPrintBtn,
-      resetBtn: endResetBtn,
-    });
-  });
     });
 </script>
 </body>
