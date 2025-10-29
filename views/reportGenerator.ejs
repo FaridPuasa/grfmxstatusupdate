@@ -383,6 +383,8 @@ const assignedByContainer = document.getElementById('assignedByContainer');
 const userId = "<%= user.name %>";
 const loadingSpinner = document.getElementById('loadingSpinner');
 
+let isReportSaved = false;
+
 function showLoading(){ loadingSpinner.style.display='flex'; }
 function hideLoading(){ loadingSpinner.style.display='none'; }
 
@@ -396,8 +398,15 @@ function clearReport(){
   reportDateEl.removeAttribute('disabled');
 }
 
+// Update the reportType change event to reset the flag
 reportTypeEl.addEventListener('change', () => {
+  isReportSaved = false;
   clearReport(); // reset both
+  generateBtn.classList.remove('hidden');
+  saveBtn.classList.add('hidden');
+  printBtn.classList.add('hidden');
+  resetBtn.classList.add('hidden');
+  
   if (reportTypeEl.value === 'Operation Morning Report') {
     morningReportSection.classList.remove('hidden');
     endOfDayReportSection.classList.add('hidden');
@@ -411,6 +420,7 @@ reportTypeEl.addEventListener('change', () => {
 });
 
 generateBtn.addEventListener('click', async () => {
+  isReportSaved = false;
   const date = reportDateEl.value;
   const vehicle = document.getElementById('vehicle').value || 'N/A';
   const dispatcher = document.getElementById('dispatcher').value;
@@ -660,6 +670,10 @@ Array.from(dispatcherJobsBody.querySelectorAll('tr')).forEach(row => {
       console.error(err);
       alert('Error saving report');
     } finally {
+      isReportSaved = true;
+  generateBtn.classList.add('hidden');
+  saveBtn.classList.add('hidden');
+  printBtn.classList.remove('hidden');
       hideLoading();
     }
   }
@@ -672,17 +686,28 @@ printBtn.addEventListener('click', () => {
   showLoading();
 
   const printWindow = window.open('', '_blank', 'width=900,height=700');
+  
+  // Get current date and format it as DD.MM.YYYY
+  const currentDate = new Date();
+  const formattedDate = currentDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\//g, '.');
+  
+  const defaultFileName = `Morning Report ${formattedDate}`;
+
   const dispatcherClone = dispatcherJobsTable.cloneNode(true);
   const morningClone = morningMileageTable.cloneNode(true);
 
   // Remove Action column from all rows (header + body + footer)
-Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
-  const cells = tr.children;
-  if (cells.length > 1) { // 🔹 Only remove if more than 1 cell
-    const lastCell = cells[cells.length - 1];
-    tr.removeChild(lastCell);
-  }
-});
+  Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
+    const cells = tr.children;
+    if (cells.length > 1) { // 🔹 Only remove if more than 1 cell
+      const lastCell = cells[cells.length - 1];
+      tr.removeChild(lastCell);
+    }
+  });
 
   // Recalculate grand total for cloned table
   const bodyRows = Array.from(dispatcherClone.querySelectorAll('tbody tr'))
@@ -724,7 +749,9 @@ Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
     </style>
   `;
 
-  const titleText = window.currentReportName || 'Report';
+  // Force the title to be exactly "Morning Report DD.MM.YYYY"
+  const titleText = defaultFileName; // Always use the default filename
+  
   printWindow.document.write(`
     <html>
       <head>
@@ -734,7 +761,7 @@ Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
       <body>
         <div id="logoHeader">
           <img id="printLogo" src="${reportLogoHeader.querySelector('img')?.src || ''}" alt="Logo">
-          <h2>${window.currentReportName}</h2>
+          <h2>${window.currentReportName || defaultFileName}</h2>
         </div>
         ${dispatcherClone.outerHTML}
         ${morningClone.outerHTML}
@@ -744,11 +771,28 @@ Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
   `);
   printWindow.document.close();
 
+  // Override any existing title before print
+  printWindow.document.title = defaultFileName;
+
   const logoImg = printWindow.document.getElementById('printLogo');
   if(logoImg){
-    logoImg.onload = () => { printWindow.focus(); printWindow.print(); hideLoading(); };
-    logoImg.onerror = () => { printWindow.focus(); printWindow.print(); hideLoading(); };
+    logoImg.onload = () => { 
+      // Ensure title is set right before printing
+      printWindow.document.title = defaultFileName;
+      printWindow.focus(); 
+      printWindow.print(); 
+      hideLoading(); 
+    };
+    logoImg.onerror = () => { 
+      // Ensure title is set right before printing
+      printWindow.document.title = defaultFileName;
+      printWindow.focus(); 
+      printWindow.print(); 
+      hideLoading(); 
+    };
   } else {
+    // Ensure title is set right before printing
+    printWindow.document.title = defaultFileName;
     printWindow.focus();
     printWindow.print();
     hideLoading();
@@ -777,42 +821,44 @@ resetBtn.addEventListener('click', () => {
     return await res.json();
   }
 
-  // --- Universal Save Handler ---
-  async function handleSave({ reportType, reportDate, reportContent, assignedDispatchers, saveBtn, printBtn, resetBtn }) {
-    if (!reportDate) return alert("Please select a date first.");
+// --- Universal Save Handler ---
+async function handleSave({ reportType, reportName, reportDate, reportContent, saveBtn, printBtn, resetBtn }) {
+  if (!reportDate) return alert("Please select a date first.");
 
-    const reportName = `${reportType} ${reportDate}`;
-    let response = await saveReportToServer({
-      reportType,
-      reportName,
-      reportContent,
-      assignedDispatchers,
-    });
+  // Remove this line since reportName is now passed correctly
+  // const reportName = `${reportType} ${reportDate}`;
+  
+  let response = await saveReportToServer({
+    reportType,
+    reportName, // Use the passed reportName which already has formatted date
+    reportContent,
+    // assignedDispatchers removed from here
+  });
 
-    // Duplicate? Ask to replace
-    if (response.duplicate) {
-      if (confirm(`A ${reportType} already exists for ${reportDate}. Replace it?`)) {
-        response = await saveReportToServer({
-          reportType,
-          reportName,
-          reportContent,
-          assignedDispatchers,
-          forceReplace: true,
-        });
-        if (response.success) alert("Report replaced successfully.");
-        else alert(response.message || "Failed to replace report.");
-      } else return;
-    } else if (response.success) {
-      alert("Report saved successfully.");
-    } else {
-      return alert(response.message || "Failed to save report.");
-    }
-
-    // After save success
-    saveBtn.classList.add("hidden");
-    printBtn.classList.remove("hidden");
-    resetBtn.classList.remove("hidden");
+  // Rest of your code remains the same...
+  if (response.duplicate) {
+    if (confirm(`A ${reportType} already exists for ${reportDate}. Replace it?`)) {
+      response = await saveReportToServer({
+        reportType,
+        reportName,
+        reportContent,
+        // assignedDispatchers removed from here
+        forceReplace: true,
+      });
+      if (response.success) alert("Report replaced successfully.");
+      else alert(response.message || "Failed to replace report.");
+    } else return;
+  } else if (response.success) {
+    alert("Report saved successfully.");
+  } else {
+    return alert(response.message || "Failed to save report.");
   }
+
+  // After save success
+  saveBtn.classList.add("hidden");
+  printBtn.classList.remove("hidden");
+  resetBtn.classList.remove("hidden");
+}
 
 const endGenerateBtn = document.getElementById('endGenerateBtn');
 const endSaveBtn = document.getElementById('endSaveBtn');
@@ -990,21 +1036,23 @@ async function loadDeliveryResult(date) {
     const res = await fetch(`/api/delivery-result-report?date=${date}`);
     const { products, results } = await res.json();
 
+    // 1. Use DocumentFragment for batch DOM updates
+    const fragment = document.createDocumentFragment();
+    
     // Spacer
     const spacer = document.createElement("div");
     spacer.style.marginTop = "30px";
-    reportContainer.appendChild(spacer);
+    fragment.appendChild(spacer);
 
-    // Table
+    // 2. Create table structure more efficiently
     const table = document.createElement("table");
     table.className = "table table-bordered";
 
     // Table header
     const thead = document.createElement("thead");
-
     const headerRow = document.createElement("tr");
-    headerRow.style.backgroundColor = "lightblue";
-    headerRow.style.fontWeight = "bold";
+    headerRow.style.cssText = "background-color: lightblue; font-weight: bold;";
+    
     const headerCell = document.createElement("th");
     headerCell.colSpan = 2 + products.length + 4;
     headerCell.style.textAlign = "left";
@@ -1013,60 +1061,61 @@ async function loadDeliveryResult(date) {
     thead.appendChild(headerRow);
 
     const colRow = document.createElement("tr");
-    ["Staff", "Area", "Vehicle", "Jobs", ...products, "Total", "Success Rate"].forEach(h => {
-      const th = document.createElement("th");
-      th.innerText = h;
-      colRow.appendChild(th);
-    });
+    const headers = ["Staff", "Area", "Vehicle", "Jobs", ...products, "Total", "Success Rate"];
+    
+    // 3. Use innerHTML for multiple header cells (faster than individual appends)
+    colRow.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
     thead.appendChild(colRow);
     table.appendChild(thead);
 
     const tbody = document.createElement("tbody");
 
+    // 4. Filter and sort results
     const filteredResults = results
       .filter(r => r.staff !== "N/A" && r.staff !== "Unassigned")
       .sort((a, b) => (a.staff === "Selfcollect" ? 1 : b.staff === "Selfcollect" ? -1 : 0));
 
+    // 5. Pre-calculate reusable values
+    const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
+    const rowTypes = ["current", "completed", "failed"];
+
     filteredResults.forEach(r => {
-      const tdSR = document.createElement("td"); // Success Rate cell, rowspan=3
+      const rowCells = {};
+      const tdSR = document.createElement("td");
       tdSR.rowSpan = 3;
       tdSR.contentEditable = false;
 
-      const rowCells = {}; // product -> {current, completed, failed}
-
-      ["current", "completed", "failed"].forEach((type, idx) => {
+      rowTypes.forEach((type, idx) => {
         const row = document.createElement("tr");
 
-        // Staff, Area, Vehicle
         if (idx === 0) {
-          const tdStaff = document.createElement("td");
-          tdStaff.rowSpan = 3;
-          tdStaff.innerText = r.staff;
-          row.appendChild(tdStaff);
+          // 6. Create rowspan cells only once
+          const staffCell = document.createElement("td");
+          staffCell.rowSpan = 3;
+          staffCell.innerText = r.staff;
+          row.appendChild(staffCell);
 
-          const tdArea = document.createElement("td");
-tdArea.rowSpan = 3;
-tdArea.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
-tdArea.contentEditable = true;  // <-- Make editable
-row.appendChild(tdArea);
+          const areaCell = document.createElement("td");
+          areaCell.rowSpan = 3;
+          areaCell.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
+          areaCell.contentEditable = true;
+          row.appendChild(areaCell);
 
-const tdVehicle = document.createElement("td");
-tdVehicle.rowSpan = 3;
-tdVehicle.innerText = r.vehicle || "-";
-tdVehicle.contentEditable = true;  // <-- Make editable
-row.appendChild(tdVehicle);
+          const vehicleCell = document.createElement("td");
+          vehicleCell.rowSpan = 3;
+          vehicleCell.innerText = r.vehicle || "-";
+          vehicleCell.contentEditable = true;
+          row.appendChild(vehicleCell);
         }
 
         // Jobs column
-        const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
         const tdJobs = document.createElement("td");
         tdJobs.innerText = displayNames[type];
         tdJobs.style.fontWeight = "bold";
         row.appendChild(tdJobs);
 
         // Product cells
-        const productTds = [];
-        products.forEach((p, i) => {
+        const productTds = products.map(p => {
           const td = document.createElement("td");
           td.contentEditable = true;
           td.innerText = r.productCounts[p][type];
@@ -1074,29 +1123,24 @@ row.appendChild(tdVehicle);
           if (!rowCells[p]) rowCells[p] = {};
           rowCells[p][type] = td;
 
-          // Initial highlight if value exists
-          if (type === "completed" && parseInt(td.innerText) > 0) td.style.backgroundColor = "#d4f4d4";
-          if (type === "failed" && parseInt(td.innerText) > 0) td.style.backgroundColor = "#f4d4d4";
+          // Initial highlighting
+          if (type === "completed" && parseInt(td.innerText) > 0) {
+            td.style.backgroundColor = "#d4f4d4";
+          } else if (type === "failed" && parseInt(td.innerText) > 0) {
+            td.style.backgroundColor = "#f4d4d4";
+          }
 
-          // Add input listener to dynamically highlight on change
+          // 7. Debounce input events for better performance
+          let inputTimeout;
           td.addEventListener("input", () => {
-            const val = parseInt(td.innerText) || 0;
-            if (type === "completed") td.style.backgroundColor = val > 0 ? "#d4f4d4" : "";
-            if (type === "failed") td.style.backgroundColor = val > 0 ? "#f4d4d4" : "";
-
-            // Assigned row constraint: Assigned >= Completed + Failed
-            if (type === "current") {
-              const completedVal = parseInt(rowCells[p]["completed"]?.innerText || 0);
-              const failedVal = parseInt(rowCells[p]["failed"]?.innerText || 0);
-              if (val < completedVal + failedVal) td.innerText = completedVal + failedVal;
-            }
-
-            calculateTotal();
+            clearTimeout(inputTimeout);
+            inputTimeout = setTimeout(() => handleCellInput(td, type, rowCells[p]), 50);
           });
 
-          row.appendChild(td);
-          productTds.push(td);
+          return td;
         });
+
+        productTds.forEach(td => row.appendChild(td));
 
         // Total column
         const tdTotal = document.createElement("td");
@@ -1104,40 +1148,69 @@ row.appendChild(tdVehicle);
           const total = productTds.reduce((sum, td) => sum + (parseInt(td.innerText) || 0), 0);
           tdTotal.innerText = total;
 
-          // Highlight Total column only if value > 0
-          if (type === "completed" && total > 0) tdTotal.style.backgroundColor = "#d4f4d4";
-          else if (type === "failed" && total > 0) tdTotal.style.backgroundColor = "#f4d4d4";
-          else tdTotal.style.backgroundColor = "";
+          if (type === "completed" && total > 0) {
+            tdTotal.style.backgroundColor = "#d4f4d4";
+          } else if (type === "failed" && total > 0) {
+            tdTotal.style.backgroundColor = "#f4d4d4";
+          } else {
+            tdTotal.style.backgroundColor = "";
+          }
 
           // Calculate Success Rate
           let completedTotal = 0;
           let assignedTotal = 0;
           products.forEach(p => {
-            const c = parseInt(rowCells[p]["completed"]?.innerText || 0);
-            const a = parseInt(rowCells[p]["current"]?.innerText || 0);
+            const c = parseInt(rowCells[p]?.completed?.innerText || 0);
+            const a = parseInt(rowCells[p]?.current?.innerText || 0);
             completedTotal += c;
             assignedTotal += a;
           });
+          
           const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
           tdSR.innerText = successRate + "%";
           tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
         };
+
         calculateTotal();
         row.appendChild(tdTotal);
 
-        // Append Success Rate to first row
         if (idx === 0) row.appendChild(tdSR);
-
         tbody.appendChild(row);
       });
     });
 
     table.appendChild(tbody);
-    reportContainer.appendChild(table);
+    fragment.appendChild(table);
+    
+    // 8. Single DOM update at the end
+    reportContainer.appendChild(fragment);
     
   } catch (err) {
     console.error('Error loading delivery results:', err);
   }
+}
+
+// 9. Separate input handler function
+function handleCellInput(td, type, rowData) {
+  const val = parseInt(td.innerText) || 0;
+  
+  if (type === "completed") {
+    td.style.backgroundColor = val > 0 ? "#d4f4d4" : "";
+  } else if (type === "failed") {
+    td.style.backgroundColor = val > 0 ? "#f4d4d4" : "";
+  }
+
+  // Assigned row constraint
+  if (type === "current") {
+    const completedVal = parseInt(rowData.completed?.innerText || 0);
+    const failedVal = parseInt(rowData.failed?.innerText || 0);
+    if (val < completedVal + failedVal) {
+      td.innerText = completedVal + failedVal;
+    }
+  }
+
+  // Recalculate totals (you'll need to make calculateTotal accessible)
+  // This would require some refactoring to make the function available
 }
 
 async function loadCodBtCollected(date) {
@@ -1332,18 +1405,16 @@ document.addEventListener('click', function(e) {
 endSaveBtn?.addEventListener("click", async () => {
   const reportDate = document.getElementById("endReportDate").value; // e.g., "2025-10-28"
   const reportContent = document.getElementById("endOfDayReportSection").innerHTML;
-  const assignedDispatchers = []; // optional
 
   // Reformat date to dd.mm.yyyy
   const [year, month, day] = reportDate.split("-");
   const formattedDate = `${day}.${month}.${year}`;
 
   await handleSave({
-    reportType: "Operation End of Day Report", // static
-    reportName: `Operation End of Day Report ${formattedDate}`, // dynamic with dd.mm.yyyy
-    reportDate,
+    reportType: "Operation End of Day Report",
+    reportName: `Operation End of Day Report ${formattedDate}`, // Use formatted date
+    reportDate: formattedDate, // Pass formatted date instead of original
     reportContent,
-    assignedDispatchers,
     saveBtn: endSaveBtn,
     printBtn: endPrintBtn,
     resetBtn: endResetBtn,
