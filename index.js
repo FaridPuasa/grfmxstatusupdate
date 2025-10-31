@@ -1019,9 +1019,9 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
         if (!dateMatch) {
             return res.json({ success: false, message: 'Invalid report name format' });
         }
-        
+
         const reportDateStr = dateMatch[1]; // e.g., "30.10.2025"
-        
+
         // Convert dd.mm.yyyy to yyyy-mm-dd for database comparison
         const [day, month, year] = reportDateStr.split('.');
         const normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -1146,22 +1146,34 @@ app.get('/api/delivery-result-report', async (req, res) => {
         // 1. Parallelize database queries
         const [orders, reportDoc] = await Promise.all([
             ORDERS.find({ jobDate: date }).lean(),
-            REPORTS.findOne({ 
+            REPORTS.findOne({
                 reportName: `Operation Morning Report ${new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".")}`
             }).lean()
         ]);
 
-        // 2. Build dispatcher map more efficiently
+        // 2. Build dispatcher map with proper name handling
         const dispatcherMap = {};
+        const fullNameMap = {}; // Map individual names to full dispatcherName
+
         if (reportDoc?.assignedDispatchers) {
             reportDoc.assignedDispatchers.forEach(d => {
                 const names = d.dispatcherName.split('/').map(n => n.trim());
+
                 names.forEach(name => {
                     dispatcherMap[name] = {
                         vehicle: d.vehicle || "-",
-                        area: d.area || "-"
+                        area: d.area || "-",
+                        fullName: d.dispatcherName // Store the full name
                     };
+                    fullNameMap[name] = d.dispatcherName; // Map individual to full name
                 });
+
+                // Also map the full name itself
+                dispatcherMap[d.dispatcherName] = {
+                    vehicle: d.vehicle || "-",
+                    area: d.area || "-",
+                    fullName: d.dispatcherName
+                };
             });
         }
 
@@ -1172,7 +1184,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const batchSize = 100;
         for (let i = 0; i < orders.length; i += batchSize) {
             const batch = orders.slice(i, i + batchSize);
-            
+
             for (const order of batch) {
                 const product = order.product || "N/A";
                 allProducts.add(product);
@@ -1190,11 +1202,11 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 histories.forEach(h => {
                     const d = new Date(h.dateUpdated);
                     const dateKey = d.toISOString().split('T')[0];
-                    
+
                     if (!perDay.has(dateKey)) {
                         perDay.set(dateKey, { current: null, final: null });
                     }
-                    
+
                     const existing = perDay.get(dateKey);
                     const isCurrent = h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect";
                     const isFinal = h.statusHistory === "Completed" || h.statusHistory === "Failed Delivery";
@@ -1210,7 +1222,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 for (const { current, final } of perDay.values()) {
                     [current, final].forEach((h, index) => {
                         if (!h) return;
-                        
+
                         const staff = h.lastAssignedTo || "Unassigned";
                         if (!staffMap[staff]) {
                             staffMap[staff] = {
@@ -1243,7 +1255,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         // 7. Optimize products filtering
         const products = Array.from(allProducts).filter(p =>
-            Object.values(staffMap).some(data => 
+            Object.values(staffMap).some(data =>
                 Object.values(data.products[p] || {}).some(count => count > 0)
             )
         );
@@ -1257,23 +1269,40 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
             const { current, completed, failed } = data.totals;
             const total = current + completed + failed;
-            const successRate = completed + failed > 0 
+            const successRate = completed + failed > 0
                 ? Math.round((completed / (completed + failed)) * 100)
                 : 0;
 
-            // Vehicle & Area lookup with fallback
+            // Improved Vehicle & Area lookup with better name matching
             let vehicle = "-";
             let area = "-";
             let reportStaffName = staff;
 
             if (staff !== "Selfcollect") {
-                const dispatcherEntry = Object.entries(dispatcherMap).find(([name]) => 
-                    name.includes(staff)
-                );
-                if (dispatcherEntry) {
-                    vehicle = dispatcherEntry[1].vehicle;
-                    area = dispatcherEntry[1].area;
-                    reportStaffName = dispatcherEntry[0];
+                // First try exact match
+                if (dispatcherMap[staff]) {
+                    vehicle = dispatcherMap[staff].vehicle;
+                    area = dispatcherMap[staff].area;
+                    reportStaffName = dispatcherMap[staff].fullName || staff;
+                } else {
+                    // Try partial matching for names like "Zakwan" in "Zakwan/Wafi"
+                    const dispatcherEntry = Object.entries(dispatcherMap).find(([name]) => {
+                        // Check if staff name is part of a compound name
+                        if (name.includes('/') && name.includes(staff)) {
+                            return true;
+                        }
+                        // Check if compound name contains staff name
+                        if (staff.includes('/') && staff.includes(name)) {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    if (dispatcherEntry) {
+                        vehicle = dispatcherEntry[1].vehicle;
+                        area = dispatcherEntry[1].area;
+                        reportStaffName = dispatcherEntry[1].fullName || dispatcherEntry[0];
+                    }
                 }
             }
 
@@ -1315,7 +1344,11 @@ app.post('/api/cod-bt-collected', async (req, res) => {
         if (reportDoc && Array.isArray(reportDoc.assignedDispatchers)) {
             reportDoc.assignedDispatchers.forEach(d => {
                 const names = d.dispatcherName.split('/').map(n => n.trim());
-                names.forEach(name => dispatcherMap[name] = d.dispatcherName);
+                names.forEach(name => {
+                    dispatcherMap[name] = d.dispatcherName;
+                    // Also map the full name to itself for consistency
+                    dispatcherMap[d.dispatcherName] = d.dispatcherName;
+                });
             });
         }
 
@@ -1570,7 +1603,7 @@ ${areasInTable.map(a => `<th>${a}</th>`).join('')}
                 // Get total jobs per AWB
                 const uniqueAwbs = sortedMawb.filter(m => m && m !== "-").map(m => m.trim());
                 const totalCountsMap = {};
-                
+
                 if (uniqueAwbs.length > 0) {
                     const awbCounts = await ORDERS.aggregate([
                         {
@@ -1656,7 +1689,7 @@ ${areasInTable.map(a => `<th>${a}</th>`).join('')}
                 const agingDays = entryDates.map(d => Math.floor((today - d) / (1000 * 60 * 60 * 24)));
                 const minDays = Math.min(...agingDays);
                 const maxDays = Math.max(...agingDays);
-                
+
                 // Show range if different, single number if same
                 const aging = minDays === maxDays ? `${minDays}` : `${minDays}-${maxDays}`;
 
