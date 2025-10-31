@@ -994,8 +994,6 @@ app.post('/api/getEndOfDaySummary', async (req, res) => {
 
 app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
     try {
-        console.log("req.user:", req.user);
-
         let { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
 
         if (!reportType || !reportContent || !reportName) {
@@ -1016,17 +1014,22 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
             assignedDispatchers = [];
         }
 
-        // --- Determine today's date for "one report per day" logic ---
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        // --- Extract date from reportName for duplicate checking ---
+        const dateMatch = reportName.match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
+        if (!dateMatch) {
+            return res.json({ success: false, message: 'Invalid report name format' });
+        }
+        
+        const reportDateStr = dateMatch[1]; // e.g., "30.10.2025"
+        
+        // Convert dd.mm.yyyy to yyyy-mm-dd for database comparison
+        const [day, month, year] = reportDateStr.split('.');
+        const normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
-        // --- Check for existing same-type report created today ---
+        // --- Check for existing same-type report for the same date ---
         const existingReport = await REPORTS.findOne({
             reportType,
-            createdAt: {
-                $gte: new Date(`${todayStr}T00:00:00.000Z`),
-                $lte: new Date(`${todayStr}T23:59:59.999Z`)
-            }
+            reportName: { $regex: reportDateStr } // Look for reports with this date in the name
         });
 
         // --- If found and not replacing ---
@@ -1034,7 +1037,7 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
             return res.json({
                 success: false,
                 duplicate: true,
-                message: `A ${reportType} already exists for today.`
+                message: `A ${reportType} for ${reportDateStr} already exists.`
             });
         }
 
