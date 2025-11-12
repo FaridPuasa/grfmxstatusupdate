@@ -349,7 +349,7 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
     <!-- COD/BT Tables -->
     <div id="codBtCollectedContainer" style="margin-top:30px;"></div>
     <div id="warehouseReportContainer"></div>
-
+<div id="checkedByContainer"></div>
   </div>
 </div>
 
@@ -868,6 +868,7 @@ const endResetBtn = document.getElementById('endResetBtn');
 const endReportLogoHeader = document.getElementById('endReportLogoHeader');
 const endStaffJobsTable = document.getElementById('endStaffJobsTable');
 const endStaffJobsHeader = document.getElementById('endStaffJobsHeader');
+const checkedByContainer = document.getElementById('checkedByContainer');
 
 endResetBtn.addEventListener('click', () => {
   if (confirm("Are you sure you want to reset the report?")) {
@@ -1012,6 +1013,25 @@ pure51Container.innerHTML = `
 reportContainer.appendChild(pure51Container);
 
     await loadVehicleReport(endReportDate);
+
+    // Remove any existing checkedByContainer
+const existingCheckedBy = document.getElementById('vehicleReportCheckedBy');
+if (existingCheckedBy) existingCheckedBy.remove();
+
+// Create new checkedBy container specifically for Vehicle Report
+const vehicleReportCheckedBy = document.createElement('div');
+vehicleReportCheckedBy.id = 'vehicleReportCheckedBy';
+vehicleReportCheckedBy.style.fontWeight = 'bold';
+vehicleReportCheckedBy.style.marginTop = '10px';
+vehicleReportCheckedBy.innerText = `Checked and prepared by: ${userId}`;
+
+// Append it after the vehicle report container
+const vehicleContainer = document.querySelector('#vehicleReportTable').closest('div');
+if (vehicleContainer) {
+    vehicleContainer.appendChild(vehicleReportCheckedBy);
+}
+
+updateCheckedByPosition();
 
     // (Assume your existing logic builds the report tables here)
     alert("End of Day Report generated successfully.");
@@ -1348,6 +1368,7 @@ async function loadVehicleReport(date) {
         <td contenteditable="true"></td>
         <td contenteditable="true"></td>
         <td contenteditable="true"></td>
+        <td contenteditable="true"></td> <!-- NEW: Refilled Fuel Mileage -->
         <td contenteditable="true"></td>
         <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
       `;
@@ -1432,13 +1453,13 @@ endSaveBtn?.addEventListener("click", async () => {
   ];
   hiddenElements.forEach(el => el && (el.style.display = "none"));
 
-  // --- Hide "Action" columns but keep header rows visible ---
-  const hiddenCols = document.querySelectorAll(
-    "#endStaffJobsTable thead tr:not(:first-child) th:last-child, " +
-    "#endStaffJobsTable tbody td:last-child, " +
-    "#vehicleReportTable thead tr:not(:first-child) th:last-child, " +
-    "#vehicleReportTable tbody td:last-child"
-  );
+  // In the print button event listener, update the hiddenCols selector:
+const hiddenCols = document.querySelectorAll(
+  "#endStaffJobsTable thead tr:not(:first-child) th:last-child, " +
+  "#endStaffJobsTable tbody td:last-child, " +
+  "#vehicleReportTable thead tr:not(:first-child) th:last-child, " +
+  "#vehicleReportTable tbody td:last-child"
+);
   hiddenCols.forEach(el => (el.style.display = "none"));
 
   // --- 2️⃣ Clone section for printing ---
@@ -1489,38 +1510,41 @@ if (vehicleHeader) vehicleHeader.style.display = "table-cell";
   const fileName = `End of Day Report ${dd}.${mm}.${yyyy}`;
 
   // --- 7️⃣ Prepare printable HTML ---
-  const printHTML = `
-    <html>
-      <head>
-        <title>${fileName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 25px; }
-          h2 { text-align: center; margin: 10px 0 20px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-          th, td {
-            border: 1px solid #000;
-            padding: 6px 8px;
-            font-size: 14px;
-            text-align: center;
-            vertical-align: middle;
-          }
-          th { background-color: #e6f2ff; font-weight: bold; }
-          tr:first-child th[colspan] {
-            background-color: lightblue !important;
-            text-align: left;
-            font-size: 15px;
-          }
-          img { display: block; margin: 0 auto; max-height: 80px; }
-          @media print {
-            body { zoom: 90%; }
-          }
-        </style>
-      </head>
-      <body>
-        ${sectionClone.innerHTML}
-      </body>
-    </html>
-  `;
+const printHTML = `
+  <html>
+    <head>
+      <title>${fileName}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 25px; }
+        h2 { text-align: center; margin: 10px 0 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        th, td {
+          border: 1px solid #000;
+          padding: 6px 8px;
+          font-size: 14px;
+          text-align: center;
+          vertical-align: middle;
+        }
+        th { background-color: #e6f2ff; font-weight: bold; }
+        tr:first-child th[colspan] {
+          background-color: lightblue !important;
+          text-align: left;
+          font-size: 15px;
+        }
+        img { display: block; margin: 0 auto; max-height: 80px; }
+        .checked-by { font-weight: bold; margin-top: 10px; }
+        @media print {
+          body { zoom: 90%; }
+        }
+      </style>
+    </head>
+    <body>
+      ${sectionClone.innerHTML}
+    </body>
+  </html>
+`;
+
+updateCheckedByPosition();
 
   // --- 8️⃣ Open print window ---
   const printWindow = window.open("", "_blank", "width=900,height=700");
@@ -1540,6 +1564,27 @@ if (vehicleHeader) vehicleHeader.style.display = "table-cell";
   hiddenCols.forEach(el => (el.style.display = ""));
 });
 
+function updateCheckedByPosition() {
+    // Remove any existing checkedBy containers
+    const existingCheckedBys = document.querySelectorAll('[id*="CheckedBy"]');
+    existingCheckedBys.forEach(el => el.remove());
+    
+    // Create new checkedBy container
+    const checkedByDiv = document.createElement('div');
+    checkedByDiv.id = 'vehicleReportCheckedBy';
+    checkedByDiv.style.fontWeight = 'bold';
+    checkedByDiv.style.marginTop = '10px';
+    checkedByDiv.innerText = `Checked and prepared by: ${userId}`;
+    
+    // Find the Vehicle Report table and append after it
+    const vehicleReportTable = document.getElementById('vehicleReportTable');
+    if (vehicleReportTable) {
+        const vehicleContainer = vehicleReportTable.closest('div');
+        if (vehicleContainer) {
+            vehicleContainer.appendChild(checkedByDiv);
+        }
+    }
+}
     });
 </script>
 </body>
