@@ -11130,11 +11130,10 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
         // Build complete address
         const completeAddress = buildCompleteAddress(req.body);
 
+        const address = completeAddress.toUpperCase();
         let finalArea = ""
         let area = "N/A";
         let kampong = "";
-
-        address = completeAddress.toUpperCase();
 
         if (address.includes("MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
         else if (address.includes("DELIMA") == true) { area = "B", kampong = "DELIMA" }
@@ -11559,6 +11558,42 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
         });
 
     } catch (error) {
+        const errorData = error.response?.data;
+
+        // Detect duplicate consignment number
+        const isDuplicateError =
+            errorData?.errors?.[0]?.message?.toLowerCase().includes('already exists') ||
+            errorData?.message?.toLowerCase().includes('already exists') ||
+            errorData?.error?.toLowerCase().includes('duplicate') ||
+            errorData?.errors?.[0]?.message?.toLowerCase().includes('duplicate') ||
+            error.response?.status === 422; // Detrack often uses 422 for duplicates
+
+        if (isDuplicateError) {
+            // ✅ MULTIPLE VISIBLE LOGS
+            console.log('='.repeat(50));
+            console.log('🔄 DUPLICATE ORDER DETECTED');
+            console.log('📦 Consignment No:', req.body.consignmentno);
+            console.log('⏰ Time:', new Date().toISOString());
+            console.log('💡 Action: Skipped duplicate');
+            console.log('='.repeat(50));
+
+            // Detailed log
+            console.log('📋 Duplicate details:', {
+                consignmentno: req.body.consignmentno,
+                detrackError: errorData,
+                timestamp: new Date().toISOString()
+            });
+
+            return res.status(200).json({
+                status: 'success',
+                message: 'Order already exists in system - skipped duplicate',
+                consignmentno: req.body.consignmentno,
+                code: 'DUPLICATE_SKIPPED',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Log other errors
         console.error('❌ GDEX to Go Rush Error:', {
             consignmentno: req.body.consignmentno,
             error: error.response?.data || error.message,
