@@ -11517,7 +11517,7 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
                 "payment_mode": (req.body.codpayment > 0) ? "Cash" : "NON COD",
                 "payment_amount": parseFloat(req.body.codpayment) || 0,
                 "total_price": parseFloat(req.body.codpayment) || 0,
-                "group_name": "GDEX",
+                "group_name": "GDEXT",
                 "weight": parseFloat(req.body.weight) || 0,
                 "parcel_width": parseFloat(req.body.width) || 0,
                 "parcel_length": parseFloat(req.body.length) || 0,
