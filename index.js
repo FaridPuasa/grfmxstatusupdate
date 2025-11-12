@@ -11088,8 +11088,7 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
             'weight': 'Weight',
             'consigneename': 'Consignee name',
             'consigneeaddress1': 'Consignee address line 1',
-            'consigneecontactnumber1': 'Consignee contact number',
-            'codpayment': 'COD payment amount',
+            'consigneecontact': 'Consignee contact number',
             'productdesc': 'Product description'
         };
 
@@ -11101,8 +11100,7 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
         if (!req.body.weight) missingFields.push('weight');
         if (!req.body.consigneename) missingFields.push('consigneename');
         if (!req.body.consigneeaddress1) missingFields.push('consigneeaddress1');
-        if (!req.body.consigneecontactnumber1) missingFields.push('consigneecontactnumber1');
-        if (req.body.codpayment === undefined || req.body.codpayment === null) missingFields.push('codpayment');
+        if (!req.body.consigneecontact) missingFields.push('consigneecontact');
         if (!req.body.productdesc) missingFields.push('productdesc');
 
         // Return error if any fields are missing
@@ -11125,7 +11123,7 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
         }
 
         // Transform phone number format
-        const formattedPhone = formatPhoneNumber(req.body.consigneecontactnumber1, req.body.country);
+        const formattedPhone = formatPhoneNumber(req.body.consigneecontact, req.body.country);
 
         // Build complete address
         const completeAddress = buildCompleteAddress(req.body);
@@ -11507,16 +11505,17 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
                 "tracking_number": req.body.consignmentno,
                 "job_type": "Standard",
                 "address": completeAddress,
-                "postal_code": req.body.postcode || '',
-                "city": req.body.town || '',
-                "state": req.body.state || '',
-                "country": req.body.country || '',
+                "postal_code": req.body.consigneepostcode || '',
+                "city": req.body.consigneetown || '',
+                "state": req.body.consigneestate || '',
+                "country": req.body.consigneecountry || '',
                 "deliver_to_collect_from": req.body.consigneename,
+                "job_owner": req.body.sendername || '',
                 "phone_number": formattedPhone,
                 "zone": finalArea,
-                "payment_mode": (req.body.codpayment > 0) ? "Cash" : "NON COD",
-                "payment_amount": parseFloat(req.body.codpayment) || 0,
-                "total_price": parseFloat(req.body.codpayment) || 0,
+                "payment_mode": req.body.product === '00008' ? "Cash" : "NON COD",
+                "payment_amount": req.body.product === '00008' ? parseFloat(req.body.codpayment) || 0 : 0,
+                "total_price": req.body.product === '00008' ? parseFloat(req.body.codpayment) || 0 : 0,
                 "group_name": "GDEXT",
                 "weight": parseFloat(req.body.weight) || 0,
                 "parcel_width": parseFloat(req.body.width) || 0,
@@ -11658,10 +11657,10 @@ function buildCompleteAddress(gdexData) {
         gdexData.consigneeaddress1,
         gdexData.consigneeaddress2,
         gdexData.consigneeaddress3,
-        gdexData.town,
-        gdexData.state,
-        gdexData.country,
-        gdexData.postcode
+        gdexData.consigneetown,
+        gdexData.consigneestate,
+        gdexData.consigneecountry,
+        gdexData.consigneepostcode
     ];
 
     // Filter out empty parts and join with commas
