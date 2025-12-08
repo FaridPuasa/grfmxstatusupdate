@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Job</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .table-responsive {
+            margin-bottom: 30px;
+        }
+
+        .scan-section {
+            display: none;
+        }
+
+        .scan-active {
+            background-color: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 5px;
+            padding: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <!-- Initial Header and Form Section -->
+        <div id="initialSection">
+            <h1 class="mb-4">Update Job</h1>
+
+            <form id="updateJobForm">
+                <div class="mb-3">
+                    <label for="updateCode" class="form-label">Tracking Status Code / Detail to be updated:</label>
+                    <select id="updateCode" name="updateCode" class="form-select" required>
+                        <option value="" selected>Please select status</option>
+                        <optgroup label="EWE/MGLOBAL/PDU/GDEX Flow">
+                            <option value="UAN">1. MAWB Number</option>
+                            <option value="CCH">2. On Hold</option>
+                        </optgroup>
+                        <!-- Other optgroups remain the same -->
+                        <optgroup label="Standard Flow">
+                            <option value="IIW">1. Item in Warehouse</option>
+                            <option value="OFD">2.1. Out for Delivery</option>
+                            <option value="OSC">2.2. Self Collect</option>
+                        </optgroup>
+                        <optgroup label="MGLOBAL Flow">
+                            <option value="FCC">1.1. Fail due to Customer not available / cannot be contacted</option>
+                            <option value="FIA">1.2. Fail due to Incorrect Address</option>
+                            <option value="FSC">1.3.1. Fail due to Reschedule to self collect requested by customer
+                            </option>
+                            <option value="OSC">1.3.2. Self Collect</option>
+                        </optgroup>
+                        <optgroup label="After Success/Fail updated on Agent App">
+                            <option value="SFJ">Clear Job</option>
+                        </optgroup>
+                        <optgroup label="Change Details">
+                            <option value="OSD">Swap Dispatchers</option>
+                            <option value="UWL">Update Warehouse</option>
+                            <option value="UGR">Update Go Rush Remark</option>
+                            <option value="UJD">Update Job Date</option>
+                            <option value="UJM">Update Job Method</option>
+                            <option value="UJP">Update Price</option>
+                            <option value="UAW">Update Weight</option>
+                            <option value="UAS">Update Address</option>
+                            <option value="UAR">Update Area</option>
+                            <option value="UPN">Update Phone Number</option>
+                            <option value="URN">Update Customer Name</option>
+                            <option value="UPC">Update Postal Code</option>
+                            <option value="UAB">Update AWB Number</option>
+                        </optgroup>
+                        <optgroup label="Danger Zone!!!">
+                            <option value="UCD">1. Cancelled Job</option>
+                            <option value="URJ">2. Cancelled -> Reactivate Job</option>
+                            <option value="UDJ">3. Dispose Job</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- MAWB Number Fields (Initially Hidden) -->
+                <div id="mawbFields" style="display: none;">
+                    <div class="mb-3">
+                        <label for="mawbNum" class="form-label">MAWB No:</label>
+                        <input type="text" id="mawbNum" name="mawbNum" class="form-control">
+                    </div>
+
+                    <!-- Update Method Selection -->
+                    <div class="mb-3">
+                        <label for="updateMethod" class="form-label">Update Method:</label>
+                        <select id="updateMethod" name="updateMethod" class="form-select" required>
+                            <option value="" selected>Please select method</option>
+                            <option value="bulk">1. Bulk</option>
+                            <option value="onebyone">2. One by one</option>
+                        </select>
+                    </div>
+
+                    <!-- Bulk Update Section -->
+                    <div id="bulkSection" class="update-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="trackingNumBulk" class="form-label">Tracking Number(s):</label>
+                            <textarea id="trackingNumBulk" name="trackingNumBulk" class="form-control" rows="2"
+                                placeholder="Enter one tracking number per line"></textarea>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <button type="submit" id="submitButton" class="btn btn-primary me-md-2">Submit</button>
+                        </div>
+                    </div>
+
+                    <!-- One by One Update Section -->
+                    <div id="oneByOneSection" class="update-section scan-section" style="display: none;">
+                        <div class="mb-3 text-center">
+                            <button type="button" id="readyToScan" class="btn btn-success btn-lg">Ready to Scan</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Active Update Section (Hidden Initially) -->
+        <div id="activeUpdateSection" style="display: none;">
+            <h1 class="mb-4" id="activeUpdateTitle">Update Title</h1>
+
+            <!-- Loading Animation -->
+            <div id="loading" class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Processing... Please wait</p>
+            </div>
+
+            <!-- Bulk Results Section -->
+            <div id="bulkResults" class="result-section">
+                <h3>Update Results</h3>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card text-white bg-success">
+                            <div class="card-body">
+                                <h5 class="card-title">Jobs Updated</h5>
+                                <p class="card-text display-4" id="updatedCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card text-white bg-danger">
+                            <div class="card-body">
+                                <h5 class="card-title">Jobs Not Updated</h5>
+                                <p class="card-text display-4" id="notUpdatedCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Successful Updates Table -->
+                <div id="successTable" style="display: none;">
+                    <h4 class="text-success">Successfully Updated Jobs</h4>
+                    <div class="table-responsive">
+                        <table class="table table-success table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Tracking Number</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody id="successTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Failed Updates Table -->
+                <div id="failedTable" style="display: none;">
+                    <h4 class="text-danger">Jobs Not Updated</h4>
+                    <div class="table-responsive">
+                        <table class="table table-danger table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Tracking Number</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody id="failedTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reset Button at bottom of results -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
+                </div>
+            </div>
+
+            <!-- One by One Scanning Interface -->
+            <div id="oneByOneInterface" style="display: none;">
+                <!-- Results will appear here during scanning -->
+                <div id="scanResults" class="result-section"></div>
+
+                <div class="mb-3">
+                    <label for="trackingNumSingle" class="form-label">Scan or Enter Tracking Number:</label>
+                    <input type="text" id="trackingNumSingle" name="trackingNumSingle" class="form-control"
+                        placeholder="Scan or paste tracking number">
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <!-- Remove Stop Scanning button, keep only Reset -->
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </form>
+    </div>
+
+    <!-- Active Update Section (Hidden Initially) -->
+    <div id="activeUpdateSection" style="display: none;">
+        <h1 class="mb-4" id="activeUpdateTitle">Update Title</h1>
+
+        <!-- Loading Animation -->
+        <div id="loading" class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Processing... Please wait</p>
+        </div>
+
+        <!-- Bulk Results Section -->
+        <div id="bulkResults" class="result-section">
+            <h3>Update Results</h3>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h5 class="card-title">Jobs Updated</h5>
+                            <p class="card-text display-4" id="updatedCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body">
+                            <h5 class="card-title">Jobs Not Updated</h5>
+                            <p class="card-text display-4" id="notUpdatedCount">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Successful Updates Table -->
+            <div id="successTable" style="display: none;">
+                <h4 class="text-success">Successfully Updated Jobs</h4>
+                <div class="table-responsive">
+                    <table class="table table-success table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tracking Number</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody id="successTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Failed Updates Table -->
+            <div id="failedTable" style="display: none;">
+                <h4 class="text-danger">Jobs Not Updated</h4>
+                <div class="table-responsive">
+                    <table class="table table-danger table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tracking Number</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody id="failedTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Single Reset Button at bottom of results -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button type="button" id="resultsResetButton" class="btn btn-secondary"
+                    onclick="resetToInitialMode()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Global variables for one-by-one scanning
+    let scanResults = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        notUpdatedCount: 0
+    };
+
+    let currentJobId = null;
+    let pollInterval = null;
+
+    // Event Listeners
+    document.getElementById('updateCode').addEventListener('change', function () {
+        const mawbFields = document.getElementById('mawbFields');
+        if (this.value === 'UAN') {
+            mawbFields.style.display = 'block';
+        } else {
+            mawbFields.style.display = 'none';
+            hideAllSections();
+        }
+    });
+
+    document.getElementById('updateMethod').addEventListener('change', function () {
+        const bulkSection = document.getElementById('bulkSection');
+        const oneByOneSection = document.getElementById('oneByOneSection');
+
+        // Hide all sections first
+        hideAllSections();
+
+        if (this.value === 'bulk') {
+            bulkSection.style.display = 'block';
+        } else if (this.value === 'onebyone') {
+            oneByOneSection.style.display = 'block';
+        }
+    });
+
+    // Update Ready to Scan button event listener
+    document.getElementById('readyToScan').addEventListener('click', function () {
+        const updateCode = document.getElementById('updateCode').value;
+
+        // Switch to active update mode for one-by-one
+        switchToActiveUpdateMode(updateCode, 'onebyone');
+    });
+
+    // ONE-BY-ONE SCANNING - FIXED VERSION
+    document.getElementById('trackingNumSingle').addEventListener('change', async function () {
+        const trackingNumber = this.value.trim();
+        if (!trackingNumber) return;
+
+        const updateCode = document.getElementById('updateCode').value;
+        const mawbNum = document.getElementById('mawbNum') ? document.getElementById('mawbNum').value.trim() : '';
+
+        // Validation - only require MAWB for UAN updates
+        if (updateCode === 'UAN' && !mawbNum) {
+            alert('Please enter MAWB Number');
+            this.value = '';
+            this.focus();
+            return;
+        }
+
+        showSingleLoading(true);
+
+        try {
+            console.log('Sending one-by-one update request...');
+            
+            const requestBody = {
+                updateCode: updateCode,
+                trackingNumbers: [trackingNumber],
+                updateMethod: 'onebyone'
+            };
+
+            // Only include mawbNum for UAN updates
+            if (updateCode === 'UAN' && mawbNum) {
+                requestBody.mawbNum = mawbNum;
+            }
+
+            const response = await fetch('/updateJob', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('One-by-one result:', result);
+
+            // Handle both response formats (direct result or background job)
+            if (result.jobId) {
+                // Background job created - wait for completion
+                console.log('Background job created, waiting...');
+                await waitForJobCompletion(result.jobId, trackingNumber);
+            } else {
+                // Direct result
+                if (result.successful && result.successful.length > 0) {
+                    scanResults.successful.push(...result.successful);
+                    scanResults.updatedCount += result.updatedCount || result.successful.length;
+                }
+                if (result.failed && result.failed.length > 0) {
+                    scanResults.failed.push(...result.failed);
+                    scanResults.notUpdatedCount += result.notUpdatedCount || result.failed.length;
+                }
+                updateScanResultsDisplay();
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            // Add to failed results
+            scanResults.failed.push({
+                trackingNumber: trackingNumber,
+                result: 'Error: ' + error.message
+            });
+            scanResults.notUpdatedCount++;
+            updateScanResultsDisplay();
+        } finally {
+            // Always clear input and refocus for next scan
+            this.value = '';
+            showSingleLoading(false);
+            
+            // Auto-focus for next scan with slight delay
+            setTimeout(() => {
+                this.focus();
+            }, 100);
+        }
+    });
+
+    // BULK FORM SUBMISSION
+    document.getElementById('updateJobForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const updateCode = document.getElementById('updateCode').value;
+        const mawbNum = document.getElementById('mawbNum') ? document.getElementById('mawbNum').value.trim() : '';
+        const updateMethod = document.getElementById('updateMethod') ? document.getElementById('updateMethod').value : 'bulk';
+        
+        let trackingNumbers = [];
+
+        // Get tracking numbers based on method
+        if (updateMethod === 'bulk') {
+            const trackingNumBulk = document.getElementById('trackingNumBulk').value;
+            trackingNumbers = trackingNumBulk.split('\n').map(num => num.trim()).filter(num => num !== '');
+        } else {
+            return; // One-by-one handled separately
+        }
+
+        if (trackingNumbers.length === 0) {
+            alert('Please enter tracking numbers');
+            return;
+        }
+
+        // For MAWB updates, validate MAWB number
+        if (updateCode === 'UAN' && (!mawbNum || mawbNum === '')) {
+            alert('Please enter MAWB Number');
+            return;
+        }
+
+        // Switch to active update mode
+        switchToActiveUpdateMode(updateCode, 'bulk');
+
+        // Show loading with progress bar
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('loading').innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Starting background processing...</p>
+            <div class="progress mt-3" style="height: 25px;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%; font-weight: bold;">0%</div>
+            </div>
+            <p id="progressText" class="mt-2">Initializing...</p>
+            <p class="text-muted small">Processing ${trackingNumbers.length} jobs in background...</p>
+        `;
+        
+        document.getElementById('bulkResults').style.display = 'none';
+
+        try {
+            const requestBody = {
+                updateCode: updateCode,
+                trackingNumbers: trackingNumbers,
+                updateMethod: 'bulk'
+            };
+
+            // Only include mawbNum for UAN updates
+            if (updateCode === 'UAN' && mawbNum) {
+                requestBody.mawbNum = mawbNum;
+            }
+
+            const response = await fetch('/updateJob', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            const result = await response.json();
+
+            if (result.jobId) {
+                currentJobId = result.jobId;
+                startPollingResults();
+            } else {
+                throw new Error('No job ID received for bulk processing');
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loading').style.display = 'none';
+            alert('An error occurred while starting the job: ' + error.message);
+        }
+    });
+
+    // HELPER FUNCTIONS
+
+    function hideAllSections() {
+        document.getElementById('bulkSection').style.display = 'none';
+        document.getElementById('oneByOneSection').style.display = 'none';
+    }
+
+    function showSingleLoading(show) {
+        const input = document.getElementById('trackingNumSingle');
+        const loadingDiv = document.getElementById('loading');
+
+        if (show) {
+            input.disabled = true;
+            input.placeholder = 'Processing...';
+            input.style.backgroundColor = '#fff3cd';
+            
+            // Show minimal loading for single items
+            loadingDiv.style.display = 'block';
+            loadingDiv.innerHTML = `
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span class="ms-2">Updating...</span>
+            `;
+        } else {
+            input.disabled = false;
+            input.placeholder = 'Scan or paste tracking number';
+            input.style.backgroundColor = '';
+            loadingDiv.style.display = 'none';
+        }
+    }
+
+    async function waitForJobCompletion(jobId, trackingNumber) {
+        const maxAttempts = 30;
+        let attempts = 0;
+        
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    const response = await fetch(`/updateJob/status/${jobId}`);
+                    const jobStatus = await response.json();
+                    
+                    if (jobStatus.status === 'completed') {
+                        clearInterval(checkInterval);
+                        
+                        // Update scan results
+                        if (jobStatus.successful && jobStatus.successful.length > 0) {
+                            scanResults.successful.push(...jobStatus.successful);
+                            scanResults.updatedCount += jobStatus.updatedCount;
+                        }
+                        if (jobStatus.failed && jobStatus.failed.length > 0) {
+                            scanResults.failed.push(...jobStatus.failed);
+                            scanResults.notUpdatedCount += jobStatus.notUpdatedCount;
+                        }
+                        
+                        updateScanResultsDisplay();
+                        resolve();
+                    } else if (jobStatus.status === 'failed' || attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        scanResults.failed.push({
+                            trackingNumber: trackingNumber,
+                            result: 'Processing timeout or failed'
+                        });
+                        scanResults.notUpdatedCount++;
+                        updateScanResultsDisplay();
+                        resolve();
+                    }
+                } catch (error) {
+                    console.error('Error checking job status:', error);
+                    if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }
+            }, 2000);
+        });
+    }
+
+    function startPollingResults() {
+        pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/updateJob/status/${currentJobId}`);
+                const jobStatus = await response.json();
+
+                // Update progress
+                if (jobStatus.status === 'processing' || jobStatus.status === 'queued') {
+                    const progress = jobStatus.total > 0 ? Math.round((jobStatus.processed / jobStatus.total) * 100) : 0;
+                    document.getElementById('progressBar').style.width = `${progress}%`;
+                    document.getElementById('progressBar').textContent = `${progress}%`;
+                    document.getElementById('progressText').textContent = 
+                        `Processed ${jobStatus.processed} of ${jobStatus.total} jobs (${jobStatus.updatedCount} successful, ${jobStatus.notUpdatedCount} failed)`;
+                }
+
+                // Check if job is completed
+                if (jobStatus.status === 'completed') {
+                    clearInterval(pollInterval);
+                    document.getElementById('loading').style.display = 'none';
+                    displayBulkResults(jobStatus);
+                    
+                    setTimeout(() => {
+                        alert(`Background processing completed!\n\nSuccessfully updated: ${jobStatus.updatedCount}\nFailed: ${jobStatus.notUpdatedCount}`);
+                    }, 500);
+                    
+                } else if (jobStatus.status === 'failed') {
+                    clearInterval(pollInterval);
+                    document.getElementById('loading').style.display = 'none';
+                    alert('Job failed: ' + (jobStatus.error || 'Unknown error'));
+                }
+
+            } catch (error) {
+                console.error('Error polling job status:', error);
+            }
+        }, 2000);
+    }
+
+    function updateScanResultsDisplay() {
+        const scanResultsDiv = document.getElementById('scanResults');
+
+        let html = `
+            <h3>Scanning Results</h3>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card text-white bg-success">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Updated</h5>
+                            <p class="card-text display-4">${scanResults.updatedCount}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Failed</h5>
+                            <p class="card-text display-4">${scanResults.notUpdatedCount}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Show latest result at the top
+        const allResults = [...scanResults.successful, ...scanResults.failed];
+        const latestResult = allResults[allResults.length - 1];
+        
+        if (latestResult) {
+            const isSuccess = scanResults.successful.includes(latestResult);
+            html += `
+                <div class="alert ${isSuccess ? 'alert-success' : 'alert-danger'} alert-dismissible fade show">
+                    <strong>${isSuccess ? '✅ Success' : '❌ Failed'}:</strong> 
+                    ${latestResult.trackingNumber} - ${latestResult.result}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+
+        // Add successful jobs table if any
+        if (scanResults.successful.length > 0) {
+            const recentSuccessful = scanResults.successful.slice(-10).reverse();
+            html += `
+                <h4 class="text-success">Recently Updated</h4>
+                <div class="table-responsive mb-3">
+                    <table class="table table-success table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Tracking Number</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recentSuccessful.map(item => `
+                                <tr>
+                                    <td><small>${item.trackingNumber}</small></td>
+                                    <td><small>${item.result}</small></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Add failed jobs table if any
+        if (scanResults.failed.length > 0) {
+            const recentFailed = scanResults.failed.slice(-10).reverse();
+            html += `
+                <h4 class="text-danger">Recent Failures</h4>
+                <div class="table-responsive">
+                    <table class="table table-danger table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Tracking Number</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recentFailed.map(item => `
+                                <tr>
+                                    <td><small>${item.trackingNumber}</small></td>
+                                    <td><small>${item.result}</small></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        scanResultsDiv.innerHTML = html;
+        scanResultsDiv.style.display = 'block';
+        scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
+    }
+
+    function displayBulkResults(result) {
+        const bulkResults = document.getElementById('bulkResults');
+        bulkResults.style.display = 'block';
+
+        document.getElementById('updatedCount').textContent = result.updatedCount || 0;
+        document.getElementById('notUpdatedCount').textContent = result.notUpdatedCount || 0;
+
+        // Clear previous results
+        document.getElementById('successTableBody').innerHTML = '';
+        document.getElementById('failedTableBody').innerHTML = '';
+
+        // Populate successful updates
+        if (result.successful && result.successful.length > 0) {
+            document.getElementById('successTable').style.display = 'block';
+            result.successful.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                <td>${item.trackingNumber}</td>
+                <td>${item.result}</td>
+            `;
+                document.getElementById('successTableBody').appendChild(row);
+            });
+        } else {
+            document.getElementById('successTable').style.display = 'none';
+        }
+
+        // Populate failed updates
+        if (result.failed && result.failed.length > 0) {
+            document.getElementById('failedTable').style.display = 'block';
+            result.failed.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                <td>${item.trackingNumber}</td>
+                <td>${item.result}</td>
+            `;
+                document.getElementById('failedTableBody').appendChild(row);
+            });
+        } else {
+            document.getElementById('failedTable').style.display = 'none';
+        }
+    }
+
+    function getUpdateTitle(updateCode) {
+        const updateTitles = {
+            'UAN': 'MAWB Number Update',
+            'CCH': 'On Hold Update',
+            'IIW': 'Item in Warehouse Update',
+            'OFD': 'Out for Delivery Update',
+            'OSC': 'Self Collect Update',
+            'FCC': 'Customer Not Available Update',
+            'FIA': 'Incorrect Address Update',
+            'FSC': 'Reschedule to Self Collect Update',
+            'SFJ': 'Clear Job Update',
+            'OSD': 'Swap Dispatchers Update',
+            'UWL': 'Update Warehouse',
+            'UGR': 'Update Go Rush Remark',
+            'UJD': 'Update Job Date',
+            'UJM': 'Update Job Method',
+            'UJP': 'Update Price',
+            'UAW': 'Update Weight',
+            'UAS': 'Update Address',
+            'UAR': 'Update Area',
+            'UPN': 'Update Phone Number',
+            'URN': 'Update Customer Name',
+            'UPC': 'Update Postal Code',
+            'UAB': 'Update AWB Number',
+            'UCD': 'Cancelled Job Update',
+            'URJ': 'Reactivate Job Update',
+            'UDJ': 'Dispose Job Update'
+        };
+
+        return updateTitles[updateCode] || 'Update Job';
+    }
+
+    function switchToActiveUpdateMode(updateCode, method) {
+        document.getElementById('initialSection').style.display = 'none';
+        document.getElementById('activeUpdateSection').style.display = 'block';
+
+        const title = getUpdateTitle(updateCode);
+        document.getElementById('activeUpdateTitle').textContent = title;
+
+        if (method === 'bulk') {
+            document.getElementById('bulkResults').style.display = 'none';
+            document.getElementById('oneByOneInterface').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+        } else if (method === 'onebyone') {
+            document.getElementById('bulkResults').style.display = 'none';
+            document.getElementById('oneByOneInterface').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            setTimeout(() => {
+                document.getElementById('trackingNumSingle').focus();
+            }, 300);
+        }
+    }
+
+    window.addEventListener('beforeunload', () => {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+    });
+
+    function resetToInitialMode() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+        currentJobId = null;
+        location.reload();
+    }
+</script>
+</body>
+
+</html>

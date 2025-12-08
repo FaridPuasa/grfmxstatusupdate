@@ -4,6 +4,29 @@
 require('dotenv').config();
 const path = require('path');
 const moment = require('moment-timezone');
+// At the top of your index.js (after require('dotenv').config())
+const GDEX_ENV = process.env.GDEX_ENVIRONMENT || 'uat'; // Default to uat if not set
+const isLive = GDEX_ENV === 'live';
+
+// Log which environment you're using
+console.log(`GDEX API running in: ${GDEX_ENV.toUpperCase()} mode`);
+
+const GDEX_CONFIG = {
+    uat: {
+        authUrl: 'https://uat1.gdexpress.com/CustomerAPI/api/Account/Authenticate',
+        trackingUrl: 'https://uat1.gdexpress.com/CustomerAPI/api/webhook/trackingstatus',
+        username: '1000030',
+        password: '1000030uat@G0rU2H'
+    },
+    live: {
+        authUrl: 'https://esvr3.gdexpress.com/CustomerAPI/api/Account/Authenticate',
+        trackingUrl: 'https://esvr3.gdexpress.com/CustomerAPI/api/webhook/trackingstatus',
+        username: '1000030',
+        password: '1000030@G0rU2H'
+    }
+};
+
+const gdexConfig = GDEX_CONFIG[GDEX_ENV];
 
 // ==================================================
 // 📦 Core Packages
@@ -2277,8 +2300,7 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
             let product = (o.product || '').toLowerCase();
 
             if (product.includes('mglobal')) {
-                handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-
+                handlingCharge = (Math.round((2.5 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
             } else if (product.includes('pdu')) {
                 handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
 
@@ -4525,6 +4547,316 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
     res.render('successAddressArea', { entries: result, user: req.user });
 });
 
+// Add token cache object at the top with your other caches
+const gdexTokenCache = {
+    token: null,
+    expiry: null,
+    env: null // Track which environment the token is for
+};
+
+// Add retry logic to getGDEXToken
+async function getGDEXToken(retries = 3) {
+    // Check if we have a valid cached token for current environment
+    const now = Date.now();
+    if (gdexTokenCache.token &&
+        gdexTokenCache.expiry &&
+        gdexTokenCache.env === GDEX_ENV &&
+        now < gdexTokenCache.expiry) {
+        console.log(`Using cached GDEX ${GDEX_ENV.toUpperCase()} token`);
+        return gdexTokenCache.token;
+    }
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            console.log(`Getting GDEX token (attempt ${attempt}/${retries})`);
+
+            const credentials = {
+                UsernameOrEmailAddress: gdexConfig.username,
+                Password: gdexConfig.password
+            };
+
+            const response = await axios.post(gdexConfig.authUrl, credentials, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 5000
+            });
+
+            if (response.data.success && response.data.result) {
+                console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} Token obtained successfully`);
+
+                // Cache the token (15 minutes = 900,000 milliseconds)
+                // Use 13 minutes to be safe
+                gdexTokenCache.token = response.data.result;
+                gdexTokenCache.expiry = now + (13 * 60 * 1000); // 13 minutes to be safe
+                gdexTokenCache.env = GDEX_ENV;
+
+                return response.data.result;
+            } else {
+                console.error(`GDEX ${GDEX_ENV.toUpperCase()} Authentication failed:`, response.data.error);
+                if (attempt < retries) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    continue;
+                }
+                return null;
+            }
+        } catch (error) {
+            console.error(`Error getting GDEX ${GDEX_ENV.toUpperCase()} token (attempt ${attempt}):`, error.message);
+            if (attempt < retries) {
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                continue;
+            }
+            return null;
+        }
+    }
+}
+
+// Fix the sendGDEXTrackingWebhook function
+async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescription, locationDescription, token, reasoncode = "", epod = "") {
+    try {
+        const trackingData = {
+            consignmentno: consignmentID,
+            statuscode: statusCode,
+            statusdescription: statusDescription,
+            statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
+            reasoncode: reasoncode, // Now accepts reasoncode
+            locationdescription: locationDescription,
+            epod: epod, // Now accepts epod
+            deliverypartner: "gorush"
+        };
+
+        console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
+
+        const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            timeout: 10000
+        });
+
+        if (response.data.success) {
+            console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} sent successfully for ${consignmentID}`);
+            return true;
+        } else {
+            console.error(`❌ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} failed for ${consignmentID}:`, response.data.error);
+            return false;
+        }
+    } catch (error) {
+        console.error(`🔥 Error sending GDEX ${GDEX_ENV.toUpperCase()} tracking webhook ${statusCode} for ${consignmentID}:`, error.message);
+        if (error.response) {
+            console.error(`🔥 Response data:`, error.response.data);
+        }
+        return false;
+    }
+}
+
+// Update the updateGDEXStatus function to pass correct parameters
+async function updateGDEXStatus(consignmentID, statusType, detrackData = null, statusCode = null, statusDescription = null, locationDescription = null, reasonCode = null, epod = null) {
+    console.log(`=== Updating GDEX status (${statusType}) for: ${consignmentID} ===`);
+
+    // Get token
+    const token = await getGDEXToken();
+    if (!token) {
+        console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
+        return false;
+    }
+
+    if (statusType === 'warehouse') {
+        return await updateGDEXWarehouseStatus(consignmentID, token);
+    } else if (statusType === 'custom') {
+        return await sendGDEXTrackingWebhook(
+            consignmentID,
+            statusCode,
+            statusDescription,
+            locationDescription,
+            token
+        );
+    } else if (statusType === 'out_for_delivery') {
+        return await sendGDEXTrackingWebhook(
+            consignmentID,
+            "AL2",
+            "Out for Delivery(D)",
+            "Go Rush Driver",
+            token
+        );
+    } else if (statusType === 'self_collect') {
+        return await sendGDEXTrackingWebhook(
+            consignmentID,
+            "AL2",
+            "Out for Delivery(D)",
+            "Go Rush Office",
+            token
+        );
+    } else if (statusType === 'cancelled') {
+        return await sendGDEXTrackingWebhook(
+            consignmentID,
+            "BA",
+            "Shipper/HQ Instruction to Cancel Delivery",
+            "Go Rush Warehouse",
+            token
+        );
+    } else if (statusType === 'clear_job') {
+        if (!detrackData) {
+            console.error(`❌ No Detrack data provided for clear job: ${consignmentID}`);
+            return false;
+        }
+        return await updateGDEXClearJob(consignmentID, detrackData, token);
+    } else {
+        console.error(`❌ Unknown GDEX status type: ${statusType}`);
+        return false;
+    }
+}
+
+// Update updateGDEXClearJob to use correct parameters
+async function updateGDEXClearJob(consignmentID, detrackData, token) {
+    try {
+        console.log(`=== Processing GDEX clear job for: ${consignmentID} ===`);
+        console.log(`Detrack status: ${detrackData.status}, reason: ${detrackData.reason}`);
+
+        let statusCode, statusDescription, reasonCode, locationDescription, epod;
+
+        // Check if job is completed or failed
+        if (detrackData.status === 'completed') {
+            // Completed delivery
+            statusCode = "FD";
+            statusDescription = "Delivered(pod)";
+            reasonCode = "";
+            locationDescription = detrackData.address || "Customer Address";
+            epod = detrackData.photo_1_file_url || "";
+
+            console.log(`GDEX: Sending FD (Delivered) status for ${consignmentID}`);
+
+        } else if (detrackData.status === 'failed') {
+            // Failed delivery - map reason to GDEX reason code
+            statusCode = "DF";
+            statusDescription = "Delivery Failed(undl)";
+            reasonCode = mapDetrackReasonToGDEX(detrackData.reason);
+            locationDescription = "Go Rush Warehouse";
+            epod = "";
+
+            console.log(`GDEX: Sending DF (Failed) status for ${consignmentID}, reason code: ${reasonCode}`);
+
+        } else {
+            console.error(`Unknown Detrack status for clear job: ${detrackData.status}`);
+            return false;
+        }
+
+        // Use the updated sendGDEXTrackingWebhook with all parameters
+        const success = await sendGDEXTrackingWebhook(
+            consignmentID,
+            statusCode,
+            statusDescription,
+            locationDescription,
+            token,
+            reasonCode,  // Pass reasoncode
+            epod         // Pass epod
+        );
+
+        return success;
+
+    } catch (error) {
+        console.error(`🔥 Error in updateGDEXClearJob for ${consignmentID}:`, error.message);
+        return false;
+    }
+}
+
+// Add this function to map Detrack reasons to GDEX reason codes
+function mapDetrackReasonToGDEX(detrackReason) {
+    if (!detrackReason) return "AR"; // Default
+
+    const reason = detrackReason.toLowerCase();
+
+    // Map Detrack reasons to GDEX reason codes
+    if (reason.includes("unattempted delivery")) {
+        return "BM";
+    } else if (reason.includes("reschedule delivery requested by customer") ||
+        reason.includes("reschedule to self collect requested by customer")) {
+        return "AG";
+    } else if (reason.includes("reschedule to self collect requested by customer")) {
+        return "AG";
+    } else if (reason.includes("customer not available") ||
+        reason.includes("cannot be contacted") ||
+        reason.includes("customer declined delivery")) {
+        return "AR";
+    } else if (reason.includes("unable to locate address") ||
+        reason.includes("incorrect address")) {
+        return "BN";
+    } else if (reason.includes("reschedule delivery requested by customer")) {
+        return "BK";
+    } else {
+        // Default for other failure reasons
+        return "AR";
+    }
+}
+
+// Update updateGDEXWarehouseStatus to accept token parameter
+async function updateGDEXWarehouseStatus(consignmentID, token) {
+    console.log(`Starting 3-step GDEX warehouse updates for: ${consignmentID}`);
+
+    const warehouseLocation = "Go Rush Warehouse";
+
+    try {
+        // Step 1: DT1 - Hub Inbound(B)
+        console.log(`Step 1: Sending DT1 (Hub Inbound) for ${consignmentID}`);
+        const step1Success = await sendGDEXTrackingWebhook(
+            consignmentID,
+            "DT1",
+            "Hub Inbound(B)",
+            warehouseLocation,
+            token
+        );
+
+        if (!step1Success) {
+            console.error(`Failed at Step 1 (DT1) for ${consignmentID}`);
+            return false;
+        }
+
+        // Small delay between steps
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Step 2: DT2 - Hub Outbound(H)
+        console.log(`Step 2: Sending DT2 (Hub Outbound) for ${consignmentID}`);
+        const step2Success = await sendGDEXTrackingWebhook(
+            consignmentID,
+            "DT2",
+            "Hub Outbound(H)",
+            warehouseLocation,
+            token
+        );
+
+        if (!step2Success) {
+            console.error(`Failed at Step 2 (DT2) for ${consignmentID}`);
+            return false;
+        }
+
+        // Small delay between steps
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Step 3: AL1 - Received by Branch(R)
+        console.log(`Step 3: Sending AL1 (Received by Branch) for ${consignmentID}`);
+        const step3Success = await sendGDEXTrackingWebhook(
+            consignmentID,
+            "AL1",
+            "Received by Branch(R)",
+            warehouseLocation,
+            token
+        );
+
+        if (!step3Success) {
+            console.error(`Failed at Step 3 (AL1) for ${consignmentID}`);
+            return false;
+        }
+
+        console.log(`✅ All 3 GDEX warehouse updates completed successfully for ${consignmentID}`);
+        return true;
+
+    } catch (error) {
+        console.error(`Error in GDEX warehouse updates for ${consignmentID}:`, error.message);
+        return false;
+    }
+}
+
 async function updateDetrackStatus(consignmentID, apiKey, detrackUpdateDataAttempt, detrackUpdateData) {
     try {
         // First API Call: Increase Attempt
@@ -4693,6 +5025,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var lastMilestoneStatus = '';
             var finalPhoneNum = '';
             var finalArea = "";
+            var GDEXAPIrun = 0;
 
             // Skip empty lines
             if (!consignmentID) continue;
@@ -4743,7 +5076,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             product = data.data.group_name;
 
-            if ((product == 'EWE') || (product == 'EWENS') || (product == 'KPTDP') || (product == 'PDU') || (product == 'PURE51') || (product == 'TEMU') || (product == 'MGLOBAL')) {
+            if ((product == 'EWE') || (product == 'EWENS') || (product == 'KPTDP') || (product == 'PDU') || (product == 'PURE51') || (product == 'TEMU') || (product == 'MGLOBAL') || (product == 'GDEXT') || (product == 'GDEX')) {
                 // Loop through each item in the data.data.items array and construct the items array
                 for (let i = 0; i < data.data.items.length; i++) {
                     itemsArray.push({
@@ -5039,6 +5372,14 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (product == 'MGLOBAL') {
                 currentProduct = 'mglobal'
+            }
+
+            if (product == 'GDEX') {
+                currentProduct = 'gdex'
+            }
+
+            if (product == 'GDEXT') {
+                currentProduct = 'gdext'
             }
 
             address = data.data.address.toUpperCase();
@@ -5689,23 +6030,35 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     area: area
                 } */
 
-                update = {
-                    /* paymentMethod: "Cash",
-                    totalPrice: data.data.payment_amount, */
+                /* update = {
+                    paymentMethod: "Cash",
+                    totalPrice: data.data.payment_amount,
                     paymentAmount: data.data.payment_amount,
-                }
+                } */
 
-                /* var detrackUpdateData = {
+                var detrackUpdateData = {
                     do_number: consignmentID,
                     data: {
-                        total_price: data.data.payment_amount,
-                        payment_mode: "Cash"
+                        status: "custom_clearing",
+                        updated_at: "2025-11-21T09:20:08.773+08:00",
+                        milestones: [
+                            {
+                                "status": "custom_clearing",
+                                "assign_to": null,
+                                "reason": null,
+                                "pod_at": "2025-11-21T09:20:08.773+08:00",
+                                "created_at": "2025-11-21T09:20:08.773+08:00",
+                                "user_name": "IT Support"
+                            }
+                        ]
+                        /* total_price: data.data.payment_amount,
+                        payment_mode: "Cash" */
                     }
-                }; */
+                };
 
-                mongoDBrun = 2;
+                /* mongoDBrun = 2; */
 
-                /* DetrackAPIrun = 1; */
+                DetrackAPIrun = 1;
 
                 portalUpdate = "Portal updated for missing data. ";
                 appliedStatus = "Missing data update"
@@ -5905,6 +6258,56 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         mongoDBrun = 1;
                         DetrackAPIrun = 1;
+                        completeRun = 1;
+                    }
+
+                    if ((product == 'GDEX') || (product == 'GDEXT')) {
+                        newOrder = new ORDERS({
+                            area: finalArea,
+                            items: itemsArray, // Use the dynamically created items array
+                            attempt: data.data.attempt,
+                            history: [{
+                                statusHistory: "Custom Clearing",
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                lastLocation: "Brunei Customs",
+                            }],
+                            latestLocation: "Brunei Customs",
+                            product: currentProduct,
+                            senderName: "GDEX",
+                            totalPrice: data.data.total_price,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Custom Clearing",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "No",
+                            warehouseEntryDateTime: "N/A",
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: finalPhoneNum,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: "Standard",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number
+                        });
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "on_hold"
+                            }
+                        };
+
+                        portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
+
+                        mongoDBrun = 1;
+                        DetrackAPIrun = 1;
+                        GDEXAPIrun = 1;
                         completeRun = 1;
                     }
                 }
@@ -6108,7 +6511,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 status: "", // Use the calculated dStatus
-                                zone: area,
                                 phone_number: finalPhoneNum,
                                 zone: finalArea,
                             }
@@ -6220,7 +6622,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 status: "", // Use the calculated dStatus
-                                zone: area,
                                 phone_number: finalPhoneNum,
                                 zone: finalArea,
                             }
@@ -6256,7 +6657,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 status: "", // Use the calculated dStatus
-                                zone: area,
                                 phone_number: finalPhoneNum,
                                 zone: finalArea,
                             }
@@ -6266,6 +6666,90 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         mongoDBrun = 2;
                         DetrackAPIrun = 4;
+                        completeRun = 1;
+                    }
+                }
+
+                if (((data.data.status == 'info_recv') || (data.data.status == 'on_hold')) && ((product == 'GDEX') || (product == 'GDEXT'))) {
+                    if (existingOrder === null) {
+                        newOrder = new ORDERS({
+                            area: finalArea,
+                            items: itemsArray, // Use the dynamically created items array
+                            attempt: data.data.attempt,
+                            history: [{
+                                statusHistory: "At Warehouse",
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                lastLocation: req.body.warehouse,
+                            }],
+                            latestLocation: req.body.warehouse,
+                            product: currentProduct,
+                            senderName: "GDEX",
+                            totalPrice: data.data.total_price,
+                            receiverName: data.data.deliver_to_collect_from,
+                            trackingLink: data.data.tracking_link,
+                            currentStatus: "Custom Clearing",
+                            paymentMethod: data.data.payment_mode,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            receiverAddress: data.data.address,
+                            receiverPhoneNumber: finalPhoneNum,
+                            doTrackingNumber: consignmentID,
+                            remarks: data.data.remarks,
+                            lastUpdateDateTime: moment().format(),
+                            creationDate: data.data.created_at,
+                            lastUpdatedBy: req.user.name,
+                            receiverPostalCode: postalCode,
+                            jobType: data.data.type,
+                            jobMethod: "Standard",
+                            flightDate: data.data.job_received_date,
+                            mawbNo: data.data.run_number
+                        });
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                            }
+                        };
+
+                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
+
+                        mongoDBrun = 1;
+                        DetrackAPIrun = 9;
+                        GDEXAPIrun = 2;
+                        completeRun = 1;
+                    } else {
+                        update = {
+                            area: finalArea,
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: req.body.warehouse,
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                            }
+                        };
+
+                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 9;
+                        GDEXAPIrun = 2;
                         completeRun = 1;
                     }
                 }
@@ -6708,6 +7192,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + ". ";
                     }
 
+                    if ((product == 'GDEX') || (product == 'GDEXT')) {
+                        GDEXAPIrun = 3;
+                    }
+
                     appliedStatus = "Out for Delivery"
 
                     DetrackAPIrun = 1;
@@ -7044,6 +7532,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             };
 
+                            if ((product == 'GDEX') || (product == 'GDEXT')) {
+                                GDEXAPIrun = 6
+                            }
+
                             DetrackAPIrun = 1;
                             mongoDBrun = 2;
                             completeRun = 1;
@@ -7098,6 +7590,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             };
 
+                            if ((product == 'GDEX') || (product == 'GDEXT')) {
+                                GDEXAPIrun = 6
+                            }
+
                             DetrackAPIrun = 2;
                             mongoDBrun = 2;
                             completeRun = 1;
@@ -7147,6 +7643,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     do_number: consignmentID,
                                 }
                             };
+
+                            if ((product == 'GDEX') || (product == 'GDEXT')) {
+                                GDEXAPIrun = 6
+                            }
 
                             DetrackAPIrun = 2;
                             mongoDBrun = 2;
@@ -7283,6 +7783,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                             mongoDBrun = 2;
                         }
+                    }
+
+                    if ((product == 'GDEX') || (product == 'GDEXT')) {
+                        GDEXAPIrun = 6
                     }
 
                     appliedStatus = "Completed"
@@ -7494,6 +7998,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             }
                         }
 
+                        if ((product == 'GDEX') || (product == 'GDEXT')) {
+                            GDEXAPIrun = 4;
+                        }
+
                         portalUpdate = "Portal and Detrack status updated for Self Collect. ";
                         appliedStatus = "Self Collect"
 
@@ -7564,6 +8072,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             date: moment().format('YYYY-MM-DD'),
                         }
                     };
+                }
+
+                if ((product == 'GDEX') || (product == 'GDEXT')) {
+                    GDEXAPIrun = 5;
                 }
 
                 portalUpdate = "Portal and Detrack status updated to Cancelled. ";
@@ -10027,6 +10539,137 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 console.log(`DetrackAPIrun is not 8; skipping updates for Tracking: ${consignmentID}`);
             }
 
+            if (DetrackAPIrun == 9) {
+                console.log(`Starting Detrack update sequence (in_sorting_area → at_warehouse) for Tracking: ${consignmentID}`);
+
+                detrackUpdateData.data.status = "in_sorting_area";
+                const firstSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+                if (firstSuccess) {
+                    detrackUpdateData.data.status = "at_warehouse";
+                    const secondSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+                    if (secondSuccess) {
+                        console.log(`[COMPLETE] Both Detrack updates succeeded for Tracking: ${consignmentID}`);
+                    } else {
+                        console.error(`[ERROR] Second update (at_warehouse) failed for Tracking: ${consignmentID}`);
+                    }
+                } else {
+                    console.error(`[ERROR] First update (in_sorting_area) failed for Tracking: ${consignmentID}. Second update skipped.`);
+                }
+            } else {
+                console.log(`DetrackAPIrun is not 4; skipping updates for Tracking: ${consignmentID}`);
+            }
+
+            // Update your GDEXAPIrun handler:
+            if (GDEXAPIrun == 1) {
+                console.log(`Starting GDEX Custom Clearing update for Tracking: ${consignmentID}`);
+
+                const gdexSuccess = await updateGDEXStatus(
+                    consignmentID,
+                    'custom',
+                    "AQ",
+                    "Pending Custom Declaration",
+                    "Brunei Customs"
+                );
+
+                if (gdexSuccess) {
+                    console.log(`[COMPLETE] GDEX Custom Clearing update succeeded for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] GDEX Custom Clearing update failed for Tracking: ${consignmentID}`);
+                }
+            }
+
+            if (GDEXAPIrun == 2) {
+                console.log(`Starting GDEX 3-step warehouse updates for Tracking: ${consignmentID}`);
+
+                const gdexSuccess = await updateGDEXStatus(
+                    consignmentID,
+                    'warehouse'
+                );
+
+                if (gdexSuccess) {
+                    console.log(`[COMPLETE] GDEX 3-step warehouse updates succeeded for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] GDEX 3-step warehouse updates failed for Tracking: ${consignmentID}`);
+                }
+            }
+
+            if (GDEXAPIrun == 3) {
+                console.log(`Starting GDEX Out for Delivery update for Tracking: ${consignmentID}`);
+
+                const gdexSuccess = await updateGDEXStatus(
+                    consignmentID,
+                    'out_for_delivery'
+                );
+
+                if (gdexSuccess) {
+                    console.log(`[COMPLETE] GDEX Out for Delivery update succeeded for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] GDEX Out for Delivery update failed for Tracking: ${consignmentID}`);
+                }
+            }
+
+            if (GDEXAPIrun == 4) {
+                console.log(`Starting GDEX Self Collect update for Tracking: ${consignmentID}`);
+
+                const gdexSuccess = await updateGDEXStatus(
+                    consignmentID,
+                    'self_collect'
+                );
+
+                if (gdexSuccess) {
+                    console.log(`[COMPLETE] GDEX Self Collect update succeeded for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] GDEX Self Collect update failed for Tracking: ${consignmentID}`);
+                }
+            }
+
+            if (GDEXAPIrun == 5) {
+                console.log(`Starting GDEX Cancelled Job update for Tracking: ${consignmentID}`);
+
+                // Check if job is already completed
+                if (data.data.status === 'completed') {
+                    console.error(`[SKIP] Cannot cancel already completed job: ${consignmentID}`);
+                    // You might want to add an error message to processingResults
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: Cannot cancel already completed GDEX job: ${consignmentID}`,
+                    });
+                    return; // Skip GDEX API call
+                }
+
+                const gdexSuccess = await updateGDEXStatus(
+                    consignmentID,
+                    'cancelled'
+                );
+
+                if (gdexSuccess) {
+                    console.log(`[COMPLETE] GDEX Cancelled Job update succeeded for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] GDEX Cancelled Job update failed for Tracking: ${consignmentID}`);
+                    // Consider adding retry logic here
+                }
+            }
+
+            // In your main route where you check GDEXAPIrun == 6:
+            if (GDEXAPIrun == 6) {
+                console.log(`Starting GDEX Clear Job update for Tracking: ${consignmentID}`);
+
+                // Pass the Detrack data object (data.data from your API response)
+                const gdexSuccess = await updateGDEXStatus(
+                    consignmentID,
+                    'clear_job',
+                    data.data  // This is the Detrack job data from: const data = response1.data;
+                );
+
+                if (gdexSuccess) {
+                    console.log(`[COMPLETE] GDEX Clear Job update succeeded for Tracking: ${consignmentID}`);
+                } else {
+                    console.error(`[ERROR] GDEX Clear Job update failed for Tracking: ${consignmentID}`);
+                }
+            }
+
             if (waOrderFailedDelivery == 5) {
                 let a = data.data.deliver_to_collect_from;
                 let b = consignmentID;
@@ -10881,7 +11524,7 @@ function cleanPhoneNumber(rawPhoneNumber) {
 function shouldSendWhatsApp(product, phoneNumber) {
     const skipProducts = [
         "fmx", "bb", "fcas", "icarus", "ewe", "ewens",
-        "kptdf", "pdu", "pure51", "mglobal", "kptdp"
+        "kptdf", "pdu", "pure51", "mglobal", "kptdp", "gdext", "gdext"
     ];
     return !skipProducts.includes(product) && phoneNumber !== "N/A";
 }
@@ -11677,6 +12320,1143 @@ app.get('/api/gdex/sendorderrequest/health', (req, res) => {
         authentication: process.env.GDEX_API_KEY ? 'enabled' : 'disabled'
     });
 });
+
+// ==================================================
+// 🔄 Update Job Routes
+// ==================================================
+
+// ==================================================
+// 🔄 Background Job Processing
+// ==================================================
+
+// In-memory store for background jobs (use Redis in production)
+const backgroundJobs = new Map();
+
+// Generate unique job ID
+function generateJobId() {
+    return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Background job processor
+async function processUpdateJobInBackground(jobId, jobData) {
+    const { updateCode, mawbNum, trackingNumbers, updateMethod, req } = jobData;
+
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        notUpdatedCount: 0,
+        status: 'processing',
+        total: trackingNumbers.length,
+        processed: 0
+    };
+
+    // Update job status to processing
+    backgroundJobs.set(jobId, { ...results, status: 'processing' });
+
+    try {
+        // Process each tracking number with delay to avoid timeout
+        for (let i = 0; i < trackingNumbers.length; i++) {
+            const trackingNumber = trackingNumbers[i];
+            const cleanTrackingNumber = trackingNumber.trim();
+
+            if (!cleanTrackingNumber) continue;
+
+            try {
+                // Update progress
+                results.processed = i + 1;
+                backgroundJobs.set(jobId, { ...results, status: 'processing' });
+
+                // Process based on update code
+                let processSuccess = false;
+
+                switch (updateCode) {
+                    case 'UAN':
+                        processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
+                        break;
+                    case 'CCH':
+                        processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
+                        break;
+                    case 'IIW':
+                        processSuccess = await processItemInWarehouseUpdate(cleanTrackingNumber, req);
+                        break;
+                    case 'OFD':
+                        processSuccess = await processOutForDeliveryUpdate(cleanTrackingNumber, req);
+                        break;
+                    case 'OSC':
+                        processSuccess = await processSelfCollectUpdate(cleanTrackingNumber, req);
+                        break;
+                    case 'SFJ':
+                        processSuccess = await processClearJobUpdate(cleanTrackingNumber, req);
+                        break;
+                    // Add other cases as needed
+                    default:
+                        processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
+                }
+
+                if (processSuccess) {
+                    results.successful.push({
+                        trackingNumber: cleanTrackingNumber,
+                        result: `Successfully updated with ${updateCode}`
+                    });
+                    results.updatedCount++;
+                } else {
+                    results.failed.push({
+                        trackingNumber: cleanTrackingNumber,
+                        result: 'Update failed'
+                    });
+                    results.notUpdatedCount++;
+                }
+
+            } catch (error) {
+                console.error(`Error processing ${cleanTrackingNumber}:`, error);
+                results.failed.push({
+                    trackingNumber: cleanTrackingNumber,
+                    result: 'Error: ' + error.message
+                });
+                results.notUpdatedCount++;
+            }
+
+            // Small delay to prevent overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Mark job as completed
+        results.status = 'completed';
+        backgroundJobs.set(jobId, results);
+
+    } catch (error) {
+        console.error('Background job error:', error);
+        results.status = 'failed';
+        results.error = error.message;
+        backgroundJobs.set(jobId, results);
+    }
+}
+
+// Serve the update job page
+app.get('/updateJob'/* , ensureAuthenticated */, (req, res) => {
+    res.render('updateJob', { user: req.user });
+});
+
+// Modified POST route - handle one-by-one immediately, bulk in background
+app.post('/updateJob', async (req, res) => {
+    const { updateCode, mawbNum, trackingNumbers, updateMethod } = req.body;
+
+    if (!updateCode) {
+        return res.status(400).json({ error: 'Update code is required' });
+    }
+
+    if (!trackingNumbers || trackingNumbers.length === 0) {
+        return res.status(400).json({ error: 'Tracking numbers are required' });
+    }
+
+    // For MAWB updates, require MAWB number
+    if (updateCode === 'UAN' && (!mawbNum || mawbNum.trim() === '')) {
+        return res.status(400).json({ error: 'MAWB Number is required for this update' });
+    }
+
+    // Clean tracking numbers
+    const cleanTrackingNumbers = trackingNumbers
+        .map(num => num.trim())
+        .filter(num => num !== '');
+
+    const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
+
+    // ONE-BY-ONE: Process immediately (single item won't timeout)
+    if (updateMethod === 'onebyone' && uniqueTrackingNumbers.length === 1) {
+        try {
+            const trackingNumber = uniqueTrackingNumbers[0];
+            let processSuccess = false;
+            let resultMessage = '';
+
+            console.log(`Processing one-by-one update: ${updateCode} for ${trackingNumber}`);
+
+            // Process based on update code
+            switch (updateCode) {
+                case 'UAN':
+                    processSuccess = await processMAWBUpdate(trackingNumber, mawbNum, req);
+                    resultMessage = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
+                    break;
+                case 'CCH':
+                    processSuccess = await processOnHoldUpdate(trackingNumber, req);
+                    resultMessage = processSuccess ? 'Job put on hold' : 'On hold update failed';
+                    break;
+                case 'IIW':
+                    processSuccess = await processItemInWarehouseUpdate(trackingNumber, req);
+                    resultMessage = processSuccess ? 'Item marked in warehouse' : 'Warehouse update failed';
+                    break;
+                case 'OFD':
+                    processSuccess = await processOutForDeliveryUpdate(trackingNumber, req);
+                    resultMessage = processSuccess ? 'Marked as out for delivery' : 'OFD update failed';
+                    break;
+                case 'OSC':
+                    processSuccess = await processSelfCollectUpdate(trackingNumber, req);
+                    resultMessage = processSuccess ? 'Marked for self collect' : 'Self collect update failed';
+                    break;
+                case 'SFJ':
+                    processSuccess = await processClearJobUpdate(trackingNumber, req);
+                    resultMessage = processSuccess ? 'Job cleared' : 'Clear job failed';
+                    break;
+                default:
+                    processSuccess = await processGenericUpdate(trackingNumber, updateCode, req, mawbNum);
+                    resultMessage = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
+            }
+
+            const results = {
+                successful: processSuccess ? [{
+                    trackingNumber: trackingNumber,
+                    result: resultMessage
+                }] : [],
+                failed: processSuccess ? [] : [{
+                    trackingNumber: trackingNumber,
+                    result: resultMessage
+                }],
+                updatedCount: processSuccess ? 1 : 0,
+                notUpdatedCount: processSuccess ? 0 : 1
+            };
+
+            console.log(`One-by-one result for ${trackingNumber}:`, results);
+            res.json(results);
+
+        } catch (error) {
+            console.error('Error in one-by-one processing:', error);
+            res.json({
+                successful: [],
+                failed: [{
+                    trackingNumber: uniqueTrackingNumbers[0],
+                    result: 'Error: ' + error.message
+                }],
+                updatedCount: 0,
+                notUpdatedCount: 1
+            });
+        }
+    }
+    // BULK: Use background processing
+    else {
+        // Generate job ID
+        const jobId = generateJobId();
+
+        // Store initial job data
+        backgroundJobs.set(jobId, {
+            status: 'queued',
+            total: uniqueTrackingNumbers.length,
+            processed: 0,
+            successful: [],
+            failed: [],
+            updatedCount: 0,
+            notUpdatedCount: 0
+        });
+
+        // Start background processing (non-blocking)
+        processUpdateJobInBackground(jobId, {
+            updateCode,
+            mawbNum,
+            trackingNumbers: uniqueTrackingNumbers,
+            updateMethod,
+            req
+        });
+
+        // Return immediately with job ID
+        res.json({
+            jobId: jobId,
+            status: 'queued',
+            message: 'Job started processing in background',
+            totalJobs: uniqueTrackingNumbers.length
+        });
+    }
+});
+
+// New route to check job status
+app.get('/updateJob/status/:jobId', (req, res) => {
+    const jobId = req.params.jobId;
+    const job = backgroundJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+
+    res.json(job);
+});
+
+// ==================================================
+// 🔧 Update Processing Functions
+// ==================================================
+
+// UAN - MAWB Number Update
+async function processMAWBUpdate(trackingNumber, mawbNum, req) {
+    try {
+        const jobExists = await checkJobExists(trackingNumber);
+        if (!jobExists) {
+            console.log(`❌ Job ${trackingNumber} not found in Detrack`);
+            return false;
+        }
+
+        return await updateJobMAWB(trackingNumber, mawbNum, req);
+    } catch (error) {
+        console.error(`Error in MAWB update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+// Updated MAWB Update Function with Enhanced Error Handling
+async function updateJobMAWB(trackingNumber, mawbNum, req) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // First get the current job details to calculate the fields
+            const jobData = await getJobDetails(trackingNumber);
+
+            if (!jobData) {
+                console.log(`❌ No job data found for ${trackingNumber}`);
+                resolve(false);
+                return;
+            }
+
+            // Calculate the additional fields using your comprehensive helper functions
+            const finalArea = getAreaFromAddress(jobData.address);
+            const finalPhoneNum = processPhoneNumber(jobData.phone_number);
+            const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+            console.log(`Calculated fields for ${trackingNumber}:`);
+            console.log(`- Area: ${finalArea}`);
+            console.log(`- Phone: ${finalPhoneNum}`);
+            console.log(`- Additional Phone: ${finalAdditionalPhoneNum}`);
+
+            // Update data with all fields
+            const updateData = {
+                do_number: trackingNumber,
+                data: {
+                    run_number: mawbNum,
+                    zone: finalArea,
+                    phone_number: finalPhoneNum,
+                    other_phone_numbers: finalAdditionalPhoneNum
+                }
+            };
+
+            console.log(`Updating ${trackingNumber} with MAWB: ${mawbNum}`);
+
+            // Send update request with timeout
+            const timeout = 30000; // 30 seconds timeout
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timeout')), timeout)
+            );
+
+            const updatePromise = new Promise((resolve, reject) => {
+                request({
+                    method: 'PUT',
+                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    body: JSON.stringify(updateData)
+                }, async function (updateError, updateResponse, updateBody) {
+                    if (updateError) {
+                        reject(updateError);
+                        return;
+                    }
+
+                    try {
+                        const updateResult = JSON.parse(updateBody);
+                        let updateSuccessful = false;
+
+                        if (updateResult.success === true) {
+                            updateSuccessful = true;
+                            console.log(`✅ Detrack update successful - success: true`);
+                        } else if (updateResult.status === 'success') {
+                            updateSuccessful = true;
+                            console.log(`✅ Detrack update successful - status: success`);
+                        } else if (updateResponse.statusCode === 200) {
+                            // For 200 status, verify the update actually worked
+                            console.log(`⚠️ Got 200 status, verifying update...`);
+
+                            try {
+                                // Wait a moment for update to propagate
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                                const verifiedJob = await getJobDetails(trackingNumber);
+                                if (verifiedJob && verifiedJob.run_number === mawbNum) {
+                                    updateSuccessful = true;
+                                    console.log(`✅ Detrack update verified - run_number updated to ${mawbNum}`);
+                                } else {
+                                    console.log(`❌ Detrack update failed - run_number is "${verifiedJob?.run_number}", expected "${mawbNum}"`);
+                                    updateSuccessful = false;
+                                }
+                            } catch (verifyError) {
+                                console.log(`❌ Could not verify update:`, verifyError.message);
+                                updateSuccessful = false;
+                            }
+                        }
+
+                        if (updateSuccessful) {
+                            console.log(`✅ Successfully updated ${trackingNumber} in Detrack`);
+
+                            // Now update/create in ORDERS collection
+                            try {
+                                await updateOrCreateOrder(trackingNumber, mawbNum, req, jobData);
+                                console.log(`✅ Successfully processed ORDERS for ${trackingNumber}`);
+                                resolve(true);
+                            } catch (orderError) {
+                                console.error(`❌ Error updating ORDERS for ${trackingNumber}:`, orderError.message);
+                                // Still resolve true since Detrack update was successful
+                                resolve(true);
+                            }
+                        } else {
+                            console.log(`❌ Detrack update failed for ${trackingNumber}`);
+                            resolve(false);
+                        }
+                    } catch (parseError) {
+                        console.error(`❌ Parse error for update response ${trackingNumber}:`, parseError);
+                        // If we can't parse but got 200, try verification
+                        if (updateResponse.statusCode === 200) {
+                            try {
+                                const verifiedJob = await getJobDetails(trackingNumber);
+                                if (verifiedJob && verifiedJob.run_number === mawbNum) {
+                                    console.log(`✅ Detrack update successful despite parse error`);
+
+                                    try {
+                                        await updateOrCreateOrder(trackingNumber, mawbNum, req, jobData);
+                                        resolve(true);
+                                    } catch (orderError) {
+                                        console.error(`Error updating ORDERS:`, orderError);
+                                        resolve(true);
+                                    }
+                                } else {
+                                    resolve(false);
+                                }
+                            } catch (verifyError) {
+                                resolve(false);
+                            }
+                        } else {
+                            resolve(false);
+                        }
+                    }
+                });
+            });
+
+            // Race between the update and timeout
+            const result = await Promise.race([updatePromise, timeoutPromise]);
+            resolve(result);
+
+        } catch (error) {
+            console.error(`❌ Error preparing update for ${trackingNumber}:`, error);
+            resolve(false);
+        }
+    });
+}
+
+// Other update functions (implement as needed)
+async function processOnHoldUpdate(trackingNumber, req) {
+    try {
+        console.log(`Processing On Hold for: ${trackingNumber}`);
+        // Add your specific Detrack API call for on hold status
+        return await updateDetrackJobStatus(trackingNumber, 'on_hold');
+    } catch (error) {
+        console.error(`Error in On Hold update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function processItemInWarehouseUpdate(trackingNumber, req) {
+    try {
+        console.log(`Processing Item in Warehouse for: ${trackingNumber}`);
+        // Add your specific Detrack API call for warehouse status
+        return await updateDetrackJobStatus(trackingNumber, 'in_warehouse');
+    } catch (error) {
+        console.error(`Error in Warehouse update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function processOutForDeliveryUpdate(trackingNumber, req) {
+    try {
+        console.log(`Processing Out for Delivery for: ${trackingNumber}`);
+        // Add your specific Detrack API call for OFD status
+        return await updateDetrackJobStatus(trackingNumber, 'out_for_delivery');
+    } catch (error) {
+        console.error(`Error in OFD update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function processSelfCollectUpdate(trackingNumber, req) {
+    try {
+        console.log(`Processing Self Collect for: ${trackingNumber}`);
+        // Add your specific Detrack API call for self collect
+        return await updateDetrackJobStatus(trackingNumber, 'self_collect');
+    } catch (error) {
+        console.error(`Error in Self Collect update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function processClearJobUpdate(trackingNumber, req) {
+    try {
+        console.log(`Processing Clear Job for: ${trackingNumber}`);
+        // Add your specific Detrack API call for clearing job
+        return await updateDetrackJobStatus(trackingNumber, 'completed');
+    } catch (error) {
+        console.error(`Error in Clear Job update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function processGenericUpdate(trackingNumber, updateCode, req, mawbNum) {
+    try {
+        console.log(`Processing ${updateCode} for: ${trackingNumber}`);
+        // Generic processor - implement logic based on updateCode
+        console.log(`⚠️ No specific implementation for ${updateCode} yet`);
+        return false;
+    } catch (error) {
+        console.error(`Error in ${updateCode} update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+// Function to check if job exists in Detrack
+async function checkJobExists(trackingNumber) {
+    return new Promise((resolve, reject) => {
+        request({
+            method: 'GET',
+            url: `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            }
+        }, function (error, response, body) {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            console.log(`Check Job ${trackingNumber} - Status:`, response.statusCode);
+
+            try {
+                const data = JSON.parse(body);
+
+                // Multiple ways to check if job exists based on Detrack API response
+                if (response.statusCode === 200) {
+                    // Check different possible response structures
+                    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                        resolve(true);
+                    } else if (data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
+                        resolve(true);
+                    } else if (data.success && data.data) {
+                        resolve(true);
+                    } else if (data.data.do_number) {
+                        // Single job object response
+                        resolve(true);
+                    } else {
+                        console.log(`Job ${trackingNumber} not found in response data`);
+                        resolve(false);
+                    }
+                } else if (response.statusCode === 404) {
+                    console.log(`Job ${trackingNumber} not found (404)`);
+                    resolve(false);
+                } else {
+                    // Other status codes might indicate errors
+                    console.log(`Unexpected status code ${response.statusCode} for ${trackingNumber}`);
+                    resolve(false);
+                }
+            } catch (parseError) {
+                console.error(`Parse error for ${trackingNumber}:`, parseError);
+                resolve(false);
+            }
+        });
+    });
+}
+
+// Function to update or create order in ORDERS collection
+async function updateOrCreateOrder(trackingNumber, mawbNum, req, jobData) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Check if order already exists
+            const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+            if (existingOrder) {
+                // Update existing order - only mawbNo field
+                await ORDERS.updateOne(
+                    { doTrackingNumber: trackingNumber },
+                    { $set: { mawbNo: mawbNum } }
+                );
+                console.log(`Updated MAWB for existing order: ${trackingNumber}`);
+            } else {
+                // Create new order with the jobData we already have
+                await createNewOrder(jobData, trackingNumber, mawbNum, req);
+                console.log(`Created new order: ${trackingNumber}`);
+            }
+
+            resolve(true);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Function to get detailed job data from Detrack
+async function getJobDetails(trackingNumber) {
+    return new Promise((resolve, reject) => {
+        request({
+            method: 'GET',
+            url: `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            }
+        }, function (error, response, body) {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            console.log(`Get Job Details ${trackingNumber} - Status:`, response.statusCode);
+
+            try {
+                const data = JSON.parse(body);
+                console.log(`Get Job Details ${trackingNumber} - Response structure:`, Object.keys(data));
+
+                // Handle different response structures
+                if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                    console.log(`Found job in data array`);
+                    resolve(data.data[0]);
+                } else if (data.data && typeof data.data === 'object' && data.data.do_number) {
+                    console.log(`Found job in data object`);
+                    resolve(data.data);
+                } else if (data.do_number) {
+                    console.log(`Found job as direct object`);
+                    resolve(data);
+                } else if (data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
+                    console.log(`Found job in jobs array`);
+                    resolve(data.jobs[0]);
+                } else {
+                    console.log(`No job data found in response`);
+                    console.log(`Response keys:`, Object.keys(data));
+                    if (data.data) console.log(`data type:`, typeof data.data);
+                    resolve(null);
+                }
+            } catch (parseError) {
+                console.error(`Parse error for job details ${trackingNumber}:`, parseError);
+                reject(parseError);
+            }
+        });
+    });
+}
+
+// Function to create new order
+async function createNewOrder(jobData, trackingNumber, mawbNum, req) {
+    // Process items array
+    const itemsArray = [];
+    if (jobData.items && Array.isArray(jobData.items)) {
+        for (let i = 0; i < jobData.items.length; i++) {
+            itemsArray.push({
+                quantity: jobData.items[i].quantity || 0,
+                description: jobData.items[i].description || '',
+                totalItemPrice: jobData.total_price || jobData.payment_amount || 0
+            });
+        }
+    }
+
+    // Process area from address
+    const finalArea = getAreaFromAddress(jobData.address);
+
+    // Process product
+    const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
+
+    // Process phone numbers
+    const finalPhoneNum = processPhoneNumber(jobData.phone_number);
+    const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+    // Process postal code
+    const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
+
+    // Determine payment method
+    const totalAmount = jobData.total_price || jobData.payment_amount || 0;
+    const paymentMethod = totalAmount > 0 ? 'Cash' : 'NON COD';
+
+    // Create new order
+    const newOrder = new ORDERS({
+        area: finalArea,
+        items: itemsArray,
+        attempt: jobData.attempt || 1,
+        history: [{
+            statusHistory: "Info Received",
+            dateUpdated: moment().format(),
+            updatedBy: req.user.name,
+            lastLocation: "Origin",
+        }],
+        latestLocation: "Origin",
+        product: currentProduct,
+        senderName: senderName,
+        totalPrice: totalAmount,
+        paymentAmount: totalAmount,
+        receiverName: jobData.deliver_to_collect_from || '',
+        trackingLink: jobData.tracking_link || '',
+        currentStatus: "Info Received",
+        paymentMethod: paymentMethod,
+        warehouseEntry: "No",
+        warehouseEntryDateTime: "N/A",
+        receiverAddress: jobData.address || '',
+        receiverPhoneNumber: finalPhoneNum,
+        additionalPhoneNumber: finalAdditionalPhoneNum,
+        doTrackingNumber: trackingNumber,
+        remarks: jobData.remarks || '',
+        lastUpdateDateTime: moment().format(),
+        creationDate: jobData.created_at || moment().format(),
+        lastUpdatedBy: req.user.name,
+        receiverPostalCode: postalCode,
+        jobType: jobData.type || 'Delivery',
+        jobMethod: "Standard",
+        flightDate: jobData.job_received_date || '',
+        mawbNo: mawbNum,
+        parcelWeight: jobData.weight || 0
+    });
+
+    await newOrder.save();
+}
+
+// Helper function to get area from address
+function getAreaFromAddress(address) {
+    if (!address) return 'N/A';
+
+    const upperAddress = address.toUpperCase();
+    let area = 'N/A';
+    let kampong = '';
+
+    if (upperAddress.includes("MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
+    else if (upperAddress.includes("DELIMA") == true) { area = "B", kampong = "DELIMA" }
+    else if (upperAddress.includes("ANGGREK DESA") == true) { area = "B", kampong = "ANGGREK DESA" }
+    else if (upperAddress.includes("ANGGREK") == true) { area = "B", kampong = "ANGGREK DESA" }
+    else if (upperAddress.includes("PULAIE") == true) { area = "B", kampong = "PULAIE" }
+    else if (upperAddress.includes("LAMBAK") == true) { area = "B", kampong = "LAMBAK" }
+    else if (upperAddress.includes("TERUNJING") == true) { area = "B", kampong = "TERUNJING" }
+    else if (upperAddress.includes("MADANG") == true) { area = "B", kampong = "MADANG" }
+    else if (upperAddress.includes("AIRPORT") == true) { area = "B", kampong = "AIRPORT" }
+    else if (upperAddress.includes("ORANG KAYA BESAR IMAS") == true) { area = "B", kampong = "OKBI" }
+    else if (upperAddress.includes("OKBI") == true) { area = "B", kampong = "OKBI" }
+    else if (upperAddress.includes("SERUSOP") == true) { area = "B", kampong = "SERUSOP" }
+    else if (upperAddress.includes("BURONG PINGAI") == true) { area = "B", kampong = "BURONG PINGAI" }
+    else if (upperAddress.includes("SETIA NEGARA") == true) { area = "B", kampong = "SETIA NEGARA" }
+    else if (upperAddress.includes("PASIR BERAKAS") == true) { area = "B", kampong = "PASIR BERAKAS" }
+    else if (upperAddress.includes("MENTERI BESAR") == true) { area = "B", kampong = "MENTERI BESAR" }
+    else if (upperAddress.includes("KEBANGSAAN LAMA") == true) { area = "B", kampong = "KEBANGSAAN LAMA" }
+    else if (upperAddress.includes("BATU MARANG") == true) { area = "B", kampong = "BATU MARANG" }
+    else if (upperAddress.includes("DATO GANDI") == true) { area = "B", kampong = "DATO GANDI" }
+    else if (upperAddress.includes("KAPOK") == true) { area = "B", kampong = "KAPOK" }
+    else if (upperAddress.includes("KOTA BATU") == true) { area = "B", kampong = "KOTA BATU" }
+    else if (upperAddress.includes("MENTIRI") == true) { area = "B", kampong = "MENTIRI" }
+    else if (upperAddress.includes("MERAGANG") == true) { area = "B", kampong = "MERAGANG" }
+    else if (upperAddress.includes("PELAMBAIAN") == true) { area = "B", kampong = "PELAMBAIAN" }
+    else if (upperAddress.includes("PINTU MALIM") == true) { area = "B", kampong = "PINTU MALIM" }
+    else if (upperAddress.includes("SALAMBIGAR") == true) { area = "B", kampong = "SALAMBIGAR" }
+    else if (upperAddress.includes("SALAR") == true) { area = "B", kampong = "SALAR" }
+    else if (upperAddress.includes("SERASA") == true) { area = "B", kampong = "SERASA" }
+    else if (upperAddress.includes("SERDANG") == true) { area = "B", kampong = "SERDANG" }
+    else if (upperAddress.includes("SUNGAI BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+    else if (upperAddress.includes("SG BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
+    else if (upperAddress.includes("SUNGAI BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+    else if (upperAddress.includes("SG BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
+    else if (upperAddress.includes("SUNGAI HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+    else if (upperAddress.includes("SG HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
+    else if (upperAddress.includes("SUNGAI TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+    else if (upperAddress.includes("SG TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
+    else if (upperAddress.includes("SUBOK") == true) { area = "B", kampong = "SUBOK" }
+    else if (upperAddress.includes("SUNGAI AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+    else if (upperAddress.includes("SG AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
+    else if (upperAddress.includes("SUNGAI BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+    else if (upperAddress.includes("SG BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
+    else if (upperAddress.includes("TANAH JAMBU") == true) { area = "B", kampong = "TANAH JAMBU" }
+    else if (upperAddress.includes("SUNGAI OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+    else if (upperAddress.includes("SG OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
+    else if (upperAddress.includes("KATOK") == true) { area = "G", kampong = "KATOK" }
+    else if (upperAddress.includes("MATA-MATA") == true) { area = "G", kampong = "MATA-MATA" }
+    else if (upperAddress.includes("MATA MATA") == true) { area = "G", kampong = "MATA-MATA" }
+    else if (upperAddress.includes("RIMBA") == true) { area = "G", kampong = "RIMBA" }
+    else if (upperAddress.includes("TUNGKU") == true) { area = "G", kampong = "TUNGKU" }
+    else if (upperAddress.includes("UBD") == true) { area = "G", kampong = "UBD" }
+    else if (upperAddress.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G", kampong = "UBD" }
+    else if (upperAddress.includes("JIS") == true) { area = "G" }
+    else if (upperAddress.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G", kampong = "JIS" }
+    else if (upperAddress.includes("BERANGAN") == true) { area = "G", kampong = "BERANGAN" }
+    else if (upperAddress.includes("BERIBI") == true) { area = "G", kampong = "BERIBI" }
+    else if (upperAddress.includes("KIULAP") == true) { area = "G", kampong = "KIULAP" }
+    else if (upperAddress.includes("RIPAS") == true) { area = "G", kampong = "RIPAS" }
+    else if (upperAddress.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G", kampong = "RIPAS" }
+    else if (upperAddress.includes("KIARONG") == true) { area = "G", kampong = "KIARONG" }
+    else if (upperAddress.includes("PUSAR ULAK") == true) { area = "G", kampong = "PUSAR ULAK" }
+    else if (upperAddress.includes("KUMBANG PASANG") == true) { area = "G", kampong = "KUMBANG PASANG" }
+    else if (upperAddress.includes("MENGLAIT") == true) { area = "G", kampong = "MENGLAIT" }
+    else if (upperAddress.includes("MABOHAI") == true) { area = "G", kampong = "MABOHAI" }
+    else if (upperAddress.includes("ONG SUM PING") == true) { area = "G", kampong = "ONG SUM PING" }
+    else if (upperAddress.includes("GADONG") == true) { area = "G", kampong = "GADONG" }
+    else if (upperAddress.includes("TASEK LAMA") == true) { area = "G", kampong = "TASEK LAMA" }
+    else if (upperAddress.includes("BANDAR TOWN") == true) { area = "G", kampong = "BANDAR TOWN" }
+    else if (upperAddress.includes("BATU SATU") == true) { area = "JT", kampong = "BATU SATU" }
+    else if (upperAddress.includes("BENGKURONG") == true) { area = "JT", kampong = "BENGKURONG" }
+    else if (upperAddress.includes("BUNUT") == true) { area = "JT", kampong = "BUNUT" }
+    else if (upperAddress.includes("JALAN BABU RAJA") == true) { area = "JT", kampong = "JALAN BABU RAJA" }
+    else if (upperAddress.includes("JALAN ISTANA") == true) { area = "JT", kampong = "JALAN ISTANA" }
+    else if (upperAddress.includes("JUNJONGAN") == true) { area = "JT", kampong = "JUNJONGAN" }
+    else if (upperAddress.includes("KASAT") == true) { area = "JT", kampong = "KASAT" }
+    else if (upperAddress.includes("LUMAPAS") == true) { area = "JT", kampong = "LUMAPAS" }
+    else if (upperAddress.includes("JALAN HALUS") == true) { area = "JT", kampong = "JALAN HALUS" }
+    else if (upperAddress.includes("MADEWA") == true) { area = "JT", kampong = "MADEWA" }
+    else if (upperAddress.includes("PUTAT") == true) { area = "JT", kampong = "PUTAT" }
+    else if (upperAddress.includes("SINARUBAI") == true) { area = "JT", kampong = "SINARUBAI" }
+    else if (upperAddress.includes("TASEK MERADUN") == true) { area = "JT", kampong = "TASEK MERADUN" }
+    else if (upperAddress.includes("TELANAI") == true) { area = "JT", kampong = "TELANAI" }
+    else if (upperAddress.includes("BAN 1") == true) { area = "JT", kampong = "BAN" }
+    else if (upperAddress.includes("BAN 2") == true) { area = "JT", kampong = "BAN" }
+    else if (upperAddress.includes("BAN 3") == true) { area = "JT", kampong = "BAN" }
+    else if (upperAddress.includes("BAN 4") == true) { area = "JT", kampong = "BAN" }
+    else if (upperAddress.includes("BAN 5") == true) { area = "JT", kampong = "BAN" }
+    else if (upperAddress.includes("BAN 6") == true) { area = "JT", kampong = "BAN" }
+    else if (upperAddress.includes("BATONG") == true) { area = "JT", kampong = "BATONG" }
+    else if (upperAddress.includes("BATU AMPAR") == true) { area = "JT", kampong = "BATU AMPAR" }
+    else if (upperAddress.includes("BEBATIK") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+    else if (upperAddress.includes("BEBULOH") == true) { area = "JT", kampong = "BEBULOH" }
+    else if (upperAddress.includes("BEBATIK KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+    else if (upperAddress.includes("KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
+    else if (upperAddress.includes("DADAP") == true) { area = "JT", kampong = "DADAP" }
+    else if (upperAddress.includes("KUALA LURAH") == true) { area = "JT", kampong = "KUALA LURAH" }
+    else if (upperAddress.includes("KULAPIS") == true) { area = "JT", kampong = "KULAPIS" }
+    else if (upperAddress.includes("LIMAU MANIS") == true) { area = "JT", kampong = "LIMAU MANIS" }
+    else if (upperAddress.includes("MASIN") == true) { area = "JT", kampong = "MASIN" }
+    else if (upperAddress.includes("MULAUT") == true) { area = "JT", kampong = "MULAUT" }
+    else if (upperAddress.includes("PANCHOR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+    else if (upperAddress.includes("PANCHUR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
+    else if (upperAddress.includes("PANGKALAN BATU") == true) { area = "JT", kampong = "PANGKALAN BATU" }
+    else if (upperAddress.includes("PASAI") == true) { area = "JT", kampong = "PASAI" }
+    else if (upperAddress.includes("WASAN") == true) { area = "JT", kampong = "WASAN" }
+    else if (upperAddress.includes("PARIT") == true) { area = "JT", kampong = "PARIT" }
+    else if (upperAddress.includes("EMPIRE") == true) { area = "JT", kampong = "EMPIRE" }
+    else if (upperAddress.includes("JANGSAK") == true) { area = "JT", kampong = "JANGSAK" }
+    else if (upperAddress.includes("JERUDONG") == true) { area = "JT", kampong = "JERUDONG" }
+    else if (upperAddress.includes("KATIMAHAR") == true) { area = "JT", kampong = "KATIMAHAR" }
+    else if (upperAddress.includes("LUGU") == true) { area = "JT", kampong = "LUGU" }
+    else if (upperAddress.includes("SENGKURONG") == true) { area = "JT", kampong = "SENGKURONG" }
+    else if (upperAddress.includes("TANJONG NANGKA") == true) { area = "JT", kampong = "TANJONG NANGKA" }
+    else if (upperAddress.includes("TANJONG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+    else if (upperAddress.includes("TANJUNG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
+    else if (upperAddress.includes("SUNGAI TAMPOI") == true) { area = "JT", kampung = "SUNGAI TAMPOI" }
+    else if (upperAddress.includes("SG TAMPOI") == true) { area = "JT", kampong = "SUNGAI TAMPOI" }
+    else if (upperAddress.includes("MUARA") == true) { area = "B", kampong = "MUARA" }
+    //TU
+    else if (upperAddress.includes("SENGKARAI") == true) { area = "TUTONG", kampong = "SENGKARAI" }
+    else if (upperAddress.includes("PANCHOR") == true) { area = "TUTONG", kampong = "PANCHOR" }
+    else if (upperAddress.includes("PENABAI") == true) { area = "TUTONG", kampong = "PENABAI" }
+    else if (upperAddress.includes("KUALA TUTONG") == true) { area = "TUTONG", kampong = "KUALA TUTONG" }
+    else if (upperAddress.includes("PENANJONG") == true) { area = "TUTONG", kampong = "PENANJONG" }
+    else if (upperAddress.includes("KERIAM") == true) { area = "TUTONG", kampong = "KERIAM" }
+    else if (upperAddress.includes("BUKIT PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
+    else if (upperAddress.includes("PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
+    else if (upperAddress.includes("LUAGAN") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
+    else if (upperAddress.includes("DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
+    else if (upperAddress.includes("LUAGAN DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
+    else if (upperAddress.includes("SINAUT") == true) { area = "TUTONG", kampong = "SINAUT" }
+    else if (upperAddress.includes("SUNGAI KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
+    else if (upperAddress.includes("KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
+    else if (upperAddress.includes("SG KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
+    else if (upperAddress.includes("KUPANG") == true) { area = "TUTONG", kampong = "KUPANG" }
+    else if (upperAddress.includes("KIUDANG") == true) { area = "TUTONG", kampong = "KIUDANG" }
+    else if (upperAddress.includes("PAD") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
+    else if (upperAddress.includes("NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
+    else if (upperAddress.includes("PAD NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
+    else if (upperAddress.includes("BEKIAU") == true) { area = "TUTONG", kampong = "BEKIAU" }
+    else if (upperAddress.includes("MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
+    else if (upperAddress.includes("PENGKALAN MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
+    else if (upperAddress.includes("BATANG MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
+    else if (upperAddress.includes("MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
+    else if (upperAddress.includes("KEBIA") == true) { area = "TUTONG", kampong = "KEBIA" }
+    else if (upperAddress.includes("BIRAU") == true) { area = "TUTONG", kampong = "BIRAU" }
+    else if (upperAddress.includes("LAMUNIN") == true) { area = "TUTONG", kampong = "LAMUNIN" }
+    else if (upperAddress.includes("LAYONG") == true) { area = "TUTONG", kampong = "LAYONG" }
+    else if (upperAddress.includes("MENENGAH") == true) { area = "TUTONG", kampong = "MENENGAH" }
+    else if (upperAddress.includes("PANCHONG") == true) { area = "TUTONG", kampong = "PANCHONG" }
+    else if (upperAddress.includes("PENAPAR") == true) { area = "TUTONG", kampong = "PANAPAR" }
+    else if (upperAddress.includes("TANJONG MAYA") == true) { area = "TUTONG", kampong = "TANJONG MAYA" }
+    else if (upperAddress.includes("MAYA") == true) { area = "TUTONG", kampong = "MAYA" }
+    else if (upperAddress.includes("LUBOK") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
+    else if (upperAddress.includes("PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
+    else if (upperAddress.includes("LUBOK PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
+    else if (upperAddress.includes("BUKIT UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
+    else if (upperAddress.includes("UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
+    else if (upperAddress.includes("RAMBAI") == true) { area = "TUTONG", kampong = "RAMBAI" }
+    else if (upperAddress.includes("BENUTAN") == true) { area = "TUTONG", kampong = "BENUTAN" }
+    else if (upperAddress.includes("MERIMBUN") == true) { area = "TUTONG", kampong = "MERIMBUN" }
+    else if (upperAddress.includes("UKONG") == true) { area = "TUTONG", kampong = "UKONG" }
+    else if (upperAddress.includes("LONG") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
+    else if (upperAddress.includes("MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
+    else if (upperAddress.includes("LONG MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
+    else if (upperAddress.includes("TELISAI") == true) { area = "TUTONG", kampong = "TELISAI" }
+    else if (upperAddress.includes("DANAU") == true) { area = "TUTONG", kampong = "DANAU" }
+    else if (upperAddress.includes("BUKIT BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
+    else if (upperAddress.includes("BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
+    else if (upperAddress.includes("TUTONG") == true) { area = "TUTONG", kampong = "TUTONG" }
+    //KB
+    else if (upperAddress.includes("AGIS") == true) { area = "LUMUT", kampong = "AGIS" }
+    else if (upperAddress.includes("ANDALAU") == true) { area = "LUMUT", kampong = "ANDALAU" }
+    else if (upperAddress.includes("ANDUKI") == true) { area = "LUMUT", kampong = "ANDUKI" }
+    else if (upperAddress.includes("APAK") == true) { area = "KB / SERIA", kampong = "APAK" }
+    else if (upperAddress.includes("BADAS") == true) { area = "LUMUT", kampong = "BADAS" }
+    else if (upperAddress.includes("BANG") == true) { area = "KB / SERIA", kampong = "BANG" }
+    else if (upperAddress.includes("GARANG") == true) { area = "KB / SERIA", kampong = "GARANG" }
+    else if (upperAddress.includes("PUKUL") == true) { area = "KB / SERIA", kampong = "PUKUL" }
+    else if (upperAddress.includes("TAJUK") == true) { area = "KB / SERIA", kampong = "TAJUK" }
+    else if (upperAddress.includes("BENGERANG") == true) { area = "KB / SERIA", kampong = "BENGERANG" }
+    else if (upperAddress.includes("BIADONG") == true) { area = "KB / SERIA", kampong = "BIADONG" }
+    else if (upperAddress.includes("ULU") == true) { area = "KB / SERIA", kampong = "ULU" }
+    else if (upperAddress.includes("TENGAH") == true) { area = "KB / SERIA", kampong = "TENGAH" }
+    else if (upperAddress.includes("BISUT") == true) { area = "KB / SERIA", kampong = "BISUT" }
+    else if (upperAddress.includes("BUAU") == true) { area = "KB / SERIA", kampong = "BUAU" }
+    else if (upperAddress.includes("KANDOL") == true) { area = "KB / SERIA", kampong = "KANDOL" }
+    else if (upperAddress.includes("PUAN") == true) { area = "KB / SERIA", kampong = "PUAN" }
+    else if (upperAddress.includes("TUDING") == true) { area = "LUMUT", kampong = "TUDING" }
+    else if (upperAddress.includes("SAWAT") == true) { area = "KB / SERIA", kampong = "SAWAT" }
+    else if (upperAddress.includes("SERAWONG") == true) { area = "KB / SERIA", kampong = "SERAWONG" }
+    else if (upperAddress.includes("CHINA") == true) { area = "KB / SERIA", kampong = "CHINA" }
+    else if (upperAddress.includes("DUGUN") == true) { area = "KB / SERIA", kampong = "DUGUN" }
+    else if (upperAddress.includes("GATAS") == true) { area = "KB / SERIA", kampong = "GATAS" }
+    else if (upperAddress.includes("JABANG") == true) { area = "KB / SERIA", kampong = "JABANG" }
+    else if (upperAddress.includes("KAGU") == true) { area = "KB / SERIA", kampong = "KAGU" }
+    else if (upperAddress.includes("KAJITAN") == true) { area = "KB / SERIA", kampong = "KAJITAN" }
+    else if (upperAddress.includes("KELUYOH") == true) { area = "KB / SERIA", kampong = "KELUYOH" }
+    else if (upperAddress.includes("KENAPOL") == true) { area = "KB / SERIA", kampong = "KENAPOL" }
+    else if (upperAddress.includes("KUALA BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
+    else if (upperAddress.includes("BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
+    else if (upperAddress.includes("KUALA BELAIT") == true) { area = "KB", kampong = "KUALA BELAIT" }
+    else if (upperAddress.includes("KUKUB") == true) { area = "KB / SERIA", kampong = "KUKUB" }
+    else if (upperAddress.includes("LABI") == true) { area = "LUMUT", kampong = "LABI" }
+    else if (upperAddress.includes("LAKANG") == true) { area = "KB / SERIA", kampong = "LAKANG" }
+    else if (upperAddress.includes("LAONG ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
+    else if (upperAddress.includes("ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
+    else if (upperAddress.includes("LAONG") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
+    else if (upperAddress.includes("LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
+    else if (upperAddress.includes("SUNGAI LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
+    else if (upperAddress.includes("SG LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
+    else if (upperAddress.includes("LUMUT") == true) { area = "LUMUT", kampong = "LUMUT" }
+    else if (upperAddress.includes("LORONG") == true) { area = "SERIA", kampong = "LORONG" }
+    else if (upperAddress.includes("LORONG TENGAH") == true) { area = "SERIA", kampong = "LORONG TENGAH" }
+    else if (upperAddress.includes("LORONG TIGA SELATAN") == true) { area = "SERIA", kampong = "LORONG TIGA SELATAN" }
+    else if (upperAddress.includes("LILAS") == true) { area = "KB / SERIA", kampong = "LILAS" }
+    else if (upperAddress.includes("LUBUK LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
+    else if (upperAddress.includes("LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
+    else if (upperAddress.includes("LUBUK TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
+    else if (upperAddress.includes("TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
+    else if (upperAddress.includes("MALA'AS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
+    else if (upperAddress.includes("MALAAS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
+    else if (upperAddress.includes("MALAYAN") == true) { area = "KB / SERIA", kampong = "MELAYAN" }
+    else if (upperAddress.includes("MELAYU") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
+    else if (upperAddress.includes("ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
+    else if (upperAddress.includes("MELAYU ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
+    else if (upperAddress.includes("MELILAS") == true) { area = "LUMUT", kampong = "MELILAS" }
+    else if (upperAddress.includes("MENDARAM") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
+    else if (upperAddress.includes("MENDARAM BESAR") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
+    else if (upperAddress.includes("MENDARAM KECIL") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
+    else if (upperAddress.includes("MERANGKING") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
+    else if (upperAddress.includes("MERANGKING ULU") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
+    else if (upperAddress.includes("MERANGKING HILIR") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
+    else if (upperAddress.includes("MUMONG") == true) { area = "KB", kampong = "MUMONG" }
+    else if (upperAddress.includes("PANDAN") == true) { area = "KB", kampong = "PANDAN" }
+    else if (upperAddress.includes("PADANG") == true) { area = "KB", kampong = "PADANG" }
+    else if (upperAddress.includes("PANAGA") == true) { area = "SERIA", kampong = "PANAGA" }
+    else if (upperAddress.includes("PENGKALAN SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
+    else if (upperAddress.includes("SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
+    else if (upperAddress.includes("PENGALAYAN") == true) { area = "KB / SERIA", kampong = "PENGALAYAN" }
+    else if (upperAddress.includes("PENYRAP") == true) { area = "KB / SERIA", kampong = "PENYRAP" }
+    else if (upperAddress.includes("PERANGKONG") == true) { area = "KB / SERIA", kampong = "PERANGKONG" }
+    else if (upperAddress.includes("PERUMPONG") == true) { area = "LUMUT", kampong = "PERUMPONG" }
+    else if (upperAddress.includes("PESILIN") == true) { area = "KB / SERIA", kampong = "PESILIN" }
+    else if (upperAddress.includes("PULAU APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
+    else if (upperAddress.includes("APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
+    else if (upperAddress.includes("RAMPAYOH") == true) { area = "KB / SERIA", kampong = "RAMPAYOH" }
+    else if (upperAddress.includes("RATAN") == true) { area = "KB / SERIA", kampong = "RATAN" }
+    else if (upperAddress.includes("SAUD") == true) { area = "KB / SERIA", kampong = "SAUD" }
+    //else if (upperAddress.includes("SIMPANG") == true) {area = "KB / SERIA", kampong = "SIMPANG TIGA"}
+    else if (upperAddress.includes("SIMPANG TIGA") == true) { area = "LUMUT", kampong = "SIMPANG TIGA" }
+    else if (upperAddress.includes("SINGAP") == true) { area = "KB / SERIA", kampong = "SINGAP" }
+    else if (upperAddress.includes("SUKANG") == true) { area = "KB / SERIA", kampong = "SUKANG" }
+    else if (upperAddress.includes("BAKONG") == true) { area = "LUMUT", kampong = "BAKONG" }
+    else if (upperAddress.includes("DAMIT") == true) { area = "KB / SERIA", kampong = "DAMIT" }
+    else if (upperAddress.includes("BERA") == true) { area = "KB / SERIA", kampong = "BERA" }
+    else if (upperAddress.includes("DUHON") == true) { area = "KB / SERIA", kampong = "DUHON" }
+    else if (upperAddress.includes("GANA") == true) { area = "LUMUT", kampong = "GANA" }
+    else if (upperAddress.includes("HILIR") == true) { area = "KB / SERIA", kampong = "HILIR" }
+    else if (upperAddress.includes("KANG") == true) { area = "LUMUT", kampong = "KANG" }
+    else if (upperAddress.includes("KURU") == true) { area = "LUMUT", kampong = "KURU" }
+    else if (upperAddress.includes("LALIT") == true) { area = "LUMUT", kampong = "LALIT" }
+    else if (upperAddress.includes("LUTONG") == true) { area = "KB / SERIA", kampong = "LUTONG" }
+    else if (upperAddress.includes("MAU") == true) { area = "KB / SERIA", kampong = "MAU" }
+    else if (upperAddress.includes("MELILIT") == true) { area = "KB / SERIA", kampong = "MELILIT" }
+    else if (upperAddress.includes("PETAI") == true) { area = "KB / SERIA", kampong = "PETAI" }
+    else if (upperAddress.includes("TALI") == true) { area = "LUMUT", kampong = "TALI" }
+    else if (upperAddress.includes("TARING") == true) { area = "LUMUT", kampong = "TARING" }
+    else if (upperAddress.includes("TERABAN") == true) { area = "KB", kampong = "TERABAN" }
+    else if (upperAddress.includes("UBAR") == true) { area = "KB / SERIA", kampong = "UBAR" }
+    else if (upperAddress.includes("TANAJOR") == true) { area = "KB / SERIA", kampong = "TANAJOR" }
+    else if (upperAddress.includes("TANJONG RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
+    else if (upperAddress.includes("RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
+    else if (upperAddress.includes("TANJONG SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
+    else if (upperAddress.includes("SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
+    else if (upperAddress.includes("TAPANG LUPAK") == true) { area = "KB / SERIA", kampong = "TAPANG LUPAK" }
+    else if (upperAddress.includes("TARAP") == true) { area = "KB / SERIA", kampong = "TARAP" }
+    else if (upperAddress.includes("TEMPINAK") == true) { area = "KB / SERIA", kampong = "TEMPINAK" }
+    else if (upperAddress.includes("TERAJA") == true) { area = "KB / SERIA", kampong = "TERAJA" }
+    else if (upperAddress.includes("TERAWAN") == true) { area = "KB / SERIA", kampong = "TERAWAN" }
+    else if (upperAddress.includes("TERUNAN") == true) { area = "KB / SERIA", kampong = "TERUNAN" }
+    else if (upperAddress.includes("TUGONG") == true) { area = "KB / SERIA", kampong = "TUGONG" }
+    else if (upperAddress.includes("TUNGULLIAN") == true) { area = "LUMUT", kampong = "TUNGULLIAN" }
+    else if (upperAddress.includes("UBOK") == true) { area = "KB / SERIA", kampong = "UBOK" }
+    else if (upperAddress.includes("BELAIT") == true) { area = "KB / SERIA", kampong = "BELAIT" }
+    else if (upperAddress.includes("SERIA") == true) { area = "KB / SERIA", kampong = "BELAIT" }
+    //TE
+    else if (upperAddress.includes("AMO") == true) { area = "TEMBURONG", kampong = "AMO" }
+    else if (upperAddress.includes("AYAM-AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
+    else if (upperAddress.includes("AYAM AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
+    else if (upperAddress.includes("BAKARUT") == true) { area = "TEMBURONG", kampong = "BAKARUT" }
+    else if (upperAddress.includes("BATANG DURI") == true) { area = "TEMBURONG", kampong = "BATANG DURI" }
+    else if (upperAddress.includes("BATANG TUAU") == true) { area = "TEMBURONG", kampong = "BATANG TUAU" }
+    else if (upperAddress.includes("BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
+    else if (upperAddress.includes("APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
+    else if (upperAddress.includes("BATU BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
+    else if (upperAddress.includes("BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
+    else if (upperAddress.includes("BELABAN") == true) { area = "TEMBURONG", kampong = "BELABAN" }
+    else if (upperAddress.includes("BELAIS") == true) { area = "TEMBURONG", kampong = "BELAIS" }
+    else if (upperAddress.includes("BELINGOS") == true) { area = "TEMBURONG", kampong = "BELINGOS" }
+    else if (upperAddress.includes("BIANG") == true) { area = "TEMBURONG", kampong = "BIANG" }
+    else if (upperAddress.includes("BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
+    else if (upperAddress.includes("BUDA BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
+    else if (upperAddress.includes("BUDA-BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
+    else if (upperAddress.includes("GADONG BARU") == true) { area = "TEMBURONG", kampong = "GADONG BARU" }
+    else if (upperAddress.includes("KENUA") == true) { area = "TEMBURONG", kampong = "KENUA" }
+    else if (upperAddress.includes("LABU ESTATE") == true) { area = "TEMBURONG", kampong = "LABU" }
+    else if (upperAddress.includes("LABU") == true) { area = "TEMBURONG", kampong = "LABU" }
+    else if (upperAddress.includes("LAGAU") == true) { area = "TEMBURONG", kampong = "LAGAU" }
+    else if (upperAddress.includes("LAKIUN") == true) { area = "TEMBURONG", kampong = "LAKIUN" }
+    else if (upperAddress.includes("LAMALING") == true) { area = "TEMBURONG", kampong = "LAMALING" }
+    else if (upperAddress.includes("LEPONG") == true) { area = "TEMBURONG", kampong = "LEPONG" }
+    else if (upperAddress.includes("LUAGAN") == true) { area = "TEMBURONG", kampong = "LUAGAN" }
+    else if (upperAddress.includes("MANIUP") == true) { area = "TEMBURONG", kampong = "MANIUP" }
+    else if (upperAddress.includes("MENENGAH") == true) { area = "TEMBURONG", kampong = "MENGENGAH" }
+    else if (upperAddress.includes("NEGALANG") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
+    else if (upperAddress.includes("NEGALANG ERING") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
+    else if (upperAddress.includes("NEGALANG UNAT") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
+    else if (upperAddress.includes("PARIT") == true) { area = "TEMBURONG", kampong = "PARIT" }
+    else if (upperAddress.includes("PARIT BELAYANG") == true) { area = "TEMBURONG", kampong = "PARIT BELAYANG" }
+    else if (upperAddress.includes("PAYAU") == true) { area = "TEMBURONG", kampong = "PAYAU" }
+    else if (upperAddress.includes("PELIUNAN") == true) { area = "TEMBURONG", kampong = "PELIUNAN" }
+    else if (upperAddress.includes("PERDAYAN") == true) { area = "TEMBURONG", kampong = "PERDAYAN" }
+    else if (upperAddress.includes("PIASAU-PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
+    else if (upperAddress.includes("PIASAU PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
+    else if (upperAddress.includes("PIUNGAN") == true) { area = "TEMBURONG", kampong = "PIUNGAN" }
+    else if (upperAddress.includes("PUNI") == true) { area = "TEMBURONG", kampong = "PUNI" }
+    else if (upperAddress.includes("RATAIE") == true) { area = "TEMBURONG", kampong = "RATAIE" }
+    else if (upperAddress.includes("REBADA") == true) { area = "TEMBURONG", kampong = "REBADA" }
+    else if (upperAddress.includes("SEKUROP") == true) { area = "TEMBURONG", kampong = "SEKUROP" }
+    else if (upperAddress.includes("SELANGAN") == true) { area = "TEMBURONG", kampong = "SELANGAN" }
+    else if (upperAddress.includes("SELAPON") == true) { area = "TEMBURONG", kampong = "SELAPON" }
+    else if (upperAddress.includes("SEMABAT") == true) { area = "TEMBURONG", kampong = "SEMABAT" }
+    else if (upperAddress.includes("SEMAMAMNG") == true) { area = "TEMBURONG", kampong = "SEMAMANG" }
+    else if (upperAddress.includes("SENUKOH") == true) { area = "TEMBURONG", kampong = "SENUKOH" }
+    else if (upperAddress.includes("SERI TANJONG BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
+    else if (upperAddress.includes("BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
+    else if (upperAddress.includes("SIBULU") == true) { area = "TEMBURONG", kampong = "SIBULU" }
+    else if (upperAddress.includes("SIBUT") == true) { area = "TEMBURONG", kampong = "SIBUT" }
+    else if (upperAddress.includes("SIMBATANG BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
+    else if (upperAddress.includes("SIMBATANG BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
+    else if (upperAddress.includes("SUBOK") == true) { area = "TEMBURONG", kampong = "SUBOK" }
+    else if (upperAddress.includes("SUMBILING") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
+    else if (upperAddress.includes("SUMBILING BARU") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
+    else if (upperAddress.includes("SUMBILING LAMA") == true) { area = "TEMBURONG", kampong = "SUMBILING LAMA" }
+    else if (upperAddress.includes("SUNGAI RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
+    else if (upperAddress.includes("SG RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
+    else if (upperAddress.includes("SUNGAI SULOK") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
+    else if (upperAddress.includes("SG SULOK ") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
+    else if (upperAddress.includes("SUNGAI TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
+    else if (upperAddress.includes("SG TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
+    else if (upperAddress.includes("SUNGAI TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
+    else if (upperAddress.includes("SG TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
+    else if (upperAddress.includes("TANJONG BUNGAR") == true) { area = "TEMBURONG", kampong = "TANJONG BUNGAR" }
+    else if (upperAddress.includes("TEMADA") == true) { area = "TEMBURONG", kampong = "TEMADA" }
+    else if (upperAddress.includes("UJONG JALAN") == true) { area = "TEMBURONG", kampong = "UJONG JALAN" }
+    else if (upperAddress.includes("BANGAR") == true) { area = "TEMBURONG", kampong = "BANGAR" }
+    else if (upperAddress.includes("TEMBURONG") == true) { area = "TEMBURONG" }
+    else { area = "N/A" }
+
+    return area;
+}
+
+// Helper function to get product info
+function getProductInfo(groupName, jobOwner) {
+    let currentProduct = '';
+    let senderName = '';
+
+    const product = groupName || '';
+
+    if (product === 'PURE51') {
+        currentProduct = 'pure51';
+    } else if (product === 'CBSL') {
+        currentProduct = 'cbsl';
+    } else if (product === 'JPMC') {
+        currentProduct = 'pharmacyjpmc';
+    } else if (product === 'LD') {
+        currentProduct = 'localdelivery';
+    } else if (product === 'MOH') {
+        currentProduct = 'pharmacymoh';
+    } else if (product === 'PHC') {
+        currentProduct = 'pharmacyphc';
+    } else if (product === 'ICARUS') {
+        currentProduct = 'icarus';
+    } else if (product === 'EWE') {
+        currentProduct = 'ewe';
+        senderName = "EWE";
+    } else if (product === 'KPTDP') {
+        currentProduct = 'kptdp';
+    } else if (product === 'PDU') {
+        currentProduct = 'pdu';
+        senderName = "SYPOST";
+    } else if (product === 'MGLOBAL') {
+        currentProduct = 'mglobal';
+        senderName = "MGLOBAL";
+    } else if (product === 'GDEX' || product === 'GDEXT') {
+        currentProduct = product.toLowerCase();
+        senderName = jobOwner || '';
+    }
+
+    return { currentProduct, senderName };
+}
+
+// Helper function to process phone numbers
+function processPhoneNumber(phoneNumber) {
+    if (!phoneNumber) {
+        return "";
+    }
+
+    // Remove any spaces or special characters
+    const cleanNumber = phoneNumber.toString().replace(/\D/g, '');
+
+    if (cleanNumber.length === 7) {
+        return "+673" + cleanNumber;
+    } else if (cleanNumber.length === 10 && cleanNumber.startsWith('673')) {
+        return "+" + cleanNumber;
+    } else if (cleanNumber.length === 11 && cleanNumber.startsWith('673')) {
+        return "+" + cleanNumber;
+    } else {
+        return phoneNumber; // Return original if format doesn't match
+    }
+}
+
+// Generic function to update Detrack job status (placeholder - implement based on your needs)
+async function updateDetrackJobStatus(trackingNumber, status) {
+    return new Promise((resolve, reject) => {
+        // TODO: Implement actual Detrack API call for status updates
+        console.log(`Would update ${trackingNumber} to status: ${status}`);
+
+        // Temporary - return true for testing
+        // In production, make actual API call to Detrack
+        setTimeout(() => {
+            resolve(true); // Change this to actual API call result
+        }, 500);
+    });
+}
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
