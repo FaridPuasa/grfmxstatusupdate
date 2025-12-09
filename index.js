@@ -6066,7 +6066,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 completeRun = 1;
             }
 
-            if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
+            /* if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
                 if (existingOrder === null) {
                     if (product == 'TEMU') {
                         if (data.data.type == 'Collection') {
@@ -6107,226 +6107,20 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         }
                     }
                 }
-            }
+            } */
 
-            if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv')) {
-                if (existingOrder === null) {
-                    if (product == 'PDU') {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "Custom Clearing",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: "Brunei Customs",
-                            }],
-                            latestLocation: "Brunei Customs",
-                            product: currentProduct,
-                            senderName: "SYPOST",
-                            totalPrice: 0,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Custom Clearing",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "No",
-                            warehouseEntryDateTime: "N/A",
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: "Standard",
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number
-                        });
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "on_hold",
-                                zone: finalArea
-                            }
-                        };
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
-
-                        mongoDBrun = 1;
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
-                    }
-
-                    if (product == 'MGLOBAL') {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "Custom Clearing",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: "Brunei Customs",
-                            }],
-                            latestLocation: "Brunei Customs",
-                            product: currentProduct,
-                            senderName: "Morning Global",
-                            totalPrice: 0,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Custom Clearing",
-                            paymentMethod: "NON COD",
-                            warehouseEntry: "No",
-                            warehouseEntryDateTime: "N/A",
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: "Standard",
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number
-                        });
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "on_hold",
-                                zone: finalArea
-                            }
-                        };
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
-
-                        mongoDBrun = 1;
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
-                    }
-
-                    if (product == 'EWE') {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "Custom Clearing",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: "Brunei Customs",
-                            }],
-                            latestLocation: "Brunei Customs",
-                            product: currentProduct,
-                            senderName: "EWE",
-                            totalPrice: 0,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Custom Clearing",
-                            paymentMethod: "NON COD",
-                            warehouseEntry: "No",
-                            warehouseEntryDateTime: "N/A",
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: "Standard",
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number
-                        });
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "on_hold",
-                                zone: finalArea
-                            }
-                        };
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
-
-                        mongoDBrun = 1;
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
-                    }
-
-                    if ((product == 'GDEX') || (product == 'GDEXT')) {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "Custom Clearing",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: "Brunei Customs",
-                            }],
-                            latestLocation: "Brunei Customs",
-                            product: currentProduct,
-                            senderName: "GDEX",
-                            totalPrice: data.data.total_price,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Custom Clearing",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "No",
-                            warehouseEntryDateTime: "N/A",
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: "Standard",
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number
-                        });
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "on_hold"
-                            }
-                        };
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
-
-                        mongoDBrun = 1;
-                        DetrackAPIrun = 1;
-                        GDEXAPIrun = 1;
-                        completeRun = 1;
-                    }
-                }
-            }
-
-            /* if ((req.body.statusCode == '38') && (data.data.status == 'on_hold')) {
-                if (product == 'PDU') {
+            if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv') && (data.data.run_number != null)) {
+                if ((product == 'PDU') || (product == 'MGLOBAL') || (product == 'EWE') || (product == 'GDEX') || (product == 'GDEXT')) {
                     update = {
-                        currentStatus: "Custom Clearance Release",
+                        currentStatus: "Custom Clearing",
                         lastUpdateDateTime: moment().format(),
                         latestLocation: "Brunei Customs",
                         lastUpdatedBy: req.user.name,
                         $push: {
                             history: {
-                                statusHistory: "Custom Clearance Release",
+                                statusHistory: "Custom Clearing",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
-                                lastAssignedTo: "N/A",
-                                reason: "N/A",
                                 lastLocation: "Brunei Customs",
                             }
                         }
@@ -6335,95 +6129,280 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     var detrackUpdateData = {
                         do_number: consignmentID,
                         data: {
-                            status: "custom_clearing",
-                            instructions: "CP"
+                            status: "on_hold"
                         }
                     };
 
-                    portalUpdate = "Portal and Detrack status updated to Custom Clearance Release. ";
+                    portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
+
+                    if ((product == 'GDEX') || (product == 'GDEXT')) {
+                        GDEXAPIrun = 1;
+                    }
 
                     mongoDBrun = 2;
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
-            } */
+            }
 
             if (req.body.statusCode == 12) {
-                if ((data.data.status == 'on_hold') && ((product == 'PDU') || (product == 'EWE') || (product == 'MGLOBAL'))) {
-                    update = {
-                        currentStatus: "At Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        latestLocation: req.body.warehouse,
-                        lastUpdatedBy: req.user.name,
-                        $push: {
-                            history: {
-                                $each: [
-                                    {
-                                        statusHistory: "Custom Clearance Release",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastLocation: "Brunei Customs",
-                                    },
-                                    {
+                if (data.data.run_number != null) {
+                    if ((data.data.status == 'on_hold') && (product == 'PDU')) { //From On Hold to Custom Clearance to At Warehouse to In Sorting Area
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Custom Clearance Release",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: "Brunei Customs",
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                                zone: finalArea,
+                            }
+                        };
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 8;
+                        completeRun = 1;
+
+                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
+                    }
+
+                    if ((data.data.status == 'on_hold') && ((product == 'EWE') || (product == 'MGLOBAL'))) { //From On Hold to At Warehouse to In Sorting Area
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Custom Clearance Release",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: "Brunei Customs",
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                                zone: finalArea,
+                            }
+                        };
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 4;
+                        completeRun = 1;
+
+                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
+                    }
+
+                    if ((data.data.status == 'info_recv') && (product == 'PDU')) { //From Info Received to On Hold to Custom Clearance to At Warehouse to In Sorting Area
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Custom Clearing",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: "Brunei Customs",
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                                zone: finalArea,
+                            }
+                        };
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 10;
+                        completeRun = 1;
+
+                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
+                    }
+
+                    if ((data.data.status == 'info_recv') && ((product == 'EWE') || (product == 'MGLOBAL'))) { //From Info Received to Custom Clearance to At Warehouse to In Sorting Area
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            warehouseEntry: "Yes",
+                            warehouseEntryDateTime: moment().format(),
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Custom Clearing",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: "Brunei Customs",
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "", // Use the calculated dStatus
+                                zone: finalArea,
+                            }
+                        };
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 8;
+                        completeRun = 1;
+
+                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
+                    }
+
+                    if (((data.data.status == 'info_recv') || (data.data.status == 'on_hold')) && ((product == 'GDEX') || (product == 'GDEXT'))) {
+                        if (existingOrder === null) {
+                            newOrder = new ORDERS({
+                                area: finalArea,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: req.body.warehouse,
+                                }],
+                                latestLocation: req.body.warehouse,
+                                product: currentProduct,
+                                senderName: "GDEX",
+                                totalPrice: data.data.total_price,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Custom Clearing",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: "Standard",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: data.data.run_number
+                            });
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    status: "", // Use the calculated dStatus
+                                }
+                            };
+
+                            portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
+
+                            mongoDBrun = 1;
+                            DetrackAPIrun = 9;
+                            GDEXAPIrun = 2;
+                            completeRun = 1;
+                        } else {
+                            update = {
+                                area: finalArea,
+                                currentStatus: "At Warehouse",
+                                lastUpdateDateTime: moment().format(),
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
                                         statusHistory: "At Warehouse",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         lastLocation: req.body.warehouse,
                                     }
-                                ]
+                                }
                             }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    status: "", // Use the calculated dStatus
+                                }
+                            };
+
+                            portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
+
+                            mongoDBrun = 2;
+                            DetrackAPIrun = 9;
+                            GDEXAPIrun = 2;
+                            completeRun = 1;
                         }
                     }
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "", // Use the calculated dStatus
-                            zone: finalArea,
-                        }
-                    };
-
-                    mongoDBrun = 2;
-                    DetrackAPIrun = 8;
-                    completeRun = 1;
-
-                    portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
                 }
-                /* if ((data.data.status == 'custom_clearing') && (data.data.instructions.includes('CP'))) {
-                    update = {
-                        area: finalArea,
-                        currentStatus: "At Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        latestLocation: req.body.warehouse,
-                        lastUpdatedBy: req.user.name,
-                        $push: {
-                            history: {
-                                statusHistory: "At Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: req.body.warehouse,
-                            }
-                        }
-                    }
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "", // Use the calculated dStatus
-                            zone: finalArea,
-                        }
-                    };
-
-                    portalUpdate = "Portal and Detrack status updated to At Warehouse then Sorting Area. ";
-
-                    mongoDBrun = 2;
-                    DetrackAPIrun = 4;
-                    completeRun = 1;
-                } */
 
                 if ((data.data.status == 'info_recv') && (product == 'CBSL')) {
                     update = {
@@ -6523,65 +6502,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                if ((data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL') && (product != 'TEMU') && (product != 'PDU') && (product != 'KPTDP') && (product != 'MGLOBAL') && (product != 'EWE')) {
+                if ((data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL') && (product != 'TEMU') && (product != 'PDU') && (product != 'KPTDP') && (product != 'MGLOBAL') && (product != 'EWE') && (product != 'GDEXT') && (product != 'GDEX')) {
                     if (existingOrder === null) {
-                        /* if ((product == 'EWE') || (product == 'EWENS')) {
-                            newOrder = new ORDERS({
-                                area: area,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: "N/A",
-                                    reason: "N/A",
-                                    lastLocation: req.body.warehouse,
-                                }],
-                                lastAssignedTo: "N/A",
-                                latestLocation: req.body.warehouse,
-                                product: currentProduct,
-                                assignedTo: "N/A",
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "At Warehouse",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: finalPhoneNum,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                latestReason: "N/A",
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: "N/A",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                lastUpdatedBy: req.user.name,
-                                parcelWeight: data.data.weight,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "", // Use the calculated dStatus
-                                    zone: area,
-                                    phone_number: finalPhoneNum
-                                }
-                            };
-
-                            portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                            mongoDBrun = 1;
-                            DetrackAPIrun = 4;
-                            completeRun = 1;
-                        } else { */
                         newOrder = new ORDERS({
                             area: finalArea,
                             items: [{
@@ -6666,90 +6588,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         mongoDBrun = 2;
                         DetrackAPIrun = 4;
-                        completeRun = 1;
-                    }
-                }
-
-                if (((data.data.status == 'info_recv') || (data.data.status == 'on_hold')) && ((product == 'GDEX') || (product == 'GDEXT'))) {
-                    if (existingOrder === null) {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "At Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: req.body.warehouse,
-                            }],
-                            latestLocation: req.body.warehouse,
-                            product: currentProduct,
-                            senderName: "GDEX",
-                            totalPrice: data.data.total_price,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Custom Clearing",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: "Standard",
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number
-                        });
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                            }
-                        };
-
-                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                        mongoDBrun = 1;
-                        DetrackAPIrun = 9;
-                        GDEXAPIrun = 2;
-                        completeRun = 1;
-                    } else {
-                        update = {
-                            area: finalArea,
-                            currentStatus: "At Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastLocation: req.body.warehouse,
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                            }
-                        };
-
-                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 9;
-                        GDEXAPIrun = 2;
                         completeRun = 1;
                     }
                 }
@@ -8552,45 +8390,314 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             if (req.body.statusCode == 'UAB') {
-                if (data.data.run_number != null) {
-                    update = {
-                        lastUpdateDateTime: moment().format(),
-                        mawbNo: req.body.awbNum,
-                        $push: {
-                            history: {
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                reason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
-                            }
+                if ((product == 'PDU') || (product == 'MGLOBAL') || (product == 'EWE') || (product == 'GDEX') || (product == 'GDEXT')) {
+                    if (existingOrder === null) {
+                        if ((data.data.payment_mode == "COD") && (product == 'EWE')) {
+                            newOrder = new ORDERS({
+                                area: finalArea,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
+                                    statusHistory: "Info Received",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: "Origin",
+                                }],
+                                latestLocation: "Origin",
+                                product: currentProduct,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.payment_amount,
+                                paymentAmount: data.data.payment_amount,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Info Received",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "No",
+                                warehouseEntryDateTime: "N/A",
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: "Standard",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: req.body.awbNum
+                            });
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                    zone: finalArea,
+                                    total_price: data.data.payment_amount,
+                                    payment_mode: "Cash"
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 1;
+                            completeRun = 1;
+                        } else if ((product == 'EWE') || data.data.payment_mode != "COD") {
+                            newOrder = new ORDERS({
+                                area: finalArea,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
+                                    statusHistory: "Info Received",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: "Origin",
+                                }],
+                                latestLocation: "Origin",
+                                product: currentProduct,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                paymentAmount: data.data.total_price,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Info Received",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "No",
+                                warehouseEntryDateTime: "N/A",
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: "Standard",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: req.body.awbNum
+                            });
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                    zone: finalArea
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 1;
+                            completeRun = 1;
+
+                        } else if (product == 'MGLOBAL') {
+                            newOrder = new ORDERS({
+                                area: finalArea,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
+                                    statusHistory: "Info Received",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: "Origin",
+                                }],
+                                latestLocation: "Origin",
+                                product: currentProduct,
+                                senderName: "MGLOBAL",
+                                totalPrice: 0,
+                                paymentAmount: 0,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Info Received",
+                                paymentMethod: "NON COD",
+                                warehouseEntry: "No",
+                                warehouseEntryDateTime: "N/A",
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: "Standard",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: req.body.awbNum
+                            });
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                    zone: finalArea,
+                                    phone_number: finalPhoneNum,
+                                    job_type: "Standard",
+                                    payment_mode: "NON COD",
+                                    total_price: 0,
+                                    payment_amount: 0,
+                                    job_owner: "MGLOBAL"
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 1;
+                            completeRun = 1;
+                        } else if (product == 'PDU') {
+                            newOrder = new ORDERS({
+                                area: finalArea,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
+                                    statusHistory: "Info Received",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: "Origin",
+                                }],
+                                latestLocation: "Origin",
+                                product: currentProduct,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                paymentAmount: data.data.payment_amount,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Info Received",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "No",
+                                warehouseEntryDateTime: "N/A",
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: "Standard",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: req.body.awbNum
+                            });
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                    zone: finalArea,
+                                    phone_number: finalPhoneNum,
+                                    job_owner: "PDU"
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 1;
+                            completeRun = 1;
+                        } else {
+                            newOrder = new ORDERS({
+                                area: finalArea,
+                                items: itemsArray, // Use the dynamically created items array
+                                attempt: data.data.attempt,
+                                history: [{
+                                    statusHistory: "Info Received",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: "Origin",
+                                }],
+                                latestLocation: "Origin",
+                                product: currentProduct,
+                                senderName: data.data.job_owner,
+                                totalPrice: data.data.total_price,
+                                receiverName: data.data.deliver_to_collect_from,
+                                trackingLink: data.data.tracking_link,
+                                currentStatus: "Info Received",
+                                paymentMethod: data.data.payment_mode,
+                                warehouseEntry: "No",
+                                warehouseEntryDateTime: "N/A",
+                                receiverAddress: data.data.address,
+                                receiverPhoneNumber: finalPhoneNum,
+                                doTrackingNumber: consignmentID,
+                                remarks: data.data.remarks,
+                                lastUpdateDateTime: moment().format(),
+                                creationDate: data.data.created_at,
+                                lastUpdatedBy: req.user.name,
+                                receiverPostalCode: postalCode,
+                                jobType: data.data.type,
+                                jobMethod: "Standard",
+                                flightDate: data.data.job_received_date,
+                                mawbNo: req.body.awbNum
+                            });
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 1;
+                            completeRun = 1;
                         }
-                    }
-                } else {
-                    update = {
-                        lastUpdateDateTime: moment().format(),
-                        mawbNo: req.body.awbNum,
-                        $push: {
-                            history: {
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                reason: "AWB number updated to " + req.body.awbNum + ".",
+                    } else {
+                        if (data.data.run_number != null) {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                mawbNo: req.body.awbNum,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "AWB number updated from " + data.data.run_number + " to " + req.body.awbNum + ".",
+                                    }
+                                }
                             }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+                            completeRun = 1;
+                        } else {
+                            update = {
+                                lastUpdateDateTime: moment().format(),
+                                mawbNo: req.body.awbNum,
+                                $push: {
+                                    history: {
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        reason: "AWB number updated to " + req.body.awbNum + ".",
+                                    }
+                                }
+                            }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    run_number: req.body.awbNum,
+                                }
+                            };
+
+                            portalUpdate = "Portal and Detrack AWB number updated. ";
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+                            completeRun = 1;
                         }
                     }
                 }
-
-                var detrackUpdateData = {
-                    do_number: consignmentID,
-                    data: {
-                        run_number: req.body.awbNum,
-                    }
-                };
-
-                portalUpdate = "Portal and Detrack AWB number updated. ";
-
-                DetrackAPIrun = 1;
-                mongoDBrun = 2;
-
-                completeRun = 1;
             }
 
             if (req.body.statusCode == 'UJM') {
@@ -10404,12 +10511,12 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (DetrackAPIrun == 4) {
                 console.log(`Starting Detrack update sequence (at_warehouse → in_sorting_area) for Tracking: ${consignmentID}`);
 
-                // First update: at_warehouse
+                // Step 1: at_warehouse
                 detrackUpdateData.data.status = "at_warehouse";
                 const firstSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
                 if (firstSuccess) {
-                    // Second update: in_sorting_area
+                    // Step 2: in_sorting_area (immediate - no delay needed)
                     detrackUpdateData.data.status = "in_sorting_area";
                     const secondSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
@@ -10510,17 +10617,21 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (DetrackAPIrun == 8) {
                 console.log(`Starting Detrack Update Sequence (custom_clearing → at_warehouse → in_sorting_area) for Tracking: ${consignmentID}`);
 
-                // Prepare and run first update: custom_clearing
+                // Step 1: custom_clearing
                 detrackUpdateData.data.status = "custom_clearing";
                 const firstSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
                 if (firstSuccess) {
-                    // Prepare and run second update: at_warehouse
+                    // Step 2: at_warehouse
+                    // TODO: Add 30-minute delay if needed in the future
+                    // console.log(`Waiting 30 minutes before at_warehouse update for ${consignmentID}`);
+                    // await new Promise(resolve => setTimeout(resolve, 30 * 60 * 1000)); // 30 minutes
+
                     detrackUpdateData.data.status = "at_warehouse";
                     const secondSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
                     if (secondSuccess) {
-                        // Prepare and run third update: in_sorting_area
+                        // Step 3: in_sorting_area
                         detrackUpdateData.data.status = "in_sorting_area";
                         const thirdSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
@@ -10539,26 +10650,48 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 console.log(`DetrackAPIrun is not 8; skipping updates for Tracking: ${consignmentID}`);
             }
 
-            if (DetrackAPIrun == 9) {
-                console.log(`Starting Detrack update sequence (in_sorting_area → at_warehouse) for Tracking: ${consignmentID}`);
+            if (DetrackAPIrun == 10) {
+                console.log(`Starting Detrack Update Sequence (on_hold → custom_clearing → at_warehouse → in_sorting_area) for Tracking: ${consignmentID}`);
 
-                detrackUpdateData.data.status = "in_sorting_area";
+                // Step 1: on_hold
+                detrackUpdateData.data.status = "on_hold";
                 const firstSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
                 if (firstSuccess) {
-                    detrackUpdateData.data.status = "at_warehouse";
+                    // Step 2: custom_clearing
+                    detrackUpdateData.data.status = "custom_clearing";
                     const secondSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
 
                     if (secondSuccess) {
-                        console.log(`[COMPLETE] Both Detrack updates succeeded for Tracking: ${consignmentID}`);
+                        // Step 3: at_warehouse
+                        // TODO: Add 30-minute delay if needed in the future
+                        // console.log(`Waiting 30 minutes before at_warehouse update for ${consignmentID}`);
+                        // await new Promise(resolve => setTimeout(resolve, 30 * 60 * 1000)); // 30 minutes
+
+                        detrackUpdateData.data.status = "at_warehouse";
+                        const thirdSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+                        if (thirdSuccess) {
+                            // Step 4: in_sorting_area
+                            detrackUpdateData.data.status = "in_sorting_area";
+                            const fourthSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+                            if (fourthSuccess) {
+                                console.log(`[COMPLETE] All four Detrack updates succeeded for Tracking: ${consignmentID}`);
+                            } else {
+                                console.error(`[ERROR] Fourth update (in_sorting_area) failed for Tracking: ${consignmentID}`);
+                            }
+                        } else {
+                            console.error(`[ERROR] Third update (at_warehouse) failed for Tracking: ${consignmentID}. Fourth update skipped.`);
+                        }
                     } else {
-                        console.error(`[ERROR] Second update (at_warehouse) failed for Tracking: ${consignmentID}`);
+                        console.error(`[ERROR] Second update (custom_clearing) failed for Tracking: ${consignmentID}. Remaining updates skipped.`);
                     }
                 } else {
-                    console.error(`[ERROR] First update (in_sorting_area) failed for Tracking: ${consignmentID}. Second update skipped.`);
+                    console.error(`[ERROR] First update (on_hold) failed for Tracking: ${consignmentID}. Remaining updates skipped.`);
                 }
             } else {
-                console.log(`DetrackAPIrun is not 4; skipping updates for Tracking: ${consignmentID}`);
+                console.log(`DetrackAPIrun is not 10; skipping 4-step updates for Tracking: ${consignmentID}`);
             }
 
             // Update your GDEXAPIrun handler:
@@ -11302,7 +11435,6 @@ async function checkNonCodArea(order, trackingNumber) {
         else if (address.includes("TANJONG SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
         else if (address.includes("SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
         else if (address.includes("TAPANG LUPAK") == true) { area = "KB / SERIA", kampong = "TAPANG LUPAK" }
-        else if (address.includes("TARAP") == true) { area = "KB / SERIA", kampong = "TARAP" }
         else if (address.includes("TEMPINAK") == true) { area = "KB / SERIA", kampong = "TEMPINAK" }
         else if (address.includes("TERAJA") == true) { area = "KB / SERIA", kampong = "TERAJA" }
         else if (address.includes("TERAWAN") == true) { area = "KB / SERIA", kampong = "TERAWAN" }
@@ -12153,7 +12285,7 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
                 "state": req.body.consigneestate || '',
                 "country": req.body.consigneecountry || '',
                 "deliver_to_collect_from": req.body.consigneename,
-                "job_owner": req.body.sendername || '',
+                "job_owner": "GDEX" || '',
                 "phone_number": formattedPhone,
                 "zone": finalArea,
                 "payment_mode": req.body.product === '00008' ? "Cash" : "NON COD",
