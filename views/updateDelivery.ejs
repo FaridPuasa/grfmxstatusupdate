@@ -358,17 +358,14 @@
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <optgroup label="Pharmacy/LD/KPT/Pure51 Flow">
-                            <option value="12">1. Item In Warehouse</option>
-                            <option value="35">1.1. Out for Delivery</option>
-                            <option value="CSSC">1.2. Self Collect</option>
-                        </optgroup>
                         <optgroup label="EWE/PDU/MGLOBAL Flow">
                             <option value="UAB">1.1. Update AWB Number</option>
                             <option value="CP">1.2. On Hold</option>
-                            <option value="12">2. Item In Warehouse</option>
-                            <option value="35">3.1. Out for Delivery</option>
-                            <option value="CSSC">3.2. Self Collect</option>
+                        </optgroup>
+                        <optgroup label="Standard Flow">
+                            <option value="12">1. Item In Warehouse</option>
+                            <option value="35">2.1. Out for Delivery</option>
+                            <option value="CSSC">2.2. Self Collect</option>
                         </optgroup>
                         <optgroup label="MGLOBAL Flow">
                             <option value="FCC">1.1. Fail due to Customer not available / cannot be contacted</option>
@@ -390,7 +387,7 @@
                         <optgroup label="Change Details">
                             <option value="SD">Swap Dispatchers</option>
                             <option value="UWL">Update Warehouse</option>
-                            <option value="UGR">Update Go Rush Remark</option>aba
+                            <option value="UGR">Update Go Rush Remark</option>
                             <option value="UD">Update Job Date</option>
                             <option value="UJM">Update Job Method</option>
                             <option value="UP">Update Price</option>

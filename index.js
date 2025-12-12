@@ -4676,7 +4676,7 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
         return await sendGDEXTrackingWebhook(
             consignmentID,
             "AL2",
-            "Out for Delivery(D)",
+            "Out for Delivery",
             "Go Rush Driver",
             token
         );
@@ -4684,7 +4684,7 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
         return await sendGDEXTrackingWebhook(
             consignmentID,
             "AL2",
-            "Out for Delivery(D)",
+            "Out for Delivery",
             "Go Rush Office",
             token
         );
@@ -4720,7 +4720,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token) {
         if (detrackData.status === 'completed') {
             // Completed delivery
             statusCode = "FD";
-            statusDescription = "Delivered(pod)";
+            statusDescription = "Delivered";
             reasonCode = "";
             locationDescription = detrackData.address || "Customer Address";
             epod = detrackData.photo_1_file_url || "";
@@ -4730,7 +4730,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token) {
         } else if (detrackData.status === 'failed') {
             // Failed delivery - map reason to GDEX reason code
             statusCode = "DF";
-            statusDescription = "Delivery Failed(undl)";
+            statusDescription = "Delivery Failed";
             reasonCode = mapDetrackReasonToGDEX(detrackData.reason);
             locationDescription = "Go Rush Warehouse";
             epod = "";
@@ -4782,7 +4782,7 @@ function mapDetrackReasonToGDEX(detrackReason) {
     } else if (reason.includes("unable to locate address") ||
         reason.includes("incorrect address")) {
         return "BN";
-    } else if (reason.includes("reschedule delivery requested by customer")) {
+    } else if (reason.includes("reschedule delivery requested by customer")) {
         return "BK";
     } else {
         // Default for other failure reasons
@@ -4802,7 +4802,7 @@ async function updateGDEXWarehouseStatus(consignmentID, token) {
         const step1Success = await sendGDEXTrackingWebhook(
             consignmentID,
             "DT1",
-            "Hub Inbound(B)",
+            "Hub Inbound",
             warehouseLocation,
             token
         );
@@ -4820,7 +4820,7 @@ async function updateGDEXWarehouseStatus(consignmentID, token) {
         const step2Success = await sendGDEXTrackingWebhook(
             consignmentID,
             "DT2",
-            "Hub Outbound(H)",
+            "Hub Outbound",
             warehouseLocation,
             token
         );
@@ -4838,7 +4838,7 @@ async function updateGDEXWarehouseStatus(consignmentID, token) {
         const step3Success = await sendGDEXTrackingWebhook(
             consignmentID,
             "AL1",
-            "Received by Branch(R)",
+            "Received by Branch",
             warehouseLocation,
             token
         );
@@ -12469,7 +12469,7 @@ function generateJobId() {
     return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Background job processor
+// Optimized background job processor with batch processing
 async function processUpdateJobInBackground(jobId, jobData) {
     const { updateCode, mawbNum, trackingNumbers, updateMethod, req } = jobData;
 
@@ -12480,87 +12480,64 @@ async function processUpdateJobInBackground(jobId, jobData) {
         notUpdatedCount: 0,
         status: 'processing',
         total: trackingNumbers.length,
-        processed: 0
+        processed: 0,
+        startTime: Date.now()
     };
 
     // Update job status to processing
     backgroundJobs.set(jobId, { ...results, status: 'processing' });
 
     try {
-        // Process each tracking number with delay to avoid timeout
-        for (let i = 0; i < trackingNumbers.length; i++) {
-            const trackingNumber = trackingNumbers[i];
-            const cleanTrackingNumber = trackingNumber.trim();
+        // Process in batches to optimize performance
+        const BATCH_SIZE = 10; // Process 10 items in parallel
+        const totalBatches = Math.ceil(trackingNumbers.length / BATCH_SIZE);
 
-            if (!cleanTrackingNumber) continue;
+        console.log(`Starting batch processing for ${trackingNumbers.length} items in ${totalBatches} batches`);
 
-            try {
-                // Update progress
-                results.processed = i + 1;
-                backgroundJobs.set(jobId, { ...results, status: 'processing' });
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const start = batchIndex * BATCH_SIZE;
+            const end = Math.min(start + BATCH_SIZE, trackingNumbers.length);
+            const batch = trackingNumbers.slice(start, end);
 
-                // Process based on update code
-                let processSuccess = false;
+            console.log(`Processing batch ${batchIndex + 1}/${totalBatches} (${batch.length} items)`);
 
-                switch (updateCode) {
-                    case 'UAN':
-                        processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
-                        break;
-                    case 'CCH':
-                        processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
-                        break;
-                    case 'IIW':
-                        processSuccess = await processItemInWarehouseUpdate(cleanTrackingNumber, req);
-                        break;
-                    case 'OFD':
-                        processSuccess = await processOutForDeliveryUpdate(cleanTrackingNumber, req);
-                        break;
-                    case 'OSC':
-                        processSuccess = await processSelfCollectUpdate(cleanTrackingNumber, req);
-                        break;
-                    case 'SFJ':
-                        processSuccess = await processClearJobUpdate(cleanTrackingNumber, req);
-                        break;
-                    // Add other cases as needed
-                    default:
-                        processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
-                }
+            // Process the batch
+            const batchResults = await processBatch(batch, updateCode, mawbNum, req);
 
-                if (processSuccess) {
-                    results.successful.push({
-                        trackingNumber: cleanTrackingNumber,
-                        result: `Successfully updated with ${updateCode}`
-                    });
-                    results.updatedCount++;
-                } else {
-                    results.failed.push({
-                        trackingNumber: cleanTrackingNumber,
-                        result: 'Update failed'
-                    });
-                    results.notUpdatedCount++;
-                }
+            // Merge batch results
+            results.successful.push(...batchResults.successful);
+            results.failed.push(...batchResults.failed);
+            results.updatedCount += batchResults.updatedCount;
+            results.notUpdatedCount += batchResults.notUpdatedCount;
+            results.processed = start + batch.length;
 
-            } catch (error) {
-                console.error(`Error processing ${cleanTrackingNumber}:`, error);
-                results.failed.push({
-                    trackingNumber: cleanTrackingNumber,
-                    result: 'Error: ' + error.message
-                });
-                results.notUpdatedCount++;
+            // Update job progress
+            backgroundJobs.set(jobId, {
+                ...results,
+                status: 'processing',
+                currentBatch: batchIndex + 1,
+                totalBatches: totalBatches,
+                batchSize: BATCH_SIZE
+            });
+
+            // Small delay between batches to avoid rate limiting
+            if (batchIndex < totalBatches - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
-
-            // Small delay to prevent overwhelming the API
-            await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        // Mark job as completed
+        // Calculate total processing time
+        results.processingTime = Date.now() - results.startTime;
         results.status = 'completed';
+
+        console.log(`Job ${jobId} completed in ${results.processingTime}ms: ${results.updatedCount} successful, ${results.notUpdatedCount} failed`);
         backgroundJobs.set(jobId, results);
 
     } catch (error) {
         console.error('Background job error:', error);
         results.status = 'failed';
         results.error = error.message;
+        results.processingTime = Date.now() - results.startTime;
         backgroundJobs.set(jobId, results);
     }
 }
@@ -12570,105 +12547,45 @@ app.get('/updateJob'/* , ensureAuthenticated */, (req, res) => {
     res.render('updateJob', { user: req.user });
 });
 
-// Modified POST route - handle one-by-one immediately, bulk in background
 app.post('/updateJob', async (req, res) => {
-    const { updateCode, mawbNum, trackingNumbers, updateMethod } = req.body;
+    try {
+        const { updateCode, mawbNum, trackingNumbers, updateMethod } = req.body;
 
-    if (!updateCode) {
-        return res.status(400).json({ error: 'Update code is required' });
-    }
+        // Input validation
+        if (!updateCode) {
+            return res.status(400).json({ error: 'Update code is required' });
+        }
 
-    if (!trackingNumbers || trackingNumbers.length === 0) {
-        return res.status(400).json({ error: 'Tracking numbers are required' });
-    }
+        if (!trackingNumbers || trackingNumbers.length === 0) {
+            return res.status(400).json({ error: 'Tracking numbers are required' });
+        }
 
-    // For MAWB updates, require MAWB number
-    if (updateCode === 'UAN' && (!mawbNum || mawbNum.trim() === '')) {
-        return res.status(400).json({ error: 'MAWB Number is required for this update' });
-    }
+        // Clean and validate tracking numbers
+        const cleanTrackingNumbers = trackingNumbers
+            .map(num => num.trim())
+            .filter(num => num !== '');
 
-    // Clean tracking numbers
-    const cleanTrackingNumbers = trackingNumbers
-        .map(num => num.trim())
-        .filter(num => num !== '');
+        const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
 
-    const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
-
-    // ONE-BY-ONE: Process immediately (single item won't timeout)
-    if (updateMethod === 'onebyone' && uniqueTrackingNumbers.length === 1) {
-        try {
-            const trackingNumber = uniqueTrackingNumbers[0];
-            let processSuccess = false;
-            let resultMessage = '';
-
-            console.log(`Processing one-by-one update: ${updateCode} for ${trackingNumber}`);
-
-            // Process based on update code
-            switch (updateCode) {
-                case 'UAN':
-                    processSuccess = await processMAWBUpdate(trackingNumber, mawbNum, req);
-                    resultMessage = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
-                    break;
-                case 'CCH':
-                    processSuccess = await processOnHoldUpdate(trackingNumber, req);
-                    resultMessage = processSuccess ? 'Job put on hold' : 'On hold update failed';
-                    break;
-                case 'IIW':
-                    processSuccess = await processItemInWarehouseUpdate(trackingNumber, req);
-                    resultMessage = processSuccess ? 'Item marked in warehouse' : 'Warehouse update failed';
-                    break;
-                case 'OFD':
-                    processSuccess = await processOutForDeliveryUpdate(trackingNumber, req);
-                    resultMessage = processSuccess ? 'Marked as out for delivery' : 'OFD update failed';
-                    break;
-                case 'OSC':
-                    processSuccess = await processSelfCollectUpdate(trackingNumber, req);
-                    resultMessage = processSuccess ? 'Marked for self collect' : 'Self collect update failed';
-                    break;
-                case 'SFJ':
-                    processSuccess = await processClearJobUpdate(trackingNumber, req);
-                    resultMessage = processSuccess ? 'Job cleared' : 'Clear job failed';
-                    break;
-                default:
-                    processSuccess = await processGenericUpdate(trackingNumber, updateCode, req, mawbNum);
-                    resultMessage = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
-            }
-
-            const results = {
-                successful: processSuccess ? [{
-                    trackingNumber: trackingNumber,
-                    result: resultMessage
-                }] : [],
-                failed: processSuccess ? [] : [{
-                    trackingNumber: trackingNumber,
-                    result: resultMessage
-                }],
-                updatedCount: processSuccess ? 1 : 0,
-                notUpdatedCount: processSuccess ? 0 : 1
-            };
-
-            console.log(`One-by-one result for ${trackingNumber}:`, results);
-            res.json(results);
-
-        } catch (error) {
-            console.error('Error in one-by-one processing:', error);
-            res.json({
-                successful: [],
-                failed: [{
-                    trackingNumber: uniqueTrackingNumbers[0],
-                    result: 'Error: ' + error.message
-                }],
-                updatedCount: 0,
-                notUpdatedCount: 1
+        // Enforce limits
+        const MAX_BULK_ITEMS = 3000; // Increased limit
+        if (uniqueTrackingNumbers.length > MAX_BULK_ITEMS) {
+            return res.status(400).json({ 
+                error: 'Too many tracking numbers', 
+                message: `Maximum ${MAX_BULK_ITEMS} items allowed. Use chunked processing for larger batches.`,
+                maxAllowed: MAX_BULK_ITEMS
             });
         }
-    }
-    // BULK: Use background processing
-    else {
-        // Generate job ID
-        const jobId = generateJobId();
 
-        // Store initial job data
+        // For MAWB updates, require MAWB number
+        if (updateCode === 'UAN' && (!mawbNum || mawbNum.trim() === '')) {
+            return res.status(400).json({ error: 'MAWB Number is required for this update' });
+        }
+
+        // Generate job ID and respond IMMEDIATELY (most important fix!)
+        const jobId = generateJobId();
+        
+        // Store initial job status
         backgroundJobs.set(jobId, {
             status: 'queued',
             total: uniqueTrackingNumbers.length,
@@ -12679,22 +12596,34 @@ app.post('/updateJob', async (req, res) => {
             notUpdatedCount: 0
         });
 
-        // Start background processing (non-blocking)
-        processUpdateJobInBackground(jobId, {
-            updateCode,
-            mawbNum,
-            trackingNumbers: uniqueTrackingNumbers,
-            updateMethod,
-            req
-        });
-
-        // Return immediately with job ID
+        // SEND RESPONSE NOW - don't wait for processing to start
         res.json({
             jobId: jobId,
             status: 'queued',
-            message: 'Job started processing in background',
-            totalJobs: uniqueTrackingNumbers.length
+            message: 'Job accepted and queued for processing',
+            totalJobs: uniqueTrackingNumbers.length,
+            estimatedTime: uniqueTrackingNumbers.length > 500 ? 
+                `Approx ${Math.ceil(uniqueTrackingNumbers.length / 200)} minutes` : 
+                'Less than 1 minute'
         });
+
+        // Start processing AFTER response is sent (non-blocking)
+        setTimeout(() => {
+            processUpdateJobInBackground(jobId, {
+                updateCode,
+                mawbNum,
+                trackingNumbers: uniqueTrackingNumbers,
+                updateMethod,
+                req
+            });
+        }, 100); // Small delay to ensure response is sent
+
+    } catch (error) {
+        console.error('Error in update job route:', error);
+        // Only send error if headers not sent yet
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Server error', message: error.message });
+        }
     }
 });
 
@@ -12730,150 +12659,114 @@ async function processMAWBUpdate(trackingNumber, mawbNum, req) {
     }
 }
 
-// Updated MAWB Update Function with Enhanced Error Handling
+// Replace the existing updateJobMAWB function with this:
 async function updateJobMAWB(trackingNumber, mawbNum, req) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // First get the current job details to calculate the fields
-            const jobData = await getJobDetails(trackingNumber);
+    try {
+        // First get the current job details to calculate the fields
+        const jobData = await getJobDetails(trackingNumber);
 
-            if (!jobData) {
-                console.log(`❌ No job data found for ${trackingNumber}`);
-                resolve(false);
-                return;
+        if (!jobData) {
+            console.log(`❌ No job data found for ${trackingNumber}`);
+            return false;
+        }
+
+        // Calculate the additional fields using your comprehensive helper functions
+        const finalArea = getAreaFromAddress(jobData.address);
+        const finalPhoneNum = processPhoneNumber(jobData.phone_number);
+        const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+        console.log(`Calculated fields for ${trackingNumber}:`);
+        console.log(`- Area: ${finalArea}`);
+        console.log(`- Phone: ${finalPhoneNum}`);
+        console.log(`- Additional Phone: ${finalAdditionalPhoneNum}`);
+
+        // Update data with all fields
+        const updateData = {
+            do_number: trackingNumber,
+            data: {
+                run_number: mawbNum,
+                zone: finalArea,
+                phone_number: finalPhoneNum,
+                other_phone_numbers: finalAdditionalPhoneNum
             }
+        };
 
-            // Calculate the additional fields using your comprehensive helper functions
-            const finalArea = getAreaFromAddress(jobData.address);
-            const finalPhoneNum = processPhoneNumber(jobData.phone_number);
-            const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+        console.log(`Updating ${trackingNumber} with MAWB: ${mawbNum}`);
 
-            console.log(`Calculated fields for ${trackingNumber}:`);
-            console.log(`- Area: ${finalArea}`);
-            console.log(`- Phone: ${finalPhoneNum}`);
-            console.log(`- Additional Phone: ${finalAdditionalPhoneNum}`);
-
-            // Update data with all fields
-            const updateData = {
-                do_number: trackingNumber,
-                data: {
-                    run_number: mawbNum,
-                    zone: finalArea,
-                    phone_number: finalPhoneNum,
-                    other_phone_numbers: finalAdditionalPhoneNum
-                }
-            };
-
-            console.log(`Updating ${trackingNumber} with MAWB: ${mawbNum}`);
-
-            // Send update request with timeout
-            const timeout = 30000; // 30 seconds timeout
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timeout')), timeout)
-            );
-
-            const updatePromise = new Promise((resolve, reject) => {
-                request({
-                    method: 'PUT',
-                    url: 'https://app.detrack.com/api/v2/dn/jobs/update',
+        try {
+            const response = await axios.put(
+                'https://app.detrack.com/api/v2/dn/jobs/update',
+                updateData,
+                {
                     headers: {
                         'Content-Type': 'application/json',
                         'X-API-KEY': apiKey
                     },
-                    body: JSON.stringify(updateData)
-                }, async function (updateError, updateResponse, updateBody) {
-                    if (updateError) {
-                        reject(updateError);
-                        return;
+                    timeout: 10000 // 10 second timeout
+                }
+            );
+
+            let updateSuccessful = false;
+
+            if (response.data.success === true) {
+                updateSuccessful = true;
+                console.log(`✅ Detrack update successful - success: true`);
+            } else if (response.data.status === 'success') {
+                updateSuccessful = true;
+                console.log(`✅ Detrack update successful - status: success`);
+            } else if (response.status === 200) {
+                // For 200 status, verify the update actually worked
+                console.log(`⚠️ Got 200 status, verifying update...`);
+
+                try {
+                    // Wait a moment for update to propagate
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    const verifiedJob = await getJobDetails(trackingNumber);
+                    if (verifiedJob && verifiedJob.run_number === mawbNum) {
+                        updateSuccessful = true;
+                        console.log(`✅ Detrack update verified - run_number updated to ${mawbNum}`);
+                    } else {
+                        console.log(`❌ Detrack update failed - run_number is "${verifiedJob?.run_number}", expected "${mawbNum}"`);
+                        updateSuccessful = false;
                     }
+                } catch (verifyError) {
+                    console.log(`❌ Could not verify update:`, verifyError.message);
+                    updateSuccessful = false;
+                }
+            }
 
-                    try {
-                        const updateResult = JSON.parse(updateBody);
-                        let updateSuccessful = false;
+            if (updateSuccessful) {
+                console.log(`✅ Successfully updated ${trackingNumber} in Detrack`);
 
-                        if (updateResult.success === true) {
-                            updateSuccessful = true;
-                            console.log(`✅ Detrack update successful - success: true`);
-                        } else if (updateResult.status === 'success') {
-                            updateSuccessful = true;
-                            console.log(`✅ Detrack update successful - status: success`);
-                        } else if (updateResponse.statusCode === 200) {
-                            // For 200 status, verify the update actually worked
-                            console.log(`⚠️ Got 200 status, verifying update...`);
+                // Now update/create in ORDERS collection
+                try {
+                    await updateOrCreateOrder(trackingNumber, mawbNum, req, jobData);
+                    console.log(`✅ Successfully processed ORDERS for ${trackingNumber}`);
+                    return true;
+                } catch (orderError) {
+                    console.error(`❌ Error updating ORDERS for ${trackingNumber}:`, orderError.message);
+                    // Still return true since Detrack update was successful
+                    return true;
+                }
+            } else {
+                console.log(`❌ Detrack update failed for ${trackingNumber}`);
+                return false;
+            }
 
-                            try {
-                                // Wait a moment for update to propagate
-                                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                                const verifiedJob = await getJobDetails(trackingNumber);
-                                if (verifiedJob && verifiedJob.run_number === mawbNum) {
-                                    updateSuccessful = true;
-                                    console.log(`✅ Detrack update verified - run_number updated to ${mawbNum}`);
-                                } else {
-                                    console.log(`❌ Detrack update failed - run_number is "${verifiedJob?.run_number}", expected "${mawbNum}"`);
-                                    updateSuccessful = false;
-                                }
-                            } catch (verifyError) {
-                                console.log(`❌ Could not verify update:`, verifyError.message);
-                                updateSuccessful = false;
-                            }
-                        }
-
-                        if (updateSuccessful) {
-                            console.log(`✅ Successfully updated ${trackingNumber} in Detrack`);
-
-                            // Now update/create in ORDERS collection
-                            try {
-                                await updateOrCreateOrder(trackingNumber, mawbNum, req, jobData);
-                                console.log(`✅ Successfully processed ORDERS for ${trackingNumber}`);
-                                resolve(true);
-                            } catch (orderError) {
-                                console.error(`❌ Error updating ORDERS for ${trackingNumber}:`, orderError.message);
-                                // Still resolve true since Detrack update was successful
-                                resolve(true);
-                            }
-                        } else {
-                            console.log(`❌ Detrack update failed for ${trackingNumber}`);
-                            resolve(false);
-                        }
-                    } catch (parseError) {
-                        console.error(`❌ Parse error for update response ${trackingNumber}:`, parseError);
-                        // If we can't parse but got 200, try verification
-                        if (updateResponse.statusCode === 200) {
-                            try {
-                                const verifiedJob = await getJobDetails(trackingNumber);
-                                if (verifiedJob && verifiedJob.run_number === mawbNum) {
-                                    console.log(`✅ Detrack update successful despite parse error`);
-
-                                    try {
-                                        await updateOrCreateOrder(trackingNumber, mawbNum, req, jobData);
-                                        resolve(true);
-                                    } catch (orderError) {
-                                        console.error(`Error updating ORDERS:`, orderError);
-                                        resolve(true);
-                                    }
-                                } else {
-                                    resolve(false);
-                                }
-                            } catch (verifyError) {
-                                resolve(false);
-                            }
-                        } else {
-                            resolve(false);
-                        }
-                    }
-                });
-            });
-
-            // Race between the update and timeout
-            const result = await Promise.race([updatePromise, timeoutPromise]);
-            resolve(result);
-
-        } catch (error) {
-            console.error(`❌ Error preparing update for ${trackingNumber}:`, error);
-            resolve(false);
+        } catch (apiError) {
+            if (apiError.code === 'ECONNABORTED') {
+                console.error(`❌ Timeout updating ${trackingNumber} in Detrack`);
+            } else {
+                console.error(`❌ API error updating ${trackingNumber}:`, apiError.message);
+            }
+            return false;
         }
-    });
+
+    } catch (error) {
+        console.error(`❌ Error preparing update for ${trackingNumber}:`, error);
+        return false;
+    }
 }
 
 // Other update functions (implement as needed)
@@ -12944,57 +12837,59 @@ async function processGenericUpdate(trackingNumber, updateCode, req, mawbNum) {
     }
 }
 
-// Function to check if job exists in Detrack
+// Replace the existing checkJobExists function with this:
 async function checkJobExists(trackingNumber) {
-    return new Promise((resolve, reject) => {
-        request({
-            method: 'GET',
-            url: `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-KEY': apiKey
-            }
-        }, function (error, response, body) {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            console.log(`Check Job ${trackingNumber} - Status:`, response.statusCode);
-
-            try {
-                const data = JSON.parse(body);
-
-                // Multiple ways to check if job exists based on Detrack API response
-                if (response.statusCode === 200) {
-                    // Check different possible response structures
-                    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-                        resolve(true);
-                    } else if (data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
-                        resolve(true);
-                    } else if (data.success && data.data) {
-                        resolve(true);
-                    } else if (data.data.do_number) {
-                        // Single job object response
-                        resolve(true);
-                    } else {
-                        console.log(`Job ${trackingNumber} not found in response data`);
-                        resolve(false);
-                    }
-                } else if (response.statusCode === 404) {
-                    console.log(`Job ${trackingNumber} not found (404)`);
-                    resolve(false);
-                } else {
-                    // Other status codes might indicate errors
-                    console.log(`Unexpected status code ${response.statusCode} for ${trackingNumber}`);
-                    resolve(false);
+    try {
+        const response = await axios.get(
+            `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                timeout: 8000, // 8 second timeout
+                validateStatus: function (status) {
+                    return status >= 200 && status < 500; // Resolve for all status codes < 500
                 }
-            } catch (parseError) {
-                console.error(`Parse error for ${trackingNumber}:`, parseError);
-                resolve(false);
             }
-        });
-    });
+        );
+
+        console.log(`Check Job ${trackingNumber} - Status:`, response.status);
+
+        const data = response.data;
+
+        // Multiple ways to check if job exists based on Detrack API response
+        if (response.status === 200) {
+            // Check different possible response structures
+            if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                return true;
+            } else if (data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
+                return true;
+            } else if (data.success && data.data) {
+                return true;
+            } else if (data.data && data.data.do_number) {
+                // Single job object response
+                return true;
+            } else {
+                console.log(`Job ${trackingNumber} not found in response data`);
+                return false;
+            }
+        } else if (response.status === 404) {
+            console.log(`Job ${trackingNumber} not found (404)`);
+            return false;
+        } else {
+            // Other status codes
+            console.log(`Unexpected status code ${response.status} for ${trackingNumber}`);
+            return false;
+        }
+    } catch (error) {
+        if (error.code === 'ECONNABORTED') {
+            console.error(`Timeout checking job ${trackingNumber}:`, error.message);
+        } else {
+            console.error(`Error checking job ${trackingNumber}:`, error.message);
+        }
+        return false;
+    }
 }
 
 // Function to update or create order in ORDERS collection
@@ -13024,53 +12919,58 @@ async function updateOrCreateOrder(trackingNumber, mawbNum, req, jobData) {
     });
 }
 
-// Function to get detailed job data from Detrack
+// Replace the existing getJobDetails function with this:
 async function getJobDetails(trackingNumber) {
-    return new Promise((resolve, reject) => {
-        request({
-            method: 'GET',
-            url: `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-KEY': apiKey
-            }
-        }, function (error, response, body) {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            console.log(`Get Job Details ${trackingNumber} - Status:`, response.statusCode);
-
-            try {
-                const data = JSON.parse(body);
-                console.log(`Get Job Details ${trackingNumber} - Response structure:`, Object.keys(data));
-
-                // Handle different response structures
-                if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-                    console.log(`Found job in data array`);
-                    resolve(data.data[0]);
-                } else if (data.data && typeof data.data === 'object' && data.data.do_number) {
-                    console.log(`Found job in data object`);
-                    resolve(data.data);
-                } else if (data.do_number) {
-                    console.log(`Found job as direct object`);
-                    resolve(data);
-                } else if (data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
-                    console.log(`Found job in jobs array`);
-                    resolve(data.jobs[0]);
-                } else {
-                    console.log(`No job data found in response`);
-                    console.log(`Response keys:`, Object.keys(data));
-                    if (data.data) console.log(`data type:`, typeof data.data);
-                    resolve(null);
+    try {
+        const response = await axios.get(
+            `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                timeout: 8000, // 8 second timeout
+                validateStatus: function (status) {
+                    return status >= 200 && status < 500;
                 }
-            } catch (parseError) {
-                console.error(`Parse error for job details ${trackingNumber}:`, parseError);
-                reject(parseError);
             }
-        });
-    });
+        );
+
+        console.log(`Get Job Details ${trackingNumber} - Status:`, response.status);
+
+        if (response.status !== 200) {
+            console.log(`Failed to get job details: ${response.status}`);
+            return null;
+        }
+
+        const data = response.data;
+        console.log(`Get Job Details ${trackingNumber} - Response structure:`, Object.keys(data));
+
+        // Handle different response structures
+        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+            console.log(`Found job in data array`);
+            return data.data[0];
+        } else if (data.data && typeof data.data === 'object' && data.data.do_number) {
+            console.log(`Found job in data object`);
+            return data.data;
+        } else if (data.do_number) {
+            console.log(`Found job as direct object`);
+            return data;
+        } else if (data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
+            console.log(`Found job in jobs array`);
+            return data.jobs[0];
+        } else {
+            console.log(`No job data found in response`);
+            return null;
+        }
+    } catch (error) {
+        if (error.code === 'ECONNABORTED') {
+            console.error(`Timeout getting job details ${trackingNumber}:`, error.message);
+        } else {
+            console.error(`Error getting job details ${trackingNumber}:`, error.message);
+        }
+        throw error;
+    }
 }
 
 // Function to create new order
@@ -13588,6 +13488,319 @@ async function updateDetrackJobStatus(trackingNumber, status) {
             resolve(true); // Change this to actual API call result
         }, 500);
     });
+}
+
+// ==================================================
+// 🔧 Batch Processing Utilities
+// ==================================================
+
+// Helper function to process single tracking number
+async function processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req) {
+    const cleanTrackingNumber = trackingNumber.trim();
+
+    if (!cleanTrackingNumber) {
+        return { success: false, error: 'Empty tracking number' };
+    }
+
+    try {
+        let processSuccess = false;
+        let message = '';
+
+        switch (updateCode) {
+            case 'UAN':
+                processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
+                message = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
+                break;
+            case 'CCH':
+                processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Job put on hold' : 'On hold update failed';
+                break;
+            case 'IIW':
+                processSuccess = await processItemInWarehouseUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Item marked in warehouse' : 'Warehouse update failed';
+                break;
+            case 'OFD':
+                processSuccess = await processOutForDeliveryUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Marked as out for delivery' : 'OFD update failed';
+                break;
+            case 'OSC':
+                processSuccess = await processSelfCollectUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Marked for self collect' : 'Self collect update failed';
+                break;
+            case 'SFJ':
+                processSuccess = await processClearJobUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Job cleared' : 'Clear job failed';
+                break;
+            default:
+                processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
+                message = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
+        }
+
+        return { success: processSuccess, message };
+
+    } catch (error) {
+        console.error(`Error processing ${cleanTrackingNumber}:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Function to process a batch of tracking numbers in parallel
+async function processBatch(batch, updateCode, mawbNum, req) {
+    // Process all items in the batch in parallel
+    const batchPromises = batch.map(trackingNumber =>
+        processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req)
+    );
+
+    // Wait for all promises to settle (both fulfilled and rejected)
+    const batchResults = await Promise.allSettled(batchPromises);
+
+    // Process results
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        notUpdatedCount: 0
+    };
+
+    batchResults.forEach((result, index) => {
+        const trackingNumber = batch[index];
+
+        if (result.status === 'fulfilled' && result.value.success) {
+            results.successful.push({
+                trackingNumber: trackingNumber,
+                result: result.value.message || `Successfully updated with ${updateCode}`
+            });
+            results.updatedCount++;
+        } else {
+            const errorMsg = result.status === 'rejected'
+                ? result.reason.message
+                : (result.value?.error || 'Update failed');
+
+            results.failed.push({
+                trackingNumber: trackingNumber,
+                result: 'Error: ' + errorMsg
+            });
+            results.notUpdatedCount++;
+        }
+    });
+
+    return results;
+}
+
+// ==================================================
+// ⏱ Heroku Timeout Handling
+// ==================================================
+
+// Add timeout handling for Heroku's 30-second limit
+app.use((req, res, next) => {
+    // Set a timeout of 25 seconds (leaves 5 seconds for Heroku to respond)
+    req.setTimeout(25000, () => {
+        if (!res.headersSent) {
+            console.log(`Request timeout for ${req.method} ${req.url}`);
+        }
+    });
+
+    res.setTimeout(25000, () => {
+        if (!res.headersSent) {
+            res.status(503).json({
+                error: 'Request timeout',
+                message: 'Processing took too long. Please try with fewer items or use background processing.'
+            });
+        }
+    });
+
+    next();
+});
+
+// ==================================================
+// 🧹 Job Cleanup (Memory Management)
+// ==================================================
+
+// Clean up old completed jobs (keep last 50 jobs max)
+function cleanupOldJobs() {
+    const now = Date.now();
+    const maxAge = 30 * 60 * 1000; // 30 minutes
+    const maxJobs = 50; // Keep max 50 jobs in memory
+
+    let jobsArray = Array.from(backgroundJobs.entries());
+
+    if (jobsArray.length > maxJobs) {
+        // Sort by timestamp (jobId contains timestamp)
+        jobsArray.sort((a, b) => {
+            const timeA = parseInt(a[0].split('_')[1]) || 0;
+            const timeB = parseInt(b[0].split('_')[1]) || 0;
+            return timeB - timeA; // Newest first
+        });
+
+        // Remove oldest jobs
+        const jobsToKeep = jobsArray.slice(0, maxJobs);
+        backgroundJobs.clear();
+        jobsToKeep.forEach(([key, value]) => backgroundJobs.set(key, value));
+    }
+
+    // Remove jobs older than maxAge
+    jobsArray.forEach(([jobId, jobData]) => {
+        if (jobData.startTime && (now - jobData.startTime) > maxAge) {
+            backgroundJobs.delete(jobId);
+            console.log(`Cleaned up old job: ${jobId}`);
+        }
+    });
+}
+
+// Run cleanup every 5 minutes
+setInterval(cleanupOldJobs, 5 * 60 * 1000);
+
+// ==================================================
+// 🔄 Chunk Processing Route
+// ==================================================
+
+// Special route for chunk processing (immediate response)
+app.post('/updateJob/chunk', async (req, res) => {
+    try {
+        const { updateCode, mawbNum, trackingNumbers, chunkIndex } = req.body;
+
+        // Basic validation
+        if (!updateCode || !trackingNumbers || trackingNumbers.length === 0) {
+            return res.status(400).json({ error: 'Invalid chunk data' });
+        }
+
+        // Clean and validate
+        const cleanTrackingNumbers = trackingNumbers
+            .map(num => num.trim())
+            .filter(num => num !== '');
+
+        const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
+
+        if (uniqueTrackingNumbers.length === 0) {
+            return res.status(400).json({ error: 'No valid tracking numbers in chunk' });
+        }
+
+        // For MAWB updates, validate MAWB number
+        if (updateCode === 'UAN' && (!mawbNum || mawbNum.trim() === '')) {
+            return res.status(400).json({ error: 'MAWB Number is required for this update' });
+        }
+
+        // Generate job ID and respond IMMEDIATELY
+        const jobId = generateJobId();
+        
+        // Initial job status
+        backgroundJobs.set(jobId, {
+            status: 'queued',
+            total: uniqueTrackingNumbers.length,
+            processed: 0,
+            successful: [],
+            failed: [],
+            updatedCount: 0,
+            notUpdatedCount: 0,
+            chunkIndex: chunkIndex || 0
+        });
+
+        // Send immediate response
+        res.json({
+            jobId: jobId,
+            status: 'queued',
+            message: `Chunk ${chunkIndex ? chunkIndex + 1 : 1} processing started`,
+            totalJobs: uniqueTrackingNumbers.length,
+            chunkSize: uniqueTrackingNumbers.length
+        });
+
+        // Start processing in background (after response is sent)
+        setTimeout(() => {
+            processChunkInBackground(jobId, {
+                updateCode,
+                mawbNum,
+                trackingNumbers: uniqueTrackingNumbers,
+                req
+            });
+        }, 100);
+
+    } catch (error) {
+        console.error('Chunk route error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Chunk processing failed', message: error.message });
+        }
+    }
+});
+
+// Optimized chunk processor
+async function processChunkInBackground(jobId, jobData) {
+    const { updateCode, mawbNum, trackingNumbers, req } = jobData;
+
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        notUpdatedCount: 0,
+        status: 'processing',
+        total: trackingNumbers.length,
+        processed: 0,
+        startTime: Date.now()
+    };
+
+    backgroundJobs.set(jobId, { ...results, status: 'processing' });
+
+    try {
+        // Process in smaller batches within chunk
+        const BATCH_SIZE = 10;
+        const totalBatches = Math.ceil(trackingNumbers.length / BATCH_SIZE);
+
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const start = batchIndex * BATCH_SIZE;
+            const end = Math.min(start + BATCH_SIZE, trackingNumbers.length);
+            const batch = trackingNumbers.slice(start, end);
+
+            // Process batch in parallel
+            const batchPromises = batch.map(trackingNumber => 
+                processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req)
+            );
+
+            const batchResults = await Promise.allSettled(batchPromises);
+            
+            // Update results
+            batchResults.forEach((result, index) => {
+                const trackingNumber = batch[index];
+                results.processed++;
+
+                if (result.status === 'fulfilled' && result.value.success) {
+                    results.successful.push({
+                        trackingNumber: trackingNumber,
+                        result: result.value.message || `Successfully updated with ${updateCode}`
+                    });
+                    results.updatedCount++;
+                } else {
+                    const errorMsg = result.status === 'rejected' 
+                        ? result.reason.message 
+                        : (result.value?.error || 'Update failed');
+                    
+                    results.failed.push({
+                        trackingNumber: trackingNumber,
+                        result: 'Error: ' + errorMsg
+                    });
+                    results.notUpdatedCount++;
+                }
+            });
+
+            // Update job progress
+            backgroundJobs.set(jobId, { ...results, status: 'processing' });
+
+            // Small delay between batches
+            if (batchIndex < totalBatches - 1) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+        }
+
+        // Mark chunk as completed
+        results.status = 'completed';
+        results.processingTime = Date.now() - results.startTime;
+        console.log(`Chunk ${jobId} completed in ${results.processingTime}ms`);
+        backgroundJobs.set(jobId, results);
+
+    } catch (error) {
+        console.error('Chunk processing error:', error);
+        results.status = 'failed';
+        results.error = error.message;
+        backgroundJobs.set(jobId, results);
+    }
 }
 
 app.listen(port, () => {
