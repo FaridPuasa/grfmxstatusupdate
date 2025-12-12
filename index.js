@@ -12543,7 +12543,7 @@ async function processUpdateJobInBackground(jobId, jobData) {
 }
 
 // Serve the update job page
-app.get('/updateJob'/* , ensureAuthenticated */, (req, res) => {
+app.get('/updateJob', ensureAuthenticated, (req, res) => {
     res.render('updateJob', { user: req.user });
 });
 
