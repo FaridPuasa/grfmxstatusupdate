@@ -4665,6 +4665,12 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
     if (statusType === 'warehouse') {
         return await updateGDEXWarehouseStatus(consignmentID, token);
     } else if (statusType === 'custom') {
+        // Make sure we have all required parameters
+        if (!statusCode || !statusDescription || !locationDescription) {
+            console.error('Missing required parameters for custom GDEX update');
+            return false;
+        }
+
         return await sendGDEXTrackingWebhook(
             consignmentID,
             statusCode,
@@ -12469,79 +12475,6 @@ function generateJobId() {
     return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Optimized background job processor with batch processing
-async function processUpdateJobInBackground(jobId, jobData) {
-    const { updateCode, mawbNum, trackingNumbers, updateMethod, req } = jobData;
-
-    const results = {
-        successful: [],
-        failed: [],
-        updatedCount: 0,
-        notUpdatedCount: 0,
-        status: 'processing',
-        total: trackingNumbers.length,
-        processed: 0,
-        startTime: Date.now()
-    };
-
-    // Update job status to processing
-    backgroundJobs.set(jobId, { ...results, status: 'processing' });
-
-    try {
-        // Process in batches to optimize performance
-        const BATCH_SIZE = 10; // Process 10 items in parallel
-        const totalBatches = Math.ceil(trackingNumbers.length / BATCH_SIZE);
-
-        console.log(`Starting batch processing for ${trackingNumbers.length} items in ${totalBatches} batches`);
-
-        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-            const start = batchIndex * BATCH_SIZE;
-            const end = Math.min(start + BATCH_SIZE, trackingNumbers.length);
-            const batch = trackingNumbers.slice(start, end);
-
-            console.log(`Processing batch ${batchIndex + 1}/${totalBatches} (${batch.length} items)`);
-
-            // Process the batch
-            const batchResults = await processBatch(batch, updateCode, mawbNum, req);
-
-            // Merge batch results
-            results.successful.push(...batchResults.successful);
-            results.failed.push(...batchResults.failed);
-            results.updatedCount += batchResults.updatedCount;
-            results.notUpdatedCount += batchResults.notUpdatedCount;
-            results.processed = start + batch.length;
-
-            // Update job progress
-            backgroundJobs.set(jobId, {
-                ...results,
-                status: 'processing',
-                currentBatch: batchIndex + 1,
-                totalBatches: totalBatches,
-                batchSize: BATCH_SIZE
-            });
-
-            // Small delay between batches to avoid rate limiting
-            if (batchIndex < totalBatches - 1) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-        }
-
-        // Calculate total processing time
-        results.processingTime = Date.now() - results.startTime;
-        results.status = 'completed';
-
-        console.log(`Job ${jobId} completed in ${results.processingTime}ms: ${results.updatedCount} successful, ${results.notUpdatedCount} failed`);
-        backgroundJobs.set(jobId, results);
-
-    } catch (error) {
-        console.error('Background job error:', error);
-        results.status = 'failed';
-        results.error = error.message;
-        results.processingTime = Date.now() - results.startTime;
-        backgroundJobs.set(jobId, results);
-    }
-}
-
 // Serve the update job page
 app.get('/updateJob', ensureAuthenticated, (req, res) => {
     res.render('updateJob', { user: req.user });
@@ -12567,11 +12500,85 @@ app.post('/updateJob', async (req, res) => {
 
         const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
 
+        // ============================================
+        // ONE-BY-ONE PROCESSING (MISSING!)
+        // ============================================
+        if (updateMethod === 'onebyone' && uniqueTrackingNumbers.length === 1) {
+            try {
+                const trackingNumber = uniqueTrackingNumbers[0];
+                let processSuccess = false;
+                let resultMessage = '';
+
+                console.log(`Processing one-by-one update: ${updateCode} for ${trackingNumber}`);
+
+                // Process based on update code
+                switch (updateCode) {
+                    case 'UAN':
+                        processSuccess = await processMAWBUpdate(trackingNumber, mawbNum, req);
+                        resultMessage = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
+                        break;
+                    case 'CCH':
+                        processSuccess = await processOnHoldUpdate(trackingNumber, req);
+                        resultMessage = processSuccess ?
+                            'Job put on hold (Custom Clearing -> Brunei Customs)' :
+                            'On hold update failed - check job status and MAWB number';
+                        break;
+                    case 'IIW':
+                        processSuccess = await processItemInWarehouseUpdate(trackingNumber, req);
+                        resultMessage = processSuccess ? 'Item marked in warehouse' : 'Warehouse update failed';
+                        break;
+                    case 'OFD':
+                        processSuccess = await processOutForDeliveryUpdate(trackingNumber, req);
+                        resultMessage = processSuccess ? 'Marked as out for delivery' : 'OFD update failed';
+                        break;
+                    case 'OSC':
+                        processSuccess = await processSelfCollectUpdate(trackingNumber, req);
+                        resultMessage = processSuccess ? 'Marked for self collect' : 'Self collect update failed';
+                        break;
+                    case 'SFJ':
+                        processSuccess = await processClearJobUpdate(trackingNumber, req);
+                        resultMessage = processSuccess ? 'Job cleared' : 'Clear job failed';
+                        break;
+                    default:
+                        processSuccess = await processGenericUpdate(trackingNumber, updateCode, req, mawbNum);
+                        resultMessage = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
+                }
+
+                const results = {
+                    successful: processSuccess ? [{
+                        trackingNumber: trackingNumber,
+                        result: resultMessage
+                    }] : [],
+                    failed: processSuccess ? [] : [{
+                        trackingNumber: trackingNumber,
+                        result: resultMessage
+                    }],
+                    updatedCount: processSuccess ? 1 : 0,
+                    notUpdatedCount: processSuccess ? 0 : 1
+                };
+
+                console.log(`One-by-one result for ${trackingNumber}:`, results);
+                return res.json(results); // RETURN HERE
+
+            } catch (error) {
+                console.error('Error in one-by-one processing:', error);
+                return res.json({
+                    successful: [],
+                    failed: [{
+                        trackingNumber: uniqueTrackingNumbers[0],
+                        result: 'Error: ' + error.message
+                    }],
+                    updatedCount: 0,
+                    notUpdatedCount: 1
+                });
+            }
+        }
+
         // Enforce limits
         const MAX_BULK_ITEMS = 3000; // Increased limit
         if (uniqueTrackingNumbers.length > MAX_BULK_ITEMS) {
-            return res.status(400).json({ 
-                error: 'Too many tracking numbers', 
+            return res.status(400).json({
+                error: 'Too many tracking numbers',
                 message: `Maximum ${MAX_BULK_ITEMS} items allowed. Use chunked processing for larger batches.`,
                 maxAllowed: MAX_BULK_ITEMS
             });
@@ -12584,7 +12591,7 @@ app.post('/updateJob', async (req, res) => {
 
         // Generate job ID and respond IMMEDIATELY (most important fix!)
         const jobId = generateJobId();
-        
+
         // Store initial job status
         backgroundJobs.set(jobId, {
             status: 'queued',
@@ -12602,21 +12609,23 @@ app.post('/updateJob', async (req, res) => {
             status: 'queued',
             message: 'Job accepted and queued for processing',
             totalJobs: uniqueTrackingNumbers.length,
-            estimatedTime: uniqueTrackingNumbers.length > 500 ? 
-                `Approx ${Math.ceil(uniqueTrackingNumbers.length / 200)} minutes` : 
+            estimatedTime: uniqueTrackingNumbers.length > 500 ?
+                `Approx ${Math.ceil(uniqueTrackingNumbers.length / 200)} minutes` :
                 'Less than 1 minute'
         });
 
         // Start processing AFTER response is sent (non-blocking)
         setTimeout(() => {
-            processUpdateJobInBackground(jobId, {
+            processJobsInBackground(jobId, {
                 updateCode,
                 mawbNum,
                 trackingNumbers: uniqueTrackingNumbers,
-                updateMethod,
-                req
+                req  // REMOVE updateMethod - it's not used in the function
+            }, {  // ADD options parameter
+                batchSize: 10,
+                batchDelay: 500
             });
-        }, 100); // Small delay to ensure response is sent
+        }, 100);
 
     } catch (error) {
         console.error('Error in update job route:', error);
@@ -12646,20 +12655,27 @@ app.get('/updateJob/status/:jobId', (req, res) => {
 // UAN - MAWB Number Update
 async function processMAWBUpdate(trackingNumber, mawbNum, req) {
     try {
+        console.log(`🔍 Starting MAWB update for ${trackingNumber}`);
+
         const jobExists = await checkJobExists(trackingNumber);
+        console.log(`📊 Job exists check for ${trackingNumber}: ${jobExists}`);
+
         if (!jobExists) {
             console.log(`❌ Job ${trackingNumber} not found in Detrack`);
             return false;
         }
 
-        return await updateJobMAWB(trackingNumber, mawbNum, req);
+        const result = await updateJobMAWB(trackingNumber, mawbNum, req);
+        console.log(`📊 MAWB update result for ${trackingNumber}: ${result}`);
+
+        return result;
+
     } catch (error) {
-        console.error(`Error in MAWB update for ${trackingNumber}:`, error);
+        console.error(`❌ Error in MAWB update for ${trackingNumber}:`, error);
         return false;
     }
 }
 
-// Replace the existing updateJobMAWB function with this:
 async function updateJobMAWB(trackingNumber, mawbNum, req) {
     try {
         // First get the current job details to calculate the fields
@@ -12670,113 +12686,776 @@ async function updateJobMAWB(trackingNumber, mawbNum, req) {
             return false;
         }
 
+        // ==================================================
+        // PRODUCT VALIDATION - Only allow specific products
+        // ==================================================
+        const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
+
+        const allowedProducts = ['ewe', 'pdu', 'mglobal', 'gdex', 'gdext'];
+        if (!allowedProducts.includes(currentProduct)) {
+            console.log(`❌ Product "${currentProduct}" not allowed for MAWB update. Allowed: ${allowedProducts.join(', ')}`);
+            return false;
+        }
+
+        console.log(`✅ Product "${currentProduct}" allowed for MAWB update`);
+
         // Calculate the additional fields using your comprehensive helper functions
         const finalArea = getAreaFromAddress(jobData.address);
         const finalPhoneNum = processPhoneNumber(jobData.phone_number);
         const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
 
         console.log(`Calculated fields for ${trackingNumber}:`);
+        console.log(`- Product: ${currentProduct}`);
         console.log(`- Area: ${finalArea}`);
         console.log(`- Phone: ${finalPhoneNum}`);
         console.log(`- Additional Phone: ${finalAdditionalPhoneNum}`);
 
-        // Update data with all fields
-        const updateData = {
-            do_number: trackingNumber,
-            data: {
-                run_number: mawbNum,
-                zone: finalArea,
-                phone_number: finalPhoneNum,
-                other_phone_numbers: finalAdditionalPhoneNum
-            }
-        };
+        // Check if order already exists in MongoDB
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
 
-        console.log(`Updating ${trackingNumber} with MAWB: ${mawbNum}`);
+        if (existingOrder) {
+            // Order exists - just update MAWB number
+            console.log(`📦 Order exists in MongoDB for ${trackingNumber}, updating MAWB...`);
 
-        try {
-            const response = await axios.put(
-                'https://app.detrack.com/api/v2/dn/jobs/update',
-                updateData,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    timeout: 10000 // 10 second timeout
-                }
+            // Update MongoDB
+            await ORDERS.updateOne(
+                { doTrackingNumber: trackingNumber },
+                { $set: { mawbNo: mawbNum } }
             );
+            console.log(`✅ Updated MAWB for existing order in MongoDB: ${trackingNumber}`);
 
-            let updateSuccessful = false;
-
-            if (response.data.success === true) {
-                updateSuccessful = true;
-                console.log(`✅ Detrack update successful - success: true`);
-            } else if (response.data.status === 'success') {
-                updateSuccessful = true;
-                console.log(`✅ Detrack update successful - status: success`);
-            } else if (response.status === 200) {
-                // For 200 status, verify the update actually worked
-                console.log(`⚠️ Got 200 status, verifying update...`);
-
-                try {
-                    // Wait a moment for update to propagate
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-
-                    const verifiedJob = await getJobDetails(trackingNumber);
-                    if (verifiedJob && verifiedJob.run_number === mawbNum) {
-                        updateSuccessful = true;
-                        console.log(`✅ Detrack update verified - run_number updated to ${mawbNum}`);
-                    } else {
-                        console.log(`❌ Detrack update failed - run_number is "${verifiedJob?.run_number}", expected "${mawbNum}"`);
-                        updateSuccessful = false;
-                    }
-                } catch (verifyError) {
-                    console.log(`❌ Could not verify update:`, verifyError.message);
-                    updateSuccessful = false;
+            // Prepare standard Detrack update
+            const updateData = {
+                do_number: trackingNumber,
+                data: {
+                    run_number: mawbNum
                 }
-            }
+            };
 
-            if (updateSuccessful) {
-                console.log(`✅ Successfully updated ${trackingNumber} in Detrack`);
+            return await sendDetrackUpdate(trackingNumber, updateData, mawbNum);
 
-                // Now update/create in ORDERS collection
-                try {
-                    await updateOrCreateOrder(trackingNumber, mawbNum, req, jobData);
-                    console.log(`✅ Successfully processed ORDERS for ${trackingNumber}`);
-                    return true;
-                } catch (orderError) {
-                    console.error(`❌ Error updating ORDERS for ${trackingNumber}:`, orderError.message);
-                    // Still return true since Detrack update was successful
-                    return true;
-                }
-            } else {
-                console.log(`❌ Detrack update failed for ${trackingNumber}`);
-                return false;
-            }
+        } else {
+            // Order doesn't exist in MongoDB - create new with product-specific rules
+            console.log(`🆕 Order doesn't exist in MongoDB for ${trackingNumber}, creating with product-specific rules...`);
 
-        } catch (apiError) {
-            if (apiError.code === 'ECONNABORTED') {
-                console.error(`❌ Timeout updating ${trackingNumber} in Detrack`);
-            } else {
-                console.error(`❌ API error updating ${trackingNumber}:`, apiError.message);
-            }
-            return false;
+            return await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, currentProduct);
         }
 
     } catch (error) {
-        console.error(`❌ Error preparing update for ${trackingNumber}:`, error);
+        console.error(`❌ Error in MAWB update for ${trackingNumber}:`, error);
         return false;
     }
 }
 
-// Other update functions (implement as needed)
+async function createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, product) {
+    try {
+        // Process items array
+        const itemsArray = [];
+        if (jobData.items && Array.isArray(jobData.items)) {
+            for (let i = 0; i < jobData.items.length; i++) {
+                itemsArray.push({
+                    quantity: jobData.items[i].quantity || 0,
+                    description: jobData.items[i].description || '',
+                    totalItemPrice: jobData.total_price || jobData.payment_amount || 0
+                });
+            }
+        }
+
+        // Process area from address
+        const finalArea = getAreaFromAddress(jobData.address);
+
+        // Process phone numbers
+        const finalPhoneNum = processPhoneNumber(jobData.phone_number);
+        const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+        // Process postal code
+        const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
+
+        let newOrderData = null;
+        let detrackUpdateData = null;
+        let mongoOrder = null;
+
+        // ==================================================
+        // PRODUCT-SPECIFIC RULES
+        // ==================================================
+
+        // EWE PRODUCT RULES
+        if (product === 'ewe') {
+            // EWE with COD payment
+            if (jobData.payment_mode === "COD") {
+                console.log(`🔄 Creating EWE COD order for ${trackingNumber}`);
+
+                mongoOrder = new ORDERS({
+                    area: finalArea,
+                    items: itemsArray,
+                    attempt: jobData.attempt || 1,
+                    history: [{
+                        statusHistory: "Info Received",
+                        dateUpdated: moment().format(),
+                        updatedBy: req.user.name,
+                        lastLocation: "Origin",
+                    }],
+                    latestLocation: "Origin",
+                    product: product,
+                    senderName: jobData.job_owner || "EWE",
+                    totalPrice: jobData.payment_amount || 0,
+                    paymentAmount: jobData.payment_amount || 0,
+                    receiverName: jobData.deliver_to_collect_from || '',
+                    trackingLink: jobData.tracking_link || '',
+                    currentStatus: "Info Received",
+                    paymentMethod: jobData.payment_mode || "Cash",
+                    warehouseEntry: "No",
+                    warehouseEntryDateTime: "N/A",
+                    receiverAddress: jobData.address || '',
+                    receiverPhoneNumber: finalPhoneNum,
+                    additionalPhoneNumber: finalAdditionalPhoneNum,
+                    doTrackingNumber: trackingNumber,
+                    remarks: jobData.remarks || '',
+                    lastUpdateDateTime: moment().format(),
+                    creationDate: jobData.created_at || moment().format(),
+                    lastUpdatedBy: req.user.name,
+                    receiverPostalCode: postalCode,
+                    jobType: jobData.type || 'Delivery',
+                    jobMethod: "Standard",
+                    flightDate: jobData.job_received_date || '',
+                    mawbNo: mawbNum,
+                    parcelWeight: jobData.weight || 0, // ADD THIS
+                });
+
+                detrackUpdateData = {
+                    do_number: trackingNumber,
+                    data: {
+                        run_number: mawbNum,
+                        zone: finalArea,
+                        total_price: jobData.payment_amount || 0,
+                        payment_mode: "Cash"
+                    }
+                };
+            }
+            // EWE non-COD
+            else {
+                console.log(`🔄 Creating EWE non-COD order for ${trackingNumber}`);
+
+                mongoOrder = new ORDERS({
+                    area: finalArea,
+                    items: itemsArray,
+                    attempt: jobData.attempt || 1,
+                    history: [{
+                        statusHistory: "Info Received",
+                        dateUpdated: moment().format(),
+                        updatedBy: req.user.name,
+                        lastLocation: "Origin",
+                    }],
+                    latestLocation: "Origin",
+                    product: product,
+                    senderName: jobData.job_owner || "EWE",
+                    totalPrice: jobData.total_price || 0,
+                    paymentAmount: jobData.total_price || 0,
+                    receiverName: jobData.deliver_to_collect_from || '',
+                    trackingLink: jobData.tracking_link || '',
+                    currentStatus: "Info Received",
+                    paymentMethod: jobData.payment_mode || 'NON COD',
+                    warehouseEntry: "No",
+                    warehouseEntryDateTime: "N/A",
+                    receiverAddress: jobData.address || '',
+                    receiverPhoneNumber: finalPhoneNum,
+                    additionalPhoneNumber: finalAdditionalPhoneNum,
+                    doTrackingNumber: trackingNumber,
+                    remarks: jobData.remarks || '',
+                    lastUpdateDateTime: moment().format(),
+                    creationDate: jobData.created_at || moment().format(),
+                    lastUpdatedBy: req.user.name,
+                    receiverPostalCode: postalCode,
+                    jobType: jobData.type || 'Delivery',
+                    jobMethod: "Standard",
+                    flightDate: jobData.job_received_date || '',
+                    mawbNo: mawbNum,
+                    parcelWeight: jobData.weight || 0 // ADD THIS
+                });
+
+                detrackUpdateData = {
+                    do_number: trackingNumber,
+                    data: {
+                        run_number: mawbNum,
+                        zone: finalArea
+                    }
+                };
+            }
+        }
+
+        // MGLOBAL PRODUCT RULES
+        else if (product === 'mglobal') {
+            console.log(`🔄 Creating MGLOBAL order for ${trackingNumber}`);
+
+            mongoOrder = new ORDERS({
+                area: finalArea,
+                items: itemsArray,
+                attempt: jobData.attempt || 1,
+                history: [{
+                    statusHistory: "Info Received",
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: "Origin",
+                }],
+                latestLocation: "Origin",
+                product: product,
+                senderName: "MGLOBAL",
+                totalPrice: 0,
+                paymentAmount: 0,
+                receiverName: jobData.deliver_to_collect_from || '',
+                trackingLink: jobData.tracking_link || '',
+                currentStatus: "Info Received",
+                paymentMethod: "NON COD",
+                warehouseEntry: "No",
+                warehouseEntryDateTime: "N/A",
+                receiverAddress: jobData.address || '',
+                receiverPhoneNumber: finalPhoneNum,
+                additionalPhoneNumber: finalAdditionalPhoneNum,
+                doTrackingNumber: trackingNumber,
+                remarks: jobData.remarks || '',
+                lastUpdateDateTime: moment().format(),
+                creationDate: jobData.created_at || moment().format(),
+                lastUpdatedBy: req.user.name,
+                receiverPostalCode: postalCode,
+                jobType: jobData.type || 'Delivery',
+                jobMethod: "Standard",
+                flightDate: jobData.job_received_date || '',
+                mawbNo: mawbNum,
+                parcelWeight: jobData.weight || 0 // ADD THIS
+            });
+
+            detrackUpdateData = {
+                do_number: trackingNumber,
+                data: {
+                    run_number: mawbNum,
+                    zone: finalArea,
+                    phone_number: finalPhoneNum,
+                    other_phone_numbers: finalAdditionalPhoneNum,
+                    job_type: "Standard",
+                    payment_mode: "NON COD",
+                    total_price: 0,
+                    payment_amount: 0,
+                    job_owner: "MGLOBAL"
+                }
+            };
+        }
+
+        // PDU PRODUCT RULES
+        else if (product === 'pdu') {
+            console.log(`🔄 Creating PDU order for ${trackingNumber}`);
+
+            mongoOrder = new ORDERS({
+                area: finalArea,
+                items: itemsArray,
+                attempt: jobData.attempt || 1,
+                history: [{
+                    statusHistory: "Info Received",
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: "Origin",
+                }],
+                latestLocation: "Origin",
+                product: product,
+                senderName: jobData.job_owner || "PDU",
+                totalPrice: jobData.total_price || 0,
+                paymentAmount: jobData.payment_amount || 0,
+                receiverName: jobData.deliver_to_collect_from || '',
+                trackingLink: jobData.tracking_link || '',
+                currentStatus: "Info Received",
+                paymentMethod: jobData.payment_mode || 'NON COD',
+                warehouseEntry: "No",
+                warehouseEntryDateTime: "N/A",
+                receiverAddress: jobData.address || '',
+                receiverPhoneNumber: finalPhoneNum,
+                additionalPhoneNumber: finalAdditionalPhoneNum,
+                doTrackingNumber: trackingNumber,
+                remarks: jobData.remarks || '',
+                lastUpdateDateTime: moment().format(),
+                creationDate: jobData.created_at || moment().format(),
+                lastUpdatedBy: req.user.name,
+                receiverPostalCode: postalCode,
+                jobType: jobData.type || 'Delivery',
+                jobMethod: "Standard",
+                flightDate: jobData.job_received_date || '',
+                mawbNo: mawbNum,
+                parcelWeight: jobData.weight || 0 // ADD THIS
+            });
+
+            detrackUpdateData = {
+                do_number: trackingNumber,
+                data: {
+                    run_number: mawbNum,
+                    zone: finalArea,
+                    phone_number: finalPhoneNum,
+                    other_phone_numbers: finalAdditionalPhoneNum,
+                    job_owner: "PDU"
+                }
+            };
+        }
+
+        // GDEX/GDEXT PRODUCT RULES
+        else if (product === 'gdex' || product === 'gdext') {
+            console.log(`🔄 Creating ${product.toUpperCase()} order for ${trackingNumber}`);
+
+            mongoOrder = new ORDERS({
+                area: finalArea,
+                items: itemsArray,
+                attempt: jobData.attempt || 1,
+                history: [{
+                    statusHistory: "Info Received",
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: "Origin",
+                }],
+                latestLocation: "Origin",
+                product: product,
+                senderName: jobData.job_owner || product.toUpperCase(),
+                totalPrice: jobData.total_price || 0,
+                paymentAmount: jobData.payment_amount || 0,
+                receiverName: jobData.deliver_to_collect_from || '',
+                trackingLink: jobData.tracking_link || '',
+                currentStatus: "Info Received",
+                paymentMethod: jobData.payment_mode || 'NON COD',
+                warehouseEntry: "No",
+                warehouseEntryDateTime: "N/A",
+                receiverAddress: jobData.address || '',
+                receiverPhoneNumber: finalPhoneNum,
+                additionalPhoneNumber: finalAdditionalPhoneNum,
+                doTrackingNumber: trackingNumber,
+                remarks: jobData.remarks || '',
+                lastUpdateDateTime: moment().format(),
+                creationDate: jobData.created_at || moment().format(),
+                lastUpdatedBy: req.user.name,
+                receiverPostalCode: postalCode,
+                jobType: jobData.type || 'Delivery',
+                jobMethod: "Standard",
+                flightDate: jobData.job_received_date || '',
+                mawbNo: mawbNum,
+                additionalPhoneNumber: finalAdditionalPhoneNum // ADD THIS
+            });
+
+            detrackUpdateData = {
+                do_number: trackingNumber,
+                data: {
+                    run_number: mawbNum,
+                    zone: finalArea,
+                    phone_number: finalPhoneNum,
+                    other_phone_numbers: finalAdditionalPhoneNum,
+                    job_owner: jobData.job_owner || product.toUpperCase()
+                }
+            };
+        }
+
+        // DEFAULT RULES (for any other allowed product)
+        else {
+            console.log(`🔄 Creating default order for ${trackingNumber} (product: ${product})`);
+
+            const paymentAmount = jobData.payment_amount || jobData.total_price || 0;
+            const paymentMethod = paymentAmount > 0 ? (jobData.payment_mode || 'Cash') : 'NON COD';
+
+            mongoOrder = new ORDERS({
+                area: finalArea,
+                items: itemsArray,
+                attempt: jobData.attempt || 1,
+                history: [{
+                    statusHistory: "Info Received",
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: "Origin",
+                }],
+                latestLocation: "Origin",
+                product: product,
+                senderName: jobData.job_owner || '',
+                totalPrice: jobData.total_price || 0,
+                paymentAmount: paymentAmount,
+                receiverName: jobData.deliver_to_collect_from || '',
+                trackingLink: jobData.tracking_link || '',
+                currentStatus: "Info Received",
+                paymentMethod: paymentMethod,
+                warehouseEntry: "No",
+                warehouseEntryDateTime: "N/A",
+                receiverAddress: jobData.address || '',
+                receiverPhoneNumber: finalPhoneNum,
+                additionalPhoneNumber: finalAdditionalPhoneNum,
+                doTrackingNumber: trackingNumber,
+                remarks: jobData.remarks || '',
+                lastUpdateDateTime: moment().format(),
+                creationDate: jobData.created_at || moment().format(),
+                lastUpdatedBy: req.user.name,
+                receiverPostalCode: postalCode,
+                jobType: jobData.type || 'Delivery',
+                jobMethod: "Standard",
+                flightDate: jobData.job_received_date || '',
+                mawbNo: mawbNum,
+                additionalPhoneNumber: finalAdditionalPhoneNum // ADD THIS
+            });
+
+            detrackUpdateData = {
+                do_number: trackingNumber,
+                data: {
+                    run_number: mawbNum,
+                    zone: finalArea,
+                    phone_number: finalPhoneNum,
+                    other_phone_numbers: finalAdditionalPhoneNum
+                }
+            };
+        }
+
+        // Save to MongoDB
+        await mongoOrder.save();
+        console.log(`✅ Created new order in MongoDB for ${trackingNumber}`);
+
+        // Send update to Detrack
+        const detrackSuccess = await sendDetrackUpdate(trackingNumber, detrackUpdateData, mawbNum);
+
+        if (detrackSuccess) {
+            console.log(`✅ Successfully created and updated ${trackingNumber} for product ${product}`);
+            return true;
+        } else {
+            console.log(`⚠️ MongoDB created but Detrack update failed for ${trackingNumber}`);
+            // Still return true since MongoDB was updated
+            return true;
+        }
+
+    } catch (error) {
+        console.error(`❌ Error creating order with rules for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function sendDetrackUpdate(trackingNumber, updateData, mawbNum) {
+    try {
+        console.log(`Updating ${trackingNumber} with MAWB: ${mawbNum}`);
+        console.log('Detrack update data:', JSON.stringify(updateData, null, 2));
+
+        const response = await axios.put(
+            'https://app.detrack.com/api/v2/dn/jobs/update',
+            updateData,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                timeout: 10000 // 10 second timeout
+            }
+        );
+
+        let updateSuccessful = false;
+
+        if (response.data.success === true) {
+            updateSuccessful = true;
+            console.log(`✅ Detrack update successful - success: true`);
+        } else if (response.data.status === 'success') {
+            updateSuccessful = true;
+            console.log(`✅ Detrack update successful - status: success`);
+        } else if (response.status === 200) {
+            // For 200 status, verify the update actually worked
+            console.log(`⚠️ Got 200 status, verifying update...`);
+
+            try {
+                // Wait a moment for update to propagate
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const verifiedJob = await getJobDetails(trackingNumber);
+                if (verifiedJob && verifiedJob.run_number === mawbNum) {
+                    updateSuccessful = true;
+                    console.log(`✅ Detrack update verified - run_number updated to ${mawbNum}`);
+                } else {
+                    console.log(`❌ Detrack update failed - run_number is "${verifiedJob?.run_number}", expected "${mawbNum}"`);
+                    updateSuccessful = false;
+                }
+            } catch (verifyError) {
+                console.log(`❌ Could not verify update:`, verifyError.message);
+                updateSuccessful = false;
+            }
+        }
+
+        if (updateSuccessful) {
+            console.log(`✅ Successfully updated ${trackingNumber} in Detrack`);
+            return true;
+        } else {
+            console.log(`❌ Detrack update failed for ${trackingNumber}`);
+            return false;
+        }
+
+    } catch (apiError) {
+        if (apiError.code === 'ECONNABORTED') {
+            console.error(`❌ Timeout updating ${trackingNumber} in Detrack`);
+        } else {
+            console.error(`❌ API error updating ${trackingNumber}:`, apiError.message);
+        }
+        return false;
+    }
+}
+
+// Replace the existing processOnHoldUpdate function
 async function processOnHoldUpdate(trackingNumber, req) {
     try {
-        console.log(`Processing On Hold for: ${trackingNumber}`);
-        // Add your specific Detrack API call for on hold status
-        return await updateDetrackJobStatus(trackingNumber, 'on_hold');
+        console.log(`🔍 Starting On Hold update for ${trackingNumber}`);
+
+        // 1. Check if job exists in Detrack
+        const jobExists = await checkJobExists(trackingNumber);
+        console.log(`📊 Job exists check for ${trackingNumber}: ${jobExists}`);
+
+        if (!jobExists) {
+            console.log(`❌ Job ${trackingNumber} not found in Detrack`);
+            return false;
+        }
+
+        // 2. Get job details from Detrack
+        const jobData = await getJobDetails(trackingNumber);
+        if (!jobData) {
+            console.log(`❌ Could not get job details for ${trackingNumber}`);
+            return false;
+        }
+
+        console.log(`📋 Job details for ${trackingNumber}:`, {
+            status: jobData.status,
+            run_number: jobData.run_number,
+            group_name: jobData.group_name,
+            job_owner: jobData.job_owner
+        });
+
+        // 3. Check conditions: status must be 'info_recv' and run_number must not be null
+        if (jobData.status !== 'info_recv' && jobData.status !== 'info_received') {
+            console.log(`❌ Job status is not 'info_recv' or 'info_received' for ${trackingNumber}`);
+            return false;
+        }
+
+        if (!jobData.run_number || jobData.run_number.trim() === '') {
+            console.log(`❌ Job run_number is null or empty for ${trackingNumber}`);
+            return false;
+        }
+
+        // 4. Determine product type
+        const product = determineProductType(jobData.group_name, jobData.job_owner);
+        const allowedProducts = ['PDU', 'MGLOBAL', 'EWE', 'GDEX', 'GDEXT'];
+
+        if (!product || !allowedProducts.includes(product)) {
+            console.log(`❌ Product "${product}" not allowed for On Hold update. Allowed: ${allowedProducts.join(', ')}`);
+            return false;
+        }
+
+        console.log(`✅ Product "${product}" allowed for On Hold update`);
+
+        // 5. Update MongoDB
+        const mongoSuccess = await updateMongoForOnHold(trackingNumber, product, req);
+        if (!mongoSuccess) {
+            console.log(`❌ MongoDB update failed for ${trackingNumber}`);
+            return false;
+        }
+
+        // 6. Update Detrack
+        const detrackSuccess = await updateDetrackForOnHold(trackingNumber);
+        if (!detrackSuccess) {
+            console.log(`❌ Detrack update failed for ${trackingNumber}`);
+            return false;
+        }
+
+        // 7. Update GDEX if applicable
+        if (product === 'GDEX' || product === 'GDEXT') {
+            const gdexSuccess = await updateGDEXForOnHold(trackingNumber);
+            if (!gdexSuccess) {
+                console.log(`⚠️ GDEX update failed for ${trackingNumber}, but other updates succeeded`);
+                // Continue with success as MongoDB and Detrack succeeded
+            }
+        }
+
+        console.log(`✅ All On Hold updates completed successfully for ${trackingNumber}`);
+        return true;
+
     } catch (error) {
-        console.error(`Error in On Hold update for ${trackingNumber}:`, error);
+        console.error(`❌ Error in On Hold update for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+// MongoDB Update Function for On Hold
+async function updateMongoForOnHold(trackingNumber, product, req) {
+    try {
+        // Find the order in MongoDB
+        const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+        if (!order) {
+            console.log(`📦 Order not found in MongoDB for ${trackingNumber}, creating new entry...`);
+
+            // Get job details to create new order
+            const jobData = await getJobDetails(trackingNumber);
+            if (!jobData) {
+                console.log(`❌ Cannot create order: no job data for ${trackingNumber}`);
+                return false;
+            }
+
+            // Create new order with On Hold status
+            const newOrder = await createOrderWithOnHoldStatus(jobData, trackingNumber, product, req);
+            return newOrder !== null;
+        }
+
+        // Update existing order
+        const updateData = {
+            currentStatus: "Custom Clearing",
+            lastUpdateDateTime: moment().format(),
+            latestLocation: "Brunei Customs",
+            lastUpdatedBy: req.user.name,
+            $push: {
+                history: {
+                    statusHistory: "Custom Clearing",
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: "Brunei Customs",
+                }
+            }
+        };
+
+        await ORDERS.updateOne(
+            { doTrackingNumber: trackingNumber },
+            { $set: updateData }
+        );
+
+        console.log(`✅ MongoDB updated for On Hold: ${trackingNumber}`);
+        return true;
+
+    } catch (error) {
+        console.error(`❌ MongoDB update error for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+// Create new order with On Hold status
+async function createOrderWithOnHoldStatus(jobData, trackingNumber, product, req) {
+    try {
+        // Process items array
+        const itemsArray = [];
+        if (jobData.items && Array.isArray(jobData.items)) {
+            for (let i = 0; i < jobData.items.length; i++) {
+                itemsArray.push({
+                    quantity: jobData.items[i].quantity || 0,
+                    description: jobData.items[i].description || '',
+                    totalItemPrice: jobData.total_price || jobData.payment_amount || 0
+                });
+            }
+        }
+
+        // Process area from address
+        const finalArea = getAreaFromAddress(jobData.address);
+
+        // Process phone numbers
+        const finalPhoneNum = processPhoneNumber(jobData.phone_number);
+        const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+        // Process postal code
+        const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
+
+        // Create new order
+        const newOrder = new ORDERS({
+            area: finalArea,
+            items: itemsArray,
+            attempt: jobData.attempt || 1,
+            history: [{
+                statusHistory: "Custom Clearing",
+                dateUpdated: moment().format(),
+                updatedBy: req.user.name,
+                lastLocation: "Brunei Customs",
+            }],
+            latestLocation: "Brunei Customs",
+            product: product.toLowerCase(),
+            senderName: jobData.job_owner || product,
+            totalPrice: jobData.total_price || 0,
+            paymentAmount: jobData.payment_amount || 0,
+            receiverName: jobData.deliver_to_collect_from || '',
+            trackingLink: jobData.tracking_link || '',
+            currentStatus: "Custom Clearing",
+            paymentMethod: jobData.payment_mode || 'NON COD',
+            warehouseEntry: "No",
+            warehouseEntryDateTime: "N/A",
+            receiverAddress: jobData.address || '',
+            receiverPhoneNumber: finalPhoneNum,
+            additionalPhoneNumber: finalAdditionalPhoneNum,
+            doTrackingNumber: trackingNumber,
+            remarks: jobData.remarks || '',
+            lastUpdateDateTime: moment().format(),
+            creationDate: jobData.created_at || moment().format(),
+            lastUpdatedBy: req.user.name,
+            receiverPostalCode: postalCode,
+            jobType: jobData.type || 'Delivery',
+            jobMethod: "Standard",
+            flightDate: jobData.job_received_date || '',
+            mawbNo: jobData.run_number || '',
+            parcelWeight: jobData.weight || 0
+        });
+
+        await newOrder.save();
+        console.log(`✅ Created new order with On Hold status for ${trackingNumber}`);
+        return newOrder;
+
+    } catch (error) {
+        console.error(`❌ Error creating order for ${trackingNumber}:`, error);
+        return null;
+    }
+}
+
+// Detrack Update Function for On Hold
+async function updateDetrackForOnHold(trackingNumber) {
+    try {
+        const detrackUpdateData = {
+            do_number: trackingNumber,
+            data: {
+                status: "on_hold"
+            }
+        };
+
+        console.log(`🔄 Updating Detrack to on_hold for ${trackingNumber}`);
+
+        const response = await axios.put(
+            'https://app.detrack.com/api/v2/dn/jobs/update',
+            detrackUpdateData,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                timeout: 10000
+            }
+        );
+
+        if (response.data.success === true || response.data.status === 'success' || response.status === 200) {
+            console.log(`✅ Detrack updated to on_hold for ${trackingNumber}`);
+            return true;
+        } else {
+            console.log(`❌ Detrack update failed for ${trackingNumber}:`, response.data);
+            return false;
+        }
+
+    } catch (error) {
+        console.error(`❌ Detrack API error for ${trackingNumber}:`, error.message);
+        return false;
+    }
+}
+
+// GDEX Update Function for On Hold
+async function updateGDEXForOnHold(trackingNumber) {
+    try {
+        console.log(`🔄 Sending GDEX update for On Hold: ${trackingNumber}`);
+
+        const gdexSuccess = await updateGDEXStatus(
+            trackingNumber,
+            'custom',
+            null, // detrackData not needed
+            "AQ", // statusCode
+            "Pending Custom Declaration", // statusDescription
+            "Brunei Customs" // locationDescription
+        );
+
+        if (gdexSuccess) {
+            console.log(`✅ GDEX update sent for ${trackingNumber}`);
+        } else {
+            console.log(`❌ GDEX update failed for ${trackingNumber}`);
+        }
+
+        return gdexSuccess;
+
+    } catch (error) {
+        console.error(`❌ GDEX update error for ${trackingNumber}:`, error);
         return false;
     }
 }
@@ -12906,14 +13585,15 @@ async function updateOrCreateOrder(trackingNumber, mawbNum, req, jobData) {
                     { $set: { mawbNo: mawbNum } }
                 );
                 console.log(`Updated MAWB for existing order: ${trackingNumber}`);
+                resolve(true);
             } else {
-                // Create new order with the jobData we already have
-                await createNewOrder(jobData, trackingNumber, mawbNum, req);
-                console.log(`Created new order: ${trackingNumber}`);
+                // Create new order with product-specific rules
+                const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
+                const success = await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, currentProduct);
+                resolve(success);
             }
-
-            resolve(true);
         } catch (error) {
+            console.error(`Error in updateOrCreateOrder for ${trackingNumber}:`, error);
             reject(error);
         }
     });
@@ -13462,8 +14142,16 @@ function processPhoneNumber(phoneNumber) {
         return "";
     }
 
+    // Convert to string
+    const phoneStr = phoneNumber.toString().trim();
+
+    // If already starts with +, return as is
+    if (phoneStr.startsWith('+')) {
+        return phoneStr;
+    }
+
     // Remove any spaces or special characters
-    const cleanNumber = phoneNumber.toString().replace(/\D/g, '');
+    const cleanNumber = phoneStr.replace(/\D/g, '');
 
     if (cleanNumber.length === 7) {
         return "+673" + cleanNumber;
@@ -13471,8 +14159,12 @@ function processPhoneNumber(phoneNumber) {
         return "+" + cleanNumber;
     } else if (cleanNumber.length === 11 && cleanNumber.startsWith('673')) {
         return "+" + cleanNumber;
+    } else if (cleanNumber.length === 8 && cleanNumber.startsWith('0')) {
+        // Handle 08-XXXXXX format
+        return "+673" + cleanNumber.substring(1);
     } else {
-        return phoneNumber; // Return original if format doesn't match
+        // Return original if format doesn't match
+        return phoneStr;
     }
 }
 
@@ -13544,47 +14236,86 @@ async function processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, 
     }
 }
 
-// Function to process a batch of tracking numbers in parallel
-async function processBatch(batch, updateCode, mawbNum, req) {
-    // Process all items in the batch in parallel
-    const batchPromises = batch.map(trackingNumber =>
-        processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req)
-    );
+// Helper function to process single tracking number
+async function processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req) {
+    const cleanTrackingNumber = trackingNumber.trim();
 
-    // Wait for all promises to settle (both fulfilled and rejected)
-    const batchResults = await Promise.allSettled(batchPromises);
+    if (!cleanTrackingNumber) {
+        return { success: false, error: 'Empty tracking number' };
+    }
 
-    // Process results
-    const results = {
-        successful: [],
-        failed: [],
-        updatedCount: 0,
-        notUpdatedCount: 0
-    };
+    try {
+        console.log(`🔍 Processing ${cleanTrackingNumber} with updateCode: ${updateCode}`);
 
-    batchResults.forEach((result, index) => {
-        const trackingNumber = batch[index];
+        let processSuccess = false;
+        let message = '';
 
-        if (result.status === 'fulfilled' && result.value.success) {
-            results.successful.push({
-                trackingNumber: trackingNumber,
-                result: result.value.message || `Successfully updated with ${updateCode}`
-            });
-            results.updatedCount++;
-        } else {
-            const errorMsg = result.status === 'rejected'
-                ? result.reason.message
-                : (result.value?.error || 'Update failed');
-
-            results.failed.push({
-                trackingNumber: trackingNumber,
-                result: 'Error: ' + errorMsg
-            });
-            results.notUpdatedCount++;
+        switch (updateCode) {
+            case 'UAN':
+                processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
+                message = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
+                break;
+            case 'CCH':
+                processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Job put on hold' : 'On hold update failed';
+                break;
+            case 'IIW':
+                processSuccess = await processItemInWarehouseUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Item marked in warehouse' : 'Warehouse update failed';
+                break;
+            case 'OFD':
+                processSuccess = await processOutForDeliveryUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Marked as out for delivery' : 'OFD update failed';
+                break;
+            case 'OSC':
+                processSuccess = await processSelfCollectUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Marked for self collect' : 'Self collect update failed';
+                break;
+            case 'SFJ':
+                processSuccess = await processClearJobUpdate(cleanTrackingNumber, req);
+                message = processSuccess ? 'Job cleared' : 'Clear job failed';
+                break;
+            default:
+                console.log(`⚠️ Generic update called for ${updateCode}`);
+                processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
+                message = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
         }
-    });
 
-    return results;
+        console.log(`📊 Result for ${cleanTrackingNumber}: ${processSuccess ? 'SUCCESS' : 'FAILED'} - ${message}`);
+
+        return {
+            success: processSuccess,
+            message: message,
+            trackingNumber: cleanTrackingNumber
+        };
+
+    } catch (error) {
+        console.error(`❌ Error processing ${cleanTrackingNumber}:`, error);
+        return {
+            success: false,
+            error: error.message,
+            trackingNumber: cleanTrackingNumber
+        };
+    }
+}
+
+// Add this helper function near your other helper functions
+function determineProductType(groupName, jobOwner) {
+    const product = (groupName || '').toLowerCase();
+    const owner = (jobOwner || '').toLowerCase();
+
+    if (product === 'pdu' || owner.includes('pdu')) {
+        return 'PDU';
+    } else if (product === 'mglobal' || owner.includes('mglobal')) {
+        return 'MGLOBAL';
+    } else if (product === 'ewe' || owner.includes('ewe')) {
+        return 'EWE';
+    } else if (product === 'gdex') {
+        return 'GDEX';
+    } else if (product === 'gdext') {
+        return 'GDEXT';
+    }
+    return null;
 }
 
 // ==================================================
@@ -13682,7 +14413,7 @@ app.post('/updateJob/chunk', async (req, res) => {
 
         // Generate job ID and respond IMMEDIATELY
         const jobId = generateJobId();
-        
+
         // Initial job status
         backgroundJobs.set(jobId, {
             status: 'queued',
@@ -13706,11 +14437,15 @@ app.post('/updateJob/chunk', async (req, res) => {
 
         // Start processing in background (after response is sent)
         setTimeout(() => {
-            processChunkInBackground(jobId, {
+            processJobsInBackground(jobId, {
                 updateCode,
                 mawbNum,
                 trackingNumbers: uniqueTrackingNumbers,
                 req
+            }, {
+                batchSize: 10,
+                batchDelay: 300,
+                isChunk: true
             });
         }, 100);
 
@@ -13722,9 +14457,72 @@ app.post('/updateJob/chunk', async (req, res) => {
     }
 });
 
-// Optimized chunk processor
-async function processChunkInBackground(jobId, jobData) {
+// Function to process a batch of tracking numbers in parallel
+async function processBatch(batch, updateCode, mawbNum, req) {
+    console.log(`🔄 Processing batch of ${batch.length} items with updateCode: ${updateCode}`);
+
+    // Process all items in the batch in parallel
+    const batchPromises = batch.map(trackingNumber =>
+        processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req)
+    );
+
+    // Wait for all promises to settle (both fulfilled and rejected)
+    const batchResults = await Promise.allSettled(batchPromises);
+
+    // Process results
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        notUpdatedCount: 0
+    };
+
+    batchResults.forEach((result, index) => {
+        const trackingNumber = batch[index];
+
+        console.log(`📝 Processing result for ${trackingNumber}:`, result.status);
+
+        if (result.status === 'fulfilled' && result.value.success) {
+            console.log(`✅ Success: ${trackingNumber}`);
+            results.successful.push({
+                trackingNumber: trackingNumber,
+                result: result.value.message || `Successfully updated with ${updateCode}`
+            });
+            results.updatedCount++;
+        } else {
+            let errorMsg = 'Update failed';
+
+            if (result.status === 'rejected') {
+                errorMsg = 'Promise rejected: ' + result.reason.message;
+                console.error(`❌ Rejected: ${trackingNumber} - ${result.reason.message}`);
+            } else if (result.value && result.value.error) {
+                errorMsg = result.value.error;
+                console.error(`❌ Failed: ${trackingNumber} - ${result.value.error}`);
+            } else if (result.value && !result.value.success) {
+                errorMsg = result.value.message || 'Update returned false';
+                console.error(`❌ Failed: ${trackingNumber} - ${errorMsg}`);
+            }
+
+            results.failed.push({
+                trackingNumber: trackingNumber,
+                result: 'Error: ' + errorMsg
+            });
+            results.notUpdatedCount++;
+        }
+    });
+
+    console.log(`📊 Batch results: ${results.updatedCount} success, ${results.notUpdatedCount} failed`);
+    return results;
+}
+
+// Replace both functions with a single configurable one:
+async function processJobsInBackground(jobId, jobData, options = {}) {
     const { updateCode, mawbNum, trackingNumbers, req } = jobData;
+    const {
+        batchSize = 10,
+        batchDelay = 500,
+        isChunk = false
+    } = options;
 
     const results = {
         successful: [],
@@ -13734,69 +14532,45 @@ async function processChunkInBackground(jobId, jobData) {
         status: 'processing',
         total: trackingNumbers.length,
         processed: 0,
-        startTime: Date.now()
+        startTime: Date.now(),
+        isChunk: isChunk
     };
 
     backgroundJobs.set(jobId, { ...results, status: 'processing' });
 
     try {
-        // Process in smaller batches within chunk
-        const BATCH_SIZE = 10;
-        const totalBatches = Math.ceil(trackingNumbers.length / BATCH_SIZE);
+        const totalBatches = Math.ceil(trackingNumbers.length / batchSize);
 
         for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-            const start = batchIndex * BATCH_SIZE;
-            const end = Math.min(start + BATCH_SIZE, trackingNumbers.length);
+            const start = batchIndex * batchSize;
+            const end = Math.min(start + batchSize, trackingNumbers.length);
             const batch = trackingNumbers.slice(start, end);
 
-            // Process batch in parallel
-            const batchPromises = batch.map(trackingNumber => 
-                processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, req)
-            );
+            // Process batch
+            const batchResults = await processBatch(batch, updateCode, mawbNum, req);
 
-            const batchResults = await Promise.allSettled(batchPromises);
-            
-            // Update results
-            batchResults.forEach((result, index) => {
-                const trackingNumber = batch[index];
-                results.processed++;
-
-                if (result.status === 'fulfilled' && result.value.success) {
-                    results.successful.push({
-                        trackingNumber: trackingNumber,
-                        result: result.value.message || `Successfully updated with ${updateCode}`
-                    });
-                    results.updatedCount++;
-                } else {
-                    const errorMsg = result.status === 'rejected' 
-                        ? result.reason.message 
-                        : (result.value?.error || 'Update failed');
-                    
-                    results.failed.push({
-                        trackingNumber: trackingNumber,
-                        result: 'Error: ' + errorMsg
-                    });
-                    results.notUpdatedCount++;
-                }
-            });
+            // Merge results
+            results.successful.push(...batchResults.successful);
+            results.failed.push(...batchResults.failed);
+            results.updatedCount += batchResults.updatedCount;
+            results.notUpdatedCount += batchResults.notUpdatedCount;
+            results.processed = start + batch.length;
 
             // Update job progress
             backgroundJobs.set(jobId, { ...results, status: 'processing' });
 
-            // Small delay between batches
+            // Delay between batches
             if (batchIndex < totalBatches - 1) {
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, batchDelay));
             }
         }
 
-        // Mark chunk as completed
         results.status = 'completed';
         results.processingTime = Date.now() - results.startTime;
-        console.log(`Chunk ${jobId} completed in ${results.processingTime}ms`);
         backgroundJobs.set(jobId, results);
 
     } catch (error) {
-        console.error('Chunk processing error:', error);
+        console.error('Background job error:', error);
         results.status = 'failed';
         results.error = error.message;
         backgroundJobs.set(jobId, results);

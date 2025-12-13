@@ -84,7 +84,7 @@
                             <option value="UPN">Update Phone Number</option>
                             <option value="URN">Update Customer Name</option>
                             <option value="UPC">Update Postal Code</option>
-                            <option value="UAB">Update AWB Number</option>
+                            <option value="UAN">Update MAWB Number</option>
                         </optgroup>
                         <optgroup label="Danger Zone!!!">
                             <option value="UCD">1. Cancelled Job</option>
@@ -228,82 +228,6 @@
     </form>
     </div>
 
-    <!-- Active Update Section (Hidden Initially) -->
-    <div id="activeUpdateSection" style="display: none;">
-        <h1 class="mb-4" id="activeUpdateTitle">Update Title</h1>
-
-        <!-- Loading Animation -->
-        <div id="loading" class="loading">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Processing... Please wait</p>
-        </div>
-
-        <!-- Bulk Results Section -->
-        <div id="bulkResults" class="result-section">
-            <h3>Update Results</h3>
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card text-white bg-success">
-                        <div class="card-body">
-                            <h5 class="card-title">Jobs Updated</h5>
-                            <p class="card-text display-4" id="updatedCount">0</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card text-white bg-danger">
-                        <div class="card-body">
-                            <h5 class="card-title">Jobs Not Updated</h5>
-                            <p class="card-text display-4" id="notUpdatedCount">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Successful Updates Table -->
-            <div id="successTable" style="display: none;">
-                <h4 class="text-success">Successfully Updated Jobs</h4>
-                <div class="table-responsive">
-                    <table class="table table-success table-striped">
-                        <thead>
-                            <tr>
-                                <th>Tracking Number</th>
-                                <th>Result</th>
-                            </tr>
-                        </thead>
-                        <tbody id="successTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Failed Updates Table -->
-            <div id="failedTable" style="display: none;">
-                <h4 class="text-danger">Jobs Not Updated</h4>
-                <div class="table-responsive">
-                    <table class="table table-danger table-striped">
-                        <thead>
-                            <tr>
-                                <th>Tracking Number</th>
-                                <th>Result</th>
-                            </tr>
-                        </thead>
-                        <tbody id="failedTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Single Reset Button at bottom of results -->
-            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                <button type="button" id="resultsResetButton" class="btn btn-secondary"
-                    onclick="resetToInitialMode()">Reset</button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Global variables for one-by-one scanning
@@ -317,11 +241,20 @@
         let currentJobId = null;
         let pollInterval = null;
 
-        // Event Listeners
+        // Replace the existing updateCode change event listener
         document.getElementById('updateCode').addEventListener('change', function () {
             const mawbFields = document.getElementById('mawbFields');
+            const updateMethodSelect = document.getElementById('updateMethod');
+
             if (this.value === 'UAN') {
                 mawbFields.style.display = 'block';
+                updateMethodSelect.required = true;
+            } else if (this.value === 'CCH') {
+                // For CCH, show mawbFields but hide MAWB Number input
+                mawbFields.style.display = 'block';
+                document.getElementById('mawbNum').style.display = 'none';
+                document.querySelector('label[for="mawbNum"]').style.display = 'none';
+                updateMethodSelect.required = true;
             } else {
                 mawbFields.style.display = 'none';
                 hideAllSections();
@@ -458,7 +391,7 @@
                 return;
             }
 
-            // For MAWB updates, validate MAWB number
+            // For MAWB updates (UAN only), validate MAWB number
             if (updateCode === 'UAN' && (!mawbNum || mawbNum === '')) {
                 alert('Please enter MAWB Number');
                 return;
@@ -1146,21 +1079,6 @@
             currentJobId = null;
             location.reload();
         }
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', (event) => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
-                pollInterval = null;
-            }
-
-            // If there's an active background job, notify the user
-            if (currentJobId) {
-                event.preventDefault();
-                event.returnValue = 'You have a background job running. Are you sure you want to leave?';
-                return event.returnValue;
-            }
-        });
 
         // Add a cancel job button (optional enhancement)
         function addCancelButton() {
