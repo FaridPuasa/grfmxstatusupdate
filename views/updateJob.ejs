@@ -94,14 +94,36 @@
                     </select>
                 </div>
 
-                <!-- MAWB Number Fields (Initially Hidden) -->
                 <div id="mawbFields" style="display: none;">
-                    <div class="mb-3">
-                        <label for="mawbNum" class="form-label">MAWB No:</label>
-                        <input type="text" id="mawbNum" name="mawbNum" class="form-control">
+                    <!-- MAWB Number Field -->
+                    <div id="mawbNumContainer">
+                        <div class="mb-3">
+                            <label for="mawbNum" class="form-label">MAWB No: <span id="mawbRequired"
+                                    class="text-danger">*</span><span id="mawbOptional" class="text-muted"
+                                    style="display:none;"> (Optional)</span></label>
+                            <input type="text" id="mawbNum" name="mawbNum" class="form-control">
+                            <div class="form-text" id="mawbHelp">Required for MAWB Number update</div>
+                        </div>
                     </div>
 
-                    <!-- Update Method Selection -->
+                    <!-- Warehouse Field -->
+                    <div id="warehouseFields" style="display: none;">
+                        <div class="mb-3">
+                            <label for="warehouse" class="form-label">Warehouse:</label>
+                            <select id="warehouse" name="warehouse" class="form-select" required>
+                                <option value="" selected>Please select warehouse location</option>
+                                <option value="Warehouse K1">Warehouse K1</option>
+                                <option value="Warehouse K2">Warehouse K2</option>
+                            </select>
+                            <div class="warehouse-notes">
+                                <small>K1 &gt; Go Rush Kiulap</small><br>
+                                <small>K2 &gt; Simpang 14-9</small><br>
+                                <strong><small>*If no failed job, pick K1</small></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Update Method -->
                     <div class="mb-3">
                         <label for="updateMethod" class="form-label">Update Method:</label>
                         <select id="updateMethod" name="updateMethod" class="form-select" required>
@@ -111,7 +133,7 @@
                         </select>
                     </div>
 
-                    <!-- Bulk Update Section -->
+                    <!-- Bulk Section -->
                     <div id="bulkSection" class="update-section" style="display: none;">
                         <div class="mb-3">
                             <label for="trackingNumBulk" class="form-label">Tracking Number(s):</label>
@@ -123,7 +145,7 @@
                         </div>
                     </div>
 
-                    <!-- One by One Update Section -->
+                    <!-- One by One Section -->
                     <div id="oneByOneSection" class="update-section scan-section" style="display: none;">
                         <div class="mb-3 text-center">
                             <button type="button" id="readyToScan" class="btn btn-success btn-lg">Ready to Scan</button>
@@ -133,169 +155,285 @@
             </form>
         </div>
 
-        <!-- Active Update Section (Hidden Initially) -->
+        <!-- Active Update Section -->
         <div id="activeUpdateSection" style="display: none;">
             <h1 class="mb-4" id="activeUpdateTitle">Update Title</h1>
 
-            <!-- Loading Animation -->
+            <!-- Delayed Jobs Info -->
+            <div id="delayedJobsInfo" class="alert alert-info" style="display: none;">
+                <h5><i class="fas fa-clock"></i> Delayed Processing</h5>
+                <p id="delayedJobsMessage">Some jobs are queued for delayed processing (30 minutes). They will update to
+                    "At Warehouse" automatically.</p>
+            </div>
+
+            <!-- Loading -->
             <div id="loading" class="loading">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p class="mt-2">Processing... Please wait</p>
+                <p class="mt-2" id="loadingMessage">Processing... Please wait</p>
             </div>
 
-            <!-- Bulk Results Section -->
+            <!-- Bulk Results -->
             <div id="bulkResults" class="result-section">
                 <h3>Update Results</h3>
                 <div class="row mb-4">
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <div class="card text-white bg-success">
-                            <div class="card-body">
-                                <h5 class="card-title">Jobs Updated</h5>
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Updated Now</h5>
                                 <p class="card-text display-4" id="updatedCount">0</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Queued (5 min)</h5>
+                                <p class="card-text display-4" id="delayedCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="card text-white bg-danger">
-                            <div class="card-body">
-                                <h5 class="card-title">Jobs Not Updated</h5>
-                                <p class="card-text display-4" id="notUpdatedCount">0</p>
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Failed</h5>
+                                <p class="card-text display-4" id="failedCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-info">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Duplicates</h5>
+                                <p class="card-text display-4" id="duplicateCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Add total count if needed -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card text-white bg-secondary">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Processed</h5>
+                                <p class="card-text display-4" id="totalCount">0</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Successful Updates Table -->
-                <div id="successTable" style="display: none;">
-                    <h4 class="text-success">Successfully Updated Jobs</h4>
-                    <div class="table-responsive">
-                        <table class="table table-success table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Tracking Number</th>
-                                    <th>Result</th>
-                                </tr>
-                            </thead>
-                            <tbody id="successTableBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <!-- Results Tables -->
+                <div id="resultsContainer"></div>
 
-                <!-- Failed Updates Table -->
-                <div id="failedTable" style="display: none;">
-                    <h4 class="text-danger">Jobs Not Updated</h4>
-                    <div class="table-responsive">
-                        <table class="table table-danger table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Tracking Number</th>
-                                    <th>Result</th>
-                                </tr>
-                            </thead>
-                            <tbody id="failedTableBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Reset Button at bottom of results -->
+                <!-- Reset Button -->
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
                 </div>
             </div>
 
-            <!-- One by One Scanning Interface -->
+            <!-- One by One Interface -->
             <div id="oneByOneInterface" style="display: none;">
-                <!-- Results will appear here during scanning -->
                 <div id="scanResults" class="result-section"></div>
-
                 <div class="mb-3">
                     <label for="trackingNumSingle" class="form-label">Scan or Enter Tracking Number:</label>
                     <input type="text" id="trackingNumSingle" name="trackingNumSingle" class="form-control"
                         placeholder="Scan or paste tracking number">
                 </div>
-
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                    <!-- Remove Stop Scanning button, keep only Reset -->
                     <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
                 </div>
             </div>
         </div>
     </div>
-    </form>
-    </div>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Global variables for one-by-one scanning
+
+        // Add these missing global variables at the top of your JavaScript
         let scanResults = {
             successful: [],
             failed: [],
+            delayed: [],
             updatedCount: 0,
-            notUpdatedCount: 0
+            notUpdatedCount: 0,
+            delayedCount: 0,
+            duplicateCount: 0 // Add duplicate count
         };
 
         let currentJobId = null;
         let pollInterval = null;
+        // Simplified JavaScript for handling the form
+        // Update the updateCode change event listener
 
-        // Replace the existing updateCode change event listener
+        // GLOBAL TRACKING FOR DUPLICATES - FRONT-END VERSION
+        const processedTrackingNumbers = {
+            bulk: new Map(),
+            onebyone: new Map()
+        };
+
+        // Front-end version of trackDuplicate function
+        function trackDuplicate(trackingNumber, updateCode, updateMethod = 'bulk') {
+            const key = `${updateCode}_${trackingNumber}`;
+            const tracker = updateMethod === 'onebyone' ? processedTrackingNumbers.onebyone : processedTrackingNumbers.bulk;
+
+            const now = Date.now();
+            const oneHour = 60 * 60 * 1000;
+
+            if (tracker.has(key)) {
+                const data = tracker.get(key);
+
+                // Clean old entries
+                if (now - data.lastSeen > oneHour) {
+                    tracker.delete(key);
+                    // Recreate as new entry
+                    tracker.set(key, {
+                        trackingNumber: trackingNumber,
+                        updateCode: updateCode,
+                        count: 1,
+                        firstSeen: now,
+                        lastSeen: now,
+                        processed: false,
+                        method: updateMethod
+                    });
+                    return { isDuplicate: false, count: 1 };
+                }
+
+                data.count = (data.count || 1) + 1;
+                data.lastSeen = now;
+                tracker.set(key, data);
+                return { isDuplicate: true, count: data.count };
+            } else {
+                // First time seeing this tracking number
+                tracker.set(key, {
+                    trackingNumber: trackingNumber,
+                    updateCode: updateCode,
+                    count: 1,
+                    firstSeen: now,
+                    lastSeen: now,
+                    processed: false,
+                    method: updateMethod
+                });
+                return { isDuplicate: false, count: 1 };
+            }
+        }
+
         document.getElementById('updateCode').addEventListener('change', function () {
             const mawbFields = document.getElementById('mawbFields');
-            const updateMethodSelect = document.getElementById('updateMethod');
+            const updateMethod = document.getElementById('updateMethod');
+            const mawbRequired = document.getElementById('mawbRequired');
+            const mawbOptional = document.getElementById('mawbOptional');
+            const mawbHelp = document.getElementById('mawbHelp');
+            const warehouseFields = document.getElementById('warehouseFields');
+            const warehouseSelect = document.getElementById('warehouse');
+            const mawbNumContainer = document.getElementById('mawbNumContainer');
 
-            if (this.value === 'UAN') {
+            if (this.value === 'UAN' || this.value === 'CCH' || this.value === 'IIW') {
                 mawbFields.style.display = 'block';
-                updateMethodSelect.required = true;
-            } else if (this.value === 'CCH') {
-                // For CCH, show mawbFields but hide MAWB Number input
-                mawbFields.style.display = 'block';
-                document.getElementById('mawbNum').style.display = 'none';
-                document.querySelector('label[for="mawbNum"]').style.display = 'none';
-                updateMethodSelect.required = true;
+                updateMethod.required = true;
+
+                if (this.value === 'UAN') {
+                    // MAWB Update - MAWB required, warehouse not required
+                    mawbNumContainer.style.display = 'block';
+                    mawbRequired.style.display = 'inline';
+                    mawbOptional.style.display = 'none';
+                    warehouseFields.style.display = 'none';
+                    document.getElementById('mawbNum').required = true;
+                    warehouseSelect.required = false;
+                    mawbHelp.textContent = 'Required for MAWB Number update';
+                } else if (this.value === 'CCH') {
+                    // On Hold - No MAWB needed, hide MAWB field completely
+                    mawbNumContainer.style.display = 'none'; // HIDE MAWB FIELD
+                    warehouseFields.style.display = 'none';
+                    document.getElementById('mawbNum').required = false;
+                    warehouseSelect.required = false;
+                    mawbHelp.textContent = 'No MAWB number required for On Hold';
+                } else if (this.value === 'IIW') {
+                    // Item in Warehouse - MAWB optional, warehouse required
+                    mawbNumContainer.style.display = 'block';
+                    mawbRequired.style.display = 'none';
+                    mawbOptional.style.display = 'inline';
+                    warehouseFields.style.display = 'block';
+                    document.getElementById('mawbNum').required = false;
+                    warehouseSelect.required = true;
+                    mawbHelp.textContent = 'Optional for Item in Warehouse update';
+                }
             } else {
                 mawbFields.style.display = 'none';
+                warehouseSelect.required = false;
                 hideAllSections();
             }
         });
 
         document.getElementById('updateMethod').addEventListener('change', function () {
-            const bulkSection = document.getElementById('bulkSection');
-            const oneByOneSection = document.getElementById('oneByOneSection');
-
-            // Hide all sections first
             hideAllSections();
-
             if (this.value === 'bulk') {
-                bulkSection.style.display = 'block';
+                document.getElementById('bulkSection').style.display = 'block';
             } else if (this.value === 'onebyone') {
-                oneByOneSection.style.display = 'block';
+                document.getElementById('oneByOneSection').style.display = 'block';
             }
         });
 
-        // Update Ready to Scan button event listener
         document.getElementById('readyToScan').addEventListener('click', function () {
             const updateCode = document.getElementById('updateCode').value;
+            const warehouse = document.getElementById('warehouse').value;
 
-            // Switch to active update mode for one-by-one
+            if (updateCode === 'IIW' && !warehouse) {
+                alert('Please select a warehouse location');
+                return;
+            }
+
             switchToActiveUpdateMode(updateCode, 'onebyone');
         });
 
-        // ONE-BY-ONE SCANNING - FIXED VERSION
+        // Update the one-by-one scanning - FIX the duplicate handling
+        // Update the one-by-one scanning event listener
         document.getElementById('trackingNumSingle').addEventListener('change', async function () {
             const trackingNumber = this.value.trim();
             if (!trackingNumber) return;
 
             const updateCode = document.getElementById('updateCode').value;
+            const warehouse = document.getElementById('warehouse') ? document.getElementById('warehouse').value : '';
             const mawbNum = document.getElementById('mawbNum') ? document.getElementById('mawbNum').value.trim() : '';
 
-            // Validation - only require MAWB for UAN updates
+            // FIRST, clear the input field so user can scan again
+            this.value = '';
+
+            // Check for duplicate in one-by-one mode
+            const duplicateCheck = trackDuplicate(trackingNumber, updateCode, 'onebyone');
+
+            if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
+                // This is a duplicate - show message but DON'T block
+                console.log(`⏭️ Duplicate one-by-one: ${trackingNumber} (seen ${duplicateCheck.count} times)`);
+
+                // Add to scanResults as duplicate
+                scanResults.duplicateCount = (scanResults.duplicateCount || 0) + 1;
+
+                // Update display to show duplicate immediately
+                updateScanResultsDisplayWithDuplicate(trackingNumber, duplicateCheck.count);
+
+                // Focus for next scan
+                setTimeout(() => {
+                    this.focus();
+                }, 100);
+                return; // Exit early since it's a duplicate
+            }
+
+            // Validation (only check if not a duplicate)
             if (updateCode === 'UAN' && !mawbNum) {
                 alert('Please enter MAWB Number');
-                this.value = '';
-                this.focus();
+                setTimeout(() => {
+                    this.focus();
+                }, 100);
+                return;
+            }
+
+            if (updateCode === 'IIW' && !warehouse) {
+                alert('Please select a warehouse location');
+                setTimeout(() => {
+                    this.focus();
+                }, 100);
                 return;
             }
 
@@ -310,9 +448,14 @@
                     updateMethod: 'onebyone'
                 };
 
-                // Only include mawbNum for UAN updates
+                // Add MAWB number for UAN updates
                 if (updateCode === 'UAN' && mawbNum) {
                     requestBody.mawbNum = mawbNum;
+                }
+
+                // Add warehouse for IIW updates
+                if (updateCode === 'IIW' && warehouse) {
+                    requestBody.warehouse = warehouse;
                 }
 
                 const response = await fetch('/updateJob', {
@@ -330,23 +473,24 @@
                 const result = await response.json();
                 console.log('One-by-one result:', result);
 
-                // Handle both response formats (direct result or background job)
-                if (result.jobId) {
-                    // Background job created - wait for completion
-                    console.log('Background job created, waiting...');
-                    await waitForJobCompletion(result.jobId, trackingNumber);
-                } else {
-                    // Direct result
-                    if (result.successful && result.successful.length > 0) {
-                        scanResults.successful.push(...result.successful);
-                        scanResults.updatedCount += result.updatedCount || result.successful.length;
-                    }
-                    if (result.failed && result.failed.length > 0) {
-                        scanResults.failed.push(...result.failed);
-                        scanResults.notUpdatedCount += result.notUpdatedCount || result.failed.length;
-                    }
-                    updateScanResultsDisplay();
+                // Handle the result properly
+                if (result.successful && result.successful.length > 0) {
+                    scanResults.successful.push(...result.successful);
+                    scanResults.updatedCount += result.updatedCount || 0;
                 }
+                if (result.failed && result.failed.length > 0) {
+                    scanResults.failed.push(...result.failed);
+                    scanResults.notUpdatedCount += result.failedCount || result.failed.length || 0;
+                }
+                if (result.delayed && result.delayed.length > 0) {
+                    scanResults.delayed.push(...result.delayed);
+                    scanResults.delayedCount += result.delayedCount || result.delayed.length || 0;
+                }
+                if (result.duplicate && result.duplicate.length > 0) {
+                    scanResults.duplicateCount = (scanResults.duplicateCount || 0) + (result.duplicateCount || 0);
+                }
+
+                updateScanResultsDisplay();
 
             } catch (error) {
                 console.error('Error:', error);
@@ -358,8 +502,6 @@
                 scanResults.notUpdatedCount++;
                 updateScanResultsDisplay();
             } finally {
-                // Always clear input and refocus for next scan
-                this.value = '';
                 showSingleLoading(false);
 
                 // Auto-focus for next scan with slight delay
@@ -369,11 +511,312 @@
             }
         });
 
+        // Make sure this function properly updates the display
+        function updateScanResultsDisplayWithDuplicate(trackingNumber, duplicateCount) {
+            const scanResultsDiv = document.getElementById('scanResults');
+            if (!scanResultsDiv) {
+                console.error('scanResults element not found');
+                return;
+            }
+
+            // Check if we need to create the results section
+            if (scanResultsDiv.style.display === 'none' || scanResultsDiv.innerHTML === '') {
+                // Initialize with basic structure
+                scanResultsDiv.innerHTML = `
+            <h3>Scanning Results</h3>
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Updated</h5>
+                            <p class="card-text display-4">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Failed</h5>
+                            <p class="card-text display-4">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Delayed</h5>
+                            <p class="card-text display-4">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Duplicates</h5>
+                            <p class="card-text display-4" id="duplicateCountDisplay">1</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+                scanResultsDiv.style.display = 'block';
+            } else {
+                // Update duplicate count
+                const duplicateCountElem = scanResultsDiv.querySelector('#duplicateCountDisplay') ||
+                    scanResultsDiv.querySelector('.bg-info .display-4');
+                if (duplicateCountElem) {
+                    const currentCount = parseInt(duplicateCountElem.textContent) || 0;
+                    duplicateCountElem.textContent = currentCount + 1;
+                }
+            }
+
+            // Add duplicate alert at the top
+            let currentHtml = scanResultsDiv.innerHTML;
+
+            const duplicateAlert = `
+        <div class="alert alert-info alert-dismissible fade show">
+            <strong>⚠️ Duplicate:</strong> 
+            ${trackingNumber} - Skipped (seen ${duplicateCount} times)
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+            // Insert at the beginning (after the title if exists)
+            const titleIndex = currentHtml.indexOf('<h3>Scanning Results</h3>');
+            if (titleIndex !== -1) {
+                const afterTitle = currentHtml.indexOf('</h3>', titleIndex) + 5;
+                scanResultsDiv.innerHTML = currentHtml.substring(0, afterTitle) + duplicateAlert + currentHtml.substring(afterTitle);
+            } else {
+                scanResultsDiv.innerHTML = duplicateAlert + currentHtml;
+            }
+
+            scanResultsDiv.scrollTop = 0;
+        }
+
+        // Update updateScanResultsDisplay to include duplicates
+        function updateScanResultsDisplay() {
+            const scanResultsDiv = document.getElementById('scanResults');
+            if (!scanResultsDiv) {
+                console.error('scanResults element not found');
+                return;
+            }
+
+            let html = `
+        <h3>Scanning Results</h3>
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Updated</h5>
+                        <p class="card-text display-4">${scanResults.updatedCount}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-danger">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Failed</h5>
+                        <p class="card-text display-4">${scanResults.notUpdatedCount}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Delayed</h5>
+                        <p class="card-text display-4">${scanResults.delayedCount}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Duplicates</h5>
+                        <p class="card-text display-4">${scanResults.duplicateCount || 0}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+            // Show latest result at the top
+            const allResults = [...scanResults.successful, ...scanResults.failed, ...scanResults.delayed];
+            const latestResult = allResults[allResults.length - 1];
+
+            if (latestResult) {
+                const isSuccess = scanResults.successful.includes(latestResult);
+                const isDelayed = scanResults.delayed.includes(latestResult);
+
+                let alertClass = 'alert-danger';
+                let icon = '❌';
+                let status = 'Failed';
+
+                if (isSuccess) {
+                    alertClass = 'alert-success';
+                    icon = '✅';
+                    status = 'Success';
+                } else if (isDelayed) {
+                    alertClass = 'alert-warning';
+                    icon = '⏰';
+                    status = 'Delayed';
+                }
+
+                html += `
+            <div class="alert ${alertClass} alert-dismissible fade show">
+                <strong>${icon} ${status}:</strong> 
+                ${latestResult.trackingNumber} - ${latestResult.result || 'No result message'}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+            }
+
+            // Add successful jobs table if any
+            if (scanResults.successful.length > 0) {
+                const recentSuccessful = scanResults.successful.slice(-10).reverse();
+                html += `
+            <h4 class="text-success">Recently Updated</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-success table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentSuccessful.map(item => `
+                            <tr>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.result || 'Updated'}</small></td>
+                                <td><small><span class="badge bg-success">Success</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            // Add duplicate jobs table if any duplicates
+            if (scanResults.duplicateCount > 0) {
+                html += `
+            <h4 class="text-info">Duplicates Skipped</h4>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Duplicate tracking numbers were skipped and not processed again.
+            </div>
+            <div class="table-responsive mb-3">
+                <table class="table table-info table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Duplicate Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="duplicateTableBody">
+                        ${getRecentDuplicates().map(item => `
+                            <tr>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.count || 1}</small></td>
+                                <td><small><span class="badge bg-info">Duplicate</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            // Add delayed jobs table if any
+            if (scanResults.delayed.length > 0) {
+                const recentDelayed = scanResults.delayed.slice(-10).reverse();
+                html += `
+            <h4 class="text-warning">Recently Delayed</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-warning table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentDelayed.map(item => `
+                            <tr>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.scheduledTime || '5 mins delay for testing'}</small></td>
+                                <td><small><span class="badge bg-warning">Scheduled</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            // Add failed jobs table if any
+            if (scanResults.failed.length > 0) {
+                const recentFailed = scanResults.failed.slice(-10).reverse();
+                html += `
+            <h4 class="text-danger">Recent Failures</h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentFailed.map(item => `
+                            <tr>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.result || 'Failed'}</small></td>
+                                <td><small><span class="badge bg-danger">Failed</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            scanResultsDiv.innerHTML = html;
+            scanResultsDiv.style.display = 'block';
+            scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
+        }
+
+        // Helper function to get recent duplicates
+        function getRecentDuplicates() {
+            const duplicates = [];
+            const oneHour = 60 * 60 * 1000;
+            const now = Date.now();
+
+            // Check both bulk and onebyone trackers
+            for (const [key, data] of processedTrackingNumbers.onebyone.entries()) {
+                if (data.count > 1 && (now - data.lastSeen) < oneHour) {
+                    duplicates.push({
+                        trackingNumber: data.trackingNumber,
+                        count: data.count,
+                        updateCode: data.updateCode,
+                        lastSeen: new Date(data.lastSeen).toLocaleTimeString()
+                    });
+                }
+            }
+
+            return duplicates.slice(-10).reverse(); // Return last 10 duplicates
+        }
+
+        // Update form submission - no alert for duplicates
         document.getElementById('updateJobForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const updateCode = document.getElementById('updateCode').value;
             const mawbNum = document.getElementById('mawbNum') ? document.getElementById('mawbNum').value.trim() : '';
+            const warehouse = document.getElementById('warehouse') ? document.getElementById('warehouse').value : '';
             const updateMethod = document.getElementById('updateMethod') ? document.getElementById('updateMethod').value : 'bulk';
 
             let trackingNumbers = [];
@@ -391,10 +834,30 @@
                 return;
             }
 
-            // For MAWB updates (UAN only), validate MAWB number
-            if (updateCode === 'UAN' && (!mawbNum || mawbNum === '')) {
-                alert('Please enter MAWB Number');
-                return;
+            // Count duplicates (for logging only)
+            const trackingCounts = {};
+            trackingNumbers.forEach(num => {
+                trackingCounts[num] = (trackingCounts[num] || 0) + 1;
+            });
+
+            const duplicateEntries = Object.entries(trackingCounts)
+                .filter(([num, count]) => count > 1);
+
+            if (duplicateEntries.length > 0) {
+                console.log(`Found ${duplicateEntries.length} duplicate tracking number(s) in input`);
+            }
+
+            // Validation for different update codes
+            if (updateCode === 'UAN') {
+                if (!mawbNum || mawbNum === '') {
+                    alert('Please enter MAWB Number');
+                    return;
+                }
+            } else if (updateCode === 'IIW') {
+                if (!warehouse) {
+                    alert('Please select a warehouse location');
+                    return;
+                }
             }
 
             // Check if it's a large batch
@@ -402,15 +865,230 @@
 
             if (trackingNumbers.length > LARGE_BATCH_THRESHOLD) {
                 // Use chunked processing for large batches
-                processLargeBatchInChunks(trackingNumbers, updateCode, mawbNum);
+                processLargeBatchInChunks(trackingNumbers, updateCode, mawbNum, warehouse);
             } else {
                 // Use normal processing for smaller batches
-                processNormalBatch(trackingNumbers, updateCode, mawbNum, updateMethod);
+                processNormalBatch(trackingNumbers, updateCode, mawbNum, warehouse, updateMethod);
             }
         });
 
-        // Function to process large batches in chunks
-        async function processLargeBatchInChunks(trackingNumbers, updateCode, mawbNum) {
+        // Replace the displayBulkResults function with this updated version
+        function displayBulkResults(result) {
+            const bulkResults = document.getElementById('bulkResults');
+            if (!bulkResults) {
+                console.error('bulkResults element not found');
+                return;
+            }
+
+            bulkResults.style.display = 'block';
+
+            // Update all counts - FIXED: Ensure duplicate count is displayed
+            const updatedCountElem = document.getElementById('updatedCount');
+            const failedCountElem = document.getElementById('failedCount');
+            const delayedCountElem = document.getElementById('delayedCount');
+            const totalCountElem = document.getElementById('totalCount');
+            const duplicateCountElem = document.getElementById('duplicateCount');
+
+            if (updatedCountElem) updatedCountElem.textContent = result.updatedCount || 0;
+            if (failedCountElem) failedCountElem.textContent = result.failedCount || result.notUpdatedCount || 0;
+            if (delayedCountElem) delayedCountElem.textContent = result.delayedCount || 0;
+            if (totalCountElem) totalCountElem.textContent = result.total || result.totalJobs || result.updatedCount + result.failedCount + result.delayedCount + result.duplicateCount || 0;
+            if (duplicateCountElem) duplicateCountElem.textContent = result.duplicateCount || 0;
+
+            // Clear previous results container
+            const resultsContainer = document.getElementById('resultsContainer');
+            if (!resultsContainer) {
+                console.error('resultsContainer element not found');
+                return;
+            }
+
+            resultsContainer.innerHTML = '';
+
+            // Show delayed jobs info
+            if (result.delayed && result.delayed.length > 0) {
+                const delayedJobsInfo = document.getElementById('delayedJobsInfo');
+                if (delayedJobsInfo) {
+                    delayedJobsInfo.style.display = 'block';
+                    const message = document.getElementById('delayedJobsMessage');
+                    if (message) {
+                        message.textContent = `${result.delayedCount || result.delayed.length} job(s) are queued for delayed processing (5 minutes for testing). They will update to "At Warehouse" automatically.`;
+                    }
+                }
+            }
+
+            // Create successful table if there are successful updates
+            if (result.successful && result.successful.length > 0) {
+                const successTable = document.createElement('div');
+                successTable.innerHTML = `
+            <h4 class="text-success mt-4">Successfully Updated Jobs (${result.successful.length})</h4>
+            <div class="table-responsive">
+                <table class="table table-success table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="successTableBody">
+                        ${result.successful.map(item => `
+                            <tr>
+                                <td>${item.trackingNumber || 'N/A'}</td>
+                                <td>${item.result || 'Updated'}</td>
+                                <td><span class="badge bg-success">Completed</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(successTable);
+            }
+
+            // Create duplicate table if there are duplicates
+            if (result.duplicate && result.duplicate.length > 0) {
+                const duplicateTable = document.createElement('div');
+                duplicateTable.innerHTML = `
+            <h4 class="text-info mt-4">Duplicate Jobs (Ignored) (${result.duplicate.length})</h4>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Duplicate tracking numbers were ignored and not processed again.
+            </div>
+            <div class="table-responsive">
+                <table class="table table-info table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Duplicate Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="duplicateTableBody">
+                        ${result.duplicate.map(item => `
+                            <tr>
+                                <td>${item.trackingNumber || 'N/A'}</td>
+                                <td>${item.duplicateCount || 1}</td>
+                                <td><span class="badge bg-info">Ignored</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(duplicateTable);
+            }
+
+            // Create delayed table if there are delayed jobs
+            if (result.delayed && result.delayed.length > 0) {
+                const delayedTable = document.createElement('div');
+                delayedTable.innerHTML = `
+            <h4 class="text-warning mt-4">Delayed Jobs (5-minute wait for testing) (${result.delayed.length})</h4>
+            <div class="table-responsive">
+                <table class="table table-warning table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Product</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="delayedTableBody">
+                        ${result.delayed.map(item => `
+                            <tr>
+                                <td>${item.trackingNumber || 'N/A'}</td>
+                                <td>${item.product || 'Unknown'}</td>
+                                <td>${item.scheduledTime || '5 minutes delay for testing'}</td>
+                                <td><span class="badge bg-warning">Scheduled</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(delayedTable);
+            }
+
+            // Create failed table if there are failed updates
+            if (result.failed && result.failed.length > 0) {
+                const failedTable = document.createElement('div');
+                failedTable.innerHTML = `
+            <h4 class="text-danger mt-4">Failed Jobs (${result.failed.length})</h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="failedTableBody">
+                        ${result.failed.map(item => `
+                            <tr>
+                                <td>${item.trackingNumber || 'N/A'}</td>
+                                <td>${item.result || 'Failed'}</td>
+                                <td><span class="badge bg-danger">Failed</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(failedTable);
+            }
+
+            // If no results at all, show a message
+            if ((!result.successful || result.successful.length === 0) &&
+                (!result.duplicate || result.duplicate.length === 0) &&
+                (!result.delayed || result.delayed.length === 0) &&
+                (!result.failed || result.failed.length === 0)) {
+                const noResults = document.createElement('div');
+                noResults.className = 'alert alert-info';
+                noResults.innerHTML = '<strong>No results to display.</strong>';
+                resultsContainer.appendChild(noResults);
+            }
+
+            // Auto-scroll to results
+            setTimeout(() => {
+                bulkResults.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        // Also make sure this function is defined at the top level
+        function getUpdateTitle(updateCode) {
+            const updateTitles = {
+                'UAN': 'MAWB Number Update',
+                'CCH': 'On Hold Update',
+                'IIW': 'Item in Warehouse Update',
+                'OFD': 'Out for Delivery Update',
+                'OSC': 'Self Collect Update',
+                'FCC': 'Customer Not Available Update',
+                'FIA': 'Incorrect Address Update',
+                'FSC': 'Reschedule to Self Collect Update',
+                'SFJ': 'Clear Job Update',
+                'OSD': 'Swap Dispatchers Update',
+                'UWL': 'Update Warehouse',
+                'UGR': 'Update Go Rush Remark',
+                'UJD': 'Update Job Date',
+                'UJM': 'Update Job Method',
+                'UJP': 'Update Price',
+                'UAW': 'Update Weight',
+                'UAS': 'Update Address',
+                'UAR': 'Update Area',
+                'UPN': 'Update Phone Number',
+                'URN': 'Update Customer Name',
+                'UPC': 'Update Postal Code',
+                'UAB': 'Update AWB Number',
+                'UCD': 'Cancelled Job Update',
+                'URJ': 'Reactivate Job Update',
+                'UDJ': 'Dispose Job Update'
+            };
+
+            return updateTitles[updateCode] || 'Update Job';
+        }
+
+        // Function to process large batches in chunks - UPDATED
+        async function processLargeBatchInChunks(trackingNumbers, updateCode, mawbNum, warehouse) { // ADD warehouse parameter
             const CHUNK_SIZE = 200; // Process 200 items per chunk
             const chunks = [];
 
@@ -524,8 +1202,8 @@
                 document.getElementById('chunkText').textContent = `Processing chunk ${i + 1}/${chunks.length}`;
 
                 try {
-                    // Process this chunk
-                    const chunkResult = await processChunk(chunks[i], updateCode, mawbNum, i);
+                    // Process this chunk - PASS warehouse parameter
+                    const chunkResult = await processChunk(chunks[i], updateCode, mawbNum, warehouse, i); // ADD warehouse parameter
 
                     // Merge results
                     chunkedResults.successful.push(...chunkResult.successful);
@@ -575,8 +1253,8 @@
             window.chunkedProcessing.isProcessing = false;
         }
 
-        // Function to process a single chunk
-        async function processChunk(chunk, updateCode, mawbNum, chunkIndex) {
+        // Function to process a single chunk - UPDATED
+        async function processChunk(chunk, updateCode, mawbNum, warehouse, chunkIndex) { // ADD warehouse parameter
             try {
                 const requestBody = {
                     updateCode: updateCode,
@@ -587,6 +1265,10 @@
 
                 if (updateCode === 'UAN' && mawbNum) {
                     requestBody.mawbNum = mawbNum;
+                }
+
+                if (updateCode === 'IIW' && warehouse) { // ADD warehouse for IIW
+                    requestBody.warehouse = warehouse;
                 }
 
                 const response = await fetch('/updateJob/chunk', {
@@ -662,8 +1344,8 @@
             }
         }
 
-        // Normal batch processing (unchanged but renamed)
-        async function processNormalBatch(trackingNumbers, updateCode, mawbNum, updateMethod) {
+        // Normal batch processing - UPDATED
+        async function processNormalBatch(trackingNumbers, updateCode, mawbNum, warehouse, updateMethod) { // ADD warehouse parameter
             // Switch to active update mode
             switchToActiveUpdateMode(updateCode, 'bulk');
 
@@ -693,6 +1375,10 @@
 
                 if (updateCode === 'UAN' && mawbNum) {
                     requestBody.mawbNum = mawbNum;
+                }
+
+                if (updateCode === 'IIW' && warehouse) { // ADD warehouse for IIW
+                    requestBody.warehouse = warehouse;
                 }
 
                 const response = await fetch('/updateJob', {
@@ -798,6 +1484,7 @@
             });
         }
 
+        // Replace the existing startPollingResults function with this updated version
         function startPollingResults() {
             const startTime = Date.now();
             let lastProgressUpdate = 0;
@@ -813,15 +1500,20 @@
 
                         // Update progress bar
                         const progress = jobStatus.total > 0 ? Math.round((jobStatus.processed / jobStatus.total) * 100) : 0;
-                        document.getElementById('progressBar').style.width = `${progress}%`;
-                        document.getElementById('progressBar').textContent = `${progress}%`;
+                        const progressBar = document.getElementById('progressBar');
+                        const progressText = document.getElementById('progressText');
+
+                        if (progressBar) {
+                            progressBar.style.width = `${progress}%`;
+                            progressBar.textContent = `${progress}%`;
+                        }
 
                         // Only update text every 2 seconds to avoid flickering
-                        if (currentTime - lastProgressUpdate > 2000) {
+                        if (currentTime - lastProgressUpdate > 2000 && progressText) {
                             lastProgressUpdate = currentTime;
 
                             const elapsedSeconds = (currentTime - startTime) / 1000;
-                            let progressText = `Processed ${jobStatus.processed} of ${jobStatus.total} jobs`;
+                            let progressTextHtml = `Processed ${jobStatus.processed} of ${jobStatus.total} jobs`;
 
                             // Add estimated time if we have meaningful progress
                             if (jobStatus.processed > 0 && elapsedSeconds > 5) {
@@ -833,136 +1525,219 @@
                                     if (estimatedSeconds > 60) {
                                         const minutes = Math.floor(estimatedSeconds / 60);
                                         const seconds = Math.round(estimatedSeconds % 60);
-                                        progressText += `<br>Estimated time remaining: ${minutes}min ${seconds}s`;
+                                        progressTextHtml += `<br>Estimated time remaining: ${minutes}min ${seconds}s`;
                                     } else {
-                                        progressText += `<br>Estimated time remaining: ${Math.round(estimatedSeconds)}s`;
+                                        progressTextHtml += `<br>Estimated time remaining: ${Math.round(estimatedSeconds)}s`;
                                     }
-                                    progressText += ` (${itemsPerSecond.toFixed(1)} items/sec)`;
+                                    progressTextHtml += ` (${itemsPerSecond.toFixed(1)} items/sec)`;
                                 }
 
                                 // Show batch info if available
                                 if (jobStatus.currentBatch && jobStatus.totalBatches) {
-                                    progressText += `<br>Batch: ${jobStatus.currentBatch}/${jobStatus.totalBatches}`;
+                                    progressTextHtml += `<br>Batch: ${jobStatus.currentBatch}/${jobStatus.totalBatches}`;
                                 }
                             }
 
-                            document.getElementById('progressText').innerHTML = progressText;
+                            if (progressText) {
+                                progressText.innerHTML = progressTextHtml;
+                            }
                         }
                     }
 
                     // Check if job is completed
                     if (jobStatus.status === 'completed') {
                         clearInterval(pollInterval);
-                        document.getElementById('loading').style.display = 'none';
-                        displayBulkResults(jobStatus);
+                        const loading = document.getElementById('loading');
+                        if (loading) loading.style.display = 'none';
+
+                        // Check if displayBulkResults function exists before calling it
+                        if (typeof displayBulkResults === 'function') {
+                            displayBulkResults(jobStatus);
+                        } else {
+                            console.error('displayBulkResults function is not defined');
+                            // Fallback: reload the page to show results
+                            location.reload();
+                        }
 
                         // Show completion time
                         const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
                         setTimeout(() => {
-                            alert(`✅ Processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${jobStatus.updatedCount}\nFailed: ${jobStatus.notUpdatedCount}`);
+                            alert(`✅ Processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${jobStatus.updatedCount || 0}\nFailed: ${jobStatus.failedCount || jobStatus.notUpdatedCount || 0}\nDelayed: ${jobStatus.delayedCount || 0}\nDuplicates ignored: ${jobStatus.duplicateCount || 0}`);
                         }, 500);
 
                     } else if (jobStatus.status === 'failed') {
                         clearInterval(pollInterval);
-                        document.getElementById('loading').style.display = 'none';
+                        const loading = document.getElementById('loading');
+                        if (loading) loading.style.display = 'none';
                         alert('❌ Job failed: ' + (jobStatus.error || 'Unknown error'));
                     }
 
                 } catch (error) {
                     console.error('Error polling job status:', error);
+
+                    // If we keep getting errors, stop polling after a few attempts
+                    if (!window.pollErrorCount) {
+                        window.pollErrorCount = 1;
+                    } else {
+                        window.pollErrorCount++;
+                    }
+
+                    if (window.pollErrorCount > 5) {
+                        clearInterval(pollInterval);
+                        const loading = document.getElementById('loading');
+                        if (loading) loading.style.display = 'none';
+                        alert('❌ Connection error. Please check the results manually.');
+                    }
                 }
             }, 2000);
         }
+
         function updateScanResultsDisplay() {
             const scanResultsDiv = document.getElementById('scanResults');
+            if (!scanResultsDiv) {
+                console.error('scanResults element not found');
+                return;
+            }
 
             let html = `
-            <h3>Scanning Results</h3>
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card text-white bg-success">
-                        <div class="card-body text-center">
-                            <h5 class="card-title">Updated</h5>
-                            <p class="card-text display-4">${scanResults.updatedCount}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card text-white bg-danger">
-                        <div class="card-body text-center">
-                            <h5 class="card-title">Failed</h5>
-                            <p class="card-text display-4">${scanResults.notUpdatedCount}</p>
-                        </div>
+        <h3>Scanning Results</h3>
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Updated</h5>
+                        <p class="card-text display-4">${scanResults.updatedCount}</p>
                     </div>
                 </div>
             </div>
-        `;
+            <div class="col-md-4">
+                <div class="card text-white bg-danger">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Failed</h5>
+                        <p class="card-text display-4">${scanResults.notUpdatedCount}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Delayed</h5>
+                        <p class="card-text display-4">${scanResults.delayedCount}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 
             // Show latest result at the top
-            const allResults = [...scanResults.successful, ...scanResults.failed];
+            const allResults = [...scanResults.successful, ...scanResults.failed, ...scanResults.delayed];
             const latestResult = allResults[allResults.length - 1];
 
             if (latestResult) {
                 const isSuccess = scanResults.successful.includes(latestResult);
+                const isDelayed = scanResults.delayed.includes(latestResult);
+
+                let alertClass = 'alert-danger';
+                let icon = '❌';
+                let status = 'Failed';
+
+                if (isSuccess) {
+                    alertClass = 'alert-success';
+                    icon = '✅';
+                    status = 'Success';
+                } else if (isDelayed) {
+                    alertClass = 'alert-warning';
+                    icon = '⏰';
+                    status = 'Delayed';
+                }
+
                 html += `
-                <div class="alert ${isSuccess ? 'alert-success' : 'alert-danger'} alert-dismissible fade show">
-                    <strong>${isSuccess ? '✅ Success' : '❌ Failed'}:</strong> 
-                    ${latestResult.trackingNumber} - ${latestResult.result}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
+            <div class="alert ${alertClass} alert-dismissible fade show">
+                <strong>${icon} ${status}:</strong> 
+                ${latestResult.trackingNumber} - ${latestResult.result || 'No result message'}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
             }
 
             // Add successful jobs table if any
             if (scanResults.successful.length > 0) {
                 const recentSuccessful = scanResults.successful.slice(-10).reverse();
                 html += `
-                <h4 class="text-success">Recently Updated</h4>
-                <div class="table-responsive mb-3">
-                    <table class="table table-success table-striped table-sm">
-                        <thead>
+            <h4 class="text-success">Recently Updated</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-success table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentSuccessful.map(item => `
                             <tr>
-                                <th>Tracking Number</th>
-                                <th>Result</th>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.result || 'Updated'}</small></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${recentSuccessful.map(item => `
-                                <tr>
-                                    <td><small>${item.trackingNumber}</small></td>
-                                    <td><small>${item.result}</small></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            // Add delayed jobs table if any
+            if (scanResults.delayed.length > 0) {
+                const recentDelayed = scanResults.delayed.slice(-10).reverse();
+                html += `
+            <h4 class="text-warning">Recently Delayed</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-warning table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentDelayed.map(item => `
+                            <tr>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.scheduledTime || '30 mins delay'}</small></td>
+                                <td><small><span class="badge bg-warning">Scheduled</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
             }
 
             // Add failed jobs table if any
             if (scanResults.failed.length > 0) {
                 const recentFailed = scanResults.failed.slice(-10).reverse();
                 html += `
-                <h4 class="text-danger">Recent Failures</h4>
-                <div class="table-responsive">
-                    <table class="table table-danger table-striped table-sm">
-                        <thead>
+            <h4 class="text-danger">Recent Failures</h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentFailed.map(item => `
                             <tr>
-                                <th>Tracking Number</th>
-                                <th>Result</th>
+                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
+                                <td><small>${item.result || 'Failed'}</small></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${recentFailed.map(item => `
-                                <tr>
-                                    <td><small>${item.trackingNumber}</small></td>
-                                    <td><small>${item.result}</small></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
             }
 
             scanResultsDiv.innerHTML = html;
@@ -970,46 +1745,250 @@
             scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
         }
 
-        function displayBulkResults(result) {
-            const bulkResults = document.getElementById('bulkResults');
-            bulkResults.style.display = 'block';
+        // Add this function to check and handle duplicates
+        function checkAndHandleDuplicate(trackingNumber, updateCode) {
+            const key = `${updateCode}_${trackingNumber}`;
+            const now = Date.now();
 
-            document.getElementById('updatedCount').textContent = result.updatedCount || 0;
-            document.getElementById('notUpdatedCount').textContent = result.notUpdatedCount || 0;
+            if (processedTrackingNumbers.has(key)) {
+                const lastProcessed = processedTrackingNumbers.get(key);
+                const timeDiff = now - lastProcessed.timestamp;
 
-            // Clear previous results
-            document.getElementById('successTableBody').innerHTML = '';
-            document.getElementById('failedTableBody').innerHTML = '';
+                // Increment duplicate count
+                lastProcessed.count = (lastProcessed.count || 1) + 1;
+                lastProcessed.timestamp = now;
+                processedTrackingNumbers.set(key, lastProcessed);
 
-            // Populate successful updates
-            if (result.successful && result.successful.length > 0) {
-                document.getElementById('successTable').style.display = 'block';
-                result.successful.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                <td>${item.trackingNumber}</td>
-                <td>${item.result}</td>
-            `;
-                    document.getElementById('successTableBody').appendChild(row);
-                });
+                console.log(`⚠️ Duplicate tracking number detected: ${trackingNumber} (${updateCode}), count: ${lastProcessed.count}`);
+                return {
+                    isDuplicate: true,
+                    count: lastProcessed.count
+                };
             } else {
-                document.getElementById('successTable').style.display = 'none';
+                // First time processing this tracking number
+                processedTrackingNumbers.set(key, {
+                    timestamp: now,
+                    count: 1
+                });
+                return {
+                    isDuplicate: false,
+                    count: 1
+                };
+            }
+        }
+
+        // Clean up old entries (older than 1 hour)
+        setInterval(() => {
+            const oneHour = 60 * 60 * 1000;
+            const now = Date.now();
+
+            // Clean bulk tracker
+            for (const [key, data] of processedTrackingNumbers.bulk.entries()) {
+                if (now - data.lastSeen > oneHour) {
+                    processedTrackingNumbers.bulk.delete(key);
+                }
             }
 
-            // Populate failed updates
-            if (result.failed && result.failed.length > 0) {
-                document.getElementById('failedTable').style.display = 'block';
-                result.failed.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                <td>${item.trackingNumber}</td>
-                <td>${item.result}</td>
-            `;
-                    document.getElementById('failedTableBody').appendChild(row);
-                });
-            } else {
-                document.getElementById('failedTable').style.display = 'none';
+            // Clean onebyone tracker
+            for (const [key, data] of processedTrackingNumbers.onebyone.entries()) {
+                if (now - data.lastSeen > oneHour) {
+                    processedTrackingNumbers.onebyone.delete(key);
+                }
             }
+
+            console.log(`🧹 Front-end cleanup: Bulk: ${processedTrackingNumbers.bulk.size}, OneByOne: ${processedTrackingNumbers.onebyone.size}`);
+        }, 5 * 60 * 1000); // Run every 5 minutes
+
+        // Update the processSingleTrackingNumber function to handle duplicates
+        async function processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, warehouse, req) {
+            const cleanTrackingNumber = trackingNumber.trim();
+
+            if (!cleanTrackingNumber) {
+                return { success: false, error: 'Empty tracking number', isDuplicate: false };
+            }
+
+            // Check for duplicate
+            const duplicateCheck = checkAndHandleDuplicate(cleanTrackingNumber, updateCode);
+            if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
+                return {
+                    success: false,
+                    error: `Duplicate tracking number (count: ${duplicateCheck.count})`,
+                    trackingNumber: cleanTrackingNumber,
+                    isDuplicate: true,
+                    duplicateCount: duplicateCheck.count
+                };
+            }
+
+            try {
+                console.log(`🔍 Processing ${cleanTrackingNumber} with updateCode: ${updateCode}`);
+
+                let processSuccess = false;
+                let message = '';
+
+                switch (updateCode) {
+                    case 'UAN':
+                        processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
+                        message = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
+                        break;
+                    case 'CCH':
+                        processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
+                        message = processSuccess ? 'Job put on hold' : 'On hold update failed';
+                        break;
+                    case 'IIW':
+                        const result = await processItemInWarehouseUpdate(cleanTrackingNumber, warehouse, req);
+                        processSuccess = result.success;
+                        message = result.message;
+                        break;
+                    default:
+                        console.log(`⚠️ Generic update called for ${updateCode}`);
+                        processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
+                        message = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
+                }
+
+                console.log(`📊 Result for ${cleanTrackingNumber}: ${processSuccess ? 'SUCCESS' : 'FAILED'} - ${message}`);
+
+                return {
+                    success: processSuccess,
+                    message: message,
+                    trackingNumber: cleanTrackingNumber,
+                    isDuplicate: false,
+                    duplicateCount: 1
+                };
+
+            } catch (error) {
+                console.error(`❌ Error processing ${cleanTrackingNumber}:`, error);
+                return {
+                    success: false,
+                    error: error.message,
+                    trackingNumber: cleanTrackingNumber,
+                    isDuplicate: false,
+                    duplicateCount: 1
+                };
+            }
+        }
+
+        async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
+            console.log(`🔄 Processing batch of ${batch.length} items with updateCode: ${updateCode}`);
+
+            const batchPromises = batch.map(async (trackingNumber) => {
+                try {
+                    // Check for duplicate
+                    const duplicateCheck = trackDuplicate(trackingNumber, updateCode, 'bulk');
+
+                    if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
+                        // This is a duplicate - skip processing
+                        console.log(`⏭️ Skipping duplicate: ${trackingNumber} (seen ${duplicateCheck.count} times)`);
+                        return {
+                            success: false,
+                            message: `Duplicate tracking number (count: ${duplicateCheck.count})`,
+                            isDuplicate: true,
+                            duplicateCount: duplicateCheck.count
+                        };
+                    }
+
+                    // Mark as being processed
+                    const key = `${updateCode}_${trackingNumber}`;
+                    const data = processedTrackingNumbers.bulk.get(key);
+                    if (data) {
+                        data.processed = true;
+                        processedTrackingNumbers.bulk.set(key, data);
+                    }
+
+                    // Process the update
+                    if (updateCode === 'IIW') {
+                        return await processItemInWarehouseUpdate(trackingNumber, warehouse, req);
+                    } else if (updateCode === 'UAN') {
+                        const success = await processMAWBUpdate(trackingNumber, mawbNum, req);
+                        return {
+                            success: success,
+                            message: success ? `MAWB updated to ${mawbNum}` : 'MAWB update failed'
+                        };
+                    } else if (updateCode === 'CCH') {
+                        const success = await processOnHoldUpdate(trackingNumber, req);
+                        return {
+                            success: success,
+                            message: success ? 'Put on hold' : 'On hold update failed'
+                        };
+                    } else {
+                        return {
+                            success: false,
+                            message: `Unsupported update code: ${updateCode}`
+                        };
+                    }
+                } catch (error) {
+                    console.error(`❌ Error processing ${trackingNumber}:`, error);
+                    return {
+                        success: false,
+                        message: 'Error: ' + error.message
+                    };
+                }
+            });
+
+            const batchResults = await Promise.allSettled(batchPromises);
+
+            // Process results
+            const results = {
+                successful: [],
+                failed: [],
+                delayed: [],
+                duplicate: [],
+                updatedCount: 0,
+                failedCount: 0,
+                delayedCount: 0,
+                duplicateCount: 0
+            };
+
+            batchResults.forEach((result, index) => {
+                const trackingNumber = batch[index];
+
+                if (result.status === 'fulfilled' && result.value) {
+                    const value = result.value;
+
+                    if (value.isDuplicate) {
+                        results.duplicate.push({
+                            trackingNumber: trackingNumber,
+                            result: value.message || 'Duplicate tracking number',
+                            duplicateCount: value.duplicateCount || 1,
+                            status: "Duplicate"
+                        });
+                        results.duplicateCount++;
+                    } else if (value.delayed) {
+                        results.delayed.push({
+                            trackingNumber: trackingNumber,
+                            result: value.message,
+                            product: value.delayedInfo?.product,
+                            scheduledTime: value.delayedInfo?.scheduledTime,
+                            currentStatus: value.delayedInfo?.currentStatus,
+                            status: "Queued (5 min)"
+                        });
+                        results.delayedCount++;
+                    } else if (value.success) {
+                        results.successful.push({
+                            trackingNumber: trackingNumber,
+                            result: value.message,
+                            status: "Updated"
+                        });
+                        results.updatedCount++;
+                    } else {
+                        results.failed.push({
+                            trackingNumber: trackingNumber,
+                            result: value.message,
+                            status: "Failed"
+                        });
+                        results.failedCount++;
+                    }
+                } else {
+                    results.failed.push({
+                        trackingNumber: trackingNumber,
+                        result: 'Processing error',
+                        status: "Error"
+                    });
+                    results.failedCount++;
+                }
+            });
+
+            console.log(`📊 Batch results: ${results.updatedCount} updated, ${results.failedCount} failed, ${results.delayedCount} delayed, ${results.duplicateCount} duplicates`);
+            return results;
         }
 
         function getUpdateTitle(updateCode) {
