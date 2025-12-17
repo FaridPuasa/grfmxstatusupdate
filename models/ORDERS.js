@@ -104,6 +104,10 @@ const orderSchema = new mongoose.Schema({
         reason: String,
         lastLocation: String,
     }],
+    podImg1: String,           // Base64 backup (for your records)
+    podCloudinaryId: String,   // Cloudinary reference ID
+    podUrl: String,            // Signed URL for GDEX
+    podUploadedAt: Date,       // When uploaded
 }, { collection: 'orders' });
 
 module.exports = orderSchema; // schema only

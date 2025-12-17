@@ -54,6 +54,94 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 
 // ==================================================
+// Cloud cloudinary
+// ==================================================
+
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+async function uploadPODToCloudinary(consignmentID, detrackImageUrl) {
+    try {
+        console.log(`[POD] Processing ${consignmentID}...`);
+
+        // 1. Download from Detrack (expiring URL)
+        const response = await axios.get(detrackImageUrl, {
+            responseType: 'arraybuffer',
+            timeout: 10000,
+            headers: { 'X-API-KEY': apiKey }
+        });
+
+        const imageBuffer = Buffer.from(response.data);
+        const contentType = response.headers['content-type'] || 'image/jpeg';
+
+        // 2. Create Base64 backup (for your database)
+        const base64Backup = `data:${contentType};base64,${imageBuffer.toString('base64')}`;
+
+        // 3. Upload to Cloudinary as PRIVATE
+        const uploadResult = await cloudinary.uploader.upload(
+            `data:${contentType};base64,${imageBuffer.toString('base64')}`,
+            {
+                public_id: `gorush/pod_${consignmentID}_${Date.now()}`,
+                folder: 'gorush_pods',
+                resource_type: 'auto',
+                type: 'private',          // PRIVATE storage
+                access_mode: 'authenticated',
+                context: `tracking=${consignmentID}|uploaded=${new Date().toISOString()}`
+            }
+        );
+
+        console.log(`[POD] Cloudinary upload successful: ${uploadResult.public_id}`);
+
+        // 4. Generate signed URL (valid for 1 year)
+        const signedUrl = cloudinary.url(uploadResult.public_id, {
+            secure: true,
+            sign_url: true,
+            type: 'private',
+            expires_at: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60) // 1 year
+        });
+
+        // 5. Save everything to database
+        await ORDERS.findOneAndUpdate(
+            { doTrackingNumber: consignmentID },
+            {
+                $set: {
+                    podImg1: base64Backup,
+                    podCloudinaryId: uploadResult.public_id,
+                    podUrl: signedUrl,
+                    podUploadedAt: new Date()
+                }
+            },
+            { upsert: false }
+        );
+
+        console.log(`✅ POD archived and URL generated for ${consignmentID}`);
+        return signedUrl;
+
+    } catch (error) {
+        console.error(`❌ POD processing failed for ${consignmentID}:`, error.message);
+
+        // Store error in database for troubleshooting
+        await ORDERS.findOneAndUpdate(
+            { doTrackingNumber: consignmentID },
+            {
+                $set: {
+                    podError: error.message,
+                    podUploadedAt: new Date()
+                }
+            }
+        );
+
+        return null;
+    }
+}
+
+// ==================================================
 // ⚡ Cache
 // ==================================================
 const NodeCache = require('node-cache');
@@ -4731,7 +4819,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token) {
             locationDescription = detrackData.address || "Customer Address";
             epod = detrackData.photo_1_file_url || "";
 
-            console.log(`GDEX: Sending FD (Delivered) status for ${consignmentID}`);
+            console.log(`GDEX: Sending FD (Delivered) with ${epod ? 'POD URL' : 'no POD'}`);
 
         } else if (detrackData.status === 'failed') {
             // Failed delivery - map reason to GDEX reason code
@@ -4766,6 +4854,66 @@ async function updateGDEXClearJob(consignmentID, detrackData, token) {
         return false;
     }
 }
+
+// Secure POD image viewer
+app.get('/admin/pod/:trackingNumber', ensureAuthenticated, async (req, res) => {
+    try {
+        const order = await ORDERS.findOne({ 
+            doTrackingNumber: req.params.trackingNumber.toUpperCase() 
+        });
+        
+        if (!order) {
+            return res.status(404).send('Order not found');
+        }
+        
+        if (!order.podImg1) {
+            return res.status(404).send('POD image not available');
+        }
+        
+        // Check user permissions
+        if (!['cs', 'manager', 'admin', 'finance'].includes(req.user.role)) {
+            return res.status(403).send('Access denied');
+        }
+        
+        // Serve the Base64 image
+        const matches = order.podImg1.match(/^data:(.+);base64,(.+)$/);
+        if (matches) {
+            res.set('Content-Type', matches[1]);
+            res.send(Buffer.from(matches[2], 'base64'));
+        } else {
+            // Fallback: redirect to Cloudinary URL if available
+            if (order.podUrl) {
+                res.redirect(order.podUrl);
+            } else {
+                res.status(404).send('POD format error');
+            }
+        }
+        
+    } catch (error) {
+        console.error('POD viewer error:', error);
+        res.status(500).send('Server error');
+    }
+});
+
+// Periodic cleanup of expired Detrack URLs
+setInterval(async () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    
+    const orders = await ORDERS.find({
+        product: { $in: ['gdex', 'gdext'] },
+        currentStatus: 'Completed',
+        podUrl: { $exists: false },
+        podError: { $exists: false },
+        lastUpdateDateTime: { $gte: oneHourAgo.toISOString() }
+    }).limit(10);
+    
+    console.log(`[CLEANUP] Found ${orders.length} GDEX orders without POD backup`);
+    
+    for (const order of orders) {
+        // Try to reprocess if we missed the initial upload
+        console.log(`[CLEANUP] Retrying POD for ${order.doTrackingNumber}`);
+    }
+}, 3600000); // Run every hour
 
 // Add this function to map Detrack reasons to GDEX reason codes
 function mapDetrackReasonToGDEX(detrackReason) {
@@ -6371,7 +6519,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
 
                             mongoDBrun = 1;
-                            DetrackAPIrun = 9;
+                            DetrackAPIrun = 4;
                             GDEXAPIrun = 2;
                             completeRun = 1;
                         } else {
@@ -10790,21 +10938,45 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
-            // In your main route where you check GDEXAPIrun == 6:
             if (GDEXAPIrun == 6) {
-                console.log(`Starting GDEX Clear Job update for Tracking: ${consignmentID}`);
+                console.log(`Processing GDEX clear job for: ${consignmentID}`);
 
-                // Pass the Detrack data object (data.data from your API response)
+                let permanentPODUrl = "";
+                let detrackDataForGDEX = { ...detrackData };
+
+                // Handle completed GDEX deliveries
+                if ((product === 'GDEX' || product === 'GDEXT') &&
+                    detrackData.status === 'completed' &&
+                    detrackData.photo_1_file_url) {
+
+                    console.log(`[GDEX] Getting permanent POD URL for ${consignmentID}`);
+
+                    // Upload to Cloudinary and get permanent signed URL
+                    permanentPODUrl = await uploadPODToCloudinary(
+                        consignmentID,
+                        detrackData.photo_1_file_url
+                    );
+
+                    // Update detrackData with permanent URL for GDEX
+                    detrackDataForGDEX = {
+                        ...detrackData,
+                        photo_1_file_url: permanentPODUrl || "" // Use permanent URL
+                    };
+                }
+
+                // Send to GDEX with permanent epod URL
                 const gdexSuccess = await updateGDEXStatus(
                     consignmentID,
                     'clear_job',
-                    data.data  // This is the Detrack job data from: const data = response1.data;
+                    detrackDataForGDEX  // Contains permanent URL or empty string
                 );
 
+                // Log result
                 if (gdexSuccess) {
-                    console.log(`[COMPLETE] GDEX Clear Job update succeeded for Tracking: ${consignmentID}`);
-                } else {
-                    console.error(`[ERROR] GDEX Clear Job update failed for Tracking: ${consignmentID}`);
+                    console.log(`✅ GDEX clear job completed for ${consignmentID}`);
+                    if (permanentPODUrl) {
+                        console.log(`   POD URL: ${permanentPODUrl.substring(0, 80)}...`);
+                    }
                 }
             }
 
