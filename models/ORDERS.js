@@ -104,10 +104,10 @@ const orderSchema = new mongoose.Schema({
         reason: String,
         lastLocation: String,
     }],
-    podImg1: String,           // Base64 backup (for your records)
-    podCloudinaryId: String,   // Cloudinary reference ID
-    podUrl: String,            // Signed URL for GDEX
-    podUploadedAt: Date,       // When uploaded
+    // Add to your ORDERS schema:
+    podBase64: String,      // Pure Base64 string
+    podUpdated: String,     // ISO date string
+    podSource: String       // 'detrack' or other source
 }, { collection: 'orders' });
 
 module.exports = orderSchema; // schema only

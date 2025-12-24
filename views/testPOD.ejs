@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result-section {
+            display: none;
+        }
+        .status-success {
+            color: #198754;
+            font-weight: bold;
+        }
+        .status-failed {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .attempt-badge {
+            font-size: 0.8em;
+            padding: 2px 8px;
+            margin-right: 5px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .base64-preview {
+            font-family: monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h1 class="card-title">
+                            <i class="fas fa-vial"></i> <%= title %>
+                        </h1>
+                        <p class="card-text">
+                            Test downloading POD images from Detrack without making any updates to MongoDB, Detrack, or GDEX.
+                        </p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> This is a testing tool only. No updates will be pushed to any systems.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Form -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            <i class="fas fa-search"></i> Test POD Download
+                        </h4>
+                        
+                        <form id="testForm">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="trackingNumber" class="form-label">Tracking Number:</label>
+                                        <input type="text" 
+                                               id="trackingNumber" 
+                                               class="form-control form-control-lg" 
+                                               placeholder="Enter tracking number (e.g., MY256395774258AU)"
+                                               required
+                                               autocomplete="off">
+                                        <div class="form-text">Enter any tracking number to test POD download</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" id="testButton" class="btn btn-primary btn-lg w-100">
+                                            <i class="fas fa-vial"></i> Test Download
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="text-center" style="display: none;">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3" id="loadingMessage">Testing download...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="result-section">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">
+                                <i class="fas fa-clipboard-check"></i> Test Results
+                                <span id="resultStatusBadge" class="badge ms-2" style="font-size: 0.6em;"></span>
+                            </h4>
+                            
+                            <!-- Basic Info -->
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h6>Tracking Number</h6>
+                                            <h4 id="resultTracking" class="text-primary">-</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h6>Product</h6>
+                                            <h4 id="resultProduct" class="text-info">-</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h6>Detrack Status</h6>
+                                            <h4 id="resultStatus" class="text-warning">-</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Photo Info -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6>Photo Information</h6>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <p><strong>Has Photo URL:</strong> <span id="resultHasPhoto" class="badge">-</span></p>
+                                                    <p><strong>Download Success:</strong> <span id="resultDownloadSuccess" class="badge">-</span></p>
+                                                    <p><strong>Base64 Length:</strong> <span id="resultBase64Length">-</span> characters</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <p><strong>Photo URL:</strong></p>
+                                                    <small id="resultPhotoUrl" class="text-muted" style="word-break: break-all;">-</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Attempts -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6>Download Attempts</h6>
+                                            <div id="attemptsContainer"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Base64 Preview -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6>Base64 Preview (first 200 characters)</h6>
+                                            <div class="base64-preview" id="base64Preview">
+                                                <em>No Base64 data available</em>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-secondary mt-2" onclick="toggleFullBase64()">
+                                                <i class="fas fa-expand"></i> Toggle Full View
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Reset Button -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button class="btn btn-secondary" onclick="resetTest()">
+                        <i class="fas fa-redo"></i> Test Another Tracking Number
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form submission
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const trackingNumber = document.getElementById('trackingNumber').value.trim().toUpperCase();
+            
+            if (!trackingNumber) {
+                alert('Please enter a tracking number');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/test/pod-download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ trackingNumber })
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+                if (result.success) {
+                    displayResults(result.data);
+                } else {
+                    alert('Test failed: ' + (result.error || 'Unknown error'));
+                }
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Network error: ' + error.message);
+            }
+        });
+        
+        // Display results
+        function displayResults(data) {
+            // Update basic info
+            document.getElementById('resultTracking').textContent = data.trackingNumber;
+            document.getElementById('resultProduct').textContent = data.product || 'N/A';
+            document.getElementById('resultStatus').textContent = data.status || 'N/A';
+            
+            // Update photo info
+            const hasPhotoBadge = document.getElementById('resultHasPhoto');
+            hasPhotoBadge.textContent = data.hasPhoto ? 'Yes' : 'No';
+            hasPhotoBadge.className = 'badge ' + (data.hasPhoto ? 'bg-success' : 'bg-danger');
+            
+            const downloadSuccessBadge = document.getElementById('resultDownloadSuccess');
+            downloadSuccessBadge.textContent = data.downloadSuccess ? 'Success' : 'Failed';
+            downloadSuccessBadge.className = 'badge ' + (data.downloadSuccess ? 'bg-success' : 'bg-danger');
+            
+            document.getElementById('resultBase64Length').textContent = data.base64Length || '0';
+            document.getElementById('resultPhotoUrl').textContent = data.photoUrl || 'No URL available';
+            
+            // Update result status badge
+            const statusBadge = document.getElementById('resultStatusBadge');
+            if (data.downloadSuccess) {
+                statusBadge.textContent = 'SUCCESS';
+                statusBadge.className = 'badge bg-success';
+            } else if (data.hasPhoto) {
+                statusBadge.textContent = 'PARTIAL';
+                statusBadge.className = 'badge bg-warning';
+            } else {
+                statusBadge.textContent = 'NO PHOTO';
+                statusBadge.className = 'badge bg-danger';
+            }
+            
+            // Display attempts
+            const attemptsContainer = document.getElementById('attemptsContainer');
+            if (data.attempts && data.attempts.length > 0) {
+                let attemptsHtml = '';
+                data.attempts.forEach(attempt => {
+                    const badgeClass = attempt.status === 'success' ? 'bg-success' : 'bg-danger';
+                    attemptsHtml += `
+                        <div class="mb-2">
+                            <span class="attempt-badge badge ${badgeClass}">Attempt ${attempt.number}</span>
+                            <strong>${attempt.type}:</strong> ${attempt.status.toUpperCase()}
+                            ${attempt.message ? `<br><small>${attempt.message}</small>` : ''}
+                            ${attempt.error ? `<br><small class="text-danger">Error: ${attempt.error}</small>` : ''}
+                        </div>
+                    `;
+                });
+                attemptsContainer.innerHTML = attemptsHtml;
+            } else {
+                attemptsContainer.innerHTML = '<em>No download attempts made</em>';
+            }
+            
+            // Display Base64 preview
+            const base64Preview = document.getElementById('base64Preview');
+            if (data.base64Data && data.base64Data.length > 0) {
+                const preview = data.base64Data.substring(0, 200);
+                const fullData = data.base64Data;
+                
+                base64Preview.innerHTML = `
+                    <span id="base64Short">${preview}...</span>
+                    <span id="base64Full" style="display: none;">${fullData}</span>
+                    <br><small class="text-muted">Total: ${data.base64Length.toLocaleString()} characters</small>
+                `;
+            } else {
+                base64Preview.innerHTML = '<em class="text-muted">No Base64 data available</em>';
+            }
+            
+            // Show results
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+        
+        // Toggle full Base64 view
+        function toggleFullBase64() {
+            const short = document.getElementById('base64Short');
+            const full = document.getElementById('base64Full');
+            
+            if (short.style.display !== 'none') {
+                short.style.display = 'none';
+                full.style.display = 'inline';
+            } else {
+                short.style.display = 'inline';
+                full.style.display = 'none';
+            }
+        }
+        
+        // Reset test
+        function resetTest() {
+            document.getElementById('trackingNumber').value = '';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('trackingNumber').focus();
+        }
+        
+        // Auto-focus on tracking input
+        document.getElementById('trackingNumber').focus();
+    </script>
+</body>
+</html>
