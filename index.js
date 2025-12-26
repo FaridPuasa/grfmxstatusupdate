@@ -12551,10 +12551,13 @@ const authenticateGDEXUAT = (req, res, next) => {
             path: req.path,
             timestamp: new Date().toISOString()
         });
+        // ✅ UPDATED: Return GDEX expected format
         return res.status(401).json({
-            status: 'error',
-            message: 'Missing API key',
-            code: 'UNAUTHORIZED_UAT'
+            "success": false,
+            "error": {
+                "code": 401,
+                "message": "Missing API key"
+            }
         });
     }
 
@@ -12568,10 +12571,13 @@ const authenticateGDEXUAT = (req, res, next) => {
             path: req.path,
             timestamp: new Date().toISOString()
         });
+        // ✅ UPDATED: Return GDEX expected format
         return res.status(401).json({
-            status: 'error',
-            message: 'Invalid API key',
-            code: 'INVALID_API_KEY_UAT'
+            "success": false,
+            "error": {
+                "code": 401,
+                "message": "Invalid API key"
+            }
         });
     }
 
@@ -12594,10 +12600,13 @@ const authenticateGDEXLIVE = (req, res, next) => {
     // If no API key is configured, deny access
     if (!validApiKey) {
         console.error('❌ GDEX_API_KEY_LIVE not configured in environment');
+        // ✅ UPDATED: Return GDEX expected format
         return res.status(500).json({
-            status: 'error',
-            message: 'Live API key not configured',
-            code: 'SERVER_ERROR'
+            "success": false,
+            "error": {
+                "code": 500,
+                "message": "Live API key not configured"
+            }
         });
     }
 
@@ -12608,10 +12617,13 @@ const authenticateGDEXLIVE = (req, res, next) => {
             path: req.path,
             timestamp: new Date().toISOString()
         });
+        // ✅ UPDATED: Return GDEX expected format
         return res.status(401).json({
-            status: 'error',
-            message: 'Missing API key',
-            code: 'UNAUTHORIZED_LIVE'
+            "success": false,
+            "error": {
+                "code": 401,
+                "message": "Missing API key"
+            }
         });
     }
 
@@ -12625,10 +12637,13 @@ const authenticateGDEXLIVE = (req, res, next) => {
             path: req.path,
             timestamp: new Date().toISOString()
         });
+        // ✅ UPDATED: Return GDEX expected format
         return res.status(401).json({
-            status: 'error',
-            message: 'Invalid API key',
-            code: 'INVALID_API_KEY_LIVE'
+            "success": false,
+            "error": {
+                "code": 401,
+                "message": "Invalid API key"
+            }
         });
     }
 
@@ -12697,12 +12712,13 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
                 timestamp: new Date().toISOString()
             });
 
+            // ✅ UPDATED: Return GDEX expected format for validation errors
             return res.status(400).json({
-                status: 'error',
-                message: errorMessage,
-                missing_fields: missingFields,
-                consignmentno: req.body.consignmentno || 'Unknown',
-                environment: 'UAT'
+                "success": false,
+                "error": {
+                    "code": 400,
+                    "message": errorMessage
+                }
             });
         }
 
@@ -12717,13 +12733,13 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
             timestamp: new Date().toISOString()
         });
 
+        // ✅ UPDATED: Return GDEX expected format for unhandled errors
         res.status(500).json({
-            status: 'error',
-            message: 'Failed to forward order to Go Rush',
-            consignmentno: req.body?.consignmentno,
-            environment: 'UAT',
-            error: process.env.NODE_ENV === 'development' ? error.message : 'Forwarding failed',
-            timestamp: new Date().toISOString()
+            "success": false,
+            "error": {
+                "code": 500,
+                "message": `Internal server error: ${error.message}`
+            }
         });
     }
 });
@@ -12774,12 +12790,13 @@ app.post('/api/gdex/sendorders', async (req, res) => {
                 timestamp: new Date().toISOString()
             });
 
+            // ✅ UPDATED: Return GDEX expected format for validation errors
             return res.status(400).json({
-                status: 'error',
-                message: errorMessage,
-                missing_fields: missingFields,
-                consignmentno: req.body.consignmentno || 'Unknown',
-                environment: 'LIVE'
+                "success": false,
+                "error": {
+                    "code": 400,
+                    "message": errorMessage
+                }
             });
         }
 
@@ -12794,13 +12811,13 @@ app.post('/api/gdex/sendorders', async (req, res) => {
             timestamp: new Date().toISOString()
         });
 
+        // ✅ UPDATED: Return GDEX expected format for unhandled errors
         res.status(500).json({
-            status: 'error',
-            message: 'Failed to forward order to Go Rush',
-            consignmentno: req.body?.consignmentno,
-            environment: 'LIVE',
-            error: process.env.NODE_ENV === 'development' ? error.message : 'Forwarding failed',
-            timestamp: new Date().toISOString()
+            "success": false,
+            "error": {
+                "code": 500,
+                "message": `Internal server error: ${error.message}`
+            }
         });
     }
 });
@@ -13242,14 +13259,10 @@ async function processGDEXOrder(orderData, environment, res) {
             timestamp: new Date().toISOString()
         });
 
-        // Return success to GDEX
+        // ✅ UPDATED: Return GDEX expected format for SUCCESS
         res.status(200).json({
-            status: 'success',
-            message: `Order forwarded to Go Rush successfully (${environment})`,
-            consignmentno: orderData.consignmentno,
-            environment: environment,
-            group_name: groupName,
-            timestamp: new Date().toISOString()
+            "success": true,
+            "error": null
         });
 
     } catch (error) {
@@ -13272,17 +13285,31 @@ async function processGDEXOrder(orderData, environment, res) {
             console.log('💡 Action: Skipped duplicate');
             console.log('='.repeat(50));
 
+            // ✅ UPDATED: Return GDEX expected format for DUPLICATE
             return res.status(200).json({
-                status: 'success',
-                message: `Order already exists in system - skipped duplicate (${environment})`,
-                consignmentno: orderData.consignmentno,
-                environment: environment,
-                code: 'DUPLICATE_SKIPPED',
-                timestamp: new Date().toISOString()
+                "success": false,
+                "error": {
+                    "code": 0,
+                    "message": `Duplicate CN: ${orderData.consignmentno}`
+                }
             });
         }
 
-        throw error; // Re-throw for the main catch block
+        console.error(`❌ GDEX to Go Rush Error (${environment}):`, {
+            consignmentno: orderData.consignmentno,
+            error: error.message,
+            environment: environment,
+            timestamp: new Date().toISOString()
+        });
+
+        // ✅ UPDATED: Return GDEX expected format for OTHER ERRORS
+        res.status(500).json({
+            "success": false,
+            "error": {
+                "code": 500,
+                "message": `Failed to process order: ${error.message}`
+            }
+        });
     }
 }
 
