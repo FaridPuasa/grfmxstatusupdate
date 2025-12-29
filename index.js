@@ -12828,6 +12828,51 @@ app.post('/api/gdex/sendorders', async (req, res) => {
 
 async function processGDEXOrder(orderData, environment, res) {
     try {
+        console.log(`🔍 Checking if consignment exists in Detrack: ${orderData.consignmentno}`);
+        
+        // ===========================================
+        // STEP 1: CHECK IF ORDER ALREADY EXISTS IN DETRACK
+        // ===========================================
+        try {
+            const checkResponse = await axios.get(
+                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${orderData.consignmentno}`,
+                {
+                    headers: {
+                        'X-API-KEY': process.env.API_KEY
+                    }
+                }
+            );
+            
+            // If we get here, job exists (200 response)
+            console.log(`⚠️ Consignment ${orderData.consignmentno} already exists in Detrack`);
+            
+            // ✅ RETURN GDEX DUPLICATE FORMAT
+            return res.status(200).json({
+                "success": false,
+                "error": {
+                    "code": 0,
+                    "message": `Duplicate CN: ${orderData.consignmentno}`
+                }
+            });
+            
+        } catch (checkError) {
+            // If 404 - job doesn't exist (this is what we want)
+            if (checkError.response?.status === 404) {
+                console.log(`✅ Consignment ${orderData.consignmentno} not found in Detrack - proceeding`);
+            } else {
+                // Other errors (network, auth, etc.)
+                console.error(`❌ Error checking consignment in Detrack:`, {
+                    consignmentno: orderData.consignmentno,
+                    error: checkError.message,
+                    status: checkError.response?.status
+                });
+                // Continue anyway - let Detrack handle duplicate on creation
+            }
+        }
+        
+        // ===========================================
+        // STEP 2: PREPARE ORDER DATA
+        // ===========================================
         // Transform phone number format
         const formattedPhone = formatPhoneNumber(orderData.consigneecontact, orderData.country);
 
@@ -13267,47 +13312,49 @@ async function processGDEXOrder(orderData, environment, res) {
 
     } catch (error) {
         const errorData = error.response?.data;
+        
+        console.error(`❌ Error creating order in Detrack (${environment}):`, {
+            consignmentno: orderData.consignmentno,
+            status: error.response?.status,
+            error: error.message,
+            environment: environment
+        });
 
-        // Detect duplicate consignment number
-        const isDuplicateError =
-            errorData?.errors?.[0]?.message?.toLowerCase().includes('already exists') ||
-            errorData?.message?.toLowerCase().includes('already exists') ||
-            errorData?.error?.toLowerCase().includes('duplicate') ||
-            errorData?.errors?.[0]?.message?.toLowerCase().includes('duplicate') ||
-            error.response?.status === 422;
-
-        if (isDuplicateError) {
-            console.log('='.repeat(50));
-            console.log(`🔄 DUPLICATE ORDER DETECTED (${environment})`);
-            console.log('📦 Consignment No:', orderData.consignmentno);
-            console.log('🌍 Environment:', environment);
-            console.log('⏰ Time:', new Date().toISOString());
-            console.log('💡 Action: Skipped duplicate');
-            console.log('='.repeat(50));
-
-            // ✅ UPDATED: Return GDEX expected format for DUPLICATE
+        // Handle Detrack creation errors
+        if (error.response?.status === 422 || error.response?.status === 400) {
+            // Detrack validation/duplicate error on creation
+            const errorMessage = errorData?.errors?.[0]?.message || 
+                               errorData?.message || 
+                               "Validation failed in Detrack";
+            
+            // Check if it's a duplicate error
+            if (errorMessage.toLowerCase().includes('duplicate') || 
+                errorMessage.toLowerCase().includes('already exists')) {
+                return res.status(200).json({
+                    "success": false,
+                    "error": {
+                        "code": 0,
+                        "message": `Duplicate CN: ${orderData.consignmentno}`
+                    }
+                });
+            }
+            
+            // Other validation errors
             return res.status(200).json({
                 "success": false,
                 "error": {
-                    "code": 0,
-                    "message": `Duplicate CN: ${orderData.consignmentno}`
+                    "code": 400,
+                    "message": `Detrack validation error: ${errorMessage}`
                 }
             });
         }
 
-        console.error(`❌ GDEX to Go Rush Error (${environment}):`, {
-            consignmentno: orderData.consignmentno,
-            error: error.message,
-            environment: environment,
-            timestamp: new Date().toISOString()
-        });
-
-        // ✅ UPDATED: Return GDEX expected format for OTHER ERRORS
-        res.status(500).json({
+        // Other errors
+        res.status(200).json({
             "success": false,
             "error": {
                 "code": 500,
-                "message": `Failed to process order: ${error.message}`
+                "message": `Detrack error: ${error.message || 'Unknown error'}`
             }
         });
     }
