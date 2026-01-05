@@ -98,11 +98,21 @@
                     <!-- MAWB Number Field -->
                     <div id="mawbNumContainer">
                         <div class="mb-3">
-                            <label for="mawbNum" class="form-label">MAWB No: <span id="mawbRequired"
-                                    class="text-danger">*</span><span id="mawbOptional" class="text-muted"
-                                    style="display:none;"> (Optional)</span></label>
-                            <input type="text" id="mawbNum" name="mawbNum" class="form-control">
-                            <div class="form-text" id="mawbHelp">Required for MAWB Number update</div>
+                            <label for="mawbNum" class="form-label">MAWB No:
+                                <span id="mawbRequired" class="text-danger">*</span>
+                                <span id="mawbOptional" class="text-muted" style="display:none;"> (Optional)</span>
+                            </label>
+                            <select id="mawbNum" name="mawbNum" class="form-select" style="display: none;">
+                                <option value="" selected>Please select MAWB Number (optional)</option>
+                                <!-- Options will be populated dynamically -->
+                            </select>
+                            <input type="text" id="mawbNumInput" name="mawbNumInput" class="form-control"
+                                style="display: none;">
+                            <div class="form-text" id="mawbHelp">Select MAWB number for bulk scanning or leave empty for
+                                individual updates</div>
+                            <div id="mawbStats" class="mt-2" style="display: none;">
+                                <small class="text-muted" id="mawbStatsText"></small>
+                            </div>
                         </div>
                     </div>
 
@@ -319,8 +329,9 @@
             }
         }
 
-        document.getElementById('updateCode').addEventListener('change', function () {
+        document.getElementById('updateCode').addEventListener('change', async function () {
             const mawbFields = document.getElementById('mawbFields');
+            const updateMethodSection = document.getElementById('updateMethod').closest('.mb-3');
             const updateMethod = document.getElementById('updateMethod');
             const mawbRequired = document.getElementById('mawbRequired');
             const mawbOptional = document.getElementById('mawbOptional');
@@ -328,43 +339,205 @@
             const warehouseFields = document.getElementById('warehouseFields');
             const warehouseSelect = document.getElementById('warehouse');
             const mawbNumContainer = document.getElementById('mawbNumContainer');
+            const mawbSelect = document.getElementById('mawbNum');
+            const mawbInput = document.getElementById('mawbNumInput');
+            const mawbStats = document.getElementById('mawbStats');
+            const bulkSection = document.getElementById('bulkSection');
+            const oneByOneSection = document.getElementById('oneByOneSection');
+            const readyToScan = document.getElementById('readyToScan');
 
-            if (this.value === 'UAN' || this.value === 'CCH' || this.value === 'IIW') {
+            if (this.value === 'UAN' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN') {
                 mawbFields.style.display = 'block';
-                updateMethod.required = true;
 
                 if (this.value === 'UAN') {
-                    // MAWB Update - MAWB required, warehouse not required
+                    // MAWB Update - Excel Upload Only
                     mawbNumContainer.style.display = 'block';
+                    mawbSelect.style.display = 'none';
+                    mawbInput.style.display = 'block';
+                    mawbStats.style.display = 'none';
                     mawbRequired.style.display = 'inline';
                     mawbOptional.style.display = 'none';
                     warehouseFields.style.display = 'none';
-                    document.getElementById('mawbNum').required = true;
+                    updateMethodSection.style.display = 'none'; // HIDE UPDATE METHOD
+                    mawbInput.required = true;
                     warehouseSelect.required = false;
-                    mawbHelp.textContent = 'Required for MAWB Number update';
-                } else if (this.value === 'CCH') {
-                    // On Hold - No MAWB needed, hide MAWB field completely
-                    mawbNumContainer.style.display = 'none'; // HIDE MAWB FIELD
+                    mawbHelp.textContent = 'MAWB Number for Excel upload processing';
+
+                    // Hide bulk/one-by-one sections
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
+                    // Show file upload button
+                    showExcelUploadButton();
+
+                } else if (this.value === 'UMN') {
+                    // UMN Update - Show update method
+                    mawbNumContainer.style.display = 'block';
+                    mawbSelect.style.display = 'none';
+                    mawbInput.style.display = 'block';
+                    mawbStats.style.display = 'none';
+                    mawbRequired.style.display = 'inline';
+                    mawbOptional.style.display = 'none';
                     warehouseFields.style.display = 'none';
-                    document.getElementById('mawbNum').required = false;
+                    updateMethodSection.style.display = 'block'; // SHOW UPDATE METHOD
+                    updateMethod.required = true;
+                    mawbInput.required = true;
+                    warehouseSelect.required = false;
+                    mawbHelp.textContent = 'Enter MAWB Number for manual update (existing orders only)';
+                    hideExcelUploadButton();
+
+                    // Reset update method and hide sections
+                    updateMethod.value = '';
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
+                } else if (this.value === 'CCH') {
+                    // On Hold - Show update method
+                    mawbNumContainer.style.display = 'none';
+                    warehouseFields.style.display = 'none';
+                    updateMethodSection.style.display = 'block'; // SHOW UPDATE METHOD
+                    updateMethod.required = true;
+                    mawbInput.required = false;
                     warehouseSelect.required = false;
                     mawbHelp.textContent = 'No MAWB number required for On Hold';
+                    hideExcelUploadButton();
+
+                    // Reset update method and hide sections
+                    updateMethod.value = '';
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
                 } else if (this.value === 'IIW') {
-                    // Item in Warehouse - MAWB optional, warehouse required
+                    // Item in Warehouse - Show dropdown with recent MAWBs
                     mawbNumContainer.style.display = 'block';
+                    mawbSelect.style.display = 'block';
+                    mawbInput.style.display = 'none';
                     mawbRequired.style.display = 'none';
                     mawbOptional.style.display = 'inline';
                     warehouseFields.style.display = 'block';
-                    document.getElementById('mawbNum').required = false;
+                    updateMethodSection.style.display = 'block'; // SHOW UPDATE METHOD
+                    updateMethod.required = true;
+                    mawbInput.required = false;
                     warehouseSelect.required = true;
-                    mawbHelp.textContent = 'Optional for Item in Warehouse update';
+                    mawbHelp.textContent = 'Select MAWB number for bulk scanning or leave empty for individual updates';
+                    hideExcelUploadButton();
+
+                    // Reset update method and hide sections
+                    updateMethod.value = '';
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
+                    // Load recent MAWBs
+                    await loadRecentMAWBs();
                 }
             } else {
                 mawbFields.style.display = 'none';
+                updateMethodSection.style.display = 'none';
                 warehouseSelect.required = false;
                 hideAllSections();
+                hideExcelUploadButton();
             }
         });
+
+        // Function to show Excel upload button
+        function showExcelUploadButton() {
+            let uploadButton = document.getElementById('excelUploadButton');
+            if (!uploadButton) {
+                uploadButton = document.createElement('button');
+                uploadButton.id = 'excelUploadButton';
+                uploadButton.type = 'button';
+                uploadButton.className = 'btn btn-outline-success mt-2';
+                uploadButton.innerHTML = '<i class="fas fa-file-excel"></i> Upload Excel/CSV File';
+                uploadButton.onclick = showExcelUploadModal;
+
+                const mawbContainer = document.getElementById('mawbNumContainer');
+                if (mawbContainer) {
+                    mawbContainer.appendChild(uploadButton);
+                }
+            } else {
+                uploadButton.style.display = 'block';
+            }
+        }
+
+        function hideExcelUploadButton() {
+            const uploadButton = document.getElementById('excelUploadButton');
+            if (uploadButton) {
+                uploadButton.style.display = 'none';
+            }
+        }
+
+        // In loadRecentMAWBs function:
+        async function loadRecentMAWBs() {
+            try {
+                console.log('🔍 Loading MAWBs with unscanned counts...');
+
+                const response = await fetch('/updateJob/recentMAWBs');
+                const data = await response.json();
+
+                console.log('📊 MAWB data received:', data);
+
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbStats = document.getElementById('mawbStats');
+                const mawbStatsText = document.getElementById('mawbStatsText');
+
+                // Clear existing options
+                while (mawbSelect.options.length > 1) {
+                    mawbSelect.remove(1);
+                }
+
+                if (data.success && data.mawbs && data.mawbs.length > 0) {
+                    console.log(`✅ Found ${data.mawbs.length} MAWBs with unscanned jobs`);
+
+                    // Add MAWB options with "Unscanned" label
+                    data.mawbs.forEach(mawb => {
+                        const option = document.createElement('option');
+                        option.value = mawb.mawbNo;
+                        // Format: MAWB (Unscanned / Total) - Product
+                        option.textContent = `${mawb.mawbNo} (${mawb.unscannedJobs}/${mawb.totalJobs} Unscanned) - ${mawb.product}`;
+                        option.setAttribute('data-total', mawb.totalJobs);
+                        option.setAttribute('data-unscanned', mawb.unscannedJobs);
+                        option.setAttribute('data-scanned', mawb.scannedJobs);
+                        option.setAttribute('data-warehouse', mawb.atWarehouseJobs || 0);
+                        option.setAttribute('data-product', mawb.product);
+                        option.setAttribute('data-percentage-unscanned', mawb.percentageUnscanned);
+                        option.setAttribute('data-percentage-scanned', mawb.percentageScanned);
+                        mawbSelect.appendChild(option);
+                    });
+
+                    mawbStats.style.display = 'block';
+                    mawbStatsText.textContent =
+                        `Showing ${data.mawbs.length} MAWBs with ${data.summary?.totalUnscannedJobs || 0} unscanned jobs`;
+
+                } else {
+                    console.log('⚠️ No MAWBs found with unscanned jobs');
+
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No MAWB numbers with unscanned jobs found';
+                    option.disabled = true;
+                    mawbSelect.appendChild(option);
+
+                    mawbStats.style.display = 'block';
+                    mawbStatsText.textContent = 'No MAWB numbers found with jobs still unscanned';
+                }
+
+            } catch (error) {
+                console.error('❌ Error loading MAWBs:', error);
+
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbStats = document.getElementById('mawbStats');
+                const mawbStatsText = document.getElementById('mawbStatsText');
+
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Error loading MAWB numbers';
+                option.disabled = true;
+                mawbSelect.appendChild(option);
+
+                mawbStats.style.display = 'block';
+                mawbStatsText.textContent = `Error: ${error.message}`;
+            }
+        }
 
         document.getElementById('updateMethod').addEventListener('change', function () {
             hideAllSections();
@@ -1087,8 +1260,26 @@
             e.preventDefault();
 
             const updateCode = document.getElementById('updateCode').value;
-            const mawbNumInput = document.getElementById('mawbNum');
-            const mawbNum = mawbNumInput ? mawbNumInput.value.trim() : '';
+
+            // ========== ADD THIS CHECK FOR UAN ==========
+            // For UAN, we handle it via Excel upload, not form submission
+            if (updateCode === 'UAN') {
+                alert('Please use the "Upload Excel/CSV File" button for UAN updates');
+                return;
+            }
+            // ========== END OF UAN CHECK ==========
+
+            const mawbSelect = document.getElementById('mawbNum');
+            const mawbInput = document.getElementById('mawbNumInput');
+            let mawbNum = '';
+
+            // Get MAWB number based on which field is visible
+            if (updateCode === 'IIW' && mawbSelect.style.display === 'block') {
+                mawbNum = mawbSelect.value;
+            } else if ((updateCode === 'UAN' || updateCode === 'UMN') && mawbInput.style.display === 'block') {
+                mawbNum = mawbInput.value.trim();
+            }
+
             const warehouse = document.getElementById('warehouse') ? document.getElementById('warehouse').value : '';
             const updateMethod = document.getElementById('updateMethod') ? document.getElementById('updateMethod').value : 'bulk';
 
@@ -1098,13 +1289,36 @@
             if (updateMethod === 'bulk') {
                 const trackingNumBulk = document.getElementById('trackingNumBulk').value;
                 trackingNumbers = trackingNumBulk.split('\n').map(num => num.trim()).filter(num => num !== '');
-            } else {
+            } else if (updateMethod === 'onebyone') {
                 return; // One-by-one handled separately
             }
 
-            if (trackingNumbers.length === 0) {
+            // ========== FIX THE DUPLICATE ALERT CHECK ==========
+            if (trackingNumbers.length === 0 && updateMethod === 'bulk') {
                 alert('Please enter tracking numbers');
                 return;
+            }
+            // Remove the duplicate check below - it's redundant
+            // ========== END FIX ==========
+
+            // In form submission handler, update to use "unscanned" attribute:
+            if (updateCode === 'IIW' && mawbNum) {
+                const selectedOption = mawbSelect.options[mawbSelect.selectedIndex];
+                const totalJobs = selectedOption.getAttribute('data-total');
+                const unscannedJobs = selectedOption.getAttribute('data-unscanned');
+
+                // Validate that we're not scanning more than unscanned jobs
+                if (trackingNumbers.length > unscannedJobs) {
+                    const proceed = confirm(
+                        `Warning: You are trying to scan ${trackingNumbers.length} parcels, ` +
+                        `but only ${unscannedJobs} are unscanned for MAWB ${mawbNum}.\n\n` +
+                        `Do you want to continue? Some scans may fail if jobs are already scanned.`
+                    );
+
+                    if (!proceed) {
+                        return;
+                    }
+                }
             }
 
             // For IIW with MAWB validation
@@ -1114,8 +1328,8 @@
 
                 if (!validation.isValid) {
                     // Clear MAWB field if validation failed
-                    if (mawbNumInput) {
-                        mawbNumInput.value = '';
+                    if (mawbInput) {
+                        mawbInput.value = '';
                     }
                     return;
                 }
@@ -1158,7 +1372,14 @@
             }
 
             // Validation for different update codes
-            if (updateCode === 'UAN') {
+            // ========== UPDATE UAN CHECK - IT SHOULD NEVER REACH HERE ==========
+            // if (updateCode === 'UAN') {
+            //     if (!mawbNum || mawbNum === '') {
+            //         alert('Please enter MAWB Number');
+            //         return;
+            //     }
+            // } else 
+            if (updateCode === 'UMN') {
                 if (!mawbNum || mawbNum === '') {
                     alert('Please enter MAWB Number');
                     return;
@@ -1216,6 +1437,23 @@
 
         // Update the displayBulkResults function - Add safe check for result object
         function displayBulkResults(result) {
+            // ========== ADD THIS SAFETY CHECK ==========
+            if (typeof result === 'undefined') {
+                console.error("❌ displayBulkResults: result parameter is undefined");
+                result = {
+                    successful: [],
+                    failed: [],
+                    delayed: [],
+                    duplicate: [],
+                    updatedCount: 0,
+                    failedCount: 0,
+                    delayedCount: 0,
+                    duplicateCount: 0,
+                    total: 0
+                };
+            }
+            // ========== END SAFETY CHECK ==========
+
             console.log("📊 displayBulkResults called with:", result);
 
             // SAFETY CHECK: If result is undefined or null
@@ -1289,28 +1527,37 @@
             if (result.successful && result.successful.length > 0) {
                 const successTable = document.createElement('div');
                 successTable.innerHTML = `
-            <h4 class="text-success mt-4">Successfully Updated Jobs (${result.successful.length})</h4>
-            <div class="table-responsive">
-                <table class="table table-success table-striped">
-                    <thead>
+        <h4 class="text-success mt-4">Successfully Processed Jobs (${result.successful.length})</h4>
+        <div class="table-responsive">
+            <table class="table table-success table-striped">
+                <thead>
+                    <tr>
+                        <th>Tracking Number</th>
+                        <th>Type</th>
+                        <th>MAWB</th>
+                        <th>Result</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${result.successful.map(item => `
                         <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                            <th>Status</th>
+                            <td>${item.trackingNumber || 'N/A'}</td>
+                            <td>
+                                ${item.isNewOrder ?
+                        '<span class="badge bg-info">New</span>' :
+                        '<span class="badge bg-warning">Updated</span>'
+                    }
+                            </td>
+                            <td>${item.mawbNum || 'N/A'}</td>
+                            <td>${item.message || 'Updated'}</td>
+                            <td><span class="badge bg-success">Success</span></td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${result.successful.map(item => `
-                            <tr>
-                                <td>${item.trackingNumber || 'N/A'}</td>
-                                <td>${item.result || 'Updated'}</td>
-                                <td><span class="badge bg-success">Completed</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
                 resultsContainer.appendChild(successTable);
             }
 
@@ -1386,28 +1633,41 @@
             if (result.failed && result.failed.length > 0) {
                 const failedTable = document.createElement('div');
                 failedTable.innerHTML = `
-            <h4 class="text-danger mt-4">Failed Jobs (${result.failed.length})</h4>
-            <div class="table-responsive">
-                <table class="table table-danger table-striped">
-                    <thead>
+        <h4 class="text-danger mt-4">Failed/Skipped Jobs (${result.failed.length})</h4>
+        <div class="table-responsive">
+            <table class="table table-danger table-striped">
+                <thead>
+                    <tr>
+                        <th>Tracking Number</th>
+                        <th>Reason</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${result.failed.map(item => `
                         <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                            <th>Status</th>
+                            <td>${item.trackingNumber || 'N/A'}</td>
+                            <td>
+                                ${item.skipped ?
+                        '<span class="badge bg-warning">Skipped</span>' :
+                        '<span class="badge bg-danger">Failed</span>'
+                    }
+                                ${item.reason ? `<br><small>${item.reason}</small>` : ''}
+                            </td>
+                            <td>${item.message || 'Failed'}</td>
+                            <td>
+                                ${item.skipped ?
+                        '<span class="badge bg-warning">Skipped</span>' :
+                        '<span class="badge bg-danger">Failed</span>'
+                    }
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${result.failed.map(item => `
-                            <tr>
-                                <td>${item.trackingNumber || 'N/A'}</td>
-                                <td>${item.result || 'Failed'}</td>
-                                <td><span class="badge bg-danger">Failed</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
                 resultsContainer.appendChild(failedTable);
             }
 
@@ -1552,6 +1812,55 @@
             </div>
         `;
             resultsContainer.appendChild(failedTable);
+        }
+
+        if (result.groupedByCustomer && result.groupedByCustomer.length > 0) {
+            const groupedTable = document.createElement('div');
+            groupedTable.innerHTML = `
+        <h4 class="text-info mt-4">Grouped by Customer (${result.groupedByCustomer.length} groups)</h4>
+        <div class="alert alert-info">
+            <i class="fas fa-users"></i> These parcels can be grouped together for sorting
+        </div>
+        <div class="table-responsive">
+            <table class="table table-info table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Customer Name</th>
+                        <th>Area</th>
+                        <th>Parcel Count</th>
+                        <th>Tracking Numbers</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${result.groupedByCustomer.map((group, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td><strong>${group.customerName || 'N/A'}</strong></td>
+                            <td><span class="badge bg-secondary">${group.area || 'N/A'}</span></td>
+                            <td><span class="badge bg-primary">${group.count}</span></td>
+                            <td>
+                                <small>
+                                    ${group.trackingNumbers.slice(0, 3).map(tn =>
+                `<div>${tn}</div>`
+            ).join('')}
+                                    ${group.trackingNumbers.length > 3 ?
+                    `<div class="text-muted">+${group.trackingNumbers.length - 3} more</div>` :
+                    ''
+                }
+                                </small>
+                            </td>
+                            <td><span class="badge ${group.status === 'Updated' ? 'bg-success' : 'bg-warning'}">
+                                ${group.status}
+                            </span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+            resultsContainer.appendChild(groupedTable);
         }
 
         // If no results at all, show a message
@@ -2015,7 +2324,6 @@
             });
         }
 
-        // Replace the existing startPollingResults function with this updated version
         function startPollingResults() {
             const startTime = Date.now();
             let lastProgressUpdate = 0;
@@ -2025,11 +2333,9 @@
                     const response = await fetch(`/updateJob/status/${currentJobId}`);
                     const jobStatus = await response.json();
 
-                    // Update progress with better estimation
+                    // Update progress (same as bulk processing)
                     if (jobStatus.status === 'processing' || jobStatus.status === 'queued') {
                         const currentTime = Date.now();
-
-                        // Update progress bar
                         const progress = jobStatus.total > 0 ? Math.round((jobStatus.processed / jobStatus.total) * 100) : 0;
                         const progressBar = document.getElementById('progressBar');
                         const progressText = document.getElementById('progressText');
@@ -2039,14 +2345,11 @@
                             progressBar.textContent = `${progress}%`;
                         }
 
-                        // Only update text every 2 seconds to avoid flickering
                         if (currentTime - lastProgressUpdate > 2000 && progressText) {
                             lastProgressUpdate = currentTime;
-
                             const elapsedSeconds = (currentTime - startTime) / 1000;
-                            let progressTextHtml = `Processed ${jobStatus.processed} of ${jobStatus.total} jobs`;
+                            let progressTextHtml = `Processed ${jobStatus.processed} of ${jobStatus.total} records`;
 
-                            // Add estimated time if we have meaningful progress
                             if (jobStatus.processed > 0 && elapsedSeconds > 5) {
                                 const itemsPerSecond = jobStatus.processed / elapsedSeconds;
                                 const remainingItems = jobStatus.total - jobStatus.processed;
@@ -2060,12 +2363,7 @@
                                     } else {
                                         progressTextHtml += `<br>Estimated time remaining: ${Math.round(estimatedSeconds)}s`;
                                     }
-                                    progressTextHtml += ` (${itemsPerSecond.toFixed(1)} items/sec)`;
-                                }
-
-                                // Show batch info if available
-                                if (jobStatus.currentBatch && jobStatus.totalBatches) {
-                                    progressTextHtml += `<br>Batch: ${jobStatus.currentBatch}/${jobStatus.totalBatches}`;
+                                    progressTextHtml += ` (${itemsPerSecond.toFixed(1)} records/sec)`;
                                 }
                             }
 
@@ -2081,32 +2379,30 @@
                         const loading = document.getElementById('loading');
                         if (loading) loading.style.display = 'none';
 
-                        // Check if displayBulkResults function exists before calling it
+                        // Display results (same as bulk results)
                         if (typeof displayBulkResults === 'function') {
                             displayBulkResults(jobStatus);
                         } else {
                             console.error('displayBulkResults function is not defined');
-                            // Fallback: reload the page to show results
                             location.reload();
                         }
 
                         // Show completion time
                         const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
                         setTimeout(() => {
-                            alert(`✅ Processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${jobStatus.updatedCount || 0}\nFailed: ${jobStatus.failedCount || jobStatus.notUpdatedCount || 0}\nDelayed: ${jobStatus.delayedCount || 0}\nDuplicates ignored: ${jobStatus.duplicateCount || 0}`);
+                            alert(`✅ Excel processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${jobStatus.updatedCount || 0}\nFailed: ${jobStatus.failedCount || 0}`);
                         }, 500);
 
                     } else if (jobStatus.status === 'failed') {
                         clearInterval(pollInterval);
                         const loading = document.getElementById('loading');
                         if (loading) loading.style.display = 'none';
-                        alert('❌ Job failed: ' + (jobStatus.error || 'Unknown error'));
+                        alert('❌ Excel processing failed: ' + (jobStatus.error || 'Unknown error'));
                     }
 
                 } catch (error) {
                     console.error('Error polling job status:', error);
 
-                    // If we keep getting errors, stop polling after a few attempts
                     if (!window.pollErrorCount) {
                         window.pollErrorCount = 1;
                     } else {
@@ -2613,6 +2909,397 @@
                 }
             }
         }
+
+        // In the showExcelUploadModal function, update to include MAWB input
+        function showExcelUploadModal() {
+            const mawbInput = document.getElementById('mawbNumInput');
+            const mawbNum = mawbInput ? mawbInput.value.trim() : '';
+
+            if (!mawbNum) {
+                alert('Please enter MAWB Number first');
+                return;
+            }
+
+            // Create modal HTML - Include MAWB number in the modal
+            const modalHTML = `
+        <div class="modal fade" id="excelUploadModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Upload Excel/CSV File for MAWB: ${mawbNum}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                       <div class="alert alert-info">
+    <h6><i class="fas fa-info-circle"></i> File Requirements:</h6>
+    <ul class="mb-2">
+        <li><strong>Required columns:</strong> Tracking Number</li>
+        <li><strong>Optional columns:</strong> Postal Code, Parcel Weight (kg)</li>
+        <li><strong>MAWB Number:</strong> From form input above</li>
+        <li><strong>Formats:</strong> .xlsx, .xls, .csv</li>
+        <li><strong>Status requirement:</strong> Only jobs with "Info Received" status</li>
+        <li><strong>Product requirement:</strong> Only mglobal, pdu, ewe, gdex, gdext products</li>
+        <li><strong>Max records:</strong> 3000 per file</li>
+    </ul>
+</div>
+                        
+                        <div class="mb-3">
+                            <label for="excelFile" class="form-label">Select File:</label>
+                            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls,.csv">
+                            <div class="form-text">File must contain "Tracking Number" column</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <input type="hidden" id="uploadMAWB" value="${mawbNum}">
+                            <button type="button" class="btn btn-success" onclick="uploadExcelFile('${mawbNum}')">
+                                <i class="fas fa-upload"></i> Upload & Process
+                            </button>
+                            <div class="btn-group ms-2" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="generateTemplate('excel')">
+        <i class="fas fa-file-excel"></i> Excel Template
+    </button>
+    <button type="button" class="btn btn-outline-secondary" onclick="generateTemplate('csv')">
+        <i class="fas fa-file-csv"></i> CSV Template
+    </button>
+</div>
+                        </div>
+                        
+                        <div id="uploadProgress" style="display: none;">
+                            <div class="progress">
+                                <div id="uploadProgressBar" class="progress-bar progress-bar-striped" 
+                                     role="progressbar" style="width: 0%">0%</div>
+                            </div>
+                            <p id="uploadStatus" class="mt-2 small"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+            // Add modal to page if not exists
+            let modal = document.getElementById('excelUploadModal');
+            if (!modal) {
+                const modalContainer = document.createElement('div');
+                modalContainer.innerHTML = modalHTML;
+                document.body.appendChild(modalContainer);
+                modal = document.getElementById('excelUploadModal');
+            }
+
+            // Show modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Reset file input and progress
+            document.getElementById('excelFile').value = '';
+            document.getElementById('uploadProgress').style.display = 'none';
+            document.getElementById('uploadProgressBar').style.width = '0%';
+            document.getElementById('uploadProgressBar').textContent = '0%';
+            document.getElementById('uploadProgressBar').className = 'progress-bar progress-bar-striped';
+        }
+
+        async function uploadExcelFile(mawbNum) {
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            if (!mawbNum || mawbNum.trim() === '') {
+                alert('MAWB Number is required');
+                return;
+            }
+
+            console.log('📁 Uploading file for MAWB:', mawbNum);
+
+            const formData = new FormData();
+            formData.append('excelFile', file);
+            formData.append('mawbNum', mawbNum); // Add MAWB to form data
+
+            // Show progress
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadProgressBar = document.getElementById('uploadProgressBar');
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            uploadProgress.style.display = 'block';
+            uploadProgressBar.style.width = '0%';
+            uploadProgressBar.textContent = '0%';
+            uploadStatus.textContent = 'Uploading file...';
+
+            try {
+                console.log('🚀 Sending upload request...');
+
+                const response = await fetch('/updateJob/excelUpload', {
+                    method: 'POST',
+                    body: formData
+                    // Don't set Content-Type header for FormData
+                });
+
+                console.log('📥 Response received:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    // Try to get more error details
+                    let errorDetails = '';
+                    try {
+                        const errorData = await response.json();
+                        errorDetails = JSON.stringify(errorData);
+                    } catch (e) {
+                        errorDetails = await response.text();
+                    }
+
+                    console.error('❌ Upload failed details:', errorDetails);
+                    throw new Error(`Upload failed: ${response.status} - ${response.statusText}\nDetails: ${errorDetails}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ Upload successful, result:', result);
+
+                if (result.jobId) {
+                    uploadStatus.textContent = 'File uploaded successfully. Processing in background...';
+                    uploadProgressBar.style.width = '100%';
+                    uploadProgressBar.textContent = '100%';
+
+                    // Close modal after delay
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('excelUploadModal'));
+                        if (modal) modal.hide();
+                    }, 1000);
+
+                    // Switch to active update mode to show progress
+                    switchToActiveUpdateMode('UAN', 'bulk');
+                    currentJobId = result.jobId;
+
+                    // Show loading with file info
+                    document.getElementById('loading').innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h4>Processing Excel Upload</h4>
+                    <p>File: ${file.name}</p>
+                    <p>Total Records: ${result.totalJobs || 'Unknown'}</p>
+                    <div class="progress mt-3" style="height: 25px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%; font-weight: bold;">0%</div>
+                    </div>
+                    <p id="progressText" class="mt-2">Starting processing...</p>
+                </div>
+            `;
+                    document.getElementById('loading').style.display = 'block';
+
+                    // Start polling for results
+                    startPollingResults();
+
+                } else {
+                    throw new Error('No job ID received from server');
+                }
+
+            } catch (error) {
+                console.error('❌ Upload error:', error);
+                uploadStatus.textContent = `Error: ${error.message}`;
+                uploadProgressBar.className = 'progress-bar progress-bar-striped bg-danger';
+                uploadProgressBar.textContent = 'Error';
+
+                // Show detailed error to user
+                alert(`Upload failed:\n\n${error.message}\n\nCheck console for details.`);
+            }
+        }
+
+        // ==================================================
+        // 📄 Generate Excel/CSV Template
+        // ==================================================
+
+        function generateTemplate(format) {
+            try {
+                console.log(`📋 Generating ${format} template...`);
+
+                // Get MAWB number from input (if available)
+                const mawbInput = document.getElementById('mawbNumInput');
+                const currentMAWB = mawbInput ? mawbInput.value.trim() : 'MAWB_EXAMPLE';
+
+                if (format === 'excel') {
+                    // For Excel, we need to use a library or create proper XLSX
+                    // Since we don't have xlsx library in frontend, create CSV but with .xls extension
+                    // Excel can open CSV with .xls extension
+                    generateExcelTemplate(currentMAWB);
+                } else {
+                    generateCSVTemplate(currentMAWB);
+                }
+
+            } catch (error) {
+                console.error(`❌ Error generating ${format} template:`, error);
+                alert(`Error generating template: ${error.message}\n\nTry the CSV template instead.`);
+            }
+        }
+
+        // Generate proper CSV template
+        function generateCSVTemplate(mawbNum = 'MAWB_EXAMPLE') {
+            const csvContent = `Tracking Number,Postal Code,Parcel Weight (kg)
+EXAMPLE001,BE1234,1.5
+EXAMPLE002,BE5678,2.0
+EXAMPLE003,,0.8
+EXAMPLE004,BE9012,
+
+=== INSTRUCTIONS FOR MAWB: ${mawbNum} ===
+1. Tracking Number is REQUIRED
+2. Postal Code and Parcel Weight are OPTIONAL
+3. MAWB Number will be taken from form: ${mawbNum}
+4. Do NOT modify column headers
+5. Save as .csv file
+6. Only jobs with "Info Received" status will be processed
+7. Maximum 3000 records per file
+8. Remove sample data before uploading`;
+
+            downloadFile(csvContent, 'text/csv', `UAN_template_${mawbNum}.csv`);
+            console.log(`✅ CSV template generated for MAWB: ${mawbNum}`);
+        }
+
+        // Generate Excel template (CSV with .xls extension - Excel can open it)
+        function generateExcelTemplate(mawbNum = 'MAWB_EXAMPLE') {
+            // Create CSV content but save as .xls
+            const csvContent = `Tracking Number\tPostal Code\tParcel Weight (kg)
+EXAMPLE001\tBE1234\t1.5
+EXAMPLE002\tBE5678\t2.0
+EXAMPLE003\t\t0.8
+EXAMPLE004\tBE9012\t
+
+=== INSTRUCTIONS FOR MAWB: ${mawbNum} ===
+1. Tracking Number is REQUIRED
+2. Postal Code and Parcel Weight are OPTIONAL
+3. MAWB Number will be taken from form: ${mawbNum}
+4. Do NOT modify column headers
+5. Save as .xls or .xlsx file
+6. Only jobs with "Info Received" status will be processed
+7. Maximum 3000 records per file
+8. Remove sample data before uploading`;
+
+            // Use tab-separated values for better Excel compatibility
+            downloadFile(csvContent, 'application/vnd.ms-excel', `UAN_template_${mawbNum}.xls`);
+            console.log(`✅ Excel template generated for MAWB: ${mawbNum}`);
+        }
+
+        // Helper function to download files
+        function downloadFile(content, mimeType, fileName) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Update modal buttons to show better labels
+        function updateTemplateButtons() {
+            const mawbInput = document.getElementById('mawbNumInput');
+            if (mawbInput && mawbInput.style.display === 'block') {
+                const mawbNum = mawbInput.value.trim() || 'EXAMPLE';
+
+                // Update button text if buttons exist
+                const excelBtn = document.querySelector('button[onclick*="generateTemplate(\'excel\')"]');
+                const csvBtn = document.querySelector('button[onclick*="generateTemplate(\'csv\')"]');
+
+                if (excelBtn) {
+                    excelBtn.innerHTML = `<i class="fas fa-file-excel"></i> Excel Template (${mawbNum})`;
+                }
+                if (csvBtn) {
+                    csvBtn.innerHTML = `<i class="fas fa-file-csv"></i> CSV Template (${mawbNum})`;
+                }
+            }
+        }
+
+        // Call this when MAWB input changes
+        document.getElementById('mawbNumInput')?.addEventListener('input', updateTemplateButtons);
+
+        // Optional: Track template downloads
+        function trackTemplateDownload(format) {
+            console.log(`📥 Template downloaded: ${format} format`);
+
+            // You can send analytics here if needed
+            try {
+                fetch('/api/track/template-download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        format: format,
+                        timestamp: new Date().toISOString(),
+                        updateCode: 'UAN'
+                    })
+                }).catch(error => {
+                    console.log('Template download tracking failed:', error);
+                });
+            } catch (error) {
+                console.log('Template download tracking error:', error);
+            }
+        }
+
+        // Update the MAWB selection change event listener:
+        document.getElementById('mawbNum').addEventListener('change', function () {
+            const selectedOption = this.options[this.selectedIndex];
+            const unscanned = selectedOption.getAttribute('data-unscanned');
+            const scanned = selectedOption.getAttribute('data-scanned');
+            const total = selectedOption.getAttribute('data-total');
+            const warehouse = selectedOption.getAttribute('data-warehouse');
+            const product = selectedOption.getAttribute('data-product');
+            const percentageUnscanned = selectedOption.getAttribute('data-percentage-unscanned');
+            const percentageScanned = selectedOption.getAttribute('data-percentage-scanned');
+
+            if (this.value) {
+                // Create or update status display
+                let statusDiv = document.getElementById('mawbStatusDetails');
+                if (!statusDiv) {
+                    statusDiv = document.createElement('div');
+                    statusDiv.id = 'mawbStatusDetails';
+                    statusDiv.className = 'alert alert-info mt-2';
+                    this.parentNode.appendChild(statusDiv);
+                }
+
+                const otherJobs = total - unscanned - scanned;
+                const percentageOther = Math.round(otherJobs / total * 100);
+
+                statusDiv.innerHTML = `
+            <h6>MAWB ${this.value} Status Breakdown (${product}):</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Unscanned (Info Received):</strong> ${unscanned} jobs <span class="badge bg-warning">${percentageUnscanned}%</span></p>
+                    <p><strong>Scanned (Processing):</strong> ${scanned} jobs <span class="badge bg-info">${percentageScanned}%</span></p>
+                    <p><strong>At Warehouse:</strong> ${warehouse} jobs</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Other Status:</strong> ${otherJobs} jobs <span class="badge bg-secondary">${percentageOther}%</span></p>
+                    <p><strong>Total Jobs:</strong> ${total}</p>
+                    <p><strong>Ready to Scan:</strong> ${unscanned} unscanned jobs</p>
+                </div>
+            </div>
+            <div class="progress mt-2" style="height: 20px;">
+                <div class="progress-bar bg-warning" style="width: ${percentageUnscanned}%">
+                    Unscanned (${percentageUnscanned}%)
+                </div>
+                <div class="progress-bar bg-info" style="width: ${percentageScanned}%">
+                    Scanned (${percentageScanned}%)
+                </div>
+                <div class="progress-bar bg-success" style="width: ${(warehouse / total * 100)}%">
+                    At Warehouse (${Math.round(warehouse / total * 100)}%)
+                </div>
+                <div class="progress-bar bg-secondary" style="width: ${percentageOther}%">
+                    Other (${percentageOther}%)
+                </div>
+            </div>
+        `;
+            } else {
+                // Remove status display if no MAWB selected
+                const statusDiv = document.getElementById('mawbStatusDetails');
+                if (statusDiv) {
+                    statusDiv.remove();
+                }
+            }
+        });
     </script>
 </body>
 

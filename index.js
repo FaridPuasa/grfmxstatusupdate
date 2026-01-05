@@ -53,6 +53,7 @@ const axios = require('axios');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const sharp = require('sharp');
+const csv = require('csv-parser');
 
 // ==================================================
 // ⚡ Cache
@@ -12534,7 +12535,7 @@ app.get('/api/gdex/sendorders/health', (req, res) => {
 // UAT/TESTING Authentication Middleware
 const authenticateGDEXUAT = (req, res, next) => {
     const apiKey = req.headers['x-api-key'] || req.headers['authorization'] || req.query.apiKey;
-    
+
     // Get UAT API key from environment variables
     const validApiKey = process.env.GDEX_API_KEY_UAT;
 
@@ -12593,7 +12594,7 @@ const authenticateGDEXUAT = (req, res, next) => {
 // LIVE Authentication Middleware
 const authenticateGDEXLIVE = (req, res, next) => {
     const apiKey = req.headers['x-api-key'] || req.headers['authorization'] || req.query.apiKey;
-    
+
     // Get LIVE API key from environment variables
     const validApiKey = process.env.GDEX_API_KEY_LIVE;
 
@@ -12724,7 +12725,7 @@ app.post('/api/gdex/sendorderrequest', async (req, res) => {
 
         // Process the order with UAT configuration
         await processGDEXOrder(req.body, 'UAT', res);
-        
+
     } catch (error) {
         console.error('❌ [UAT] GDEX to Go Rush Error:', {
             consignmentno: req.body?.consignmentno,
@@ -12802,7 +12803,7 @@ app.post('/api/gdex/sendorders', async (req, res) => {
 
         // Process the order with LIVE configuration
         await processGDEXOrder(req.body, 'LIVE', res);
-        
+
     } catch (error) {
         console.error('❌ [LIVE] GDEX to Go Rush Error:', {
             consignmentno: req.body?.consignmentno,
@@ -12829,7 +12830,7 @@ app.post('/api/gdex/sendorders', async (req, res) => {
 async function processGDEXOrder(orderData, environment, res) {
     try {
         console.log(`🔍 Checking if consignment exists in Detrack: ${orderData.consignmentno}`);
-        
+
         // ===========================================
         // STEP 1: CHECK IF ORDER ALREADY EXISTS IN DETRACK
         // ===========================================
@@ -12842,10 +12843,10 @@ async function processGDEXOrder(orderData, environment, res) {
                     }
                 }
             );
-            
+
             // If we get here, job exists (200 response)
             console.log(`⚠️ Consignment ${orderData.consignmentno} already exists in Detrack`);
-            
+
             // ✅ RETURN GDEX DUPLICATE FORMAT
             return res.status(200).json({
                 "success": false,
@@ -12854,7 +12855,7 @@ async function processGDEXOrder(orderData, environment, res) {
                     "message": `Duplicate CN: ${orderData.consignmentno}`
                 }
             });
-            
+
         } catch (checkError) {
             // If 404 - job doesn't exist (this is what we want)
             if (checkError.response?.status === 404) {
@@ -12869,7 +12870,7 @@ async function processGDEXOrder(orderData, environment, res) {
                 // Continue anyway - let Detrack handle duplicate on creation
             }
         }
-        
+
         // ===========================================
         // STEP 2: PREPARE ORDER DATA
         // ===========================================
@@ -13312,7 +13313,7 @@ async function processGDEXOrder(orderData, environment, res) {
 
     } catch (error) {
         const errorData = error.response?.data;
-        
+
         console.error(`❌ Error creating order in Detrack (${environment}):`, {
             consignmentno: orderData.consignmentno,
             status: error.response?.status,
@@ -13323,12 +13324,12 @@ async function processGDEXOrder(orderData, environment, res) {
         // Handle Detrack creation errors
         if (error.response?.status === 422 || error.response?.status === 400) {
             // Detrack validation/duplicate error on creation
-            const errorMessage = errorData?.errors?.[0]?.message || 
-                               errorData?.message || 
-                               "Validation failed in Detrack";
-            
+            const errorMessage = errorData?.errors?.[0]?.message ||
+                errorData?.message ||
+                "Validation failed in Detrack";
+
             // Check if it's a duplicate error
-            if (errorMessage.toLowerCase().includes('duplicate') || 
+            if (errorMessage.toLowerCase().includes('duplicate') ||
                 errorMessage.toLowerCase().includes('already exists')) {
                 return res.status(200).json({
                     "success": false,
@@ -13338,7 +13339,7 @@ async function processGDEXOrder(orderData, environment, res) {
                     }
                 });
             }
-            
+
             // Other validation errors
             return res.status(200).json({
                 "success": false,
@@ -13473,6 +13474,13 @@ app.post('/updateJob', async (req, res) => {
                         break;
                     case 'IIW':
                         result = await processItemInWarehouseUpdate(trackingNumber, warehouse, req);
+                        break;
+                    case 'UMN':
+                        const umnResult = await processUMNUpdate(trackingNumber, mawbNum, req);
+                        result = {
+                            success: umnResult,
+                            message: umnResult ? `MAWB Number updated to ${mawbNum}` : 'UMN update failed'
+                        };
                         break;
                     default:
                         result = { success: false, message: `Unsupported update code: ${updateCode}` };
@@ -13661,6 +13669,540 @@ function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isII
     }
 
     return updateData;
+}
+
+// ==================================================
+// 📁 Excel Upload Route for UAN (Excel/CSV)
+// ==================================================
+
+// Serve the Excel upload page
+app.get('/updateJob/excelUpload', ensureAuthenticated, (req, res) => {
+    res.render('updateJobExcel', { user: req.user });
+});
+
+app.post('/updateJob/excelUpload', ensureAuthenticated, upload.single('excelFile'), async (req, res) => {
+    try {
+        console.log('📥 Excel upload request received');
+
+        if (!req.file) {
+            return res.status(400).json({
+                error: 'No file uploaded',
+                message: 'Please select a file to upload'
+            });
+        }
+
+        // Get MAWB from form data
+        const mawbNum = req.body.mawbNum;
+        if (!mawbNum || mawbNum.trim() === '') {
+            return res.status(400).json({
+                error: 'MAWB Number required',
+                message: 'MAWB Number is required for Excel upload'
+            });
+        }
+
+        console.log(`📦 Processing Excel for MAWB: ${mawbNum}`);
+
+        const file = req.file;
+        console.log(`📁 File: ${file.originalname}, ${file.size} bytes`);
+
+        // Parse file
+        let data = [];
+        const fileExt = file.originalname.split('.').pop().toLowerCase();
+
+        if (fileExt === 'csv') {
+            data = await parseCSVBuffer(file.buffer);
+        } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+            data = await parseExcelBuffer(file.buffer);
+        } else {
+            return res.status(400).json({
+                error: 'Unsupported file type',
+                message: 'Please upload Excel (.xlsx, .xls) or CSV (.csv) files only'
+            });
+        }
+
+        console.log(`📈 Parsed ${data.length} rows from file`);
+
+        if (data.length === 0) {
+            return res.status(400).json({
+                error: 'Empty file',
+                message: 'The file contains no data'
+            });
+        }
+
+        // Check for required column
+        const firstRow = data[0];
+        const headers = Object.keys(firstRow);
+
+        if (!headers.includes('Tracking Number')) {
+            return res.status(400).json({
+                error: 'Missing required column',
+                message: 'File must contain "Tracking Number" column',
+                found: headers
+            });
+        }
+
+        // Process data - ONLY tracking numbers now
+        const trackingNumbers = [];
+        const additionalData = [];
+
+        data.forEach((row, index) => {
+            const trackingNumber = row['Tracking Number']?.toString().trim();
+            const postalCode = row['Postal Code']?.toString().trim();
+            const parcelWeight = row['Parcel Weight']?.toString().trim();
+
+            if (trackingNumber) {
+                trackingNumbers.push(trackingNumber);
+                additionalData.push({
+                    trackingNumber,
+                    postalCode: postalCode || null,
+                    parcelWeight: parcelWeight || null,
+                    rowNumber: index + 1
+                });
+            }
+        });
+
+        if (trackingNumbers.length === 0) {
+            return res.status(400).json({
+                error: 'No valid data',
+                message: 'No valid tracking numbers found in the file'
+            });
+        }
+
+        console.log(`✅ Found ${trackingNumbers.length} valid tracking numbers for MAWB: ${mawbNum}`);
+
+        // Generate job ID
+        const jobId = generateJobId();
+
+        // Store job data
+        backgroundJobs.set(jobId, {
+            status: 'queued',
+            total: trackingNumbers.length,
+            processed: 0,
+            successful: [],
+            failed: [],
+            updatedCount: 0,
+            failedCount: 0,
+            startTime: Date.now(),
+            uploadType: 'excel',
+            mawbNum: mawbNum.trim(),
+            data: additionalData,
+            fileName: file.originalname,
+            retryCount: 0 // Add retry tracking
+        });
+
+        console.log(`✅ Job created: ${jobId} with ${trackingNumbers.length} records for MAWB: ${mawbNum}`);
+
+        // Send immediate response
+        res.json({
+            jobId: jobId,
+            status: 'queued',
+            message: `File uploaded successfully. Processing ${trackingNumbers.length} tracking numbers for MAWB: ${mawbNum}`,
+            totalJobs: trackingNumbers.length,
+            mawbNum: mawbNum,
+            fileName: file.originalname
+        });
+
+        // Start background processing with retry logic
+        setTimeout(() => {
+            processExcelUploadWithRetry(jobId, mawbNum.trim(), additionalData, req);
+        }, 100);
+
+    } catch (error) {
+        console.error('❌ Excel upload error:', error);
+        res.status(500).json({
+            error: 'File processing failed',
+            message: error.message
+        });
+    }
+});
+
+// ==================================================
+// 📊 File Parsing Helper Functions
+// ==================================================
+
+function parseExcelBuffer(buffer) {
+    try {
+        const workbook = xlsx.read(buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        return xlsx.utils.sheet_to_json(worksheet);
+    } catch (error) {
+        console.error('Error parsing Excel:', error);
+        throw new Error('Failed to parse Excel file. Please check the file format.');
+    }
+}
+
+function parseCSVBuffer(buffer) {
+    return new Promise((resolve, reject) => {
+        const results = [];
+        const stream = require('stream');
+        const bufferStream = new stream.PassThrough();
+        bufferStream.end(buffer);
+
+        bufferStream
+            .pipe(csv())
+            .on('data', (data) => results.push(data))
+            .on('end', () => resolve(results))
+            .on('error', (error) => {
+                console.error('Error parsing CSV:', error);
+                reject(new Error('Failed to parse CSV file. Please check the file format.'));
+            });
+    });
+}
+
+// ==================================================
+// 📊 Process Excel Upload in Background
+// ==================================================
+
+async function processExcelUploadInBackground(jobId, additionalData, req) {
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        failedCount: 0,
+        status: 'processing',
+        total: additionalData.length,
+        processed: 0,
+        startTime: Date.now()
+    };
+
+    backgroundJobs.set(jobId, { ...results, status: 'processing' });
+
+    try {
+        for (let i = 0; i < additionalData.length; i++) {
+            const { trackingNumber, mawbNum, postalCode, parcelWeight } = additionalData[i];
+
+            try {
+                // Check if job exists in Detrack and status is 'info_recv'
+                const jobExists = await checkJobExists(trackingNumber);
+
+                if (!jobExists) {
+                    results.failed.push({
+                        trackingNumber,
+                        result: 'Job not found in Detrack',
+                        status: 'Failed'
+                    });
+                    results.failedCount++;
+                    continue;
+                }
+
+                // Get job details to check status
+                const jobData = await getJobDetails(trackingNumber);
+
+                if (!jobData || jobData.status !== 'info_recv') {
+                    results.failed.push({
+                        trackingNumber,
+                        result: `Job status is "${jobData?.status || 'unknown'}", must be "info_recv" for Excel upload`,
+                        status: 'Failed'
+                    });
+                    results.failedCount++;
+                    continue;
+                }
+
+                // Process UAN update with additional fields
+                const success = await processUANWithAdditionalFields(
+                    trackingNumber,
+                    mawbNum,
+                    postalCode,
+                    parcelWeight,
+                    req
+                );
+
+                if (success) {
+                    results.successful.push({
+                        trackingNumber,
+                        result: `MAWB updated to ${mawbNum}` +
+                            (postalCode ? `, Postal Code: ${postalCode}` : '') +
+                            (parcelWeight ? `, Weight: ${parcelWeight}` : ''),
+                        status: 'Updated'
+                    });
+                    results.updatedCount++;
+                } else {
+                    results.failed.push({
+                        trackingNumber,
+                        result: 'Update failed',
+                        status: 'Failed'
+                    });
+                    results.failedCount++;
+                }
+
+            } catch (error) {
+                console.error(`Error processing ${trackingNumber}:`, error);
+                results.failed.push({
+                    trackingNumber,
+                    result: `Error: ${error.message}`,
+                    status: 'Error'
+                });
+                results.failedCount++;
+            }
+
+            results.processed = i + 1;
+
+            // Update job progress every 10 items
+            if (i % 10 === 0 || i === additionalData.length - 1) {
+                backgroundJobs.set(jobId, {
+                    ...results,
+                    status: 'processing',
+                    progress: Math.round((results.processed / results.total) * 100)
+                });
+            }
+
+            // Small delay between processing
+            if (i < additionalData.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        results.status = 'completed';
+        results.processingTime = Date.now() - results.startTime;
+        backgroundJobs.set(jobId, results);
+
+        console.log(`✅ Excel upload job ${jobId} completed:`, {
+            updated: results.updatedCount,
+            failed: results.failedCount,
+            total: results.total
+        });
+
+    } catch (error) {
+        console.error('Excel upload background job error:', error);
+        results.status = 'failed';
+        results.error = error.message;
+        backgroundJobs.set(jobId, results);
+    }
+}
+
+// ==================================================
+// 🔧 Updated UAN Processing with Additional Fields
+// ==================================================
+
+async function processUANWithAdditionalFields(trackingNumber, mawbNum, postalCode, parcelWeight, req) {
+    try {
+        console.log(`\n📦 ========== EXCEL UAN UPDATE ==========`);
+        console.log(`📋 Tracking: ${trackingNumber}`);
+        console.log(`📦 MAWB: ${mawbNum}`);
+        if (postalCode) console.log(`📮 Postal Code: ${postalCode}`);
+        if (parcelWeight) console.log(`⚖️  Weight: ${parcelWeight}`);
+
+        // Check job exists and status is info_recv
+        const jobData = await getJobDetails(trackingNumber);
+        if (!jobData) {
+            console.log(`❌ Job ${trackingNumber} not found`);
+            return false;
+        }
+
+        if (jobData.status !== 'info_recv') {
+            console.log(`❌ Job status must be "info_recv", found: ${jobData.status}`);
+            return false;
+        }
+
+        // Get product info
+        const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
+        console.log(`🏷️  PRODUCT: ${currentProduct.toUpperCase()}`);
+
+        // Update or create order in MongoDB with additional fields
+        const mongoSuccess = await updateOrCreateOrderWithAdditionalFields(
+            trackingNumber,
+            mawbNum,
+            postalCode,
+            parcelWeight,
+            jobData,
+            req,
+            currentProduct
+        );
+
+        if (!mongoSuccess) {
+            console.log(`❌ MongoDB update failed`);
+            return false;
+        }
+
+        // Prepare Detrack update with additional fields if provided
+        console.log(`\n🔄 PREPARING DETRACK UPDATE WITH ADDITIONAL FIELDS:`);
+        const updateData = createDetrackUpdateData(trackingNumber, mawbNum, currentProduct, jobData, false);
+
+        // Add postal code if provided
+        if (postalCode) {
+            updateData.data.postal_code = postalCode.toUpperCase();
+        }
+
+        // Add weight if provided
+        if (parcelWeight) {
+            updateData.data.weight = parseFloat(parcelWeight) || 0;
+        }
+
+        console.log(`📤 Detrack Payload:`);
+        console.log(JSON.stringify(updateData, null, 2));
+
+        // Send Detrack update
+        const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, mawbNum);
+
+        console.log(`\n📊 FINAL RESULT:`);
+        console.log(`   ├── MongoDB: ✅ Updated`);
+        console.log(`   ├── Detrack: ${detrackResult ? '✅ Success' : '❌ Failed'}`);
+        console.log(`   └── Additional fields: ${postalCode || parcelWeight ? '✅ Included' : '❌ Not provided'}`);
+
+        console.log(`\n🏁 ========== EXCEL UAN UPDATE COMPLETE ==========\n`);
+
+        return detrackResult;
+
+    } catch (error) {
+        console.error(`\n🔥 ERROR in Excel UAN update:`, error);
+        return false;
+    }
+}
+
+async function updateOrCreateOrderWithAdditionalFields(trackingNumber, mawbNum, postalCode, parcelWeight, jobData, req, product) {
+    try {
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+        const updateFields = {
+            mawbNo: mawbNum,
+            lastUpdateDateTime: moment().format(),
+            lastUpdatedBy: req.user.name
+        };
+
+        // Add postal code if provided
+        if (postalCode) {
+            updateFields.receiverPostalCode = postalCode.toUpperCase();
+        }
+
+        // Add parcel weight if provided
+        if (parcelWeight) {
+            updateFields.parcelWeight = parseFloat(parcelWeight) || 0;
+        }
+
+        if (existingOrder) {
+            // Update existing order
+            await ORDERS.updateOne(
+                { doTrackingNumber: trackingNumber },
+                { $set: updateFields }
+            );
+            console.log(`✅ Updated existing order with additional fields`);
+        } else {
+            // Create new order with product-specific rules (existing function)
+            const success = await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, product);
+
+            // Update the newly created order with additional fields
+            if (success && (postalCode || parcelWeight)) {
+                await ORDERS.updateOne(
+                    { doTrackingNumber: trackingNumber },
+                    { $set: updateFields }
+                );
+                console.log(`✅ Updated newly created order with additional fields`);
+            }
+            return success;
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error(`❌ Error updating order with additional fields:`, error);
+        return false;
+    }
+}
+
+// ==================================================
+// 📄 File Parsing Functions
+// ==================================================
+
+async function parseCSVFile(csvData) {
+    return new Promise((resolve, reject) => {
+        const results = [];
+        const parser = parse(csvData.toString(), {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true
+        });
+
+        parser.on('readable', function () {
+            let record;
+            while ((record = parser.read()) !== null) {
+                results.push(record);
+            }
+        });
+
+        parser.on('error', function (err) {
+            reject(err);
+        });
+
+        parser.on('end', function () {
+            resolve(results);
+        });
+    });
+}
+
+async function parseExcelFile(excelData) {
+    const workbook = xlsx.read(excelData, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    return xlsx.utils.sheet_to_json(worksheet);
+}
+
+// ==================================================
+// 🔄 UMN Processing Function (Manual Entry)
+// ==================================================
+
+async function processUMNUpdate(trackingNumber, mawbNum, req) {
+    try {
+        console.log(`\n🔄 ========== UMN UPDATE (Manual) ==========`);
+        console.log(`📋 Tracking: ${trackingNumber}`);
+        console.log(`📦 MAWB: ${mawbNum}`);
+
+        // Check if order exists in MongoDB
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+        if (!existingOrder) {
+            console.log(`❌ Order ${trackingNumber} not found in MongoDB. Use UAN (Excel) to create new orders first.`);
+            return false;
+        }
+
+        // Check if product is allowed for UMN updates
+        const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
+        if (!allowedProducts.includes(existingOrder.product)) {
+            console.log(`❌ Product "${existingOrder.product}" not allowed for UMN update`);
+            return false;
+        }
+
+        console.log(`✅ Product "${existingOrder.product}" allowed for UMN update`);
+
+        // Get current job details from Detrack
+        const jobData = await getJobDetails(trackingNumber);
+        if (!jobData) {
+            console.log(`❌ Job ${trackingNumber} not found in Detrack`);
+            return false;
+        }
+
+        // Update MongoDB
+        await ORDERS.updateOne(
+            { doTrackingNumber: trackingNumber },
+            {
+                $set: {
+                    mawbNo: mawbNum,
+                    lastUpdateDateTime: moment().format(),
+                    lastUpdatedBy: req.user.name
+                }
+            }
+        );
+
+        console.log(`✅ MongoDB updated`);
+
+        // Update Detrack
+        const updateData = createDetrackUpdateData(trackingNumber, mawbNum, existingOrder.product, jobData, false);
+
+        const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, mawbNum);
+
+        console.log(`\n📊 FINAL RESULT:`);
+        console.log(`   ├── MongoDB: ✅ Updated existing order`);
+        console.log(`   ├── Detrack: ${detrackResult ? '✅ Success' : '❌ Failed'}`);
+        console.log(`   └── Product: ${existingOrder.product.toUpperCase()}`);
+
+        console.log(`\n🏁 ========== UMN UPDATE COMPLETE ==========\n`);
+
+        return detrackResult;
+
+    } catch (error) {
+        console.error(`\n🔥 ERROR in UMN update:`, error);
+        return false;
+    }
 }
 
 // ==================================================
@@ -13926,6 +14468,188 @@ app.post('/updateJob/checkTrackingForMAWB', ensureAuthenticated, async (req, res
         });
     }
 });
+
+// ==================================================
+// 🔍 Get MAWBs with Unscanned Counts (Only if unscanned > 0)
+// ==================================================
+
+app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
+    try {
+        console.log('🔍 Fetching MAWBs with unscanned counts...');
+
+        // Get date 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // Aggregate to get MAWB stats - only show MAWBs with unscanned jobs
+        const mawbStats = await ORDERS.aggregate([
+            {
+                $match: {
+                    mawbNo: {
+                        $exists: true,
+                        $ne: '',
+                        $nin: [null, '', 'N/A', 'NA']
+                    },
+                    lastUpdateDateTime: { $gte: thirtyDaysAgo.toISOString() },
+                    product: {
+                        $in: ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext', 'cbsl', 'kptdp', 'grp', 'temu']
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$mawbNo',
+                    // Total jobs with this MAWB
+                    totalJobs: { $sum: 1 },
+                    // Unscanned jobs (Info Received status)
+                    unscannedJobs: {
+                        $sum: {
+                            $cond: [{ $eq: ['$currentStatus', 'Info Received'] }, 1, 0]
+                        }
+                    },
+                    // Scanned jobs (At Warehouse or beyond)
+                    scannedJobs: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $or: [
+                                        { $eq: ['$currentStatus', 'At Warehouse'] },
+                                        { $eq: ['$currentStatus', 'In Sorting Area'] },
+                                        { $eq: ['$currentStatus', 'Custom Clearing'] },
+                                        { $eq: ['$currentStatus', 'On Hold'] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    // Already at warehouse
+                    atWarehouseJobs: {
+                        $sum: {
+                            $cond: [{ $eq: ['$warehouseEntry', 'Yes'] }, 1, 0]
+                        }
+                    },
+                    // Latest update
+                    latestUpdate: { $max: '$lastUpdateDateTime' },
+                    // Product type
+                    product: { $first: '$product' },
+                    // Sample tracking
+                    sampleTracking: { $first: '$doTrackingNumber' }
+                }
+            },
+            {
+                // ONLY include MAWBs that still have unscanned jobs
+                $match: {
+                    unscannedJobs: { $gt: 0 }
+                }
+            },
+            {
+                $project: {
+                    mawbNo: '$_id',
+                    totalJobs: 1,
+                    unscannedJobs: 1,
+                    scannedJobs: 1,
+                    atWarehouseJobs: 1,
+                    otherJobs: {
+                        $subtract: [
+                            '$totalJobs',
+                            { $add: ['$unscannedJobs', '$scannedJobs'] }
+                        ]
+                    },
+                    latestUpdate: 1,
+                    product: 1,
+                    sampleTracking: 1,
+                    // Percentage of unscanned jobs
+                    percentageUnscanned: {
+                        $multiply: [
+                            { $divide: ['$unscannedJobs', '$totalJobs'] },
+                            100
+                        ]
+                    },
+                    // Percentage of scanned jobs
+                    percentageScanned: {
+                        $multiply: [
+                            { $divide: ['$scannedJobs', '$totalJobs'] },
+                            100
+                        ]
+                    }
+                }
+            },
+            {
+                // Sort by most unscanned jobs first, then most recent
+                $sort: {
+                    unscannedJobs: -1,
+                    latestUpdate: -1
+                }
+            },
+            { $limit: 100 }
+        ]);
+
+        console.log(`📊 Found ${mawbStats.length} MAWBs with unscanned jobs`);
+
+        if (mawbStats.length > 0) {
+            console.log('Sample MAWBs:');
+            mawbStats.slice(0, 5).forEach(mawb => {
+                console.log(`   ${mawb.mawbNo}: ${mawb.unscannedJobs}/${mawb.totalJobs} Unscanned (${mawb.product})`);
+            });
+        }
+
+        // Format for frontend
+        const formattedMAWBs = mawbStats.map(mawb => ({
+            mawbNo: mawb.mawbNo,
+            totalJobs: mawb.totalJobs,
+            unscannedJobs: mawb.unscannedJobs,
+            scannedJobs: mawb.scannedJobs || 0,
+            atWarehouseJobs: mawb.atWarehouseJobs || 0,
+            otherJobs: mawb.otherJobs || 0,
+            product: mawb.product,
+            sampleTracking: mawb.sampleTracking,
+            lastUpdated: formatDateForDisplay(mawb.latestUpdate),
+            percentageUnscanned: Math.round(mawb.percentageUnscanned || 0),
+            percentageScanned: Math.round(mawb.percentageScanned || 0)
+        }));
+
+        res.json({
+            success: true,
+            count: formattedMAWBs.length,
+            mawbs: formattedMAWBs,
+            summary: {
+                totalMAWBs: formattedMAWBs.length,
+                totalUnscannedJobs: formattedMAWBs.reduce((sum, m) => sum + m.unscannedJobs, 0),
+                totalScannedJobs: formattedMAWBs.reduce((sum, m) => sum + m.scannedJobs, 0),
+                totalAllJobs: formattedMAWBs.reduce((sum, m) => sum + m.totalJobs, 0)
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error getting MAWBs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to load MAWB numbers',
+            message: error.message
+        });
+    }
+});
+
+// Helper function to format date
+function formatDateForDisplay(dateString) {
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return 'Invalid date';
+        }
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (error) {
+        return dateString || 'Unknown';
+    }
+}
 
 // Simplify createNewOrderWithRules using consistent structure
 async function createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, product) {
@@ -14765,10 +15489,22 @@ async function processWarehouseUpdateLogic(trackingNumber, warehouse, jobData, p
 
     if (requiresDelay) {
         console.log(`⏰ Job ${trackingNumber} requires 30-minute delay (${product})`);
-        return await handleDelayedWarehouseUpdate(trackingNumber, warehouse, jobData, product, req, hasMAWB);
+        const result = await handleDelayedWarehouseUpdate(trackingNumber, warehouse, jobData, product, req, hasMAWB);
+        // Add customer details to the result
+        if (result && typeof result === 'object') {
+            result.customerName = jobData.deliver_to_collect_from || 'Unknown';
+            result.area = getAreaFromAddress(jobData.address);
+        }
+        return result;
     } else {
         console.log(`⚡ Job ${trackingNumber} can be updated immediately`);
-        return await handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData, product, req, hasMAWB);
+        const result = await handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData, product, req, hasMAWB);
+        // Add customer details to the result
+        if (result && typeof result === 'object') {
+            result.customerName = jobData.deliver_to_collect_from || 'Unknown';
+            result.area = getAreaFromAddress(jobData.address);
+        }
+        return result;
     }
 }
 
@@ -14824,7 +15560,9 @@ async function handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData
         return {
             success: true,
             message: `Item marked as at warehouse (${warehouse})`,
-            isNewOrder: !existingOrder // Track if this was a new order
+            customerName: jobData.deliver_to_collect_from || 'Unknown',
+            area: getAreaFromAddress(jobData.address),
+            isNewOrder: !existingOrder
         };
 
     } catch (error) {
@@ -14915,10 +15653,12 @@ async function handleDelayedWarehouseUpdate(trackingNumber, warehouse, jobData, 
         return {
             success: true,
             delayed: true,
-            message: `${immediateMessage}Queued for warehouse update in 30 minutes (${product})`, // REMOVED "- TESTING"
+            message: `${immediateMessage}Queued for warehouse update in 30 minutes (${product})`,
+            customerName: jobData.deliver_to_collect_from || 'Unknown',
+            area: getAreaFromAddress(jobData.address),
             delayedInfo: {
                 product: product,
-                scheduledTime: moment().add(30, 'minutes').format('HH:mm'), // CHANGED
+                scheduledTime: moment().add(30, 'minutes').format('HH:mm'),
                 jobId: delayedJobId,
                 currentStatus: mapDetrackStatus(jobData.status),
                 immediateUpdates: sequence.immediate || [],
@@ -16701,6 +17441,35 @@ async function updateDetrackJobStatus(trackingNumber, status) {
 }
 
 // ==================================================
+// 👥 Group IIW Results by Customer
+// ==================================================
+
+function groupIIWResultsByCustomer(results) {
+    const grouped = {};
+
+    results.forEach(item => {
+        if (item.customerName && item.area) {
+            const key = `${item.customerName}|${item.area}`;
+
+            if (!grouped[key]) {
+                grouped[key] = {
+                    customerName: item.customerName,
+                    area: item.area,
+                    trackingNumbers: [],
+                    count: 0,
+                    status: item.status || 'Updated'
+                };
+            }
+
+            grouped[key].trackingNumbers.push(item.trackingNumber);
+            grouped[key].count++;
+        }
+    });
+
+    return Object.values(grouped);
+}
+
+// ==================================================
 // 🔧 Batch Processing Utilities
 // ==================================================
 
@@ -17097,6 +17866,12 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
                     success: success,
                     message: success ? 'Put on hold' : 'On hold update failed'
                 };
+            } else if (updateCode === 'UMN') {
+                const success = await processUMNUpdate(trackingNumber, mawbNum, req);
+                return {
+                    success: success,
+                    message: success ? `MAWB updated to ${mawbNum}` : 'UMN update failed'
+                };
             } else {
                 result = {
                     success: false,
@@ -17192,12 +17967,13 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
 
     console.log(`📊 Batch results: ${results.updatedCount} updated, ${results.failedCount} failed, ${results.delayedCount} delayed, ${results.duplicateCount} duplicates`);
 
-    // Log duplicate details for debugging
-    if (results.duplicateCount > 0) {
-        console.log(`📋 Duplicates found:`, results.duplicate.map(d => ({
-            trackingNumber: d.trackingNumber,
-            count: d.duplicateCount
-        })));
+    // Add grouping for IIW results
+    if (updateCode === 'IIW') {
+        results.groupedByCustomer = groupIIWResultsByCustomer([
+            ...results.successful,
+            ...results.delayed
+        ]);
+        console.log(`👥 Grouped into ${results.groupedByCustomer.length} customer groups`);
     }
 
     return results;
@@ -17291,6 +18067,12 @@ async function processJobsInBackground(jobId, jobData, options = {}) {
             results.delayedCount += (batchResults.delayedCount || 0);
             results.duplicateCount += (batchResults.duplicateCount || 0); // This line is critical
             results.processed = start + batch.length;
+
+            // Merge grouped results for IIW
+            if (updateCode === 'IIW' && batchResults.groupedByCustomer) {
+                results.groupedByCustomer = results.groupedByCustomer || [];
+                results.groupedByCustomer.push(...batchResults.groupedByCustomer);
+            }
 
             // Update job progress
             backgroundJobs.set(jobId, {
@@ -17542,6 +18324,908 @@ async function testDownloadImage(imageUrl, consignmentID) {
 
     return result;
 }
+
+// ==================================================
+// 🐛 Debug Route for MAWB Data
+// ==================================================
+
+app.get('/updateJob/debug/mawbs', ensureAuthenticated, async (req, res) => {
+    try {
+        const sevenDaysAgo = moment().subtract(7, 'days').toDate();
+
+        // Get raw data for debugging
+        const debugData = await ORDERS.aggregate([
+            {
+                $match: {
+                    lastUpdateDateTime: { $gte: sevenDaysAgo },
+                    mawbNo: { $exists: true, $ne: '' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$mawbNo',
+                    total: { $sum: 1 },
+                    scanned: {
+                        $sum: {
+                            $cond: [{ $eq: ['$warehouseEntry', 'Yes'] }, 1, 0]
+                        }
+                    },
+                    products: { $addToSet: '$product' },
+                    latestUpdate: { $max: '$lastUpdateDateTime' },
+                    sampleTracking: { $first: '$doTrackingNumber' }
+                }
+            },
+            {
+                $project: {
+                    mawbNo: '$_id',
+                    total: 1,
+                    scanned: 1,
+                    unscanned: { $subtract: ['$total', '$scanned'] },
+                    products: 1,
+                    latestUpdate: 1,
+                    sampleTracking: 1,
+                    allScanned: { $eq: ['$scanned', '$total'] }
+                }
+            },
+            { $sort: { latestUpdate: -1 } },
+            { $limit: 100 }
+        ]);
+
+        // Get total counts
+        const totalCount = await ORDERS.countDocuments({
+            lastUpdateDateTime: { $gte: sevenDaysAgo },
+            mawbNo: { $exists: true, $ne: '' }
+        });
+
+        const withMAWBScanned = await ORDERS.countDocuments({
+            lastUpdateDateTime: { $gte: sevenDaysAgo },
+            mawbNo: { $exists: true, $ne: '' },
+            warehouseEntry: 'Yes'
+        });
+
+        const withMAWBUnscanned = await ORDERS.countDocuments({
+            lastUpdateDateTime: { $gte: sevenDaysAgo },
+            mawbNo: { $exists: true, $ne: '' },
+            warehouseEntry: { $ne: 'Yes' }
+        });
+
+        res.json({
+            success: true,
+            stats: {
+                totalOrdersWithMAWB: totalCount,
+                scanned: withMAWBScanned,
+                unscanned: withMAWBUnscanned,
+                uniqueMAWBs: debugData.length
+            },
+            mawbs: debugData,
+            queryInfo: {
+                dateRange: `Last 7 days (from ${sevenDaysAgo.toISOString()})`,
+                currentTime: new Date().toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('Debug route error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ==================================================
+// 📁 Excel Template Generation
+// ==================================================
+
+app.get('/templates/UAN_template.xlsx', ensureAuthenticated, (req, res) => {
+    try {
+        console.log('📋 Generating UAN Excel template...');
+
+        // Create simple data array
+        const data = [
+            ['Tracking Number', 'MAWB Number', 'Postal Code', 'Parcel Weight (kg)'],
+            ['EXAMPLE001', 'MAWB123456', 'BE1234', '1.5'],
+            ['EXAMPLE002', 'MAWB123456', 'BE5678', '2.0'],
+            ['EXAMPLE003', 'MAWB789012', '', '0.8'],
+            ['EXAMPLE004', 'MAWB789012', 'BE9012', ''],
+            ['', '', '', ''],
+            ['=== INSTRUCTIONS ===', '', '', ''],
+            ['1. Tracking Number and MAWB Number are REQUIRED', '', '', ''],
+            ['2. Postal Code and Parcel Weight are OPTIONAL', '', '', ''],
+            ['3. Do NOT modify column headers', '', '', ''],
+            ['4. Save as .xlsx, .xls, or .csv file', '', '', ''],
+            ['5. Only jobs with "Info Received" status will be processed', '', '', ''],
+            ['6. Maximum 3000 records per file', '', '', ''],
+            ['7. Remove sample data before uploading', '', '', '']
+        ];
+
+        // Create workbook
+        const XLSX = require('xlsx');
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'UAN Template');
+
+        // Generate buffer
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+        // Set headers and send
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="UAN_template.xlsx"');
+        res.send(buffer);
+
+        console.log('✅ Excel template sent successfully');
+
+    } catch (error) {
+        console.error('❌ Error generating Excel template:', error);
+        // Fallback to CSV if Excel fails
+        sendCSVTemplate(res);
+    }
+});
+
+app.get('/templates/UAN_template.csv', ensureAuthenticated, (req, res) => {
+    sendCSVTemplate(res);
+});
+
+function sendCSVTemplate(res) {
+    try {
+        console.log('📋 Generating CSV template...');
+
+        const csvContent = `Tracking Number,MAWB Number,Postal Code,Parcel Weight (kg)
+EXAMPLE001,MAWB123456,BE1234,1.5
+EXAMPLE002,MAWB123456,BE5678,2.0
+EXAMPLE003,MAWB789012,,0.8
+EXAMPLE004,MAWB789012,BE9012,
+
+=== INSTRUCTIONS ===
+1. Tracking Number and MAWB Number are REQUIRED
+2. Postal Code and Parcel Weight are OPTIONAL
+3. Do NOT modify column headers
+4. Save as .csv file
+5. Only jobs with "Info Received" status will be processed
+6. Maximum 3000 records per file
+7. Remove sample data before uploading`;
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="UAN_template.csv"');
+        res.send(csvContent);
+
+        console.log('✅ CSV template sent successfully');
+
+    } catch (error) {
+        console.error('❌ Error generating CSV template:', error);
+        res.status(500).send('Error generating template file');
+    }
+}
+
+// ==================================================
+// 🔄 Enhanced Excel Processing with Retry Logic
+// ==================================================
+
+async function processExcelUploadWithRetry(jobId, mawbNum, data, req) {
+    const job = backgroundJobs.get(jobId);
+    if (!job) {
+        console.error(`❌ Job ${jobId} not found`);
+        return;
+    }
+
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        failedCount: 0,
+        status: 'processing',
+        total: data.length,
+        processed: 0,
+        startTime: Date.now(),
+        retries: [],
+        productRestrictionFailures: 0 // Add this counter
+    };
+
+    backgroundJobs.set(jobId, { ...job, ...results, status: 'processing' });
+
+    try {
+        // Process in smaller batches to avoid timeouts
+        const BATCH_SIZE = 50; // Smaller batches
+        const BATCH_DELAY = 1000; // 1 second between batches
+        const MAX_RETRIES = 3; // Max retries per item
+
+        const totalBatches = Math.ceil(data.length / BATCH_SIZE);
+
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const start = batchIndex * BATCH_SIZE;
+            const end = Math.min(start + BATCH_SIZE, data.length);
+            const batch = data.slice(start, end);
+
+            console.log(`🔄 Processing batch ${batchIndex + 1}/${totalBatches} for job ${jobId}`);
+
+            // Process batch with retry logic
+            const batchResults = await processBatchWithRetry(batch, mawbNum, req, MAX_RETRIES);
+
+            // Merge results
+            results.successful.push(...batchResults.successful);
+            results.failed.push(...batchResults.failed);
+            results.updatedCount += batchResults.updatedCount;
+            results.failedCount += batchResults.failedCount;
+            results.processed = end;
+
+            // Track product restriction failures
+            if (batchResults.productRestrictionFailures) {
+                results.productRestrictionFailures += batchResults.productRestrictionFailures;
+            }
+
+            if (batchResults.retries && batchResults.retries.length > 0) {
+                results.retries.push(...batchResults.retries);
+            }
+
+            // Update progress
+            backgroundJobs.set(jobId, {
+                ...results,
+                status: 'processing',
+                currentBatch: batchIndex + 1,
+                totalBatches: totalBatches,
+                progress: Math.round((results.processed / results.total) * 100)
+            });
+
+            // Delay between batches (except last one)
+            if (batchIndex < totalBatches - 1) {
+                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+            }
+        }
+
+        // Check if we have retries to process
+        if (results.retries.length > 0) {
+            console.log(`🔄 Processing ${results.retries.length} retries for job ${jobId}`);
+
+            const retryResults = await processRetryItems(results.retries, mawbNum, req);
+
+            // Merge retry results
+            results.successful.push(...retryResults.successful);
+            results.failed.push(...retryResults.failed);
+            results.updatedCount += retryResults.updatedCount;
+            results.failedCount += retryResults.failedCount;
+
+            // Track product restriction failures from retries
+            if (retryResults.productRestrictionFailures) {
+                results.productRestrictionFailures += retryResults.productRestrictionFailures;
+            }
+        }
+
+        results.status = 'completed';
+        results.processingTime = Date.now() - results.startTime;
+        backgroundJobs.set(jobId, results);
+
+        // Log summary including product restriction info
+        console.log(`✅ Job ${jobId} completed:`);
+        console.log(`   Total processed: ${results.total}`);
+        console.log(`   Successfully updated: ${results.updatedCount}`);
+        console.log(`   Failed: ${results.failedCount}`);
+        console.log(`   Failed due to product restrictions: ${results.productRestrictionFailures}`);
+        console.log(`   Processing time: ${results.processingTime}ms`);
+
+    } catch (error) {
+        console.error(`❌ Job ${jobId} processing error:`, error);
+        results.status = 'failed';
+        results.error = error.message;
+        backgroundJobs.set(jobId, results);
+    }
+}
+
+async function processBatchWithRetry(batch, mawbNum, req, maxRetries = 3) {
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        failedCount: 0,
+        retries: [], // Items to retry
+        productRestrictionFailures: 0
+    };
+
+    const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
+
+    const promises = batch.map(async (item) => {
+        let retryCount = 0;
+        let lastError = null;
+        let lastResult = null;
+
+        while (retryCount <= maxRetries) {
+            try {
+                // Add delay for retries (except first attempt)
+                if (retryCount > 0) {
+                    const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000); // Exponential backoff
+                    console.log(`⏳ Retry ${retryCount}/${maxRetries} for ${item.trackingNumber} after ${delay}ms`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+
+                // Process the update
+                const result = await processUANUpdateWithAdditionalFields(
+                    item.trackingNumber,
+                    mawbNum,
+                    item.postalCode,
+                    item.parcelWeight,
+                    req
+                );
+
+                // Store the result for analysis
+                lastResult = result;
+
+                if (result.success) {
+                    results.successful.push({
+                        trackingNumber: item.trackingNumber,
+                        result: `MAWB updated to ${mawbNum}`,
+                        attempts: retryCount + 1,
+                        message: result.message
+                    });
+                    results.updatedCount++;
+                    console.log(`✅ ${item.trackingNumber}: MAWB updated to ${mawbNum} (attempt ${retryCount + 1})`);
+                    return; // Success, exit retry loop
+                } else {
+                    // Check if failure is due to product restriction
+                    const isProductRestriction = result.reason === 'Product not allowed' ||
+                        result.message?.includes('not allowed for UAN') ||
+                        result.skipped === true && result.reason === 'Product not allowed';
+
+                    if (isProductRestriction) {
+                        results.productRestrictionFailures++;
+                        // Don't retry for product restrictions
+                        results.failed.push({
+                            trackingNumber: item.trackingNumber,
+                            result: result.reason || 'Product not allowed',
+                            message: result.message,
+                            attempts: retryCount + 1,
+                            isProductRestriction: true
+                        });
+                        results.failedCount++;
+                        console.log(`🚫 ${item.trackingNumber}: Product not allowed - ${result.message}`);
+                        return; // Exit for product restriction
+                    }
+
+                    // Check if it's a "skipped" item (wrong status, already at warehouse, etc.)
+                    if (result.skipped) {
+                        // Don't retry skipped items
+                        results.failed.push({
+                            trackingNumber: item.trackingNumber,
+                            result: result.reason || 'Skipped',
+                            message: result.message,
+                            attempts: retryCount + 1,
+                            isSkipped: true
+                        });
+                        results.failedCount++;
+                        console.log(`⚠️ ${item.trackingNumber}: Skipped - ${result.message}`);
+                        return; // Exit for skipped items
+                    }
+
+                    // For other failures, prepare to retry
+                    lastError = new Error(result.message || 'Update failed');
+                    retryCount++;
+
+                    if (retryCount <= maxRetries) {
+                        console.log(`🔄 ${item.trackingNumber}: Update failed, retrying (${retryCount}/${maxRetries})`);
+                    }
+                }
+
+            } catch (error) {
+                lastError = error;
+                retryCount++;
+
+                // If it's a timeout error, we should retry
+                if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                    console.log(`⏱️ ${item.trackingNumber}: Timeout, will retry (${retryCount}/${maxRetries})`);
+
+                    if (retryCount <= maxRetries) {
+                        continue; // Continue to next retry attempt
+                    }
+                } else {
+                    // Other errors might not benefit from retry
+                    console.log(`❌ ${item.trackingNumber}: Non-retryable error - ${error.message}`);
+                    break;
+                }
+            }
+        }
+
+        // If we exhausted retries or got a non-retryable error
+        if (retryCount > maxRetries || lastError) {
+            const isRetryableError = lastError?.code === 'ECONNABORTED' ||
+                lastError?.message?.includes('timeout') ||
+                lastError?.message?.includes('network');
+
+            results.failed.push({
+                trackingNumber: item.trackingNumber,
+                result: lastError?.message || 'Max retries exceeded',
+                message: lastError?.message || 'Failed after all retries',
+                attempts: retryCount,
+                lastResult: lastResult
+            });
+            results.failedCount++;
+
+            // Add to retries list if it was a timeout/network error and we haven't hit max retries
+            if (isRetryableError && retryCount <= maxRetries) {
+                results.retries.push({
+                    ...item,
+                    retryCount: retryCount,
+                    lastError: lastError?.message,
+                    lastResult: lastResult
+                });
+                console.log(`🔁 ${item.trackingNumber}: Added to retry queue (${retryCount} attempts so far)`);
+            } else {
+                console.log(`❌ ${item.trackingNumber}: Failed permanently - ${lastError?.message || 'Unknown error'}`);
+            }
+        }
+    });
+
+    // Process with concurrency limit
+    const CONCURRENCY = 10; // Process 10 items at a time
+    for (let i = 0; i < promises.length; i += CONCURRENCY) {
+        const chunk = promises.slice(i, i + CONCURRENCY);
+        await Promise.allSettled(chunk);
+    }
+
+    // Log batch summary
+    console.log(`📊 Batch completed:`);
+    console.log(`   Successful: ${results.updatedCount}`);
+    console.log(`   Failed: ${results.failedCount}`);
+    console.log(`   Product restriction failures: ${results.productRestrictionFailures}`);
+    console.log(`   Items to retry: ${results.retries.length}`);
+
+    return results;
+}
+
+async function processRetryItems(retryItems, mawbNum, req) {
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        failedCount: 0,
+        productRestrictionFailures: 0
+    };
+
+    // Process retries one by one with longer delays
+    for (const item of retryItems) {
+        try {
+            console.log(`🔄 Final retry attempt for ${item.trackingNumber} (previous attempts: ${item.retryCount})`);
+
+            // Longer delay for final retries
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const result = await processUANUpdateWithAdditionalFields(
+                item.trackingNumber,
+                mawbNum,
+                item.postalCode,
+                item.parcelWeight,
+                req
+            );
+
+            if (result.success) {
+                results.successful.push({
+                    trackingNumber: item.trackingNumber,
+                    result: `MAWB updated to ${mawbNum} (after retry)`,
+                    attempts: item.retryCount + 1,
+                    message: result.message
+                });
+                results.updatedCount++;
+                console.log(`✅ ${item.trackingNumber}: Retry successful - MAWB updated`);
+            } else {
+                // Check for product restriction in retry (shouldn't happen, but just in case)
+                const isProductRestriction = result.reason === 'Product not allowed' ||
+                    result.message?.includes('not allowed for UAN');
+
+                if (isProductRestriction) {
+                    results.productRestrictionFailures++;
+                }
+
+                results.failed.push({
+                    trackingNumber: item.trackingNumber,
+                    result: result.reason || 'Failed after all retries',
+                    message: result.message || 'Update failed',
+                    attempts: item.retryCount + 1,
+                    isProductRestriction: isProductRestriction,
+                    finalAttempt: true
+                });
+                results.failedCount++;
+                console.log(`❌ ${item.trackingNumber}: Final retry failed - ${result.message}`);
+            }
+
+        } catch (error) {
+            results.failed.push({
+                trackingNumber: item.trackingNumber,
+                result: `Error: ${error.message}`,
+                message: `Error during final retry: ${error.message}`,
+                attempts: item.retryCount + 1,
+                finalAttempt: true
+            });
+            results.failedCount++;
+            console.log(`💥 ${item.trackingNumber}: Error during final retry - ${error.message}`);
+        }
+    }
+
+    // Log retry summary
+    if (retryItems.length > 0) {
+        console.log(`📊 Retry batch completed:`);
+        console.log(`   Retry successful: ${results.updatedCount}`);
+        console.log(`   Retry failed: ${results.failedCount}`);
+        console.log(`   Product restriction failures in retry: ${results.productRestrictionFailures}`);
+    }
+
+    return results;
+}
+
+// ==================================================
+// 🔄 Enhanced UAN Processing for Existing Orders
+// ==================================================
+
+async function processUANUpdateWithAdditionalFields(trackingNumber, mawbNum, postalCode, parcelWeight, req) {
+    try {
+        console.log(`🔍 Processing ${trackingNumber} for MAWB: ${mawbNum}`);
+
+        // Check if order already exists in MongoDB
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+        if (existingOrder) {
+            console.log(`📦 Order exists in MongoDB for ${trackingNumber}`);
+
+            // Check current status
+            console.log(`   Current MAWB: ${existingOrder.mawbNo || 'None'}`);
+            console.log(`   Current Status: ${existingOrder.currentStatus || 'Unknown'}`);
+            console.log(`   Warehouse Entry: ${existingOrder.warehouseEntry || 'No'}`);
+            console.log(`   Product: ${existingOrder.product || 'Unknown'}`);
+
+            // ========== IMPORTANT: VALIDATE PRODUCT FOR UAN ==========
+            const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
+            const currentProduct = existingOrder.product?.toLowerCase() || '';
+
+            if (!allowedProducts.includes(currentProduct)) {
+                console.log(`❌ Skipping ${trackingNumber} - Product "${currentProduct}" not allowed for UAN update`);
+                console.log(`   Allowed products: ${allowedProducts.join(', ')}`);
+                return {
+                    success: false,
+                    skipped: true,
+                    reason: 'Product not allowed',
+                    message: `Product "${currentProduct}" is not allowed for UAN/MAWB updates`
+                };
+            }
+
+            // ========== DON'T UPDATE IF ALREADY AT WAREHOUSE ==========
+            if (existingOrder.warehouseEntry === "Yes") {
+                console.log(`⚠️ Skipping ${trackingNumber} - Already at warehouse`);
+                return {
+                    success: false,
+                    skipped: true,
+                    reason: 'Already at warehouse',
+                    message: 'Job already scanned at warehouse, cannot update MAWB'
+                };
+            }
+
+            // ========== DON'T UPDATE IF NOT "Info Received" STATUS ==========
+            if (existingOrder.currentStatus !== "Info Received") {
+                console.log(`⚠️ Skipping ${trackingNumber} - Status is "${existingOrder.currentStatus}", not "Info Received"`);
+                return {
+                    success: false,
+                    skipped: true,
+                    reason: 'Wrong status',
+                    message: `Job status is "${existingOrder.currentStatus}", must be "Info Received" for UAN update`
+                };
+            }
+
+            // ========== UPDATE EXISTING ORDER ==========
+            const updateFields = {
+                mawbNo: mawbNum,
+                lastUpdateDateTime: moment().format(),
+                lastUpdatedBy: req.user.name
+            };
+
+            if (postalCode) updateFields.receiverPostalCode = postalCode.toUpperCase();
+            if (parcelWeight) updateFields.parcelWeight = parseFloat(parcelWeight) || 0;
+
+            await ORDERS.updateOne(
+                { doTrackingNumber: trackingNumber },
+                { $set: updateFields }
+            );
+
+            console.log(`✅ Updated existing order in MongoDB`);
+
+        } else {
+            // Order doesn't exist - create new one
+            console.log(`🆕 Creating new order for ${trackingNumber}`);
+
+            // Get job details from Detrack
+            const jobData = await getJobDetailsWithRetry(trackingNumber);
+            if (!jobData) {
+                console.log(`❌ Job ${trackingNumber} not found in Detrack`);
+                return {
+                    success: false,
+                    reason: 'Not found in Detrack',
+                    message: 'Job not found in Detrack'
+                };
+            }
+
+            // Check status
+            if (jobData.status !== 'info_recv') {
+                console.log(`❌ Job status must be "info_recv", found: ${jobData.status}`);
+                return {
+                    success: false,
+                    reason: 'Wrong status',
+                    message: `Job status is "${jobData.status}", must be "info_recv" for UAN update`
+                };
+            }
+
+            // Get product info
+            const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
+
+            // ========== VALIDATE ALLOWED PRODUCTS FOR UAN ==========
+            const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
+            if (!allowedProducts.includes(currentProduct)) {
+                console.log(`❌ Product "${currentProduct}" not allowed for UAN update`);
+                console.log(`   Allowed products: ${allowedProducts.join(', ')}`);
+                return {
+                    success: false,
+                    skipped: true,
+                    reason: 'Product not allowed',
+                    message: `Product "${currentProduct}" is not allowed for UAN/MAWB updates. Allowed: ${allowedProducts.join(', ')}`
+                };
+            }
+
+            // Create new order
+            const success = await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, currentProduct);
+            if (!success) return { success: false, reason: 'MongoDB creation failed' };
+
+            // Update additional fields if provided
+            if (postalCode || parcelWeight) {
+                const updateFields = {};
+                if (postalCode) updateFields.receiverPostalCode = postalCode.toUpperCase();
+                if (parcelWeight) updateFields.parcelWeight = parseFloat(parcelWeight) || 0;
+
+                await ORDERS.updateOne(
+                    { doTrackingNumber: trackingNumber },
+                    { $set: updateFields }
+                );
+            }
+        }
+
+        // Update Detrack
+        console.log(`🔄 Updating Detrack for ${trackingNumber}`);
+        const jobData = existingOrder ? await getJobDetailsWithRetry(trackingNumber) : null;
+        const { currentProduct } = getProductInfo(
+            jobData?.group_name || existingOrder?.product || 'ewe',
+            jobData?.job_owner || existingOrder?.senderName || 'EWE'
+        );
+
+        // Double-check product validation before Detrack update
+        const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
+        if (!allowedProducts.includes(currentProduct)) {
+            console.log(`❌ Final validation failed for ${trackingNumber} - Product "${currentProduct}" not allowed`);
+            return {
+                success: false,
+                reason: 'Product validation failed',
+                message: `Product "${currentProduct}" not allowed for UAN updates`
+            };
+        }
+
+        const updateData = createDetrackUpdateData(trackingNumber, mawbNum, currentProduct, jobData || {}, false);
+        if (postalCode) updateData.data.postal_code = postalCode.toUpperCase();
+        if (parcelWeight) updateData.data.weight = parseFloat(parcelWeight) || 0;
+
+        const detrackResult = await sendDetrackUpdateWithRetry(trackingNumber, updateData, mawbNum);
+
+        if (detrackResult) {
+            console.log(`✅ ${trackingNumber}: MAWB updated to ${mawbNum}`);
+            return {
+                success: true,
+                isNewOrder: !existingOrder,
+                wasUpdated: !!existingOrder,
+                message: existingOrder ? `Updated existing order to MAWB ${mawbNum}` : `Created new order with MAWB ${mawbNum}`
+            };
+        } else {
+            console.log(`❌ ${trackingNumber}: Detrack update failed`);
+            return {
+                success: false,
+                reason: 'Detrack update failed',
+                message: 'Failed to update Detrack'
+            };
+        }
+
+    } catch (error) {
+        console.error(`❌ Error processing ${trackingNumber}:`, error.message);
+        return {
+            success: false,
+            reason: 'Processing error',
+            message: `Error: ${error.message}`
+        };
+    }
+}
+
+// Enhanced job details function with better error handling
+async function getJobDetailsWithRetry(trackingNumber, maxRetries = 2) {
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        try {
+            if (attempt > 1) {
+                console.log(`🔄 Retry ${attempt - 1}/${maxRetries} for ${trackingNumber}`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+
+            const response = await axios.get(
+                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    timeout: 10000
+                }
+            );
+
+            if (response.data.data) {
+                return response.data.data;
+            }
+
+        } catch (error) {
+            console.log(`Attempt ${attempt} failed for ${trackingNumber}:`, error.message);
+            if (attempt > maxRetries) {
+                throw error;
+            }
+        }
+    }
+    return null;
+}
+
+async function sendDetrackUpdateWithRetry(trackingNumber, updateData, mawbNum, maxRetries = 2) {
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        try {
+            console.log(`🔄 Detrack update attempt ${attempt}/${maxRetries + 1} for ${trackingNumber}`);
+
+            if (attempt > 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Linear backoff
+            }
+
+            const response = await axios.put(
+                'https://app.detrack.com/api/v2/dn/jobs/update',
+                updateData,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    timeout: 10000
+                }
+            );
+
+            if (response.data.success === true || response.data.status === 'success' || response.status === 200) {
+                console.log(`✅ Detrack update successful on attempt ${attempt}`);
+                return true;
+            }
+
+        } catch (error) {
+            console.log(`❌ Detrack attempt ${attempt} failed:`, error.message);
+            if (attempt > maxRetries) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+async function validateExcelBeforeUpload(file, mawbNum) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = async function (e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+
+                // Check for required column
+                if (!headers.includes('Tracking Number')) {
+                    reject('File must contain "Tracking Number" column');
+                    return;
+                }
+
+                // Count lines
+                const trackingNumbers = [];
+                for (let i = 1; i < Math.min(lines.length, 11); i++) { // Check first 10 rows
+                    if (lines[i].trim()) {
+                        const cells = lines[i].split(',');
+                        const trackingNumber = cells[0]?.trim();
+                        if (trackingNumber) {
+                            trackingNumbers.push(trackingNumber);
+                        }
+                    }
+                }
+
+                if (trackingNumbers.length === 0) {
+                    reject('No tracking numbers found in file');
+                    return;
+                }
+
+                // Optional: Check if any tracking numbers already exist in MongoDB
+                try {
+                    const response = await fetch('/updateJob/checkExistingOrders', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            trackingNumbers: trackingNumbers,
+                            mawbNum: mawbNum
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.existingOrders && data.existingOrders.length > 0) {
+                        const warning = `Warning: ${data.existingOrders.length} tracking numbers already exist in the system.\n\n` +
+                            `These will be updated if they have "Info Received" status.\n\n` +
+                            `Do you want to continue?`;
+
+                        if (!confirm(warning)) {
+                            reject('Upload cancelled by user');
+                            return;
+                        }
+                    }
+
+                    resolve({
+                        totalLines: lines.length - 1,
+                        sampleTracking: trackingNumbers.slice(0, 5),
+                        hasPostalCode: headers.includes('Postal Code'),
+                        hasWeight: headers.includes('Parcel Weight')
+                    });
+
+                } catch (error) {
+                    console.log('Skipping pre-check due to error:', error);
+                    resolve({
+                        totalLines: lines.length - 1,
+                        sampleTracking: trackingNumbers.slice(0, 5)
+                    });
+                }
+
+            } catch (error) {
+                reject('Error reading file: ' + error.message);
+            }
+        };
+
+        reader.onerror = function () {
+            reject('Error reading file');
+        };
+
+        reader.readAsText(file);
+    });
+}
+
+// Add this route to check existing orders
+app.post('/updateJob/checkExistingOrders', ensureAuthenticated, async (req, res) => {
+    try {
+        const { trackingNumbers, mawbNum } = req.body;
+
+        const existingOrders = await ORDERS.find({
+            doTrackingNumber: { $in: trackingNumbers }
+        }).select('doTrackingNumber mawbNo currentStatus warehouseEntry product');
+
+        // Filter to show only orders that might cause issues
+        const problematicOrders = existingOrders.filter(order => {
+            return order.warehouseEntry === "Yes" ||
+                order.currentStatus !== "Info Received" ||
+                (order.mawbNo && order.mawbNo !== mawbNum);
+        });
+
+        res.json({
+            totalChecked: trackingNumbers.length,
+            existingOrders: existingOrders.length,
+            problematicOrders: problematicOrders.length,
+            details: problematicOrders.map(order => ({
+                trackingNumber: order.doTrackingNumber,
+                currentMAWB: order.mawbNo,
+                status: order.currentStatus,
+                warehouseEntry: order.warehouseEntry,
+                product: order.product,
+                issue: order.warehouseEntry === "Yes" ? "Already at warehouse" :
+                    order.currentStatus !== "Info Received" ? `Wrong status: ${order.currentStatus}` :
+                        order.mawbNo !== mawbNum ? `Different MAWB: ${order.mawbNo}` : "Unknown"
+            }))
+        });
+
+    } catch (error) {
+        console.error('Error checking existing orders:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
