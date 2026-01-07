@@ -32,6 +32,7 @@ const gdexConfig = GDEX_CONFIG[GDEX_ENV];
 // 📦 Core Packages
 // ==================================================
 const express = require('express');
+const expressLayouts = require('express-ejs-layouts');
 const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
 const bodyParser = require('body-parser');
