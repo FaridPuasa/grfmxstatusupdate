@@ -398,11 +398,11 @@ async function checkActiveDeliveriesStatus() {
     try {
         const activeOrders = await ORDERS.find(
             { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
-            { doTrackingNumber: 1, currentStatus: 1, assignedTo: 1 }
+            { doTrackingNumber: 1, currentStatus: 1, assignedTo: 1, product: 1 }
         );
 
         for (let order of activeOrders) {
-            const { doTrackingNumber: trackingNumber, currentStatus } = order;
+            const { doTrackingNumber: trackingNumber, currentStatus, product } = order;
 
             if (!trackingNumber) continue;
 
@@ -418,6 +418,99 @@ async function checkActiveDeliveriesStatus() {
                 const data = response.data;
                 const now = moment().format();
 
+                // Handle GDEX/GDEXT products specifically
+                if ((product === 'gdex' || product === 'gdext') && data.data.status?.toLowerCase() === 'completed') {
+                    console.log(`🚨 Processing completed GDEX order: ${trackingNumber}, Product: ${product}`);
+                    
+                    // Create detrackData similar to /updateDelivery route
+                    const detrackData = {
+                        status: data.data.status,
+                        reason: data.data.reason || '',
+                        address: data.data.address,
+                        photo_1_file_url: data.data.photo_1_file_url || null,
+                        podAlreadyConverted: false
+                    };
+
+                    // Download POD immediately for GDEX
+                    let podBase64 = null;
+                    if (data.data.photo_1_file_url) {
+                        console.log(`📥 Downloading POD immediately for GDEX completed job: ${trackingNumber}`);
+                        
+                        // Use testDownloadImageImmediate to get Base64
+                        const downloadResult = await testDownloadImageImmediate(data.data.photo_1_file_url, trackingNumber);
+                        
+                        if (downloadResult.success) {
+                            podBase64 = downloadResult.base64;
+                            console.log(`✅ POD downloaded for GDEX: ${podBase64.length} chars`);
+                            
+                            // Update detrackData with Base64
+                            detrackData.photo_1_file_url = podBase64;
+                            detrackData.podAlreadyConverted = true;
+                            
+                            // Save to database
+                            await ORDERS.findOneAndUpdate(
+                                { doTrackingNumber: trackingNumber },
+                                {
+                                    $set: {
+                                        podBase64: podBase64,
+                                        podUpdated: new Date().toISOString(),
+                                        podSource: 'detrack_auto_complete',
+                                        podCompressed: true
+                                    }
+                                },
+                                { upsert: false }
+                            );
+                        } else {
+                            console.error(`❌ Failed to download POD for GDEX: ${trackingNumber}`);
+                        }
+                    }
+
+                    // Update MongoDB - similar to /updateDelivery logic
+                    const update = {
+                        currentStatus: "Completed",
+                        lastUpdateDateTime: now,
+                        latestLocation: "Customer",
+                        lastUpdatedBy: "System",
+                        assignedTo: data.data.assign_to || order.assignedTo,
+                        $push: {
+                            history: {
+                                statusHistory: "Completed",
+                                dateUpdated: now,
+                                updatedBy: "System",
+                                lastAssignedTo: data.data.assign_to || order.assignedTo,
+                                lastLocation: "Customer"
+                            }
+                        }
+                    };
+
+                    await ORDERS.findOneAndUpdate(
+                        { doTrackingNumber: trackingNumber },
+                        update,
+                        { upsert: false }
+                    );
+
+                    console.log(`✅ MongoDB updated for GDEX order ${trackingNumber}`);
+
+                    // Send GDEX clear job update (GDEXAPIrun = 6)
+                    console.log(`🚀 Sending GDEX clear job update for: ${trackingNumber}`);
+                    const gdexToken = await getGDEXToken();
+                    
+                    if (gdexToken) {
+                        const gdexSuccess = await updateGDEXClearJob(trackingNumber, detrackData, gdexToken);
+                        if (gdexSuccess) {
+                            console.log(`✅ GDEX clear job completed for ${trackingNumber}`);
+                        } else {
+                            console.error(`❌ GDEX API call failed for ${trackingNumber}`);
+                        }
+                    } else {
+                        console.error(`❌ Failed to get GDEX token for ${trackingNumber}`);
+                    }
+
+                    console.log(`🎉 GDEX order ${trackingNumber} fully processed`);
+                    continue; // Skip the regular processing below
+                }
+
+                // Original processing for non-GDEX products
                 if (data.data.status?.toLowerCase() === 'completed') {
                     const filter = { doTrackingNumber: trackingNumber };
                     let update = {};
