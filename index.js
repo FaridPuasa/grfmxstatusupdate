@@ -15344,13 +15344,33 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
             job_owner: jobData.job_owner
         });
 
+        // ========== CRITICAL FIX: USE run_number AS MAWB IF NOT PROVIDED ==========
+        // If mawbNum is empty but job has run_number, use run_number as MAWB
+        if ((!mawbNum || mawbNum.trim() === '') && jobData.run_number && jobData.run_number.trim() !== '') {
+            mawbNum = jobData.run_number.trim();
+            console.log(`✅ Using job's run_number as MAWB: ${mawbNum}`);
+        }
+
         // ========== 2. GET PRODUCT INFO ==========
         const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
         const product = currentProduct.toLowerCase();
         const normalizedStatus = jobData.status ? jobData.status.toLowerCase() : '';
         console.log(`📦 Detected product: ${product}, status: ${normalizedStatus}`);
 
-        // ========== 2A. VALIDATE DETRACK STATUS ==========
+        // ========== 2A. VALIDATE ON_HOLD FOR NON-MAWB PRODUCTS ==========
+        const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
+        
+        // Validate: Non-MAWB products should not have on_hold status
+        if (normalizedStatus === 'on_hold' && !mawbProducts.includes(product)) {
+            return {
+                success: false,
+                message: `Product "${product}" cannot have "on_hold" status. Only MAWB products (PDU, MGLOBAL, EWE, GDEX, GDEXT) can be on hold.`,
+                product: product,
+                code: 'INVALID_ON_HOLD_NON_MAWB'
+            };
+        }
+
+        // ========== 2B. VALIDATE DETRACK STATUS ==========
         const validDetrackStatuses = ['info_recv', 'on_hold'];
         if (!validDetrackStatuses.includes(normalizedStatus)) {
             return {
@@ -15373,7 +15393,7 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
         ];
 
         const canCreateProducts = ['pure51', 'icarus', 'kptdp'];
-        const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
+        // mawbProducts already defined above
 
         // ========== 5. VALIDATION CHECKS ==========
 
@@ -15401,17 +15421,23 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
             };
         }
 
-        // C. MAWB-REQUIRED products validation
+        // C. MAWB-REQUIRED products validation - UPDATED LOGIC
         if (mawbProducts.includes(product)) {
             // MAWB-REQUIRED product: MUST have MAWB
             if (!mawbNum || mawbNum.trim() === '') {
-                return {
-                    success: false,
-                    message: `${product.toUpperCase()} requires MAWB number selection`,
-                    product: product,
-                    mawbRequired: true,
-                    code: 'MAWB_REQUIRED'
-                };
+                // Check if we have run_number as fallback
+                if (jobData.run_number && jobData.run_number.trim() !== '') {
+                    mawbNum = jobData.run_number.trim();
+                    console.log(`🔄 Using job's run_number as MAWB: ${mawbNum}`);
+                } else {
+                    return {
+                        success: false,
+                        message: `${product.toUpperCase()} requires MAWB number`,
+                        product: product,
+                        mawbRequired: true,
+                        code: 'MAWB_REQUIRED'
+                    };
+                }
             }
 
             // Validate tracking belongs to this MAWB
@@ -15436,20 +15462,6 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
                 product: product,
                 invalidMawb: true,
                 code: 'INVALID_MAWB'
-            };
-        }
-
-        // E. Other non-MAWB products from on_hold → REJECT
-        // (unless they're pharmacy/local products that should already exist)
-        if (!mustExistProducts.includes(product) &&
-            !canCreateProducts.includes(product) &&
-            normalizedStatus === 'on_hold') {
-            return {
-                success: false,
-                message: `Product "${product}" can only be updated from "info_recv" status`,
-                product: product,
-                invalidStatus: true,
-                code: 'INVALID_STATUS'
             };
         }
 
@@ -15485,7 +15497,6 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
                     // Process as existing order
                 }
             } else if (normalizedStatus === 'on_hold' && !existingOrder) {
-                // on_hold but doesn't exist - should have been created earlier
                 return {
                     success: false,
                     message: `${product.toUpperCase()} order should already exist for "on_hold" status`,
@@ -15498,7 +15509,7 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
         const hasMAWB = jobData.run_number && jobData.run_number.trim() !== '';
         const result = await processWarehouseUpdateLogic(trackingNumber, warehouse, jobData, product, req, hasMAWB);
 
-        // Add MAWB validation info to result
+        // Add MAWB to result if available
         if (mawbNum && mawbNum.trim() !== '') {
             result.mawbNum = mawbNum.trim().toUpperCase();
             result.mawbValidation = 'valid';
@@ -16436,14 +16447,14 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                     immediate: ['custom_clearing'],
                     delayed: true,
                     delayedUpdates: ['at_warehouse'],
-                    final: ['in_sorting_area']  // Final status for PDU
+                    final: ['in_sorting_area']
                 };
             } else {
                 return {
                     immediate: ['at_warehouse'],
                     delayed: false,
                     delayedUpdates: [],
-                    final: ['in_sorting_area']  // Final status for PDU
+                    final: ['in_sorting_area']
                 };
             }
         }
@@ -16455,14 +16466,14 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                     immediate: [],
                     delayed: true,
                     delayedUpdates: ['at_warehouse'],
-                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                    final: ['in_sorting_area']
                 };
             } else {
                 return {
                     immediate: ['at_warehouse'],
                     delayed: false,
                     delayedUpdates: [],
-                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                    final: ['in_sorting_area']
                 };
             }
         }
@@ -16474,14 +16485,14 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                     immediate: ['on_hold', 'custom_clearing'],
                     delayed: true,
                     delayedUpdates: ['at_warehouse'],
-                    final: ['in_sorting_area']  // Final status for PDU
+                    final: ['in_sorting_area']
                 };
             } else {
                 return {
                     immediate: ['at_warehouse'],
                     delayed: false,
                     delayedUpdates: [],
-                    final: ['in_sorting_area']  // Final status for PDU
+                    final: ['in_sorting_area']
                 };
             }
         }
@@ -16493,89 +16504,116 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                     immediate: ['custom_clearing'],
                     delayed: true,
                     delayedUpdates: ['at_warehouse'],
-                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                    final: ['in_sorting_area']
                 };
             } else {
                 return {
                     immediate: ['at_warehouse'],
                     delayed: false,
                     delayedUpdates: [],
-                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                    final: ['in_sorting_area']
                 };
             }
         }
 
-        // 5. GDEX/GDEXT from info_recv or on_hold
+        // 5. GDEX/GDEXT from EITHER info_recv OR on_hold - CORRECTED!
         if ((normalizedStatus === 'info_recv' || normalizedStatus === 'on_hold') &&
             (normalizedProduct === 'gdex' || normalizedProduct === 'gdext')) {
-            // GDEX/GDEXT: in_sorting_area → at_warehouse (at_warehouse is FINAL)
+            // GDEX/GDEXT: in_sorting_area → at_warehouse (SAME for both statuses)
             return {
-                immediate: ['in_sorting_area', 'at_warehouse'], // at_warehouse is last
+                immediate: ['in_sorting_area', 'at_warehouse'],
                 delayed: false,
                 delayedUpdates: [],
-                final: []  // No final updates needed, at_warehouse is final
+                final: []
             };
         }
     }
-
+    
     // ========== MUST-EXIST NON-MAWB PRODUCTS ==========
     else if (mustExistProducts.includes(normalizedProduct)) {
-        // 6. CBSL - should only come from on_hold (already exists)
-        if (normalizedProduct === 'cbsl') {
-            // CBSL: at_warehouse → in_sorting_area (BOTH immediate)
+        // 6. CBSL - info_recv only
+        if (normalizedProduct === 'cbsl' && normalizedStatus === 'info_recv') {
             return {
                 immediate: ['at_warehouse', 'in_sorting_area'],
                 delayed: false,
                 delayedUpdates: [],
-                final: []  // No final updates needed, in_sorting_area is final
+                final: []
             };
         }
-
-        // 7. Other must-exist products (pharmacies, localdelivery)
-        // These should only come from on_hold status (already in system)
-        if (normalizedStatus === 'on_hold') {
-            // Pharmacy/LocalDelivery: at_warehouse → in_sorting_area (BOTH immediate)
+        
+        // 7. Other must-exist products (pharmacies, localdelivery) - info_recv only
+        if (normalizedStatus === 'info_recv') {
             return {
                 immediate: ['at_warehouse', 'in_sorting_area'],
                 delayed: false,
                 delayedUpdates: [],
-                final: []  // No final updates needed, in_sorting_area is final
+                final: []
+            };
+        }
+        
+        // REJECT on_hold for non-MAWB products
+        if (normalizedStatus === 'on_hold') {
+            console.error(`❌ INVALID: ${normalizedProduct} should not have on_hold status`);
+            return {
+                immediate: [],
+                delayed: false,
+                delayedUpdates: [],
+                final: []
             };
         }
     }
-
+    
     // ========== CAN-CREATE PRODUCTS ==========
     else if (canCreateProducts.includes(normalizedProduct)) {
-        // 8. pure51, icarus, kptdp from info_recv (create new)
+        // 8. pure51, icarus, kptdp from info_recv - NO on_hold
         if (normalizedStatus === 'info_recv') {
             return {
-                immediate: ['at_warehouse', 'in_sorting_area'], // BOTH updates
+                immediate: ['at_warehouse', 'in_sorting_area'],
                 delayed: false,
                 delayedUpdates: [],
-                final: []  // No final updates needed, in_sorting_area is final
+                final: []
+            };
+        }
+        
+        // REJECT on_hold for can-create products
+        if (normalizedStatus === 'on_hold') {
+            console.error(`❌ INVALID: ${normalizedProduct} should not have on_hold status`);
+            return {
+                immediate: [],
+                delayed: false,
+                delayedUpdates: [],
+                final: []
             };
         }
     }
-
+    
     // ========== OTHER NON-MAWB PRODUCTS ==========
     else {
-        // 9. Other products ONLY from info_recv status (create new)
+        // 9. Other products ONLY from info_recv status - NO on_hold
         if (normalizedStatus === 'info_recv') {
             return {
-                immediate: ['at_warehouse', 'in_sorting_area'], // BOTH updates
+                immediate: ['at_warehouse', 'in_sorting_area'],
                 delayed: false,
                 delayedUpdates: [],
-                final: []  // No final updates needed, in_sorting_area is final
+                final: []
+            };
+        }
+        
+        // REJECT on_hold for any other non-MAWB products
+        if (normalizedStatus === 'on_hold') {
+            console.error(`❌ INVALID: ${normalizedProduct} should not have on_hold status`);
+            return {
+                immediate: [],
+                delayed: false,
+                delayedUpdates: [],
+                final: []
             };
         }
     }
 
     // ========== DEFAULT FALLBACK ==========
-    // Should only be reached for invalid status/products
     console.warn(`⚠️ No Detrack sequence defined for product=${normalizedProduct}, status=${normalizedStatus}`);
-
-    // DO NOT push at_warehouse by default
-    // Return empty sequence to prevent unintended updates
+    
     return {
         immediate: [],
         delayed: false,

@@ -646,8 +646,6 @@
             }
         }
 
-        // Also add these helper functions that are referenced:
-
         // Show MAWB stats for one-by-one scanning
         function showMAWBStatsForOneByOne(stats) {
             // Create or update stats display
@@ -721,12 +719,49 @@
     `;
         }
 
-        // Update the readyToScan event listener
+        // Update one-by-one stats display
+        function updateMAWBOneByOneStatsDisplay() {
+            const statsDiv = document.getElementById('mawbOneByOneStats');
+            if (!statsDiv || !window.mawbScanningStats) return;
+
+            const stats = window.mawbScanningStats;
+
+            statsDiv.innerHTML = `
+        <h5><i class="fas fa-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
+        <div class="row">
+            <div class="col-md-4">
+                <p><strong>Total Jobs:</strong> ${stats.total}</p>
+                <p><strong>To Be Scanned:</strong> ${stats.unscanned - stats.newlyScanned} remaining</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Already Scanned:</strong> ${stats.scanned} <span class="badge bg-success">At Warehouse</span></p>
+                <p><strong>Newly Scanned:</strong> ${stats.newlyScanned} <span class="badge bg-info">Just Updated</span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Skipped (Wrong MAWB):</strong> ${stats.invalid}</p>
+                <p><strong>Skipped (Already Scanned):</strong> ${stats.skipped}</p>
+            </div>
+        </div>
+        <div class="progress mt-2" style="height: 20px;">
+            <div class="progress-bar bg-success" style="width: ${(stats.scanned / stats.total) * 100}%">
+                Already Scanned (${stats.scanned})
+            </div>
+            <div class="progress-bar bg-info" style="width: ${(stats.newlyScanned / stats.total) * 100}%">
+                Newly Scanned (${stats.newlyScanned})
+            </div>
+            <div class="progress-bar bg-warning" style="width: ${((stats.unscanned - stats.newlyScanned) / stats.total) * 100}%">
+                Remaining (${stats.unscanned - stats.newlyScanned})
+            </div>
+        </div>
+    `;
+        }
+
+        // Update the readyToScan event listener - FIXED VERSION
         document.getElementById('readyToScan').addEventListener('click', async function () {
             const updateCode = document.getElementById('updateCode').value;
             const warehouse = document.getElementById('warehouse').value;
-            const mawbNumInput = document.getElementById('mawbNum');
-            const mawbNum = mawbNumInput ? mawbNumInput.value.trim() : '';
+            const mawbSelect = document.getElementById('mawbNum');
+            const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
 
             if (updateCode === 'IIW' && !warehouse) {
                 alert('Please select a warehouse location');
@@ -734,29 +769,30 @@
             }
 
             // ========== MAWB VALIDATION FOR IIW ==========
-            // In the form submission handler, add MAWB validation for bulk:
             if (updateCode === 'IIW') {
-                const mawbRequiredProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
-
                 // If MAWB selected
                 if (mawbNum !== '') {
-                    const validation = await validateMAWBForIIW(mawbNum, 'bulk');
+                    const validation = await validateMAWBForIIW(mawbNum, 'onebyone'); // Changed to 'onebyone'
 
                     if (!validation.isValid) {
                         showMAWBAlert(`⚠️ MAWB Number "${mawbNum}" does not exist in the system.`, false);
                         // Clear MAWB field
-                        if (mawbNumInput) {
-                            mawbNumInput.value = '';
+                        if (mawbSelect) {
+                            mawbSelect.value = '';
                         }
                         return;
                     }
 
-                    // Show MAWB stats for bulk
-                    showMAWBStatsForBulk(validation, trackingNumbers.length);
+                    // Show MAWB stats for one-by-one scanning (not bulk)
+                    showMAWBStatsForOneByOne(validation); // Changed to one-by-one version
+
+                    // PRESERVE THE MAWB SELECTION
+                    preserveMAWBSelection();
                 }
                 // If NO MAWB selected
                 else {
                     // Warn about MAWB-required products
+                    const mawbRequiredProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
                     const warnMessage = '⚠️ Scanning without MAWB selection.\n\n' +
                         'MAWB-required products (PDU, MGLOBAL, EWE, GDEX, GDEXT) will be rejected.\n' +
                         'Continue anyway?';
@@ -777,7 +813,19 @@
 
             const updateCode = document.getElementById('updateCode').value;
             const warehouse = document.getElementById('warehouse') ? document.getElementById('warehouse').value : '';
-            const mawbNum = document.getElementById('mawbNum') ? document.getElementById('mawbNum').value.trim() : '';
+
+            // GET MAWB VALUE FROM PRESERVED STORAGE
+            let mawbNum = '';
+            const hiddenMAWB = document.getElementById('hiddenMAWB');
+            if (hiddenMAWB && hiddenMAWB.value) {
+                mawbNum = hiddenMAWB.value.trim();
+            } else {
+                // Fallback to the select element
+                const mawbSelect = document.getElementById('mawbNum');
+                mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
+            }
+
+            console.log('🔍 Using MAWB value:', mawbNum);
 
             // Clear the input field
             this.value = '';
@@ -890,6 +938,7 @@
 
             try {
                 console.log('Sending one-by-one update request...');
+                console.log('📤 Sending with MAWB:', mawbNum);
 
                 const requestBody = {
                     updateCode: updateCode,
@@ -910,6 +959,8 @@
                         requestBody.mawbNum = mawbNum;
                     }
                 }
+
+                console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
 
                 const response = await fetch('/updateJob', {
                     method: 'POST',
@@ -1289,14 +1340,75 @@
             return duplicates.slice(-10).reverse(); // Return last 10 duplicates
         }
 
-        // Update form submission for bulk processing
+        function showMAWBStatsForBulk(stats, enteredCount) {
+            const statsHtml = `
+        <div class="alert alert-info mb-3">
+            <h5><i class="fas fa-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Total Jobs in MAWB:</strong> ${stats.totalJobs}</p>
+                    <p><strong>Entered for Processing:</strong> ${enteredCount}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Already Scanned:</strong> ${stats.scannedJobs} <span class="badge bg-success">At Warehouse</span></p>
+                    <p><strong>Will Be Scanned:</strong> ${stats.unscannedJobs} <span class="badge bg-warning">To Be Updated</span></p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Already at Warehouse:</strong> ${stats.scannedJobs} jobs</p>
+                    <p><strong>Will be updated:</strong> Up to ${Math.min(stats.unscannedJobs, enteredCount)} jobs</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+            // Insert at the beginning of the active update section
+            const activeSection = document.getElementById('activeUpdateSection');
+            if (activeSection) {
+                const loadingDiv = document.getElementById('loading');
+                if (loadingDiv) {
+                    loadingDiv.insertAdjacentHTML('beforebegin', statsHtml);
+                }
+            }
+        }
+
+        // Function to show basic MAWB stats for bulk processing
+        function showMAWBStatsForBulkBasic(mawbNum, totalJobs, unscannedJobs, enteredCount) {
+            const statsHtml = `
+        <div class="alert alert-info mb-3">
+            <h5><i class="fas fa-boxes"></i> MAWB Group: ${mawbNum}</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Total Jobs in MAWB:</strong> ${totalJobs}</p>
+                    <p><strong>Entered for Processing:</strong> ${enteredCount}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Unscanned Jobs:</strong> ${unscannedJobs} <span class="badge bg-warning">To Be Updated</span></p>
+                    <p><strong>Already Scanned:</strong> ${totalJobs - unscannedJobs} <span class="badge bg-success">At Warehouse</span></p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Success Rate:</strong> ${Math.round((unscannedJobs / totalJobs) * 100)}%</p>
+                    <p><strong>Will be updated:</strong> Up to ${Math.min(unscannedJobs, enteredCount)} jobs</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+            // Insert at the beginning of the active update section
+            const activeSection = document.getElementById('activeUpdateSection');
+            if (activeSection) {
+                const loadingDiv = document.getElementById('loading');
+                if (loadingDiv) {
+                    loadingDiv.insertAdjacentHTML('beforebegin', statsHtml);
+                }
+            }
+        }
+
         document.getElementById('updateJobForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const updateCode = document.getElementById('updateCode').value;
 
             // ========== ADD THIS CHECK FOR UAN ==========
-            // For UAN, we handle it via Excel upload, not form submission
             if (updateCode === 'UAN') {
                 alert('Please use the "Upload Excel/CSV File" button for UAN updates');
                 return;
@@ -1327,15 +1439,13 @@
                 return; // One-by-one handled separately
             }
 
-            // ========== FIX THE DUPLICATE ALERT CHECK ==========
+            // Check if tracking numbers are entered
             if (trackingNumbers.length === 0 && updateMethod === 'bulk') {
                 alert('Please enter tracking numbers');
                 return;
             }
-            // Remove the duplicate check below - it's redundant
-            // ========== END FIX ==========
 
-            // In form submission handler, update to use "unscanned" attribute:
+            // For IIW with MAWB number selected
             if (updateCode === 'IIW' && mawbNum) {
                 const selectedOption = mawbSelect.options[mawbSelect.selectedIndex];
                 const totalJobs = selectedOption.getAttribute('data-total');
@@ -1353,43 +1463,30 @@
                         return;
                     }
                 }
-            }
 
-            // For IIW with MAWB validation
-            if (updateCode === 'IIW' && mawbNum !== '') {
-                // Validate MAWB first
-                const validation = await validateMAWBForIIW(mawbNum, 'bulk');
+                // ========== REMOVE THIS PROBLEMATIC SECTION ==========
+                // The validateMAWBForIIW function doesn't exist in frontend!
+                // if (updateCode === 'IIW' && mawbNum !== '') {
+                //     // Validate MAWB first
+                //     const validation = await validateMAWBForIIW(mawbNum, 'bulk');
+                //     
+                //     if (!validation.isValid) {
+                //         // Clear MAWB field if validation failed
+                //         if (mawbInput) {
+                //             mawbInput.value = '';
+                //         }
+                //         return;
+                //     }
+                //     
+                //     // Show MAWB stats for bulk
+                //     showMAWBStatsForBulk(validation, trackingNumbers.length);
+                //     
+                //     // Filter tracking numbers...
+                // }
+                // ========== END REMOVAL ==========
 
-                if (!validation.isValid) {
-                    // Clear MAWB field if validation failed
-                    if (mawbInput) {
-                        mawbInput.value = '';
-                    }
-                    return;
-                }
-
-                // Show MAWB stats for bulk
-                showMAWBStatsForBulk(validation, trackingNumbers.length);
-
-                // Filter tracking numbers to only include those in the MAWB group
-                const originalCount = trackingNumbers.length;
-                const mawbTrackingNumbers = validation.trackingNumbers || [];
-
-                // Filter to only include tracking numbers that belong to this MAWB
-                trackingNumbers = trackingNumbers.filter(tn =>
-                    mawbTrackingNumbers.includes(tn)
-                );
-
-                if (trackingNumbers.length === 0) {
-                    alert(`None of the entered tracking numbers belong to MAWB ${mawbNum}\n\nPlease enter tracking numbers that match this MAWB group.`);
-                    return;
-                }
-
-                // Inform user about filtered results
-                if (trackingNumbers.length < originalCount) {
-                    const removedCount = originalCount - trackingNumbers.length;
-                    showMAWBAlert(`Filtered out ${removedCount} tracking numbers that don't belong to MAWB ${mawbNum}. Processing ${trackingNumbers.length} valid items.`, true);
-                }
+                // Instead, just show basic stats from the dropdown data
+                showMAWBStatsForBulkBasic(mawbNum, totalJobs, unscannedJobs, trackingNumbers.length);
             }
 
             // Count duplicates (for logging only)
@@ -1406,13 +1503,6 @@
             }
 
             // Validation for different update codes
-            // ========== UPDATE UAN CHECK - IT SHOULD NEVER REACH HERE ==========
-            // if (updateCode === 'UAN') {
-            //     if (!mawbNum || mawbNum === '') {
-            //         alert('Please enter MAWB Number');
-            //         return;
-            //     }
-            // } else 
             if (updateCode === 'UMN') {
                 if (!mawbNum || mawbNum === '') {
                     alert('Please enter MAWB Number');
@@ -1469,11 +1559,11 @@
             }
         }
 
-        // Update the displayBulkResults function - Add safe check for result object
         function displayBulkResults(result) {
-            // ========== ADD THIS SAFETY CHECK ==========
-            if (typeof result === 'undefined') {
-                console.error("❌ displayBulkResults: result parameter is undefined");
+            // ========== ADD SAFETY CHECK AT THE BEGINNING ==========
+            if (typeof result === 'undefined' || result === null) {
+                console.error("❌ displayBulkResults: result parameter is undefined or null");
+                // Create a default empty result object
                 result = {
                     successful: [],
                     failed: [],
@@ -1483,29 +1573,13 @@
                     failedCount: 0,
                     delayedCount: 0,
                     duplicateCount: 0,
-                    total: 0
+                    total: 0,
+                    notUpdatedCount: 0
                 };
             }
             // ========== END SAFETY CHECK ==========
 
             console.log("📊 displayBulkResults called with:", result);
-
-            // SAFETY CHECK: If result is undefined or null
-            if (!result) {
-                console.error("❌ displayBulkResults: result is undefined or null");
-                const bulkResults = document.getElementById('bulkResults');
-                if (bulkResults) {
-                    bulkResults.innerHTML = `
-                <div class="alert alert-danger">
-                    <h4>Error Displaying Results</h4>
-                    <p>No results data received from server.</p>
-                    <button class="btn btn-warning" onclick="location.reload()">Try Again</button>
-                </div>
-            `;
-                    bulkResults.style.display = 'block';
-                }
-                return;
-            }
 
             const bulkResults = document.getElementById('bulkResults');
             if (!bulkResults) {
@@ -1545,7 +1619,7 @@
 
             resultsContainer.innerHTML = '';
 
-            // In displayBulkResults function, update the delayed alert
+            // Show delayed jobs info if any
             if (delayedCount > 0) {
                 const delayedJobsInfo = document.getElementById('delayedJobsInfo');
                 if (delayedJobsInfo) {
@@ -1561,37 +1635,43 @@
             if (result.successful && result.successful.length > 0) {
                 const successTable = document.createElement('div');
                 successTable.innerHTML = `
-        <h4 class="text-success mt-4">Successfully Processed Jobs (${result.successful.length})</h4>
-        <div class="table-responsive">
-            <table class="table table-success table-striped">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Type</th>
-                        <th>MAWB</th>
-                        <th>Result</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${result.successful.map(item => `
+            <h4 class="text-success mt-4">Successfully Processed Jobs (${result.successful.length})</h4>
+            <div class="table-responsive">
+                <table class="table table-success table-striped">
+                    <thead>
                         <tr>
-                            <td>${item.trackingNumber || 'N/A'}</td>
-                            <td>
-                                ${item.isNewOrder ?
-                        '<span class="badge bg-info">New</span>' :
-                        '<span class="badge bg-warning">Updated</span>'
-                    }
-                            </td>
-                            <td>${item.mawbNum || 'N/A'}</td>
-                            <td>${item.message || 'Updated'}</td>
-                            <td><span class="badge bg-success">Success</span></td>
+                            <th>Tracking Number</th>
+                            <th>Type</th>
+                            <th>MAWB</th>
+                            <th>Result</th>
+                            <th>Status</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+                    </thead>
+                    <tbody>
+                        ${result.successful.map(item => {
+                    const tracking = item.trackingNumber || 'N/A';
+                    const isNew = item.isNewOrder;
+                    const mawb = item.mawbNum || 'N/A';
+                    const message = item.message || 'Updated';
+                    return `
+                                <tr>
+                                    <td>${tracking}</td>
+                                    <td>
+                                        ${isNew ?
+                            '<span class="badge bg-info">New</span>' :
+                            '<span class="badge bg-warning">Updated</span>'
+                        }
+                                    </td>
+                                    <td>${mawb}</td>
+                                    <td>${message}</td>
+                                    <td><span class="badge bg-success">Success</span></td>
+                                </tr>
+                            `;
+                }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
                 resultsContainer.appendChild(successTable);
             }
 
@@ -1613,13 +1693,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${result.duplicate.map(item => `
-                            <tr>
-                                <td>${item.trackingNumber || 'N/A'}</td>
-                                <td>${item.duplicateCount || 1}</td>
-                                <td><span class="badge bg-info">Ignored</span></td>
-                            </tr>
-                        `).join('')}
+                        ${result.duplicate.map(item => {
+                    const tracking = item.trackingNumber || 'N/A';
+                    const count = item.duplicateCount || 1;
+                    return `
+                                <tr>
+                                    <td>${tracking}</td>
+                                    <td>${count}</td>
+                                    <td><span class="badge bg-info">Ignored</span></td>
+                                </tr>
+                            `;
+                }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1627,39 +1711,40 @@
                 resultsContainer.appendChild(duplicateTable);
             }
 
+            // ========== THIS SECTION SHOULD BE INSIDE THE FUNCTION ==========
             // Update delayed table in displayBulkResults
             if (result.delayed && result.delayed.length > 0) {
                 const delayedTable = document.createElement('div');
                 delayedTable.innerHTML = `
-        <h4 class="text-warning mt-4">Delayed Jobs (30-minute wait) (${result.delayed.length})</h4>
-        <div class="alert alert-warning">
-            <strong>Note:</strong> These jobs have received immediate Detrack updates and will automatically update to "At Warehouse" and "In Sorting Area" after 30 minutes.
-        </div>
-        <div class="table-responsive">
-            <table class="table table-warning table-striped">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Product</th>
-                        <th>Immediate Updates Applied</th>
-                        <th>Scheduled Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="delayedTableBody">
-                    ${result.delayed.map(item => `
+            <h4 class="text-warning mt-4">Delayed Jobs (5-minute wait for testing) (${result.delayed.length})</h4>
+            <div class="alert alert-warning">
+                <strong>Note:</strong> These jobs have received immediate Detrack updates and will automatically update to "At Warehouse" and "In Sorting Area" after 5 minutes (testing mode).
+            </div>
+            <div class="table-responsive">
+                <table class="table table-warning table-striped">
+                    <thead>
                         <tr>
-                            <td>${item.trackingNumber || 'N/A'}</td>
-                            <td>${item.product || 'Unknown'}</td>
-                            <td>${item.delayedInfo?.immediateUpdates?.join(', ') || 'None'}</td>
-                            <td>${item.scheduledTime || '30 minutes delay'}</td>
-                            <td><span class="badge bg-warning">Scheduled</span></td>
+                            <th>Tracking Number</th>
+                            <th>Product</th>
+                            <th>Immediate Updates Applied</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+                    </thead>
+                    <tbody id="delayedTableBody">
+                        ${result.delayed.map(item => `
+                            <tr>
+                                <td>${item.trackingNumber || 'N/A'}</td>
+                                <td>${item.product || 'Unknown'}</td>
+                                <td>${item.delayedInfo?.immediateUpdates?.join(', ') || 'None'}</td>
+                                <td>${item.scheduledTime || '5 minutes delay for testing'}</td>
+                                <td><span class="badge bg-warning">Scheduled</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
                 resultsContainer.appendChild(delayedTable);
             }
 
@@ -1667,162 +1752,6 @@
             if (result.failed && result.failed.length > 0) {
                 const failedTable = document.createElement('div');
                 failedTable.innerHTML = `
-        <h4 class="text-danger mt-4">Failed/Skipped Jobs (${result.failed.length})</h4>
-        <div class="table-responsive">
-            <table class="table table-danger table-striped">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Reason</th>
-                        <th>Details</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${result.failed.map(item => `
-                        <tr>
-                            <td>${item.trackingNumber || 'N/A'}</td>
-                            <td>
-                                ${item.skipped ?
-                        '<span class="badge bg-warning">Skipped</span>' :
-                        '<span class="badge bg-danger">Failed</span>'
-                    }
-                                ${item.reason ? `<br><small>${item.reason}</small>` : ''}
-                            </td>
-                            <td>${item.message || 'Failed'}</td>
-                            <td>
-                                ${item.skipped ?
-                        '<span class="badge bg-warning">Skipped</span>' :
-                        '<span class="badge bg-danger">Failed</span>'
-                    }
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-                resultsContainer.appendChild(failedTable);
-            }
-
-            // If no results at all, show a message
-            if ((!result.successful || result.successful.length === 0) &&
-                (!result.duplicate || result.duplicate.length === 0) &&
-                (!result.delayed || result.delayed.length === 0) &&
-                (!result.failed || result.failed.length === 0)) {
-                const noResults = document.createElement('div');
-                noResults.className = 'alert alert-info';
-                noResults.innerHTML = '<strong>No results to display.</strong>';
-                resultsContainer.appendChild(noResults);
-            }
-
-            // Auto-scroll to results
-            setTimeout(() => {
-                bulkResults.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-        }
-
-        // Create successful table if there are successful updates
-        if (result.successful && result.successful.length > 0) {
-            const successTable = document.createElement('div');
-            successTable.innerHTML = `
-            <h4 class="text-success mt-4">Successfully Updated Jobs (${result.successful.length})</h4>
-            <div class="table-responsive">
-                <table class="table table-success table-striped">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="successTableBody">
-                        ${result.successful.map(item => `
-                            <tr>
-                                <td>${item.trackingNumber || 'N/A'}</td>
-                                <td>${item.result || 'Updated'}</td>
-                                <td><span class="badge bg-success">Completed</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            resultsContainer.appendChild(successTable);
-        }
-
-        // Create duplicate table if there are duplicates
-        if (result.duplicate && result.duplicate.length > 0) {
-            const duplicateTable = document.createElement('div');
-            duplicateTable.innerHTML = `
-            <h4 class="text-info mt-4">Duplicate Jobs (Ignored) (${result.duplicate.length})</h4>
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Duplicate tracking numbers were ignored and not processed again.
-            </div>
-            <div class="table-responsive">
-                <table class="table table-info table-striped">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Duplicate Count</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="duplicateTableBody">
-                        ${result.duplicate.map(item => `
-                            <tr>
-                                <td>${item.trackingNumber || 'N/A'}</td>
-                                <td>${item.duplicateCount || 1}</td>
-                                <td><span class="badge bg-info">Ignored</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            resultsContainer.appendChild(duplicateTable);
-        }
-
-        // Update delayed table in displayBulkResults
-        if (result.delayed && result.delayed.length > 0) {
-            const delayedTable = document.createElement('div');
-            delayedTable.innerHTML = `
-        <h4 class="text-warning mt-4">Delayed Jobs (5-minute wait for testing) (${result.delayed.length})</h4>
-        <div class="alert alert-warning">
-            <strong>Note:</strong> These jobs have received immediate Detrack updates and will automatically update to "At Warehouse" and "In Sorting Area" after 5 minutes (testing mode).
-        </div>
-        <div class="table-responsive">
-            <table class="table table-warning table-striped">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Product</th>
-                        <th>Immediate Updates Applied</th>
-                        <th>Scheduled Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="delayedTableBody">
-                    ${result.delayed.map(item => `
-                        <tr>
-                            <td>${item.trackingNumber || 'N/A'}</td>
-                            <td>${item.product || 'Unknown'}</td>
-                            <td>${item.delayedInfo?.immediateUpdates?.join(', ') || 'None'}</td>
-                            <td>${item.scheduledTime || '5 minutes delay for testing'}</td>
-                            <td><span class="badge bg-warning">Scheduled</span></td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-            resultsContainer.appendChild(delayedTable);
-        }
-
-        // Create failed table if there are failed updates
-        if (result.failed && result.failed.length > 0) {
-            const failedTable = document.createElement('div');
-            failedTable.innerHTML = `
             <h4 class="text-danger mt-4">Failed Jobs (${result.failed.length})</h4>
             <div class="table-responsive">
                 <table class="table table-danger table-striped">
@@ -1845,73 +1774,75 @@
                 </table>
             </div>
         `;
-            resultsContainer.appendChild(failedTable);
-        }
+                resultsContainer.appendChild(failedTable);
+            }
 
-        if (result.groupedByCustomer && result.groupedByCustomer.length > 0) {
-            const groupedTable = document.createElement('div');
-            groupedTable.innerHTML = `
-        <h4 class="text-info mt-4">Grouped by Customer (${result.groupedByCustomer.length} groups)</h4>
-        <div class="alert alert-info">
-            <i class="fas fa-users"></i> These parcels can be grouped together for sorting
-        </div>
-        <div class="table-responsive">
-            <table class="table table-info table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Customer Name</th>
-                        <th>Area</th>
-                        <th>Parcel Count</th>
-                        <th>Tracking Numbers</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${result.groupedByCustomer.map((group, index) => `
+            if (result.groupedByCustomer && result.groupedByCustomer.length > 0) {
+                const groupedTable = document.createElement('div');
+                groupedTable.innerHTML = `
+            <h4 class="text-info mt-4">Grouped by Customer (${result.groupedByCustomer.length} groups)</h4>
+            <div class="alert alert-info">
+                <i class="fas fa-users"></i> These parcels can be grouped together for sorting
+            </div>
+            <div class="table-responsive">
+                <table class="table table-info table-striped">
+                    <thead>
                         <tr>
-                            <td>${index + 1}</td>
-                            <td><strong>${group.customerName || 'N/A'}</strong></td>
-                            <td><span class="badge bg-secondary">${group.area || 'N/A'}</span></td>
-                            <td><span class="badge bg-primary">${group.count}</span></td>
-                            <td>
-                                <small>
-                                    ${group.trackingNumbers.slice(0, 3).map(tn =>
-                `<div>${tn}</div>`
-            ).join('')}
-                                    ${group.trackingNumbers.length > 3 ?
-                    `<div class="text-muted">+${group.trackingNumbers.length - 3} more</div>` :
-                    ''
-                }
-                                </small>
-                            </td>
-                            <td><span class="badge ${group.status === 'Updated' ? 'bg-success' : 'bg-warning'}">
-                                ${group.status}
-                            </span></td>
+                            <th>#</th>
+                            <th>Customer Name</th>
+                            <th>Area</th>
+                            <th>Parcel Count</th>
+                            <th>Tracking Numbers</th>
+                            <th>Status</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-            resultsContainer.appendChild(groupedTable);
-        }
+                    </thead>
+                    <tbody>
+                        ${result.groupedByCustomer.map((group, index) => `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td><strong>${group.customerName || 'N/A'}</strong></td>
+                                <td><span class="badge bg-secondary">${group.area || 'N/A'}</span></td>
+                                <td><span class="badge bg-primary">${group.count}</span></td>
+                                <td>
+                                    <small>
+                                        ${group.trackingNumbers.slice(0, 3).map(tn =>
+                    `<div>${tn}</div>`
+                ).join('')}
+                                        ${group.trackingNumbers.length > 3 ?
+                        `<div class="text-muted">+${group.trackingNumbers.length - 3} more</div>` :
+                        ''
+                    }
+                                    </small>
+                                </td>
+                                <td><span class="badge ${group.status === 'Updated' ? 'bg-success' : 'bg-warning'}">
+                                    ${group.status}
+                                </span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(groupedTable);
+            }
 
-        // If no results at all, show a message
-        if ((!result.successful || result.successful.length === 0) &&
-            (!result.duplicate || result.duplicate.length === 0) &&
-            (!result.delayed || result.delayed.length === 0) &&
-            (!result.failed || result.failed.length === 0)) {
-            const noResults = document.createElement('div');
-            noResults.className = 'alert alert-info';
-            noResults.innerHTML = '<strong>No results to display.</strong>';
-            resultsContainer.appendChild(noResults);
-        }
+            // If no results at all, show a message
+            if ((!result.successful || result.successful.length === 0) &&
+                (!result.duplicate || result.duplicate.length === 0) &&
+                (!result.delayed || result.delayed.length === 0) &&
+                (!result.failed || result.failed.length === 0)) {
+                const noResults = document.createElement('div');
+                noResults.className = 'alert alert-info';
+                noResults.innerHTML = '<strong>No results to display.</strong>';
+                resultsContainer.appendChild(noResults);
+            }
 
-        // Auto-scroll to results
-        setTimeout(() => {
-            bulkResults.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+            // Auto-scroll to results
+            setTimeout(() => {
+                bulkResults.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+            // ========== END OF FUNCTION ==========
+        }
 
         // Also make sure this function is defined at the top level
         function getUpdateTitle(updateCode) {
@@ -2415,18 +2346,20 @@
 
                         // Display results (same as bulk results)
                         if (typeof displayBulkResults === 'function') {
-                            displayBulkResults(jobStatus);
+                            // FIX: Ensure jobStatus is defined before passing it
+                            displayBulkResults(jobStatus || {}); // <-- ADDED SAFE DEFAULT
                         } else {
                             console.error('displayBulkResults function is not defined');
                             location.reload();
                         }
 
-                        // Show completion time
+                        // Show completion time - ADD SAFE CHECKS HERE TOO
                         const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
                         setTimeout(() => {
-                            alert(`✅ Excel processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${jobStatus.updatedCount || 0}\nFailed: ${jobStatus.failedCount || 0}`);
+                            const updatedCount = jobStatus ? (jobStatus.updatedCount || 0) : 0;
+                            const failedCount = jobStatus ? (jobStatus.failedCount || 0) : 0;
+                            alert(`✅ Excel processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${updatedCount}\nFailed: ${failedCount}`);
                         }, 500);
-
                     } else if (jobStatus.status === 'failed') {
                         clearInterval(pollInterval);
                         const loading = document.getElementById('loading');
@@ -2899,6 +2832,34 @@
                 document.getElementById('bulkResults').style.display = 'none';
                 document.getElementById('oneByOneInterface').style.display = 'block';
                 document.getElementById('loading').style.display = 'none';
+
+                // Display MAWB info in the scanning interface
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
+
+                if (updateCode === 'IIW' && mawbNum) {
+                    // Add MAWB info to the scanning interface
+                    let mawbInfo = document.getElementById('scanningMAWBInfo');
+                    if (!mawbInfo) {
+                        mawbInfo = document.createElement('div');
+                        mawbInfo.id = 'scanningMAWBInfo';
+                        mawbInfo.className = 'alert alert-info mb-3';
+
+                        const oneByOneInterface = document.getElementById('oneByOneInterface');
+                        const scanInput = document.querySelector('#trackingNumSingle');
+                        if (scanInput && scanInput.parentNode) {
+                            oneByOneInterface.insertBefore(mawbInfo, scanInput.parentNode);
+                        } else {
+                            oneByOneInterface.insertBefore(mawbInfo, oneByOneInterface.firstChild);
+                        }
+                    }
+
+                    mawbInfo.innerHTML = `
+                <h5><i class="fas fa-boxes"></i> Scanning for MAWB: ${mawbNum}</h5>
+                <p>Scan tracking numbers belonging to this MAWB group</p>
+            `;
+                }
+
                 setTimeout(() => {
                     document.getElementById('trackingNumSingle').focus();
                 }, 300);
@@ -3334,6 +3295,28 @@ EXAMPLE004\tBE9012\t
                 }
             }
         });
+
+        // Function to preserve MAWB selection when switching to one-by-one mode
+        function preserveMAWBSelection() {
+            const updateCode = document.getElementById('updateCode').value;
+            const mawbSelect = document.getElementById('mawbNum');
+            const mawbValue = mawbSelect ? mawbSelect.value : '';
+
+            // Store the MAWB value in a hidden field or data attribute
+            if (mawbValue && updateCode === 'IIW') {
+                // Create a hidden field to store the MAWB value
+                let hiddenMAWB = document.getElementById('hiddenMAWB');
+                if (!hiddenMAWB) {
+                    hiddenMAWB = document.createElement('input');
+                    hiddenMAWB.type = 'hidden';
+                    hiddenMAWB.id = 'hiddenMAWB';
+                    document.getElementById('oneByOneInterface').appendChild(hiddenMAWB);
+                }
+                hiddenMAWB.value = mawbValue;
+
+                console.log('💾 Preserved MAWB value:', mawbValue);
+            }
+        }
     </script>
 </body>
 
