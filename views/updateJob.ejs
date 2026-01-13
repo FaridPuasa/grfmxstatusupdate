@@ -62,19 +62,19 @@
                     <label for="updateCode" class="form-label">Tracking Status Code / Detail to be updated:</label>
                     <select id="updateCode" name="updateCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
-                        <% if (['warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
-                        <optgroup label="EWE/MGLOBAL/PDU/GDEX Flow">
-                            <option value="UAN">1. MAWB Number</option>
-                            <option value="CCH">2. On Hold</option>
-                        </optgroup>
-                        <% } %>
-                        <!-- Other optgroups remain the same -->
-                        <optgroup label="Standard Flow">
-                            <option value="IIW">1. Item in Warehouse</option>
-                            <!-- <option value="OFD">2.1. Out for Delivery</option>
+                        <% if (['warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
+                            <optgroup label="EWE/MGLOBAL/PDU/GDEX Flow">
+                                <option value="UAN">1. MAWB Number</option>
+                                <option value="CCH">2. On Hold</option>
+                            </optgroup>
+                            <% } %>
+                                <!-- Other optgroups remain the same -->
+                                <optgroup label="Standard Flow">
+                                    <option value="IIW">1. Item in Warehouse</option>
+                                    <!-- <option value="OFD">2.1. Out for Delivery</option>
                             <option value="OSC">2.2. Self Collect</option> -->
-                        </optgroup>
-                        <!-- <optgroup label="MGLOBAL Flow">
+                                </optgroup>
+                                <!-- <optgroup label="MGLOBAL Flow">
                             <option value="FCC">1.1. Fail due to Customer not available / cannot be contacted</option>
                             <option value="FIA">1.2. Fail due to Incorrect Address</option>
                             <option value="FSC">1.3.1. Fail due to Reschedule to self collect requested by customer
@@ -84,8 +84,8 @@
                         <optgroup label="After Success/Fail updated on Agent App">
                             <option value="SFJ">Clear Job</option>
                         </optgroup> -->
-                        <optgroup label="Change Details">
-                            <!-- <option value="OSD">Swap Dispatchers</option>
+                                <optgroup label="Change Details">
+                                    <!-- <option value="OSD">Swap Dispatchers</option>
                             <option value="UWL">Update Warehouse</option>
                             <option value="UGR">Update Go Rush Remark</option>
                             <option value="UJD">Update Job Date</option>
@@ -97,9 +97,9 @@
                             <option value="UPN">Update Phone Number</option>
                             <option value="URN">Update Customer Name</option>
                             <option value="UPC">Update Postal Code</option> -->
-                            <option value="UMN">Update MAWB Number</option>
-                        </optgroup>
-                        <!-- <optgroup label="Danger Zone!!!">
+                                    <option value="UMN">Update MAWB Number</option>
+                                </optgroup>
+                                <!-- <optgroup label="Danger Zone!!!">
                             <option value="UCD">1. Cancelled Job</option>
                             <option value="URJ">2. Cancelled -> Reactivate Job</option>
                             <option value="UDJ">3. Dispose Job</option>
@@ -733,20 +733,38 @@
                 return;
             }
 
-            // If MAWB number is provided for IIW update, validate it
-            if (updateCode === 'IIW' && mawbNum !== '') {
-                const validation = await validateMAWBForIIW(mawbNum, 'onebyone');
+            // ========== MAWB VALIDATION FOR IIW ==========
+            // In the form submission handler, add MAWB validation for bulk:
+            if (updateCode === 'IIW') {
+                const mawbRequiredProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
 
-                if (!validation.isValid) {
-                    // Clear MAWB field if validation failed
-                    if (mawbNumInput) {
-                        mawbNumInput.value = '';
+                // If MAWB selected
+                if (mawbNum !== '') {
+                    const validation = await validateMAWBForIIW(mawbNum, 'bulk');
+
+                    if (!validation.isValid) {
+                        showMAWBAlert(`⚠️ MAWB Number "${mawbNum}" does not exist in the system.`, false);
+                        // Clear MAWB field
+                        if (mawbNumInput) {
+                            mawbNumInput.value = '';
+                        }
+                        return;
                     }
-                    return;
-                }
 
-                // Show MAWB stats for one-by-one
-                showMAWBStatsForOneByOne(validation);
+                    // Show MAWB stats for bulk
+                    showMAWBStatsForBulk(validation, trackingNumbers.length);
+                }
+                // If NO MAWB selected
+                else {
+                    // Warn about MAWB-required products
+                    const warnMessage = '⚠️ Scanning without MAWB selection.\n\n' +
+                        'MAWB-required products (PDU, MGLOBAL, EWE, GDEX, GDEXT) will be rejected.\n' +
+                        'Continue anyway?';
+
+                    if (!confirm(warnMessage)) {
+                        return;
+                    }
+                }
             }
 
             // Proceed to active update mode

@@ -421,7 +421,7 @@ async function checkActiveDeliveriesStatus() {
                 // Handle GDEX/GDEXT products specifically
                 if ((product === 'gdex' || product === 'gdext') && data.data.status?.toLowerCase() === 'completed') {
                     console.log(`🚨 Processing completed GDEX order: ${trackingNumber}, Product: ${product}`);
-                    
+
                     // Create detrackData similar to /updateDelivery route
                     const detrackData = {
                         status: data.data.status,
@@ -435,18 +435,18 @@ async function checkActiveDeliveriesStatus() {
                     let podBase64 = null;
                     if (data.data.photo_1_file_url) {
                         console.log(`📥 Downloading POD immediately for GDEX completed job: ${trackingNumber}`);
-                        
+
                         // Use testDownloadImageImmediate to get Base64
                         const downloadResult = await testDownloadImageImmediate(data.data.photo_1_file_url, trackingNumber);
-                        
+
                         if (downloadResult.success) {
                             podBase64 = downloadResult.base64;
                             console.log(`✅ POD downloaded for GDEX: ${podBase64.length} chars`);
-                            
+
                             // Update detrackData with Base64
                             detrackData.photo_1_file_url = podBase64;
                             detrackData.podAlreadyConverted = true;
-                            
+
                             // Save to database
                             await ORDERS.findOneAndUpdate(
                                 { doTrackingNumber: trackingNumber },
@@ -494,7 +494,7 @@ async function checkActiveDeliveriesStatus() {
                     // Send GDEX clear job update (GDEXAPIrun = 6)
                     console.log(`🚀 Sending GDEX clear job update for: ${trackingNumber}`);
                     const gdexToken = await getGDEXToken();
-                    
+
                     if (gdexToken) {
                         const gdexSuccess = await updateGDEXClearJob(trackingNumber, detrackData, gdexToken);
                         if (gdexSuccess) {
@@ -13699,12 +13699,17 @@ app.get('/updateJob/status/:jobId', (req, res) => {
     res.json(job);
 });
 
-// Create a unified function for Detrack updates
 function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isIIW = false) {
     // Calculate common fields
     const finalArea = getAreaFromAddress(jobData.address);
     const finalPhoneNum = processPhoneNumber(jobData.phone_number);
     const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+    console.log(`📝 Creating Detrack update data for:`);
+    console.log(`   Tracking: ${trackingNumber}`);
+    console.log(`   MAWB: ${mawbNum}`);
+    console.log(`   Product: ${product}`);
+    console.log(`   Is IIW: ${isIIW}`);
 
     // Base update data - same structure for all products
     const updateData = {
@@ -13727,6 +13732,7 @@ function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isII
     }
     // For UAN updates, determine based on product
     else {
+        console.log(`💰 Payment rules for product: ${product}`);
         switch (product) {
             case 'ewe':
                 if (jobData.payment_mode === "COD") {
@@ -13762,6 +13768,7 @@ function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isII
         updateData.data.job_owner = "MGLOBAL";
     }
 
+    console.log(`✅ Created Detrack update data with job_owner: ${updateData.data.job_owner}`);
     return updateData;
 }
 
@@ -14576,6 +14583,7 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         // Aggregate to get MAWB stats - only show MAWBs with unscanned jobs
+        // Update the unscannedJobs calculation in the aggregation
         const mawbStats = await ORDERS.aggregate([
             {
                 $match: {
@@ -14586,22 +14594,30 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     },
                     lastUpdateDateTime: { $gte: thirtyDaysAgo.toISOString() },
                     product: {
-                        $in: ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext', 'cbsl', 'kptdp', 'grp', 'temu']
+                        $in: ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext']
                     }
                 }
             },
             {
                 $group: {
                     _id: '$mawbNo',
-                    // Total jobs with this MAWB
                     totalJobs: { $sum: 1 },
-                    // Unscanned jobs (Info Received status)
+                    // FIXED: Include both "Info Received" AND "Custom Clearing" as unscanned
                     unscannedJobs: {
                         $sum: {
-                            $cond: [{ $eq: ['$currentStatus', 'Info Received'] }, 1, 0]
+                            $cond: [
+                                {
+                                    $or: [
+                                        { $eq: ['$currentStatus', 'Info Received'] },
+                                        { $eq: ['$currentStatus', 'Custom Clearing'] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
                         }
                     },
-                    // Scanned jobs (At Warehouse or beyond)
+                    // FIXED: Also update scannedJobs logic
                     scannedJobs: {
                         $sum: {
                             $cond: [
@@ -14609,7 +14625,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                                     $or: [
                                         { $eq: ['$currentStatus', 'At Warehouse'] },
                                         { $eq: ['$currentStatus', 'In Sorting Area'] },
-                                        { $eq: ['$currentStatus', 'Custom Clearing'] },
                                         { $eq: ['$currentStatus', 'On Hold'] }
                                     ]
                                 },
@@ -14618,17 +14633,13 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                             ]
                         }
                     },
-                    // Already at warehouse
                     atWarehouseJobs: {
                         $sum: {
                             $cond: [{ $eq: ['$warehouseEntry', 'Yes'] }, 1, 0]
                         }
                     },
-                    // Latest update
                     latestUpdate: { $max: '$lastUpdateDateTime' },
-                    // Product type
                     product: { $first: '$product' },
-                    // Sample tracking
                     sampleTracking: { $first: '$doTrackingNumber' }
                 }
             },
@@ -14654,14 +14665,12 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     latestUpdate: 1,
                     product: 1,
                     sampleTracking: 1,
-                    // Percentage of unscanned jobs
                     percentageUnscanned: {
                         $multiply: [
                             { $divide: ['$unscannedJobs', '$totalJobs'] },
                             100
                         ]
                     },
-                    // Percentage of scanned jobs
                     percentageScanned: {
                         $multiply: [
                             { $divide: ['$scannedJobs', '$totalJobs'] },
@@ -14671,7 +14680,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                 }
             },
             {
-                // Sort by most unscanned jobs first, then most recent
                 $sort: {
                     unscannedJobs: -1,
                     latestUpdate: -1
@@ -15306,60 +15314,27 @@ async function updateGDEXForOnHold(trackingNumber) {
     }
 }
 
-// Update the processItemInWarehouseUpdate function to handle MAWB validation
 async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawbNum = null) {
     try {
         console.log(`🔍 Starting Item in Warehouse update for ${trackingNumber} at ${warehouse}`);
 
-        // 1. If MAWB number is provided, validate it
-        if (mawbNum && mawbNum.trim() !== '') {
-            console.log(`📦 MAWB validation enabled: ${mawbNum}`);
-
-            // Check if this tracking number belongs to the MAWB group
-            const order = await ORDERS.findOne({
-                doTrackingNumber: trackingNumber.trim()
-            }).select('mawbNo warehouseEntry currentStatus');
-
-            if (!order) {
-                return {
-                    success: false,
-                    message: 'Order not found in system',
-                    mawbValidation: 'order_not_found'
-                };
-            }
-
-            // Check MAWB match
-            if (!order.mawbNo || order.mawbNo.toUpperCase() !== mawbNum.trim().toUpperCase()) {
-                return {
-                    success: false,
-                    message: `Order does not belong to MAWB ${mawbNum}`,
-                    mawbValidation: 'mawb_mismatch',
-                    orderMAWB: order.mawbNo || 'No MAWB'
-                };
-            }
-
-            // Check if already scanned
-            if (order.warehouseEntry === "Yes") {
-                return {
-                    success: false,
-                    message: 'Order already scanned (warehouseEntry: Yes)',
-                    mawbValidation: 'already_scanned',
-                    alreadyAtWarehouse: true
-                };
-            }
-
-            console.log(`✅ MAWB validation passed for ${trackingNumber}`);
-        }
-
-        // 2. Original logic continues...
+        // ========== 1. FIRST CHECK JOB EXISTS ==========
         const jobExists = await checkJobExists(trackingNumber);
         if (!jobExists) {
-            return { success: false, message: 'Job not found in Detrack' };
+            return {
+                success: false,
+                message: 'Job not found in Detrack',
+                code: 'DETRACK_NOT_FOUND'
+            };
         }
 
         const jobData = await getJobDetails(trackingNumber);
         if (!jobData) {
-            return { success: false, message: 'Could not get job details' };
+            return {
+                success: false,
+                message: 'Could not get job details',
+                code: 'DETRACK_NO_DETAILS'
+            };
         }
 
         console.log(`📋 Job details for ${trackingNumber}:`, {
@@ -15369,29 +15344,158 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
             job_owner: jobData.job_owner
         });
 
-        // 3. Get product info
+        // ========== 2. GET PRODUCT INFO ==========
         const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
         const product = currentProduct.toLowerCase();
-
-        // 4. Check if MAWB number exists (run_number in Detrack)
-        const hasMAWB = jobData.run_number && jobData.run_number.trim() !== '';
-
-        // 5. For non-listed products from info_recv, use new logic
         const normalizedStatus = jobData.status ? jobData.status.toLowerCase() : '';
-        const isNonListedProduct = normalizedStatus === 'info_recv' &&
-            product !== 'cbsl' &&
-            product !== 'pdu' &&
-            product !== 'mglobal' &&
-            product !== 'ewe' &&
-            product !== 'gdext' &&
-            product !== 'gdex';
+        console.log(`📦 Detected product: ${product}, status: ${normalizedStatus}`);
 
-        if (isNonListedProduct) {
-            console.log(`🔄 Processing non-listed product ${product} from info_recv`);
-            return await processNonListedProductUpdate(trackingNumber, warehouse, jobData, product, req);
+        // ========== 2A. VALIDATE DETRACK STATUS ==========
+        const validDetrackStatuses = ['info_recv', 'on_hold'];
+        if (!validDetrackStatuses.includes(normalizedStatus)) {
+            return {
+                success: false,
+                message: `Invalid Detrack status: "${jobData.status}". Must be "info_recv" or "on_hold"`,
+                product: product,
+                code: 'INVALID_DETRACK_STATUS'
+            };
         }
 
-        // 6. Process based on product and status (existing logic for listed products)
+        // ========== 3. CHECK EXISTING ORDER ==========
+        const existingOrder = await ORDERS.findOne({
+            doTrackingNumber: trackingNumber.trim()
+        }).select('mawbNo warehouseEntry currentStatus product senderName');
+
+        // ========== 4. PRODUCT CATEGORIES ==========
+        const mustExistProducts = [
+            'cbsl', 'pharmacymoh', 'pharmacyjpmc', 'pharmacyphc',
+            'localdelivery', 'pdu', 'mglobal', 'ewe', 'gdex', 'gdext'
+        ];
+
+        const canCreateProducts = ['pure51', 'icarus', 'kptdp'];
+        const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
+
+        // ========== 5. VALIDATION CHECKS ==========
+
+        // A. MUST-EXIST products validation
+        if (mustExistProducts.includes(product)) {
+            if (!existingOrder) {
+                return {
+                    success: false,
+                    message: `${product.toUpperCase()} order must exist before IIW update`,
+                    product: product,
+                    code: 'ORDER_MUST_EXIST',
+                    shouldExist: true
+                };
+            }
+        }
+
+        // B. Check if already at warehouse (for ALL products)
+        if (existingOrder && existingOrder.warehouseEntry === "Yes") {
+            return {
+                success: false,
+                message: 'Order already scanned (warehouseEntry: Yes)',
+                product: product,
+                alreadyAtWarehouse: true,
+                code: 'ALREADY_SCANNED'
+            };
+        }
+
+        // C. MAWB-REQUIRED products validation
+        if (mawbProducts.includes(product)) {
+            // MAWB-REQUIRED product: MUST have MAWB
+            if (!mawbNum || mawbNum.trim() === '') {
+                return {
+                    success: false,
+                    message: `${product.toUpperCase()} requires MAWB number selection`,
+                    product: product,
+                    mawbRequired: true,
+                    code: 'MAWB_REQUIRED'
+                };
+            }
+
+            // Validate tracking belongs to this MAWB
+            if (existingOrder && existingOrder.mawbNo &&
+                existingOrder.mawbNo.toUpperCase() !== mawbNum.trim().toUpperCase()) {
+                return {
+                    success: false,
+                    message: `Order belongs to MAWB "${existingOrder.mawbNo}", not "${mawbNum}"`,
+                    product: product,
+                    mawbMismatch: true,
+                    orderMAWB: existingOrder.mawbNo,
+                    code: 'MAWB_MISMATCH'
+                };
+            }
+        }
+
+        // D. Non-MAWB product with MAWB selected → REJECT
+        if (!mawbProducts.includes(product) && mawbNum && mawbNum.trim() !== '') {
+            return {
+                success: false,
+                message: `${product.toUpperCase()} cannot have MAWB number`,
+                product: product,
+                invalidMawb: true,
+                code: 'INVALID_MAWB'
+            };
+        }
+
+        // E. Other non-MAWB products from on_hold → REJECT
+        // (unless they're pharmacy/local products that should already exist)
+        if (!mustExistProducts.includes(product) &&
+            !canCreateProducts.includes(product) &&
+            normalizedStatus === 'on_hold') {
+            return {
+                success: false,
+                message: `Product "${product}" can only be updated from "info_recv" status`,
+                product: product,
+                invalidStatus: true,
+                code: 'INVALID_STATUS'
+            };
+        }
+
+        // ========== 6. PROCESS BASED ON PRODUCT TYPE ==========
+
+        // A. Can-create products (pure51, icarus, kptdp)
+        if (canCreateProducts.includes(product)) {
+            if (!existingOrder && normalizedStatus === 'info_recv') {
+                console.log(`🔄 Creating new order for ${product} from info_recv`);
+                return await createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, product);
+            } else if (existingOrder) {
+                console.log(`📦 Updating existing ${product} order`);
+                // Process as existing order
+            } else {
+                return {
+                    success: false,
+                    message: `${product.toUpperCase()} can only be created from "info_recv" status`,
+                    code: 'CAN_CREATE_ONLY_FROM_INFO_RECV'
+                };
+            }
+        }
+
+        // B. Other non-MAWB products (grp, temu, random international)
+        if (!mustExistProducts.includes(product) &&
+            !canCreateProducts.includes(product)) {
+
+            if (normalizedStatus === 'info_recv') {
+                if (!existingOrder) {
+                    console.log(`🔄 Creating new order for non-MAWB product: ${product}`);
+                    return await createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, product);
+                } else {
+                    console.log(`📦 Updating existing non-MAWB product: ${product}`);
+                    // Process as existing order
+                }
+            } else if (normalizedStatus === 'on_hold' && !existingOrder) {
+                // on_hold but doesn't exist - should have been created earlier
+                return {
+                    success: false,
+                    message: `${product.toUpperCase()} order should already exist for "on_hold" status`,
+                    code: 'ORDER_MISSING_FOR_ON_HOLD'
+                };
+            }
+        }
+
+        // C. All other cases (must-exist products, existing orders)
+        const hasMAWB = jobData.run_number && jobData.run_number.trim() !== '';
         const result = await processWarehouseUpdateLogic(trackingNumber, warehouse, jobData, product, req, hasMAWB);
 
         // Add MAWB validation info to result
@@ -15404,7 +15508,7 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
 
     } catch (error) {
         console.error(`❌ Error in Item in Warehouse update for ${trackingNumber}:`, error);
-        return { success: false, message: 'Error: ' + error.message };
+        return { success: false, message: 'Error: ' + error.message, code: 'PROCESSING_ERROR' };
     }
 }
 
@@ -16312,140 +16416,168 @@ async function updateDetrackForWarehouse(trackingNumber, warehouse, jobData, pro
     }
 }
 
-// Replace the getDetrackUpdateSequence function with this corrected version
 function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = false) {
     const normalizedStatus = currentStatus ? currentStatus.toLowerCase() : '';
     const normalizedProduct = product ? product.toLowerCase() : '';
 
     console.log(`Detrack sequence check: product=${normalizedProduct}, status=${normalizedStatus}, isDelayed=${isDelayedExecution}`);
 
-    // 1. PDU from on_hold
-    if (normalizedStatus === 'on_hold' && normalizedProduct === 'pdu') {
-        if (!isDelayedExecution) {
-            // IMMEDIATE: Custom Clearance only
+    // Define product categories
+    const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
+    const mustExistProducts = ['cbsl', 'pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery'];
+    const canCreateProducts = ['pure51', 'icarus', 'kptdp'];
+
+    // ========== MAWB-REQUIRED PRODUCTS ==========
+    if (mawbProducts.includes(normalizedProduct)) {
+        // 1. PDU from on_hold
+        if (normalizedStatus === 'on_hold' && normalizedProduct === 'pdu') {
+            if (!isDelayedExecution) {
+                return {
+                    immediate: ['custom_clearing'],
+                    delayed: true,
+                    delayedUpdates: ['at_warehouse'],
+                    final: ['in_sorting_area']  // Final status for PDU
+                };
+            } else {
+                return {
+                    immediate: ['at_warehouse'],
+                    delayed: false,
+                    delayedUpdates: [],
+                    final: ['in_sorting_area']  // Final status for PDU
+                };
+            }
+        }
+
+        // 2. EWE/MGLOBAL from on_hold
+        if (normalizedStatus === 'on_hold' && (normalizedProduct === 'ewe' || normalizedProduct === 'mglobal')) {
+            if (!isDelayedExecution) {
+                return {
+                    immediate: [],
+                    delayed: true,
+                    delayedUpdates: ['at_warehouse'],
+                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                };
+            } else {
+                return {
+                    immediate: ['at_warehouse'],
+                    delayed: false,
+                    delayedUpdates: [],
+                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                };
+            }
+        }
+
+        // 3. PDU from info_recv
+        if (normalizedStatus === 'info_recv' && normalizedProduct === 'pdu') {
+            if (!isDelayedExecution) {
+                return {
+                    immediate: ['on_hold', 'custom_clearing'],
+                    delayed: true,
+                    delayedUpdates: ['at_warehouse'],
+                    final: ['in_sorting_area']  // Final status for PDU
+                };
+            } else {
+                return {
+                    immediate: ['at_warehouse'],
+                    delayed: false,
+                    delayedUpdates: [],
+                    final: ['in_sorting_area']  // Final status for PDU
+                };
+            }
+        }
+
+        // 4. EWE/MGLOBAL from info_recv
+        if (normalizedStatus === 'info_recv' && (normalizedProduct === 'ewe' || normalizedProduct === 'mglobal')) {
+            if (!isDelayedExecution) {
+                return {
+                    immediate: ['custom_clearing'],
+                    delayed: true,
+                    delayedUpdates: ['at_warehouse'],
+                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                };
+            } else {
+                return {
+                    immediate: ['at_warehouse'],
+                    delayed: false,
+                    delayedUpdates: [],
+                    final: ['in_sorting_area']  // Final status for EWE/MGLOBAL
+                };
+            }
+        }
+
+        // 5. GDEX/GDEXT from info_recv or on_hold
+        if ((normalizedStatus === 'info_recv' || normalizedStatus === 'on_hold') &&
+            (normalizedProduct === 'gdex' || normalizedProduct === 'gdext')) {
+            // GDEX/GDEXT: in_sorting_area → at_warehouse (at_warehouse is FINAL)
             return {
-                immediate: ['custom_clearing'],
-                delayed: true, // Needs 30-min delay
-                delayedUpdates: ['at_warehouse'],
-                final: ['in_sorting_area']
-            };
-        } else {
-            // DELAYED EXECUTION (30 mins later): At Warehouse then In Sorting Area
-            return {
-                immediate: ['at_warehouse'],
-                delayed: false, // Already delayed
+                immediate: ['in_sorting_area', 'at_warehouse'], // at_warehouse is last
+                delayed: false,
                 delayedUpdates: [],
-                final: ['in_sorting_area']
+                final: []  // No final updates needed, at_warehouse is final
             };
         }
     }
 
-    // 2. EWE/MGLOBAL from on_hold
-    if (normalizedStatus === 'on_hold' && (normalizedProduct === 'ewe' || normalizedProduct === 'mglobal')) {
-        if (!isDelayedExecution) {
-            // NO IMMEDIATE UPDATES, wait 30 mins first
+    // ========== MUST-EXIST NON-MAWB PRODUCTS ==========
+    else if (mustExistProducts.includes(normalizedProduct)) {
+        // 6. CBSL - should only come from on_hold (already exists)
+        if (normalizedProduct === 'cbsl') {
+            // CBSL: at_warehouse → in_sorting_area (BOTH immediate)
             return {
-                immediate: [],
-                delayed: true, // Needs 30-min delay
-                delayedUpdates: ['at_warehouse'],
-                final: ['in_sorting_area']
-            };
-        } else {
-            // DELAYED EXECUTION (30 mins later): At Warehouse then In Sorting Area
-            return {
-                immediate: ['at_warehouse'],
-                delayed: false, // Already delayed
+                immediate: ['at_warehouse', 'in_sorting_area'],
+                delayed: false,
                 delayedUpdates: [],
-                final: ['in_sorting_area']
+                final: []  // No final updates needed, in_sorting_area is final
+            };
+        }
+
+        // 7. Other must-exist products (pharmacies, localdelivery)
+        // These should only come from on_hold status (already in system)
+        if (normalizedStatus === 'on_hold') {
+            // Pharmacy/LocalDelivery: at_warehouse → in_sorting_area (BOTH immediate)
+            return {
+                immediate: ['at_warehouse', 'in_sorting_area'],
+                delayed: false,
+                delayedUpdates: [],
+                final: []  // No final updates needed, in_sorting_area is final
             };
         }
     }
 
-    // 3. PDU from info_recv
-    if (normalizedStatus === 'info_recv' && normalizedProduct === 'pdu') {
-        if (!isDelayedExecution) {
-            // IMMEDIATE: On Hold then Custom Clearance
+    // ========== CAN-CREATE PRODUCTS ==========
+    else if (canCreateProducts.includes(normalizedProduct)) {
+        // 8. pure51, icarus, kptdp from info_recv (create new)
+        if (normalizedStatus === 'info_recv') {
             return {
-                immediate: ['on_hold', 'custom_clearing'],
-                delayed: true, // Needs 30-min delay
-                delayedUpdates: ['at_warehouse'],
-                final: ['in_sorting_area']
-            };
-        } else {
-            // DELAYED EXECUTION (30 mins later): At Warehouse then In Sorting Area
-            return {
-                immediate: ['at_warehouse'],
-                delayed: false, // Already delayed
+                immediate: ['at_warehouse', 'in_sorting_area'], // BOTH updates
+                delayed: false,
                 delayedUpdates: [],
-                final: ['in_sorting_area']
+                final: []  // No final updates needed, in_sorting_area is final
             };
         }
     }
 
-    // 4. EWE/MGLOBAL from info_recv
-    if (normalizedStatus === 'info_recv' && (normalizedProduct === 'ewe' || normalizedProduct === 'mglobal')) {
-        if (!isDelayedExecution) {
-            // IMMEDIATE: Custom Clearance only
+    // ========== OTHER NON-MAWB PRODUCTS ==========
+    else {
+        // 9. Other products ONLY from info_recv status (create new)
+        if (normalizedStatus === 'info_recv') {
             return {
-                immediate: ['custom_clearing'],
-                delayed: true, // Needs 30-min delay
-                delayedUpdates: ['at_warehouse'],
-                final: ['in_sorting_area']
-            };
-        } else {
-            // DELAYED EXECUTION (30 mins later): At Warehouse then In Sorting Area
-            return {
-                immediate: ['at_warehouse'],
-                delayed: false, // Already delayed
+                immediate: ['at_warehouse', 'in_sorting_area'], // BOTH updates
+                delayed: false,
                 delayedUpdates: [],
-                final: ['in_sorting_area']
+                final: []  // No final updates needed, in_sorting_area is final
             };
         }
     }
 
-    // 5. GDEX/GDEXT from info_recv or on_hold
-    if ((normalizedStatus === 'info_recv' || normalizedStatus === 'on_hold') &&
-        (normalizedProduct === 'gdex' || normalizedProduct === 'gdext')) {
-        // NO DELAY: In Sorting Area then At Warehouse (both immediate)
-        return {
-            immediate: ['in_sorting_area', 'at_warehouse'],
-            delayed: false,
-            delayedUpdates: [],
-            final: []
-        };
-    }
+    // ========== DEFAULT FALLBACK ==========
+    // Should only be reached for invalid status/products
+    console.warn(`⚠️ No Detrack sequence defined for product=${normalizedProduct}, status=${normalizedStatus}`);
 
-    // 6. CBSL from info_recv
-    if (normalizedStatus === 'info_recv' && normalizedProduct === 'cbsl') {
-        // NO DELAY: At Warehouse then In Sorting Area (both immediate, with swap)
-        return {
-            immediate: ['at_warehouse', 'in_sorting_area'],
-            delayed: false,
-            delayedUpdates: [],
-            final: []
-        };
-    }
-
-    // 7. Other products from info_recv (not listed)
-    if (normalizedStatus === 'info_recv' &&
-        normalizedProduct !== 'pdu' &&
-        normalizedProduct !== 'mglobal' &&
-        normalizedProduct !== 'ewe' &&
-        normalizedProduct !== 'gdext' &&
-        normalizedProduct !== 'gdex' &&
-        normalizedProduct !== 'cbsl') {
-        // NO DELAY: At Warehouse then In Sorting Area (both immediate)
-        return {
-            immediate: ['at_warehouse', 'in_sorting_area'],
-            delayed: false,
-            delayedUpdates: [],
-            final: []
-        };
-    }
-
-    // Default for other cases
+    // DO NOT push at_warehouse by default
+    // Return empty sequence to prevent unintended updates
     return {
-        immediate: ['at_warehouse'],
+        immediate: [],
         delayed: false,
         delayedUpdates: [],
         final: []
@@ -17453,34 +17585,35 @@ function getProductInfo(groupName, jobOwner) {
     let currentProduct = '';
     let senderName = '';
 
-    const product = groupName || '';
+    const product = (groupName || '').toLowerCase();
+    const owner = (jobOwner || '').toLowerCase();
 
-    if (product === 'PURE51') {
+    if (product === 'pure51') {
         currentProduct = 'pure51';
-    } else if (product === 'CBSL') {
+    } else if (product === 'cbsl') {
         currentProduct = 'cbsl';
-    } else if (product === 'JPMC') {
+    } else if (product === 'jpmc') {
         currentProduct = 'pharmacyjpmc';
-    } else if (product === 'LD') {
+    } else if (product === 'ld') {
         currentProduct = 'localdelivery';
-    } else if (product === 'MOH') {
+    } else if (product === 'moh') {
         currentProduct = 'pharmacymoh';
-    } else if (product === 'PHC') {
+    } else if (product === 'phc') {
         currentProduct = 'pharmacyphc';
-    } else if (product === 'ICARUS') {
+    } else if (product === 'icarus') {
         currentProduct = 'icarus';
-    } else if (product === 'EWE') {
+    } else if (product === 'ewe') {
         currentProduct = 'ewe';
         senderName = "EWE";
-    } else if (product === 'KPTDP') {
+    } else if (product === 'kptdp') {
         currentProduct = 'kptdp';
-    } else if (product === 'PDU') {
+    } else if (product === 'pdu') {
         currentProduct = 'pdu';
         senderName = "SYPOST";
-    } else if (product === 'MGLOBAL') {
+    } else if (product === 'mglobal') {
         currentProduct = 'mglobal';
         senderName = "MGLOBAL";
-    } else if (product === 'GDEX' || product === 'GDEXT') {
+    } else if (product === 'gdex' || product === 'gdext') {
         currentProduct = product.toLowerCase();
         senderName = jobOwner || '';
     }
@@ -19041,8 +19174,14 @@ async function processUANUpdateWithAdditionalFields(trackingNumber, mawbNum, pos
                 };
             }
 
-            // Get product info
-            const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
+            // Get product info - FIXED LOGIC
+            console.log(`📊 Detrack job data for ${trackingNumber}:`);
+            console.log(`   - group_name: ${jobData.group_name}`);
+            console.log(`   - job_owner: ${jobData.job_owner}`);
+            console.log(`   - status: ${jobData.status}`);
+
+            const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
+            console.log(`✅ Detected product: ${currentProduct}, sender: ${senderName}`);
 
             // ========== VALIDATE ALLOWED PRODUCTS FOR UAN ==========
             const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
@@ -19058,6 +19197,7 @@ async function processUANUpdateWithAdditionalFields(trackingNumber, mawbNum, pos
             }
 
             // Create new order
+            console.log(`🏷️ Creating new order for product: ${currentProduct.toUpperCase()}`);
             const success = await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, currentProduct);
             if (!success) return { success: false, reason: 'MongoDB creation failed' };
 
@@ -19074,28 +19214,41 @@ async function processUANUpdateWithAdditionalFields(trackingNumber, mawbNum, pos
             }
         }
 
-        // Update Detrack
+        // Update Detrack - FIXED PRODUCT DETECTION
         console.log(`🔄 Updating Detrack for ${trackingNumber}`);
-        const jobData = existingOrder ? await getJobDetailsWithRetry(trackingNumber) : null;
-        const { currentProduct } = getProductInfo(
-            jobData?.group_name || existingOrder?.product || 'ewe',
-            jobData?.job_owner || existingOrder?.senderName || 'EWE'
-        );
+
+        let productForDetrack = '';
+        let jobDataForDetrack = null;
+
+        if (existingOrder) {
+            productForDetrack = existingOrder.product?.toLowerCase() || '';
+            jobDataForDetrack = await getJobDetailsWithRetry(trackingNumber);
+        } else {
+            // For new orders, get fresh data
+            jobDataForDetrack = await getJobDetailsWithRetry(trackingNumber);
+            const { currentProduct } = getProductInfo(jobDataForDetrack?.group_name, jobDataForDetrack?.job_owner);
+            productForDetrack = currentProduct;
+        }
+
+        console.log(`✅ Final product for Detrack update: ${productForDetrack}`);
 
         // Double-check product validation before Detrack update
         const allowedProducts = ['mglobal', 'pdu', 'ewe', 'gdex', 'gdext'];
-        if (!allowedProducts.includes(currentProduct)) {
-            console.log(`❌ Final validation failed for ${trackingNumber} - Product "${currentProduct}" not allowed`);
+        if (!allowedProducts.includes(productForDetrack)) {
+            console.log(`❌ Final validation failed for ${trackingNumber} - Product "${productForDetrack}" not allowed`);
             return {
                 success: false,
                 reason: 'Product validation failed',
-                message: `Product "${currentProduct}" not allowed for UAN updates`
+                message: `Product "${productForDetrack}" not allowed for UAN updates`
             };
         }
 
-        const updateData = createDetrackUpdateData(trackingNumber, mawbNum, currentProduct, jobData || {}, false);
+        const updateData = createDetrackUpdateData(trackingNumber, mawbNum, productForDetrack, jobDataForDetrack || {}, false);
         if (postalCode) updateData.data.postal_code = postalCode.toUpperCase();
         if (parcelWeight) updateData.data.weight = parseFloat(parcelWeight) || 0;
+
+        console.log(`📤 Detrack update payload:`);
+        console.log(JSON.stringify(updateData, null, 2));
 
         const detrackResult = await sendDetrackUpdateWithRetry(trackingNumber, updateData, mawbNum);
 
@@ -19320,6 +19473,55 @@ app.post('/updateJob/checkExistingOrders', ensureAuthenticated, async (req, res)
         res.status(500).json({ error: error.message });
     }
 });
+
+// Add this function to validate product vs MAWB rules
+async function validateProductForIIW(trackingNumber, mawbNum, product) {
+    try {
+        const mawbRequiredProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
+
+        // MAWB-required product without MAWB
+        if (mawbRequiredProducts.includes(product) && (!mawbNum || mawbNum.trim() === '')) {
+            return {
+                valid: false,
+                error: `Product "${product}" requires MAWB number`,
+                code: 'MAWB_REQUIRED'
+            };
+        }
+
+        // Non-MAWB product with MAWB
+        if (!mawbRequiredProducts.includes(product) && mawbNum && mawbNum.trim() !== '') {
+            return {
+                valid: false,
+                error: `Product "${product}" cannot have MAWB number`,
+                code: 'INVALID_MAWB'
+            };
+        }
+
+        // Check MAWB belongs
+        if (mawbRequiredProducts.includes(product) && mawbNum) {
+            const order = await ORDERS.findOne({
+                doTrackingNumber: trackingNumber
+            }).select('mawbNo');
+
+            if (order && order.mawbNo && order.mawbNo.toUpperCase() !== mawbNum.trim().toUpperCase()) {
+                return {
+                    valid: false,
+                    error: `Order belongs to MAWB ${order.mawbNo}, not ${mawbNum}`,
+                    code: 'MAWB_MISMATCH'
+                };
+            }
+        }
+
+        return { valid: true };
+
+    } catch (error) {
+        return {
+            valid: false,
+            error: `Validation error: ${error.message}`,
+            code: 'VALIDATION_ERROR'
+        };
+    }
+}
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
