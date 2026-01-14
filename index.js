@@ -14396,6 +14396,315 @@ async function processMAWBUpdate(trackingNumber, mawbNum, req) {
     }
 }
 
+async function processCBSLFirstScan(trackingNumber, warehouse, req) {
+    try {
+        console.log(`\n🔄 ========== CBSL FIRST SCAN (Corrected Logic) ==========`);
+        console.log(`📱 Scanned (do_number/parcelTrackingNum): ${trackingNumber}`);
+        console.log(`🏪 Warehouse: ${warehouse}`);
+        console.log(`👤 User: ${req.user.name}`);
+
+        // Step 1: Look up in Detrack using do_number parameter (scanned number is do_number)
+        console.log(`\n🔍 Step 1: Looking up in Detrack as do_number...`);
+        let jobData;
+        try {
+            const response = await axios.get(
+                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    timeout: 10000
+                }
+            );
+
+            if (response.data.data && response.data.data.do_number) {
+                jobData = response.data.data;
+                console.log(`✅ Found CBSL job in Detrack:`);
+                console.log(`   - do_number (from Detrack): ${jobData.do_number}`);
+                console.log(`   - tracking_number (from Detrack): ${jobData.tracking_number}`);
+                console.log(`   - group_name: ${jobData.group_name}`);
+                console.log(`   - status: ${jobData.status}`);
+                
+                // Validate it's CBSL
+                if (!jobData.group_name || jobData.group_name.toLowerCase() !== 'cbsl') {
+                    console.log(`❌ Not a CBSL job (group_name: ${jobData.group_name || 'unknown'})`);
+                    return {
+                        success: false,
+                        message: `Not a CBSL job (${jobData.group_name || 'unknown'})`
+                    };
+                }
+            } else {
+                console.log(`❌ CBSL job not found in Detrack`);
+                return {
+                    success: false,
+                    message: 'CBSL job not found in Detrack'
+                };
+            }
+        } catch (error) {
+            console.log(`❌ Detrack lookup failed:`, error.message);
+            if (error.response?.status === 404) {
+                return {
+                    success: false,
+                    message: 'CBSL job not found (404) - Make sure do_number is correct'
+                };
+            }
+            return {
+                success: false,
+                message: 'Detrack lookup failed: ' + error.message
+            };
+        }
+
+        // Step 2: Check if already in MongoDB (by parcelTrackingNum = scanned number)
+        console.log(`\n📦 Step 2: Checking MongoDB by parcelTrackingNum...`);
+        const existingOrder = await ORDERS.findOne({
+            parcelTrackingNum: trackingNumber
+        });
+
+        if (existingOrder) {
+            console.log(`✅ Order exists in MongoDB (parcelTrackingNum = scanned number):`);
+            console.log(`   - _id: ${existingOrder._id}`);
+            console.log(`   - doTrackingNumber: ${existingOrder.doTrackingNumber}`);
+            console.log(`   - parcelTrackingNum: ${existingOrder.parcelTrackingNum}`);
+            console.log(`   - warehouseEntry: ${existingOrder.warehouseEntry}`);
+            console.log(`   - currentStatus: ${existingOrder.currentStatus}`);
+            console.log(`   - product: ${existingOrder.product}`);
+            
+            if (existingOrder.warehouseEntry === "Yes") {
+                console.log(`⚠️ Already scanned at warehouse`);
+                return {
+                    success: false,
+                    message: 'Already scanned at warehouse',
+                    alreadyScanned: true
+                };
+            }
+            
+            // Verify CBSL product
+            if (existingOrder.product !== 'cbsl') {
+                console.log(`⚠️ MongoDB product is "${existingOrder.product}", not "cbsl"`);
+            }
+        } else {
+            console.log(`📝 Order not found by parcelTrackingNum, will create new entry`);
+            
+            // Also check by doTrackingNumber just in case
+            const byDoTracking = await ORDERS.findOne({
+                doTrackingNumber: trackingNumber
+            });
+            if (byDoTracking) {
+                console.log(`ℹ️ Found by doTrackingNumber instead:`);
+                console.log(`   - parcelTrackingNum: ${byDoTracking.parcelTrackingNum}`);
+                console.log(`   - product: ${byDoTracking.product}`);
+            }
+        }
+
+        // Step 3: Update or create in MongoDB
+        console.log(`\n💾 Step 3: Updating MongoDB using parcelTrackingNum = scanned number...`);
+        
+        const updateData = {
+            $set: {
+                currentStatus: "At Warehouse",
+                lastUpdateDateTime: moment().format(),
+                warehouseEntry: "Yes",
+                warehouseEntryDateTime: moment().format(),
+                latestLocation: warehouse,
+                lastUpdatedBy: req.user.name,
+                // CBSL mapping:
+                product: 'cbsl',
+                senderName: 'CBSL',
+                area: getAreaFromAddress(jobData.address),
+                receiverName: jobData.deliver_to_collect_from || '',
+                receiverAddress: jobData.address || '',
+                receiverPhoneNumber: processPhoneNumber(jobData.phone_number),
+                additionalPhoneNumber: processPhoneNumber(jobData.other_phone_numbers),
+                creationDate: jobData.created_at || moment().format(),
+                receiverPostalCode: jobData.postal_code ? jobData.postal_code.toUpperCase() : '',
+                jobType: jobData.type || 'Delivery',
+                jobMethod: "Standard",
+                flightDate: jobData.job_received_date || '',
+                mawbNo: jobData.run_number || '',
+                parcelWeight: jobData.weight || 0,
+                totalPrice: 0,
+                paymentAmount: 0,
+                paymentMethod: "NON COD",
+                attempt: jobData.attempt || 1,
+                remarks: jobData.remarks || '',
+                trackingLink: jobData.tracking_link || ''
+            },
+            $push: {
+                history: {
+                    statusHistory: "At Warehouse",
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: warehouse,
+                }
+            }
+        };
+
+        // Add items array
+        const itemsArray = [];
+        if (jobData.items && Array.isArray(jobData.items)) {
+            jobData.items.forEach((item) => {
+                itemsArray.push({
+                    quantity: item.quantity || 0,
+                    description: item.description || '',
+                    totalItemPrice: 0
+                });
+            });
+        }
+        updateData.$set.items = itemsArray;
+
+        const mongoResult = await ORDERS.updateOne(
+            { parcelTrackingNum: trackingNumber }, // Match by parcelTrackingNum = scanned number
+            updateData,
+            { upsert: true }
+        );
+
+        console.log(`✅ MongoDB ${mongoResult.upsertedCount > 0 ? 'created' : 'updated'}:`);
+        console.log(`   - Matched by parcelTrackingNum: ${mongoResult.matchedCount}`);
+        console.log(`   - Modified: ${mongoResult.modifiedCount}`);
+        console.log(`   - Upserted: ${mongoResult.upsertedCount}`);
+        
+        if (mongoResult.upsertedId) {
+            console.log(`   - New document ID: ${mongoResult.upsertedId}`);
+        }
+
+        // Step 4: Update Detrack with SWAP logic
+        console.log(`\n🔄 Step 4: Updating Detrack (with swap logic)...`);
+        
+        // CBSL needs both at_warehouse and in_sorting_area
+        // First update: at_warehouse
+        console.log(`📤 First update: at_warehouse`);
+        
+        const detrackUpdateData1 = {
+            do_number: trackingNumber, // Scanned number (do_number)
+            data: {
+                status: "at_warehouse",
+                // SWAP: tracking_number becomes do_number, do_number becomes tracking_number
+                do_number: jobData.tracking_number, // Use tracking_number from Detrack
+                tracking_number: trackingNumber // Scanned number becomes tracking_number
+            }
+        };
+
+        console.log(`📤 Detrack payload 1 (at_warehouse):`);
+        console.log(JSON.stringify(detrackUpdateData1, null, 2));
+
+        let detrackSuccess1 = false;
+        try {
+            const detrackResponse1 = await axios.put(
+                'https://app.detrack.com/api/v2/dn/jobs/update',
+                detrackUpdateData1,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    timeout: 10000
+                }
+            );
+
+            console.log(`📥 Detrack response 1 status: ${detrackResponse1.status}`);
+            detrackSuccess1 = detrackResponse1.data.success === true || 
+                            detrackResponse1.data.status === 'success' || 
+                            detrackResponse1.status === 200;
+
+            if (detrackSuccess1) {
+                console.log(`✅ Detrack at_warehouse update successful`);
+            } else {
+                console.log(`❌ Detrack at_warehouse update failed:`, JSON.stringify(detrackResponse1.data, null, 2));
+            }
+        } catch (detrackError1) {
+            console.error(`❌ Detrack at_warehouse API error:`, detrackError1.message);
+            if (detrackError1.response) {
+                console.error(`❌ Response data:`, JSON.stringify(detrackError1.response.data, null, 2));
+            }
+        }
+
+        // Second update: in_sorting_area (after short delay)
+        console.log(`\n⏳ Waiting 1 second before in_sorting_area update...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log(`📤 Second update: in_sorting_area`);
+        
+        const detrackUpdateData2 = {
+            do_number: jobData.tracking_number, // Scanned number (do_number)
+            data: {
+                status: "in_sorting_area"
+            }
+        };
+
+        console.log(`📤 Detrack payload 2 (in_sorting_area):`);
+        console.log(JSON.stringify(detrackUpdateData2, null, 2));
+
+        let detrackSuccess2 = false;
+        try {
+            const detrackResponse2 = await axios.put(
+                'https://app.detrack.com/api/v2/dn/jobs/update',
+                detrackUpdateData2,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    timeout: 10000
+                }
+            );
+
+            console.log(`📥 Detrack response 2 status: ${detrackResponse2.status}`);
+            detrackSuccess2 = detrackResponse2.data.success === true || 
+                            detrackResponse2.data.status === 'success' || 
+                            detrackResponse2.status === 200;
+
+            if (detrackSuccess2) {
+                console.log(`✅ Detrack in_sorting_area update successful`);
+            } else {
+                console.log(`❌ Detrack in_sorting_area update failed:`, JSON.stringify(detrackResponse2.data, null, 2));
+            }
+        } catch (detrackError2) {
+            console.error(`❌ Detrack in_sorting_area API error:`, detrackError2.message);
+            if (detrackError2.response) {
+                console.error(`❌ Response data:`, JSON.stringify(detrackError2.response.data, null, 2));
+            }
+        }
+
+        const detrackSuccess = detrackSuccess1 && detrackSuccess2;
+        
+        if (detrackSuccess) {
+            console.log(`\n✅ All Detrack updates successful`);
+        } else {
+            console.log(`\n⚠️ Some Detrack updates may have failed`);
+        }
+
+        console.log(`\n🏁 ========== CBSL SCAN COMPLETE ==========\n`);
+        
+        return {
+            success: true,
+            message: `CBSL item scanned at ${warehouse}`,
+            customerName: jobData.deliver_to_collect_from || 'Unknown',
+            area: getAreaFromAddress(jobData.address),
+            isNewOrder: mongoResult.upsertedCount > 0,
+            detrackUpdates: {
+                at_warehouse: detrackSuccess1,
+                in_sorting_area: detrackSuccess2
+            },
+            cbslInfo: {
+                scannedNumber: trackingNumber,
+                detrack_do_number: jobData.do_number,
+                detrack_tracking_number: jobData.tracking_number,
+                mongo_doTrackingNumber: trackingNumber,
+                mongo_parcelTrackingNum: trackingNumber
+            }
+        };
+
+    } catch (error) {
+        console.error(`\n🔥 ERROR in CBSL processing:`, error);
+        console.error(error.stack);
+        return {
+            success: false,
+            message: 'Error: ' + error.message
+        };
+    }
+}
+
 async function updateJobMAWB(trackingNumber, mawbNum, req) {
     try {
         // First get the current job details to calculate the fields
@@ -15318,6 +15627,32 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
     try {
         console.log(`🔍 Starting Item in Warehouse update for ${trackingNumber} at ${warehouse}`);
 
+        // ========== 0. SPECIAL HANDLING FOR CBSL ==========
+        // First, try to identify if this is CBSL by checking Detrack
+        console.log(`🔄 Checking if ${trackingNumber} is CBSL...`);
+
+        try {
+            // Try as tracking_number first (CBSL first scan)
+            const cbslResponse = await axios.get(
+                `https://app.detrack.com/api/v2/dn/jobs/show/?tracking_number=${trackingNumber}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey
+                    },
+                    timeout: 5000
+                }
+            );
+
+            if (cbslResponse.data.data && cbslResponse.data.data.group_name === 'cbsl') {
+                console.log(`✅ Identified as CBSL first scan`);
+                return await processCBSLFirstScan(trackingNumber, warehouse, req);
+            }
+        } catch (cbslError) {
+            // Not CBSL or not found, continue with normal flow
+            console.log(`ℹ️ Not CBSL or not found as tracking_number: ${cbslError.message}`);
+        }
+
         // ========== 1. FIRST CHECK JOB EXISTS ==========
         const jobExists = await checkJobExists(trackingNumber);
         if (!jobExists) {
@@ -15360,6 +15695,12 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
         // ========== 2A. VALIDATE ON_HOLD FOR NON-MAWB PRODUCTS ==========
         const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
 
+        // ========== 2A. IF CBSL DETECTED IN NORMAL FLOW ==========
+        if (product === 'cbsl') {
+            console.log(`🔄 CBSL detected in normal flow, using first-scan logic`);
+            return await processCBSLFirstScan(trackingNumber, warehouse, req);
+        }
+
         // Validate: Non-MAWB products should not have on_hold status
         if (normalizedStatus === 'on_hold' && !mawbProducts.includes(product)) {
             return {
@@ -15384,10 +15725,13 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
         // ========== 3. CHECK EXISTING ORDER ==========
         let existingOrder;
         if (product === 'cbsl') {
-            // CBSL: Use parcelTrackingNum to find order in MongoDB
+            // CBSL: Check both fields since we might have stored it differently
             existingOrder = await ORDERS.findOne({
-                parcelTrackingNum: trackingNumber.trim()
-            }).select('mawbNo warehouseEntry currentStatus product senderName doTrackingNumber');
+                $or: [
+                    { parcelTrackingNum: trackingNumber.trim() },
+                    { doTrackingNumber: trackingNumber.trim() }
+                ]
+            }).select('mawbNo warehouseEntry currentStatus product senderName doTrackingNumber parcelTrackingNum');
         } else {
             // All other products: Use doTrackingNumber as before
             existingOrder = await ORDERS.findOne({
