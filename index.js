@@ -15359,7 +15359,7 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
 
         // ========== 2A. VALIDATE ON_HOLD FOR NON-MAWB PRODUCTS ==========
         const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
-        
+
         // Validate: Non-MAWB products should not have on_hold status
         if (normalizedStatus === 'on_hold' && !mawbProducts.includes(product)) {
             return {
@@ -15382,9 +15382,18 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
         }
 
         // ========== 3. CHECK EXISTING ORDER ==========
-        const existingOrder = await ORDERS.findOne({
-            doTrackingNumber: trackingNumber.trim()
-        }).select('mawbNo warehouseEntry currentStatus product senderName');
+        let existingOrder;
+        if (product === 'cbsl') {
+            // CBSL: Use parcelTrackingNum to find order in MongoDB
+            existingOrder = await ORDERS.findOne({
+                parcelTrackingNum: trackingNumber.trim()
+            }).select('mawbNo warehouseEntry currentStatus product senderName doTrackingNumber');
+        } else {
+            // All other products: Use doTrackingNumber as before
+            existingOrder = await ORDERS.findOne({
+                doTrackingNumber: trackingNumber.trim()
+            }).select('mawbNo warehouseEntry currentStatus product senderName');
+        }
 
         // ========== 4. PRODUCT CATEGORIES ==========
         const mustExistProducts = [
@@ -16528,7 +16537,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
             };
         }
     }
-    
+
     // ========== MUST-EXIST NON-MAWB PRODUCTS ==========
     else if (mustExistProducts.includes(normalizedProduct)) {
         // 6. CBSL - info_recv only
@@ -16540,7 +16549,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                 final: []
             };
         }
-        
+
         // 7. Other must-exist products (pharmacies, localdelivery) - info_recv only
         if (normalizedStatus === 'info_recv') {
             return {
@@ -16550,7 +16559,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                 final: []
             };
         }
-        
+
         // REJECT on_hold for non-MAWB products
         if (normalizedStatus === 'on_hold') {
             console.error(`❌ INVALID: ${normalizedProduct} should not have on_hold status`);
@@ -16562,7 +16571,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
             };
         }
     }
-    
+
     // ========== CAN-CREATE PRODUCTS ==========
     else if (canCreateProducts.includes(normalizedProduct)) {
         // 8. pure51, icarus, kptdp from info_recv - NO on_hold
@@ -16574,7 +16583,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                 final: []
             };
         }
-        
+
         // REJECT on_hold for can-create products
         if (normalizedStatus === 'on_hold') {
             console.error(`❌ INVALID: ${normalizedProduct} should not have on_hold status`);
@@ -16586,7 +16595,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
             };
         }
     }
-    
+
     // ========== OTHER NON-MAWB PRODUCTS ==========
     else {
         // 9. Other products ONLY from info_recv status - NO on_hold
@@ -16598,7 +16607,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
                 final: []
             };
         }
-        
+
         // REJECT on_hold for any other non-MAWB products
         if (normalizedStatus === 'on_hold') {
             console.error(`❌ INVALID: ${normalizedProduct} should not have on_hold status`);
@@ -16613,7 +16622,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
 
     // ========== DEFAULT FALLBACK ==========
     console.warn(`⚠️ No Detrack sequence defined for product=${normalizedProduct}, status=${normalizedStatus}`);
-    
+
     return {
         immediate: [],
         delayed: false,
