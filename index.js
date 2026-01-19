@@ -14425,7 +14425,7 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
                 console.log(`   - tracking_number (from Detrack): ${jobData.tracking_number}`);
                 console.log(`   - group_name: ${jobData.group_name}`);
                 console.log(`   - status: ${jobData.status}`);
-                
+
                 // Validate it's CBSL
                 if (!jobData.group_name || jobData.group_name.toLowerCase() !== 'cbsl') {
                     console.log(`❌ Not a CBSL job (group_name: ${jobData.group_name || 'unknown'})`);
@@ -14469,7 +14469,7 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
             console.log(`   - warehouseEntry: ${existingOrder.warehouseEntry}`);
             console.log(`   - currentStatus: ${existingOrder.currentStatus}`);
             console.log(`   - product: ${existingOrder.product}`);
-            
+
             if (existingOrder.warehouseEntry === "Yes") {
                 console.log(`⚠️ Already scanned at warehouse`);
                 return {
@@ -14478,14 +14478,14 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
                     alreadyScanned: true
                 };
             }
-            
+
             // Verify CBSL product
             if (existingOrder.product !== 'cbsl') {
                 console.log(`⚠️ MongoDB product is "${existingOrder.product}", not "cbsl"`);
             }
         } else {
             console.log(`📝 Order not found by parcelTrackingNum, will create new entry`);
-            
+
             // Also check by doTrackingNumber just in case
             const byDoTracking = await ORDERS.findOne({
                 doTrackingNumber: trackingNumber
@@ -14499,7 +14499,7 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
 
         // Step 3: Update or create in MongoDB
         console.log(`\n💾 Step 3: Updating MongoDB using parcelTrackingNum = scanned number...`);
-        
+
         const updateData = {
             $set: {
                 currentStatus: "At Warehouse",
@@ -14563,18 +14563,18 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
         console.log(`   - Matched by parcelTrackingNum: ${mongoResult.matchedCount}`);
         console.log(`   - Modified: ${mongoResult.modifiedCount}`);
         console.log(`   - Upserted: ${mongoResult.upsertedCount}`);
-        
+
         if (mongoResult.upsertedId) {
             console.log(`   - New document ID: ${mongoResult.upsertedId}`);
         }
 
         // Step 4: Update Detrack with SWAP logic
         console.log(`\n🔄 Step 4: Updating Detrack (with swap logic)...`);
-        
+
         // CBSL needs both at_warehouse and in_sorting_area
         // First update: at_warehouse
         console.log(`📤 First update: at_warehouse`);
-        
+
         const detrackUpdateData1 = {
             do_number: trackingNumber, // Scanned number (do_number)
             data: {
@@ -14603,9 +14603,9 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
             );
 
             console.log(`📥 Detrack response 1 status: ${detrackResponse1.status}`);
-            detrackSuccess1 = detrackResponse1.data.success === true || 
-                            detrackResponse1.data.status === 'success' || 
-                            detrackResponse1.status === 200;
+            detrackSuccess1 = detrackResponse1.data.success === true ||
+                detrackResponse1.data.status === 'success' ||
+                detrackResponse1.status === 200;
 
             if (detrackSuccess1) {
                 console.log(`✅ Detrack at_warehouse update successful`);
@@ -14622,9 +14622,9 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
         // Second update: in_sorting_area (after short delay)
         console.log(`\n⏳ Waiting 1 second before in_sorting_area update...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         console.log(`📤 Second update: in_sorting_area`);
-        
+
         const detrackUpdateData2 = {
             do_number: jobData.tracking_number, // Scanned number (do_number)
             data: {
@@ -14650,9 +14650,9 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
             );
 
             console.log(`📥 Detrack response 2 status: ${detrackResponse2.status}`);
-            detrackSuccess2 = detrackResponse2.data.success === true || 
-                            detrackResponse2.data.status === 'success' || 
-                            detrackResponse2.status === 200;
+            detrackSuccess2 = detrackResponse2.data.success === true ||
+                detrackResponse2.data.status === 'success' ||
+                detrackResponse2.status === 200;
 
             if (detrackSuccess2) {
                 console.log(`✅ Detrack in_sorting_area update successful`);
@@ -14667,7 +14667,7 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
         }
 
         const detrackSuccess = detrackSuccess1 && detrackSuccess2;
-        
+
         if (detrackSuccess) {
             console.log(`\n✅ All Detrack updates successful`);
         } else {
@@ -14675,7 +14675,7 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
         }
 
         console.log(`\n🏁 ========== CBSL SCAN COMPLETE ==========\n`);
-        
+
         return {
             success: true,
             message: `CBSL item scanned at ${warehouse}`,
@@ -15172,7 +15172,6 @@ async function createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, pr
     }
 }
 
-// Add this function for IIW updates that create new orders
 async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, product) {
     try {
         console.log(`\n🆕 CREATING IIW ORDER FOR: ${product.toUpperCase()}`);
@@ -15205,6 +15204,12 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
             senderName = jobData.job_owner || product.toUpperCase();
         } else if (product === 'ewe') {
             senderName = jobData.job_owner || "EWE";
+        } else if (product === 'kptdp') {
+            senderName = "KPTDP";
+        } else if (product === 'icarus') {
+            senderName = "ICARUS";
+        } else if (product === 'pure51') {
+            senderName = "PURE51";
         }
 
         // Create MongoDB order for IIW
@@ -15250,14 +15255,153 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
         await mongoOrder.save();
         console.log(`✅ MongoDB IIW order created`);
 
-        // Create Detrack update for IIW
-        console.log(`\n🔄 PREPARING IIW DETRACK UPDATE:`);
-        const updateData = createDetrackUpdateData(trackingNumber, jobData.run_number || '', product, jobData, true);
+        // ========== FIX: DIFFERENT DETRACK UPDATE LOGIC BASED ON PRODUCT CATEGORY ==========
 
-        // Send Detrack update
-        const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, jobData.run_number || '');
+        // Category b: KPTDP, ICARUS, PURE51 - need simple status updates
+        const categoryBProducts = ['kptdp', 'icarus', 'pure51'];
 
-        return detrackResult;
+        if (categoryBProducts.includes(product)) {
+            console.log(`\n🔄 CATEGORY B PRODUCT (${product.toUpperCase()}) - SIMPLE DETRACK STATUS UPDATES`);
+
+            let allUpdatesSuccessful = true;
+
+            // Step 1: Update to at_warehouse
+            console.log(`📤 Step 1: Updating Detrack to "at_warehouse"...`);
+            const updateData1 = {
+                do_number: trackingNumber,
+                data: {
+                    status: "at_warehouse"
+                }
+            };
+
+            console.log('Payload:', JSON.stringify(updateData1, null, 2));
+
+            try {
+                const response1 = await axios.put(
+                    'https://app.detrack.com/api/v2/dn/jobs/update',
+                    updateData1,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey
+                        },
+                        timeout: 10000
+                    }
+                );
+
+                const success1 = response1.data.success === true ||
+                    response1.data.status === 'success' ||
+                    response1.status === 200;
+
+                if (success1) {
+                    console.log(`✅ Step 1: Detrack updated to "at_warehouse"`);
+                } else {
+                    console.log(`❌ Step 1: Detrack update failed:`, response1.data);
+                    allUpdatesSuccessful = false;
+                }
+            } catch (error) {
+                console.error(`❌ Step 1 API error:`, error.message);
+                if (error.response) {
+                    console.error(`Response data:`, error.response.data);
+                }
+                allUpdatesSuccessful = false;
+            }
+
+            // Small delay between updates
+            console.log(`⏳ Waiting 1 second before second update...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Step 2: Update to in_sorting_area
+            console.log(`📤 Step 2: Updating Detrack to "in_sorting_area"...`);
+            const updateData2 = {
+                do_number: trackingNumber,
+                data: {
+                    status: "in_sorting_area"
+                }
+            };
+
+            console.log('Payload:', JSON.stringify(updateData2, null, 2));
+
+            try {
+                const response2 = await axios.put(
+                    'https://app.detrack.com/api/v2/dn/jobs/update',
+                    updateData2,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey
+                        },
+                        timeout: 10000
+                    }
+                );
+
+                const success2 = response2.data.success === true ||
+                    response2.data.status === 'success' ||
+                    response2.status === 200;
+
+                if (success2) {
+                    console.log(`✅ Step 2: Detrack updated to "in_sorting_area"`);
+                } else {
+                    console.log(`❌ Step 2: Detrack update failed:`, response2.data);
+                    allUpdatesSuccessful = false;
+                }
+            } catch (error) {
+                console.error(`❌ Step 2 API error:`, error.message);
+                if (error.response) {
+                    console.error(`Response data:`, error.response.data);
+                }
+                allUpdatesSuccessful = false;
+            }
+
+            console.log(`\n📊 DETRACK UPDATE SUMMARY FOR ${product.toUpperCase()}:`);
+            console.log(`   MongoDB: ✅ Created successfully`);
+            console.log(`   Detrack: ${allUpdatesSuccessful ? '✅ Both updates successful' : '⚠️ Some updates failed'}`);
+
+            if (allUpdatesSuccessful) {
+                return {
+                    success: true,
+                    message: `KPTDP item scanned at ${warehouse}`,
+                    isNewOrder: true,
+                    customerName: jobData.deliver_to_collect_from || 'Unknown',
+                    area: finalArea
+                };
+            } else {
+                return {
+                    success: false,
+                    message: 'Some Detrack updates failed',
+                    isNewOrder: true
+                };
+            }
+
+
+        } else {
+            // For categories a, c, d: Use existing createDetrackUpdateData logic
+            console.log(`\n🔄 PREPARING DETRACK UPDATE FOR ${product.toUpperCase()}:`);
+            const updateData = createDetrackUpdateData(trackingNumber, jobData.run_number || '', product, jobData, true);
+
+            console.log('📤 Detrack Payload:', JSON.stringify(updateData, null, 2));
+
+            // Send Detrack update
+            const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, jobData.run_number || '');
+
+            console.log(`📊 DETRACK UPDATE RESULT: ${detrackResult ? '✅ Success' : '❌ Failed'}`);
+
+            if (detrackResult) {
+                return {
+                    success: true,
+                    message: `Item marked as at warehouse (${warehouse})`,
+                    isNewOrder: true,
+                    customerName: jobData.deliver_to_collect_from || 'Unknown',
+                    area: finalArea
+                };
+            } else {
+                return {
+                    success: false,
+                    message: 'Detrack update failed',
+                    isNewOrder: true
+                };
+            }
+        }
 
     } catch (error) {
         console.error(`\n🔥 ERROR creating IIW order:`, error);
