@@ -11090,7 +11090,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 status: "failed", // Use the calculated dStatus
-                                assign_to: "FL1",
+                                assign_to: "Selfcollect",
                                 reason: "Customer not available / cannot be contacted",
                                 pod_time: moment().format("hh:mm A")
                             }
@@ -11146,7 +11146,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 status: "failed", // Use the calculated dStatus
-                                assign_to: "FL1",
+                                assign_to: "Selfcollect",
                                 reason: "Reschedule to self collect requested by customer",
                                 pod_time: moment().format("hh:mm A")
                             }
@@ -11202,7 +11202,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             do_number: consignmentID,
                             data: {
                                 status: "failed", // Use the calculated dStatus
-                                assign_to: "FL1",
+                                assign_to: "Selfcollect",
                                 reason: "Incorrect Address",
                                 pod_time: moment().format("hh:mm A")
                             }
