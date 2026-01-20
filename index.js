@@ -5252,8 +5252,6 @@ async function savePODToDatabase(consignmentID, imageUrl) {
     }
 }
 
-// Find the updateGDEXClearJob function and update it with better error handling:
-
 async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag = false) {
     try {
         console.log(`=== Processing GDEX clear job for: ${consignmentID} ===`);
@@ -5315,9 +5313,21 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             console.log(`📤 Sending FD (Delivered) with ${epod ? 'with' : 'without'} POD for ${consignmentID}`);
 
         } else if (detrackData.status === 'failed') {
+            // ALWAYS use statusCode = "DF" for failed deliveries
             statusCode = "DF";
             statusDescription = "Delivery Failed";
-            reasonCode = mapDetrackReasonToGDEX(detrackData.reason);
+
+            // Check if this is a GDEX-specific fail reason (H10, BA, H3)
+            if (detrackData.gdexFailReason) {
+                // Use the specific GDEX fail reason code
+                reasonCode = detrackData.gdexFailReason;  // H10, BA, or H3
+                console.log(`📤 Using GDEX-specific fail reason code: ${reasonCode}`);
+            } else {
+                // Regular failed delivery - use mapped reason
+                reasonCode = mapDetrackReasonToGDEX(detrackData.reason);
+                console.log(`📤 Using mapped fail reason code: ${reasonCode}`);
+            }
+
             locationDescription = "Go Rush Warehouse";
             epod = "";
 
@@ -5331,11 +5341,11 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
         // Pass returnflag to sendGDEXTrackingWebhook
         const success = await sendGDEXTrackingWebhook(
             consignmentID,
-            statusCode,
-            statusDescription,
+            statusCode,           // Always "DF" for failed
+            statusDescription,    // Always "Delivery Failed"
             locationDescription,
             token,
-            reasonCode,
+            reasonCode,           // H10, BA, or H3 for specific fails
             epod,
             returnflag
         );
@@ -5434,6 +5444,7 @@ setInterval(async () => {
     }
 }, 3600000); // Run every hour
 
+// Updated function with all GDEX failure reason codes
 function mapDetrackReasonToGDEX(detrackReason) {
     if (!detrackReason) return "AR"; // Default
 
@@ -5441,21 +5452,71 @@ function mapDetrackReasonToGDEX(detrackReason) {
 
     // Map Detrack reasons to GDEX reason codes
     if (reason.includes("unattempted delivery")) {
-        return "BM";
+        return "BM";  // Unable To Complete Delivery
     } else if (reason.includes("reschedule to self collect requested by customer")) {
-        return "AG";  // Self collect is AG
+        return "AG";  // Customer Request for Collection at GDEX Office (OC)
     } else if (reason.includes("reschedule delivery requested by customer")) {
-        return "BK";  // Reschedule delivery (not self collect) is BK
+        return "BK";  // Customer Request for Rescheduled Delivery Date
     } else if (reason.includes("customer not available") ||
         reason.includes("cannot be contacted") ||
-        reason.includes("customer declined delivery")) {
-        return "AR";
+        reason.includes("customer declined delivery") ||
+        reason.includes("receiver not present")) {
+        return "AR";  // Refusal to Accept - Receiver Not Present
     } else if (reason.includes("unable to locate address") ||
-        reason.includes("incorrect address")) {
-        return "BN";
+        reason.includes("incorrect address") ||
+        reason.includes("address issue")) {
+        return "BN";  // Address Issue
+    } else if (reason.includes("access not allowed") ||
+        reason.includes("office") ||
+        reason.includes("guard house")) {
+        return "AA";  // Access not allowed (OFFICE & GUARD HOUSE)
+    } else if (reason.includes("under renovation")) {
+        return "AC";  // Receiver Address Under Renovation
+    } else if (reason.includes("shifted") ||
+        reason.includes("moved")) {
+        return "AE";  // Receiver Shifted
+    } else if (reason.includes("damaged") ||
+        reason.includes("damaged shipment")) {
+        return "AS";  // Refusal to Accept - Damaged Shipment
+    } else if (reason.includes("receiver not known") ||
+        reason.includes("unknown at address")) {
+        return "AW";  // Refusal to Accept - Receiver Not Known at Address
+    } else if (reason.includes("refuse to acknowledge") ||
+        reason.includes("refuse pod") ||
+        reason.includes("refuse do")) {
+        return "AX";  // Refusal to Acknowledge POD / DO
+    } else if (reason.includes("sorry card") ||
+        reason.includes("card dropped")) {
+        return "AZ";  // Receiver Not Present - Sorry Card Dropped
+    } else if (reason.includes("natural disaster") ||
+        reason.includes("pandemic")) {
+        return "BF";  // Natural Disaster / Pandemic
+    } else if (reason.includes("road closure") ||
+        reason.includes("road blocked")) {
+        return "BG";  // Road Closure
+    } else if (reason.includes("vehicle breakdown") ||
+        reason.includes("vehicle issue")) {
+        return "BH";  // Vehicle Breakdown
+    } else if (reason.includes("invalid order") ||
+        reason.includes("cancel order") ||
+        reason.includes("cancelled order")) {
+        return "BJ";  // Refusal to Accept - Invalid / Cancel Order
+    } else if (reason.includes("postponed delivery") ||
+        reason.includes("postpone delivery")) {
+        return "BL";  // Consignee request for postponed delivery
+    } else if (reason.includes("under investigation") ||
+        reason.includes("investigation")) {
+        return "AB";  // Shipment Under Investigation
+    } else if (reason.includes("redirection") ||
+        reason.includes("redirect request")) {
+        return "AF";  // Redirection Request by Shipper / Receiver
+    } else if (reason.includes("non-service area") ||
+        reason.includes("nsa") ||
+        reason.includes("out of coverage")) {
+        return "AN";  // Non-Service Area (NSA)
     } else {
         // Default for other failure reasons
-        return "AR";
+        return "AR";  // Refusal to Accept - Receiver Not Present
     }
 }
 
@@ -6013,13 +6074,28 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Clear Job"
             }
 
+            if (req.body.statusCode == 'FH10') {
+                appliedStatus = "Update Fail due to Consignee Office Closed"
+                failReasonDescription = "Consignee Office Closed"
+                gdexFailReason = "H10";
+            } else if (req.body.statusCode == 'FBA') {
+                appliedStatus = "Update Fail due to Shipper/HQ Instruction to Cancel Delivery"
+                failReasonDescription = "Shipper/HQ Instruction to Cancel Delivery"
+                gdexFailReason = "BA";
+            } else if (req.body.statusCode == 'FH3') {
+                appliedStatus = "Update Fail due to Oversized Shipment"
+                failReasonDescription = "Oversized Shipment"
+                gdexFailReason = "H3";
+            }
+
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
                 || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
                 || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')
                 || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')
-                || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC') || (req.body.statusCode == 'FIA')) {
+                || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC') || (req.body.statusCode == 'FIA')
+                || (req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -11223,6 +11299,87 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         completeRun = 1;
                     }
+                }
+            }
+
+            if ((req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')) {
+                if ((product == 'GDEX') || (product == 'GDEXT')) {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: failReasonDescription,
+                            grRemark: failReasonDescription,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            reason: failReasonDescription
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "failed",
+                                assign_to: "Selfcollect",
+                                reason: failReasonDescription,
+                                pod_time: moment().format("hh:mm A")
+                            }
+                        };
+
+                        var detrackUpdateData2 = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse",
+                                assign_to: ""
+                            }
+                        };
+
+                        portalUpdate = "Detrack and Portal updated";
+
+                        // Prepare detrackData with GDEX fail reason
+                        detrackData = {
+                            status: 'failed',
+                            reason: failReasonDescription,
+                            address: data.data.address,
+                            photo_1_file_url: null,
+                            gdexFailReason: gdexFailReason  // H10, BA, or H3
+                        };
+
+                        // Use GDEXAPIrun = 6 for clear job (failed)
+                        GDEXAPIrun = 6;
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 6;
+                        completeRun = 1;
+                    } else {
+                        // Job not in correct status
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: GDEX job must be "at_warehouse" or "in_sorting_area" to mark as failed. Current status: ${data.data.status}`,
+                        });
+                        continue;
+                    }
+                } else {
+                    // Not GDEX/GDEXT product
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: FH10/FBA/FH3 updates only available for GDEX/GDEXT products. This is ${product}`,
+                    });
+                    continue;
                 }
             }
 
