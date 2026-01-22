@@ -8746,7 +8746,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
-            if ((req.body.statusCode == 'CD') && (data.data.status != 'completed')) {
+            if ((req.body.statusCode == 'CD') && (data.data.status != 'completed') && (product != 'GDEX') & (product != 'GDEXT')) {
                 detrackReason = "Cancelled";
 
                 if (product == 'MOH') {
@@ -8806,10 +8806,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             date: moment().format('YYYY-MM-DD'),
                         }
                     };
-                }
-
-                if ((product == 'GDEX') || (product == 'GDEXT')) {
-                    GDEXAPIrun = 5;
                 }
 
                 portalUpdate = "Portal and Detrack status updated to Cancelled. ";
@@ -11733,7 +11729,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
-            if (GDEXAPIrun == 5) {
+            /* if (GDEXAPIrun == 5) {
                 console.log(`Starting GDEX Cancelled Job update for Tracking: ${consignmentID}`);
 
                 // Check if job is already completed
@@ -11758,7 +11754,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     console.error(`[ERROR] GDEX Cancelled Job update failed for Tracking: ${consignmentID}`);
                     // Consider adding retry logic here
                 }
-            }
+            } */
 
             if (GDEXAPIrun == 6) {
                 console.log(`=== Processing GDEX clear job for: ${consignmentID} ===`);
