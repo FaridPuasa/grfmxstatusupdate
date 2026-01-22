@@ -8694,7 +8694,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (req.body.statusCode == 'RSAL2') {
                 if ((product == 'GDEX') || (product == 'GDEXT')) {
                     // Check if job is in correct status for return
-                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area') || (data.data.status == 'info_recv')) {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
 
                         // MongoDB update for return status
                         update = {
