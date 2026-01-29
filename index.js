@@ -8797,7 +8797,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             }
 
-                            /* mongoDBrun = 2; */
+                            mongoDBrun = 2;
                         }
                     }
 
