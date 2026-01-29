@@ -4740,9 +4740,9 @@ async function getGDEXToken(retries = 3) {
 async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescription, locationDescription, token, reasoncode = "", epod = "", returnflag = false) {
     try {
         // epod should already be a string (comma-separated Base64 images)
-        const epodString = typeof epod === 'string' ? epod : 
-                          Array.isArray(epod) ? epod.join(',') : 
-                          "";
+        const epodString = typeof epod === 'string' ? epod :
+            Array.isArray(epod) ? epod.join(',') :
+                "";
 
         const trackingData = {
             consignmentno: consignmentID,
@@ -5066,14 +5066,14 @@ async function saveAllPODsToDatabase(consignmentID, detrackData, maxRetries = 3)
                                 doTrackingNumber: consignmentID
                             }).select('podBase64 podBase64_2 podBase64_3');
 
-                            if (savedOrder && 
-                                savedOrder.podBase64 && 
-                                savedOrder.podBase64_2 && 
+                            if (savedOrder &&
+                                savedOrder.podBase64 &&
+                                savedOrder.podBase64_2 &&
                                 savedOrder.podBase64_3 &&
                                 savedOrder.podBase64.length > 100 &&
                                 savedOrder.podBase64_2.length > 100 &&
                                 savedOrder.podBase64_3.length > 100) {
-                                
+
                                 dbSuccess = true;
                                 console.log(`   ✅ ALL 3 PODs saved to database for ${consignmentID}`);
                                 console.log(`   POD 1 length: ${savedOrder.podBase64.length} chars`);
@@ -5508,7 +5508,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             if (detrackData.podAlreadyConverted === true && detrackData.photo_1_file_url) {
                 // Concatenate all 3 PODs into one string separated by commas
                 const podArray = [];
-                
+
                 // Add POD 1 (required)
                 if (detrackData.photo_1_file_url) {
                     podArray.push(detrackData.photo_1_file_url);
@@ -5516,7 +5516,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                     console.error(`❌ Missing POD 1 for GDEX completed job ${consignmentID}`);
                     return false;
                 }
-                
+
                 // Add POD 2 (required)
                 if (detrackData.photo_2_file_url) {
                     podArray.push(detrackData.photo_2_file_url);
@@ -5524,7 +5524,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                     console.error(`❌ Missing POD 2 for GDEX completed job ${consignmentID}`);
                     return false;
                 }
-                
+
                 // Add POD 3 (required)
                 if (detrackData.photo_3_file_url) {
                     podArray.push(detrackData.photo_3_file_url);
@@ -5532,12 +5532,12 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                     console.error(`❌ Missing POD 3 for GDEX completed job ${consignmentID}`);
                     return false;
                 }
-                
+
                 // Join all PODs with commas
                 epodString = podArray.join(',');
                 console.log(`✅ Using pre-converted Base64 PODs for ${consignmentID} (all 3 images concatenated)`);
                 console.log(`   Total length: ${epodString.length} characters`);
-                
+
             } else if (detrackData.photo_1_file_url || detrackData.photo_2_file_url || detrackData.photo_3_file_url) {
                 // We should already have saved PODs via saveAllPODsToDatabase
                 // Check database for saved PODs
@@ -5545,7 +5545,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                 if (order) {
                     // Collect all 3 PODs from database
                     const podArray = [];
-                    
+
                     // POD 1 (required)
                     if (order.podBase64) {
                         podArray.push(order.podBase64);
@@ -5553,7 +5553,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                         console.error(`❌ Missing POD 1 in database for ${consignmentID}`);
                         return false;
                     }
-                    
+
                     // POD 2 (required)
                     if (order.podBase64_2) {
                         podArray.push(order.podBase64_2);
@@ -5561,7 +5561,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                         console.error(`❌ Missing POD 2 in database for ${consignmentID}`);
                         return false;
                     }
-                    
+
                     // POD 3 (required)
                     if (order.podBase64_3) {
                         podArray.push(order.podBase64_3);
@@ -5569,7 +5569,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                         console.error(`❌ Missing POD 3 in database for ${consignmentID}`);
                         return false;
                     }
-                    
+
                     // Join all PODs with commas
                     epodString = podArray.join(',');
                     console.log(`✅ Found all 3 PODs in database for ${consignmentID}`);
@@ -6402,7 +6402,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
                 || (req.body.statusCode == 'RSAL2') || (req.body.statusCode == 'H3') || (req.body.statusCode == 'H10')
-                    || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32')) {
+                || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -7248,7 +7248,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             } */
 
-            if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv') && (data.data.run_number != null)) {
+            /* if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv') && (data.data.run_number != null)) {
                 if ((product == 'PDU') || (product == 'MGLOBAL') || (product == 'EWE') || (product == 'GDEX') || (product == 'GDEXT')) {
                     update = {
                         currentStatus: "Custom Clearing",
@@ -7282,7 +7282,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
-            }
+            } */
 
             if ((req.body.statusCode == 'H3' || req.body.statusCode == 'H10' || req.body.statusCode == 'H17' || req.body.statusCode == 'H32')
                 && (product == 'GDEX' || product == 'GDEXT')) {
@@ -7324,7 +7324,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 completeRun = 1;
             }
 
-            if (req.body.statusCode == 12) {
+            /* if (req.body.statusCode == 12) {
                 if (data.data.run_number != null) {
                     if ((data.data.status == 'on_hold') && (product == 'PDU')) { //From On Hold to Custom Clearance to At Warehouse to In Sorting Area
                         update = {
@@ -7769,7 +7769,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         completeRun = 1;
                     }
                 }
-            }
+            } */
 
             if (req.body.statusCode == 35) {
                 if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
@@ -7963,7 +7963,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                if (((data.data.type == 'Delivery') && (data.data.status == 'at_warehouse')) || ((data.data.type == 'Delivery') && (data.data.status == 'in_sorting_area'))) {
+                if (((data.data.type == 'Delivery') && ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')))
+                    || ((data.data.type == 'Delivery') && (data.data.status == 'on_hold') && ((currentProduct == "gdex") || (currentProduct == "gdext")))) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
@@ -8901,7 +8902,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 } else {
-                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                    if (((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area'))
+                        || ((data.data.type == 'Delivery') && (data.data.status == 'on_hold') && ((currentProduct == "gdex") || (currentProduct == "gdext")))) {
                         if ((product == 'MOH') || (product == 'JPMC') || (product == 'PHC')) {
                             update = {
                                 currentStatus: "Self Collect",
@@ -9034,7 +9036,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (req.body.statusCode == 'RSAL2') {
                 if ((product == 'GDEX') || (product == 'GDEXT')) {
                     // Check if job is in correct status for return
-                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area') || (data.data.status == 'on_hold')) {
 
                         // MongoDB update for return status
                         update = {
@@ -15025,7 +15027,7 @@ async function createOrderWithGDEXHoldStatus(jobData, trackingNumber, product, r
     try {
         console.log(`⚠️ Creating NEW order for GDEX Hold - this shouldn't happen often`);
         console.log(`   Order ${trackingNumber} not found, creating new...`);
-        
+
         // Process items array
         const itemsArray = [];
         if (jobData.items && Array.isArray(jobData.items)) {
