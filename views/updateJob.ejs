@@ -65,45 +65,27 @@
                         <% if (['warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
                             <optgroup label="EWE/MGLOBAL/PDU/GDEX Flow">
                                 <option value="UAN">1. MAWB Number</option>
-                                <option value="CCH">2. On Hold</option>
+                                <option value="CCH">1.1. On Hold</option>
                             </optgroup>
+                            <!-- <optgroup label="EWE/MGLOBAL/PDU Flow">
+                                <option value="CCH">2. On Hold</option>
+                            </optgroup> -->
+                            <!-- <optgroup label="GDEX On Hold Flow">
+                                <option value="H9">Reject By Airport</option>
+                                <option value="H18">DG Shipment</option>
+                                <option value="H19">Prohibited Shipment</option>
+                                <option value="H27">Pending Custom Declaration</option>
+                                <option value="H31">Shipment rejected/confiscated by customs</option>
+                            </optgroup> -->
                             <% } %>
                                 <!-- Other optgroups remain the same -->
                                 <optgroup label="Standard Flow">
-                                    <option value="IIW">1. Item in Warehouse</option>
-                                    <!-- <option value="OFD">2.1. Out for Delivery</option>
-                            <option value="OSC">2.2. Self Collect</option> -->
+                                    <option value="IIW">2. Item in Warehouse</option>
+                                    <!-- <option value="OFD">2.1. Out for Delivery</option> -->
                                 </optgroup>
-                                <!-- <optgroup label="MGLOBAL Flow">
-                            <option value="FCC">1.1. Fail due to Customer not available / cannot be contacted</option>
-                            <option value="FIA">1.2. Fail due to Incorrect Address</option>
-                            <option value="FSC">1.3.1. Fail due to Reschedule to self collect requested by customer
-                            </option>
-                            <option value="OSC">1.3.2. Self Collect</option>
-                        </optgroup>
-                        <optgroup label="After Success/Fail updated on Agent App">
-                            <option value="SFJ">Clear Job</option>
-                        </optgroup> -->
                                 <optgroup label="Change Details">
-                                    <!-- <option value="OSD">Swap Dispatchers</option>
-                            <option value="UWL">Update Warehouse</option>
-                            <option value="UGR">Update Go Rush Remark</option>
-                            <option value="UJD">Update Job Date</option>
-                            <option value="UJM">Update Job Method</option>
-                            <option value="UJP">Update Price</option>
-                            <option value="UAW">Update Weight</option>
-                            <option value="UAS">Update Address</option>
-                            <option value="UAR">Update Area</option>
-                            <option value="UPN">Update Phone Number</option>
-                            <option value="URN">Update Customer Name</option>
-                            <option value="UPC">Update Postal Code</option> -->
                                     <option value="UMN">Update MAWB Number</option>
                                 </optgroup>
-                                <!-- <optgroup label="Danger Zone!!!">
-                            <option value="UCD">1. Cancelled Job</option>
-                            <option value="URJ">2. Cancelled -> Reactivate Job</option>
-                            <option value="UDJ">3. Dispose Job</option>
-                        </optgroup> -->
                     </select>
                 </div>
 
@@ -361,8 +343,13 @@
             const bulkSection = document.getElementById('bulkSection');
             const oneByOneSection = document.getElementById('oneByOneSection');
             const readyToScan = document.getElementById('readyToScan');
+            const gdexHoldCodes = ['H9', 'H18', 'H19', 'H27', 'H31'];
 
-            if (this.value === 'UAN' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN') {
+            if (this.value === 'UAN' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN' || this.value === 'H9' ||
+                this.value === 'H18' ||
+                this.value === 'H19' ||
+                this.value === 'H27' ||
+                this.value === 'H31') {
                 mawbFields.style.display = 'block';
 
                 if (this.value === 'UAN') {
@@ -407,7 +394,12 @@
                     bulkSection.style.display = 'none';
                     oneByOneSection.style.display = 'none';
 
-                } else if (this.value === 'CCH') {
+                } else if (this.value === 'CCH' ||
+                    this.value === 'H9' ||
+                    this.value === 'H18' ||
+                    this.value === 'H19' ||
+                    this.value === 'H27' ||
+                    this.value === 'H31') {
                     // On Hold - Show update method
                     mawbNumContainer.style.display = 'none';
                     warehouseFields.style.display = 'none';
@@ -1408,6 +1400,16 @@
 
             const updateCode = document.getElementById('updateCode').value;
 
+            const gdexHoldCodes = ['H9', 'H18', 'H19', 'H27', 'H31'];
+            if (gdexHoldCodes.includes(updateCode)) {
+                // GDEX Hold requires update method selection
+                const updateMethod = document.getElementById('updateMethod').value;
+                if (!updateMethod) {
+                    alert('Please select an update method for GDEX Hold');
+                    return;
+                }
+            }
+
             // ========== ADD THIS CHECK FOR UAN ==========
             if (updateCode === 'UAN') {
                 alert('Please use the "Upload Excel/CSV File" button for UAN updates');
@@ -1850,6 +1852,11 @@
                 'UAN': 'MAWB Number Update',
                 'CCH': 'On Hold Update',
                 'IIW': 'Item in Warehouse Update',
+                'H9': 'GDEX Hold: Reject By Airport',
+                'H18': 'GDEX Hold: DG Shipment',
+                'H19': 'GDEX Hold: Prohibited Shipment',
+                'H27': 'GDEX Hold: Pending Custom Declaration',
+                'H31': 'GDEX Hold: Shipment rejected/confiscated by customs',
                 'OFD': 'Out for Delivery Update',
                 'OSC': 'Self Collect Update',
                 'FCC': 'Customer Not Available Update',
@@ -2628,6 +2635,17 @@
                         processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
                         message = processSuccess ? 'Job put on hold' : 'On hold update failed';
                         break;
+                    case 'H9':
+                    case 'H18':
+                    case 'H19':
+                    case 'H27':
+                    case 'H31':
+                        const gdexHoldResult = await processGDEXHoldUpdate(trackingNumber, updateCode, req);
+                        result = {
+                            success: gdexHoldResult.success,
+                            message: gdexHoldResult.message || 'GDEX Hold update failed'
+                        };
+                        break;
                     case 'IIW':
                         const result = await processItemInWarehouseUpdate(cleanTrackingNumber, warehouse, req);
                         processSuccess = result.success;
@@ -2702,6 +2720,12 @@
                         return {
                             success: success,
                             message: success ? 'Put on hold' : 'On hold update failed'
+                        };
+                    } else if (['H9', 'H18', 'H19', 'H27', 'H31'].includes(updateCode)) {
+                        const gdexHoldResult = await processGDEXHoldUpdate(trackingNumber, updateCode, req);
+                        result = {
+                            success: gdexHoldResult.success,
+                            message: gdexHoldResult.message || 'GDEX Hold update failed'
                         };
                     } else {
                         return {
@@ -2783,38 +2807,6 @@
 
             console.log(`📊 Batch results: ${results.updatedCount} updated, ${results.failedCount} failed, ${results.delayedCount} delayed, ${results.duplicateCount} duplicates`);
             return results;
-        }
-
-        function getUpdateTitle(updateCode) {
-            const updateTitles = {
-                'UAN': 'MAWB Number Update',
-                'CCH': 'On Hold Update',
-                'IIW': 'Item in Warehouse Update',
-                'OFD': 'Out for Delivery Update',
-                'OSC': 'Self Collect Update',
-                'FCC': 'Customer Not Available Update',
-                'FIA': 'Incorrect Address Update',
-                'FSC': 'Reschedule to Self Collect Update',
-                'SFJ': 'Clear Job Update',
-                'OSD': 'Swap Dispatchers Update',
-                'UWL': 'Update Warehouse',
-                'UGR': 'Update Go Rush Remark',
-                'UJD': 'Update Job Date',
-                'UJM': 'Update Job Method',
-                'UJP': 'Update Price',
-                'UAW': 'Update Weight',
-                'UAS': 'Update Address',
-                'UAR': 'Update Area',
-                'UPN': 'Update Phone Number',
-                'URN': 'Update Customer Name',
-                'UPC': 'Update Postal Code',
-                'UAB': 'Update AWB Number',
-                'UCD': 'Cancelled Job Update',
-                'URJ': 'Reactivate Job Update',
-                'UDJ': 'Dispose Job Update'
-            };
-
-            return updateTitles[updateCode] || 'Update Job';
         }
 
         function switchToActiveUpdateMode(updateCode, method) {
@@ -3316,6 +3308,18 @@ EXAMPLE004\tBE9012\t
 
                 console.log('💾 Preserved MAWB value:', mawbValue);
             }
+        }
+
+        // Add this helper function somewhere in your JavaScript
+        function getGDEXHoldDescription(code) {
+            const descriptions = {
+                'H9': 'Reject By Airport',
+                'H18': 'DG Shipment',
+                'H19': 'Prohibited Shipment',
+                'H27': 'Pending Custom Declaration',
+                'H31': 'Shipment rejected/confiscated by customs'
+            };
+            return descriptions[code] || 'GDEX Hold';
         }
     </script>
 </body>

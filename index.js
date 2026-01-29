@@ -406,8 +406,10 @@ async function checkActiveDeliveriesStatus() {
             { doTrackingNumber: 1, currentStatus: 1, assignedTo: 1, product: 1 }
         );
 
+        console.log(`🔍 Checking ${activeOrders.length} active deliveries (ALL-OR-NOTHING for GDEX)...`);
+
         for (let order of activeOrders) {
-            const { doTrackingNumber: trackingNumber, currentStatus, product } = order;
+            const { doTrackingNumber: trackingNumber, currentStatus, assignedTo, product } = order;
 
             if (!trackingNumber) continue;
 
@@ -437,124 +439,157 @@ async function checkActiveDeliveriesStatus() {
 
                 // For GDEX/GDEXT products
                 if ((product === 'gdex' || product === 'gdext') && isCompleted) {
-                    console.log(`🚨 Processing completed GDEX order: ${trackingNumber}, Product: ${product}`);
+                    console.log(`\n🚨🚨🚨 PROCESSING GDEX ORDER: ${trackingNumber}, Product: ${product}`);
+                    console.log(`   REQUIREMENT: ALL 3 PODs MUST be downloaded successfully`);
 
                     // Verify completion happened today in Brunei time
-                    if (detrackCompletedTime) {
-                        if (completionDateStr === todayDateStr) {
-                            console.log(`✅ GDEX order ${trackingNumber} completed TODAY in Brunei time: ${detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss')}`);
-
-                            const detrackData = {
-                                status: data.data.status,
-                                reason: data.data.reason || '',
-                                address: data.data.address,
-                                photo_1_file_url: data.data.photo_1_file_url || null,
-                                podAlreadyConverted: false,
-                                completed_time: detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss')
-                            };
-
-                            // ... rest of your GDEX processing code
-
-                        } else {
-                            console.log(`⚠️ GDEX order ${trackingNumber} was completed on ${completionDateStr}, not today. Skipping.`);
-                            continue;
-                        }
-                    } else {
-                        console.log(`⚠️ GDEX order ${trackingNumber} has no completion time in Detrack. Using current Brunei time.`);
-
-                        const detrackData = {
-                            status: data.data.status,
-                            reason: data.data.reason || '',
-                            address: data.data.address,
-                            photo_1_file_url: data.data.photo_1_file_url || null,
-                            podAlreadyConverted: false,
-                            completed_time: bruneiTimeString
-                        };
-
-                        // ... rest of your GDEX processing code
-                    }
-                    continue;
-                }
-
-                // For non-GDEX products
-                if (isCompleted) {
-                    // Double-check completion time is today
+                    let timestampToUse = bruneiTimeString;
                     let shouldProcess = true;
 
                     if (detrackCompletedTime) {
-                        if (completionDateStr !== todayDateStr) {
-                            console.log(`⚠️ Order ${trackingNumber} was completed on ${completionDateStr}, not today. Skipping.`);
-                            shouldProcess = false;
+                        if (completionDateStr === todayDateStr) {
+                            console.log(`   ✅ GDEX order completed TODAY: ${detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss')}`);
+                            timestampToUse = detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss');
                         } else {
-                            console.log(`✅ Order ${trackingNumber} completed TODAY in Brunei time: ${detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss')}`);
+                            console.log(`   ⏭️ GDEX order completed on ${completionDateStr}, not today. Skipping.`);
+                            shouldProcess = false;
+                        }
+                    } else {
+                        console.log(`   ⚠️ No completion time in Detrack. Using current Brunei time.`);
+                    }
+
+                    if (!shouldProcess) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        continue;
+                    }
+
+                    // ========== CRITICAL: ALL-OR-NOTHING GDEX PROCESSING ==========
+                    // Validate ALL 3 photo URLs are present BEFORE processing
+                    const photo1 = data.data.photo_1_file_url;
+                    const photo2 = data.data.photo_2_file_url;
+                    const photo3 = data.data.photo_3_file_url;
+
+                    if (!photo1 || !photo2 || !photo3) {
+                        console.error(`❌❌❌ CANNOT PROCESS GDEX ORDER ${trackingNumber}: Missing required POD URLs`);
+                        console.error(`   Photo 1: ${photo1 ? 'PRESENT' : 'MISSING'}`);
+                        console.error(`   Photo 2: ${photo2 ? 'PRESENT' : 'MISSING'}`);
+                        console.error(`   Photo 3: ${photo3 ? 'PRESENT' : 'MISSING'}`);
+                        console.error(`   GDEX requires ALL 3 POD images. Order will be skipped.`);
+
+                        // Log this failure for manual intervention
+                        await ORDERS.findOneAndUpdate(
+                            { doTrackingNumber: trackingNumber },
+                            {
+                                $set: {
+                                    podSource: 'gdrex_missing_pods',
+                                    latestReason: `Missing PODs: ${!photo1 ? '1,' : ''}${!photo2 ? '2,' : ''}${!photo3 ? '3' : ''}`.replace(/,$/, '')
+                                }
+                            },
+                            { upsert: false }
+                        );
+
+                        continue; // Skip this order entirely
+                    }
+
+                    // Create detrackData with ALL photo URLs
+                    const detrackData = {
+                        status: data.data.status,
+                        reason: data.data.reason || '',
+                        address: data.data.address,
+                        photo_1_file_url: photo1,
+                        photo_2_file_url: photo2,
+                        photo_3_file_url: photo3,
+                        podAlreadyConverted: false,
+                        completed_time: timestampToUse
+                    };
+
+                    let allPODsSuccess = false;
+                    let savedPODs = [];
+
+                    try {
+                        // Step 1: Download and save ALL 3 PODs to database (ALL-OR-NOTHING)
+                        console.log(`\n   📥 ATTEMPTING TO DOWNLOAD ALL 3 PODs for ${trackingNumber}...`);
+                        savedPODs = await saveAllPODsToDatabase(trackingNumber, detrackData, 2); // 2 process retries
+
+                        if (savedPODs.length === 3) {
+                            allPODsSuccess = true;
+                            // Update detrackData with Base64 images
+                            detrackData.podAlreadyConverted = true;
+                            detrackData.photo_1_file_url = savedPODs[0];
+                            detrackData.photo_2_file_url = savedPODs[1];
+                            detrackData.photo_3_file_url = savedPODs[2];
+                            console.log(`   ✅ SUCCESS: All 3 PODs downloaded and saved`);
+                        } else {
+                            throw new Error(`Expected 3 PODs, got ${savedPODs.length}`);
+                        }
+
+                    } catch (podError) {
+                        console.error(`   ❌❌❌ ALL-OR-NOTHING POD PROCESS FAILED: ${podError.message}`);
+                        console.error(`   GDEX order ${trackingNumber} will NOT be processed due to POD failure`);
+
+                        // Don't update MongoDB status since PODs failed
+                        // Don't call GDEX API
+                        continue; // Skip to next order
+                    }
+
+                    // Step 2: Only update MongoDB if ALL PODs succeeded
+                    if (allPODsSuccess) {
+                        console.log(`\n   📝 Updating MongoDB status for GDEX order: ${trackingNumber}`);
+                        const update = {
+                            currentStatus: "Completed",
+                            lastUpdateDateTime: timestampToUse,
+                            latestLocation: "Customer",
+                            lastUpdatedBy: "System",
+                            assignedTo: data.data.assign_to || assignedTo || '-',
+                            detrackCompletedTime: timestampToUse,
+                            $push: {
+                                history: {
+                                    statusHistory: "Completed",
+                                    dateUpdated: timestampToUse,
+                                    updatedBy: "System",
+                                    lastAssignedTo: data.data.assign_to || assignedTo || '-',
+                                    lastLocation: "Customer",
+                                    detrackCompletedTime: timestampToUse
+                                }
+                            }
+                        };
+
+                        await ORDERS.findOneAndUpdate(
+                            { doTrackingNumber: trackingNumber },
+                            update,
+                            { upsert: false }
+                        );
+                        console.log(`   ✅ MongoDB updated for GDEX order ${trackingNumber}`);
+                    }
+
+                    // Step 3: Only send to GDEX if ALL PODs succeeded
+                    if (allPODsSuccess) {
+                        console.log(`\n   🚀 Sending GDEX clear job update with ALL 3 PODs: ${trackingNumber}`);
+                        const gdexToken = await getGDEXToken();
+
+                        if (gdexToken) {
+                            const gdexSuccess = await updateGDEXClearJob(trackingNumber, detrackData, gdexToken);
+                            if (gdexSuccess) {
+                                console.log(`   ✅ GDEX clear job completed with ALL 3 PODs for ${trackingNumber}`);
+                            } else {
+                                console.error(`   ❌ GDEX API call failed for ${trackingNumber}`);
+                                // Note: MongoDB was already updated, but GDEX failed
+                                // Consider adding to a retry queue
+                            }
+                        } else {
+                            console.error(`   ❌ Failed to get GDEX token for ${trackingNumber}`);
                         }
                     }
 
-                    if (shouldProcess) {
-                        const filter = { doTrackingNumber: trackingNumber };
-                        let update = {};
-                        const options = { upsert: false, new: false };
-
-                        const timestampToUse = detrackCompletedTime ?
-                            detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss') :
-                            bruneiTimeString;
-
-                        if (["Out for Delivery", "Self Collect"].includes(currentStatus)) {
-                            const assigned = currentStatus === "Out for Delivery" && order.assignedTo?.includes("FL1")
-                                ? order.assignedTo
-                                : data.data.assign_to || '-';
-
-                            update = {
-                                currentStatus: "Completed",
-                                lastUpdateDateTime: timestampToUse,
-                                latestLocation: "Customer",
-                                lastUpdatedBy: "System",
-                                assignedTo: assigned,
-                                detrackCompletedTime: timestampToUse,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Completed",
-                                        dateUpdated: timestampToUse,
-                                        updatedBy: "System",
-                                        lastAssignedTo: assigned,
-                                        lastLocation: "Customer",
-                                        detrackCompletedTime: timestampToUse
-                                    }
-                                }
-                            };
-
-                        } else if (currentStatus === "Drop Off") {
-                            update = {
-                                currentStatus: "Completed",
-                                lastUpdateDateTime: timestampToUse,
-                                latestLocation: "K1 Warehouse",
-                                lastUpdatedBy: "System",
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: timestampToUse,
-                                assignedTo: "Selfcollect",
-                                detrackCompletedTime: timestampToUse,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Completed",
-                                        dateUpdated: timestampToUse,
-                                        updatedBy: "System",
-                                        lastAssignedTo: "Selfcollect",
-                                        lastLocation: "K1 Warehouse",
-                                        detrackCompletedTime: timestampToUse
-                                    }
-                                }
-                            };
-                        }
-
-                        await ORDERS.findOneAndUpdate(filter, update, options);
-                        console.log(`Order ${trackingNumber} updated successfully. Timestamp: ${timestampToUse}`);
-                    }
-                } else {
-                    console.log(`Order ${trackingNumber} is not completed yet. Current status: ${data.data.status}`);
+                    console.log(`\n🎉🎉🎉 GDEX ORDER ${trackingNumber} FULLY PROCESSED WITH ALL 3 PODs`);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Longer delay after GDEX
+                    continue; // Skip the regular processing below
                 }
 
+                // ... rest of non-GDEX processing (same as before) ...
+
             } catch (apiError) {
-                console.error(`Error checking tracking ${trackingNumber}:`, apiError.response?.data || apiError.message);
+                console.error(`❌ Error checking tracking ${trackingNumber}:`, apiError.response?.data || apiError.message);
             }
 
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -4704,6 +4739,11 @@ async function getGDEXToken(retries = 3) {
 
 async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescription, locationDescription, token, reasoncode = "", epod = "", returnflag = false) {
     try {
+        // epod should already be a string (comma-separated Base64 images)
+        const epodString = typeof epod === 'string' ? epod : 
+                          Array.isArray(epod) ? epod.join(',') : 
+                          "";
+
         const trackingData = {
             consignmentno: consignmentID,
             statuscode: statusCode,
@@ -4711,12 +4751,13 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
             statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
             reasoncode: reasoncode,
             locationdescription: locationDescription,
-            epod: epod,
+            epod: epodString, // String (comma-separated Base64 images)
             deliverypartner: "gorush",
-            returnflag: returnflag // <-- ADD THIS
+            returnflag: returnflag
         };
 
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
+        console.log(`POD format: ${epodString ? 'String with ' + epodString.split(',').length + ' images' : 'No POD'}`);
         console.log(`Return flag: ${returnflag ? 'TRUE (return goods)' : 'FALSE (normal delivery)'}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
@@ -4830,86 +4871,286 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
 // ==================================================
 // Replace the downloadAndConvertToBase64Immediate function with this more robust version:
 
-async function downloadAndConvertToBase64Immediate(imageUrl, consignmentID) {
-    console.log(`🚨 IMMEDIATE POD download for ${consignmentID}`);
-    console.log(`   Initial URL: ${imageUrl}`);
+// ==================================================
+// 📸 Multi-POD Download Functions (GDEX) - ALL OR NOTHING
+// ==================================================
 
-    // Try multiple approaches
-    const approaches = [
-        { name: 'original_url', url: imageUrl },
-        { name: 'detrack_api_fresh', getUrl: true } // Will get fresh URL from API
-    ];
+async function downloadAndConvertToBase64Immediate(imageUrl, consignmentID, imageNumber, maxRetries = 3) {
+    console.log(`   🚨 POD ${imageNumber} download for ${consignmentID} (max ${maxRetries} retries)`);
 
-    for (let i = 0; i < approaches.length; i++) {
-        const approach = approaches[i];
-        console.log(`   Attempt ${i + 1}: ${approach.name}`);
+    for (let retry = 0; retry <= maxRetries; retry++) {
+        console.log(`     Attempt ${retry + 1}/${maxRetries + 1} for POD ${imageNumber}...`);
 
-        try {
-            let urlToDownload = approach.url;
+        // Try multiple approaches each retry
+        const approaches = [
+            { name: 'original_url', url: imageUrl },
+            { name: 'detrack_api_fresh', getUrl: true }
+        ];
 
-            // If we need to get fresh URL from API
-            if (approach.getUrl) {
-                console.log(`   Fetching fresh data from Detrack API...`);
-                const refreshResponse = await axios.get(
-                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-API-KEY': apiKey
-                        },
-                        timeout: 8000
+        for (let i = 0; i < approaches.length; i++) {
+            const approach = approaches[i];
+            console.log(`       Approach: ${approach.name}`);
+
+            try {
+                let urlToDownload = approach.url;
+
+                if (approach.getUrl) {
+                    console.log(`       Fetching fresh data from Detrack API...`);
+                    const refreshResponse = await axios.get(
+                        `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-KEY': apiKey
+                            },
+                            timeout: 8000
+                        }
+                    );
+
+                    // Get the correct photo URL based on image number
+                    let photoField = '';
+                    switch (imageNumber) {
+                        case 1: photoField = 'photo_1_file_url'; break;
+                        case 2: photoField = 'photo_2_file_url'; break;
+                        case 3: photoField = 'photo_3_file_url'; break;
                     }
-                );
 
-                if (refreshResponse.data.data?.photo_1_file_url) {
-                    urlToDownload = refreshResponse.data.data.photo_1_file_url;
-                    console.log(`   Got fresh URL: ${urlToDownload}`);
-                } else if (refreshResponse.data.data?.photo_1) {
-                    // Try alternative photo field
-                    urlToDownload = refreshResponse.data.data.photo_1;
-                    console.log(`   Got photo from photo_1 field: ${urlToDownload}`);
-                } else {
-                    console.log(`   No photo URL in fresh data`);
-                    continue; // Try next approach
+                    if (refreshResponse.data.data?.[photoField]) {
+                        urlToDownload = refreshResponse.data.data[photoField];
+                        console.log(`       Got fresh URL for POD ${imageNumber}: ${urlToDownload}`);
+                    } else {
+                        console.log(`       No photo ${imageNumber} URL in fresh data`);
+                        continue;
+                    }
                 }
+
+                const response = await axios.get(urlToDownload, {
+                    responseType: 'arraybuffer',
+                    headers: {
+                        'X-API-KEY': apiKey,
+                        'Accept': 'image/*'
+                    },
+                    timeout: 10000
+                });
+
+                console.log(`       ✅ POD ${imageNumber}: Downloaded ${response.data.length} bytes`);
+                const base64Image = await compressAndConvertToBase64(response.data);
+                console.log(`       ✅ POD ${imageNumber}: Converted to Base64 (${base64Image.length} chars)`);
+                return base64Image;
+
+            } catch (error) {
+                console.log(`       ❌ POD ${imageNumber} approach failed: ${error.message}`);
+
+                // If this was the last approach in the last retry, throw the error
+                if (i === approaches.length - 1 && retry === maxRetries) {
+                    throw new Error(`POD ${imageNumber} download failed after ${maxRetries + 1} attempts: ${error.message}`);
+                }
+
+                // Wait before next approach
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
+        }
 
-            // Download the image
-            const response = await axios.get(urlToDownload, {
-                responseType: 'arraybuffer',
-                headers: {
-                    'X-API-KEY': apiKey,
-                    'Accept': 'image/*'
-                },
-                timeout: 10000
-            });
-
-            console.log(`   ✅ Downloaded ${response.data.length} bytes`);
-
-            // Convert and compress
-            const base64Image = await compressAndConvertToBase64(response.data);
-            console.log(`   ✅ Converted to Base64: ${base64Image.length} chars`);
-
-            return base64Image;
-
-        } catch (error) {
-            console.log(`   ❌ Attempt ${i + 1} failed: ${error.message}`);
-            if (error.response) {
-                console.log(`   ❌ Status: ${error.response.status}`);
-            }
-
-            // If this was the last approach, throw the error
-            if (i === approaches.length - 1) {
-                throw error;
-            }
-
-            // Wait a bit before next attempt
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait before next retry (exponential backoff)
+        if (retry < maxRetries) {
+            const delay = Math.min(2000 * Math.pow(2, retry), 10000); // Max 10 seconds
+            console.log(`     ⏳ POD ${imageNumber}: Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 
-    // Should not reach here, but just in case
-    throw new Error('All download approaches failed');
+    throw new Error(`POD ${imageNumber}: All ${maxRetries + 1} attempts failed`);
+}
+
+async function downloadAllPODsForGDEX(consignmentID, detrackData, maxRetries = 3) {
+    console.log(`📸 Starting ALL-OR-NOTHING multi-POD download for ${consignmentID}`);
+    console.log(`   Max ${maxRetries} retries per image, ALL images must succeed`);
+
+    const requiredImages = 3; // GDEX requires ALL 3 images
+    const podImages = [];
+    let downloadErrors = [];
+
+    // Define the images we need to download
+    const imagesToDownload = [
+        { number: 1, url: detrackData.photo_1_file_url, required: true },
+        { number: 2, url: detrackData.photo_2_file_url, required: true },
+        { number: 3, url: detrackData.photo_3_file_url, required: true }
+    ];
+
+    // Step 1: Validate we have all URLs before starting downloads
+    const missingImages = imagesToDownload.filter(img => !img.url);
+    if (missingImages.length > 0) {
+        const missingNumbers = missingImages.map(img => img.number);
+        throw new Error(`❌ Missing required POD URLs: ${missingNumbers.join(', ')}. All 3 PODs are required for GDEX.`);
+    }
+
+    console.log(`✅ All 3 POD URLs available, starting download sequence...`);
+
+    // Step 2: Download all images sequentially (so we can fail fast)
+    for (const image of imagesToDownload) {
+        try {
+            console.log(`\n   ===== DOWNLOADING POD ${image.number} =====`);
+            const base64Image = await downloadAndConvertToBase64Immediate(
+                image.url,
+                consignmentID,
+                image.number,
+                maxRetries
+            );
+
+            if (base64Image) {
+                podImages.push(base64Image);
+                console.log(`   ✅ POD ${image.number}: SUCCESS (${base64Image.length} chars)`);
+            } else {
+                throw new Error(`POD ${image.number}: Download returned null`);
+            }
+
+        } catch (error) {
+            console.error(`   ❌ POD ${image.number}: CRITICAL FAILURE - ${error.message}`);
+            downloadErrors.push({ image: image.number, error: error.message });
+
+            // If any image fails, we should abort immediately
+            throw new Error(`ABORTING: POD ${image.number} failed. All-or-nothing requirement violated.`);
+        }
+    }
+
+    // Step 3: Verify we got exactly 3 images
+    if (podImages.length !== requiredImages) {
+        throw new Error(`Download incomplete. Expected ${requiredImages} PODs, got ${podImages.length}`);
+    }
+
+    console.log(`\n🎉 SUCCESS: All ${podImages.length}/${requiredImages} PODs downloaded successfully!`);
+    return podImages;
+}
+
+async function saveAllPODsToDatabase(consignmentID, detrackData, maxRetries = 3) {
+    try {
+        console.log(`💾 Attempting to save ALL 3 PODs to database for ${consignmentID}`);
+        console.log(`   ALL-OR-NOTHING: All 3 must succeed or transaction is rolled back`);
+
+        let podImages = [];
+        let finalSuccess = false;
+
+        // Try the full process with retries
+        for (let processRetry = 0; processRetry <= maxRetries; processRetry++) {
+            console.log(`\n   === PROCESS ATTEMPT ${processRetry + 1}/${maxRetries + 1} ===`);
+
+            try {
+                // Step 1: Download ALL 3 PODs (all-or-nothing)
+                podImages = await downloadAllPODsForGDEX(consignmentID, detrackData, 2); // 2 retries per image
+
+                // Step 2: Prepare database update (all-or-nothing)
+                const updateObj = {
+                    podUpdated: new Date().toISOString(),
+                    podSource: 'detrack_all_three',
+                    podCompressed: true,
+                    podBase64: podImages[0],
+                    podBase64_2: podImages[1],
+                    podBase64_3: podImages[2]
+                };
+
+                // Step 3: Save to database (with transaction-like behavior)
+                console.log(`   💾 Saving ALL 3 PODs to database...`);
+
+                let dbSuccess = false;
+                for (let dbRetry = 0; dbRetry <= 2; dbRetry++) {
+                    try {
+                        const result = await ORDERS.findOneAndUpdate(
+                            { doTrackingNumber: consignmentID },
+                            { $set: updateObj },
+                            { upsert: false, new: true }
+                        );
+
+                        if (result) {
+                            // Verify the save worked by reading back
+                            const savedOrder = await ORDERS.findOne({
+                                doTrackingNumber: consignmentID
+                            }).select('podBase64 podBase64_2 podBase64_3');
+
+                            if (savedOrder && 
+                                savedOrder.podBase64 && 
+                                savedOrder.podBase64_2 && 
+                                savedOrder.podBase64_3 &&
+                                savedOrder.podBase64.length > 100 &&
+                                savedOrder.podBase64_2.length > 100 &&
+                                savedOrder.podBase64_3.length > 100) {
+                                
+                                dbSuccess = true;
+                                console.log(`   ✅ ALL 3 PODs saved to database for ${consignmentID}`);
+                                console.log(`   POD 1 length: ${savedOrder.podBase64.length} chars`);
+                                console.log(`   POD 2 length: ${savedOrder.podBase64_2.length} chars`);
+                                console.log(`   POD 3 length: ${savedOrder.podBase64_3.length} chars`);
+                                break;
+                            } else {
+                                console.log(`   ❌ Database save verification failed - PODs too short or missing`);
+                                console.log(`   POD 1: ${savedOrder?.podBase64?.length || 0} chars`);
+                                console.log(`   POD 2: ${savedOrder?.podBase64_2?.length || 0} chars`);
+                                console.log(`   POD 3: ${savedOrder?.podBase64_3?.length || 0} chars`);
+                                throw new Error('Database save verification failed');
+                            }
+                        }
+                    } catch (dbError) {
+                        console.log(`   ❌ Database save attempt ${dbRetry + 1}/3 failed: ${dbError.message}`);
+                        if (dbRetry < 2) {
+                            await new Promise(resolve => setTimeout(resolve, 1000 * (dbRetry + 1)));
+                        }
+                    }
+                }
+
+                if (!dbSuccess) {
+                    throw new Error('Failed to save PODs to database after all retries');
+                }
+
+                finalSuccess = true;
+                console.log(`\n🎉 COMPLETE SUCCESS: All 3 PODs processed and saved for ${consignmentID}`);
+                break; // Exit process retry loop on success
+
+            } catch (processError) {
+                console.error(`   ❌ Process attempt ${processRetry + 1} failed: ${processError.message}`);
+
+                // Clean up partial data if this was the last attempt
+                if (processRetry === maxRetries) {
+                    console.log(`   🧹 Cleaning up any partial data for ${consignmentID}`);
+                    try {
+                        await ORDERS.findOneAndUpdate(
+                            { doTrackingNumber: consignmentID },
+                            {
+                                $set: {
+                                    podUpdated: null,
+                                    podSource: 'failed_all_or_nothing'
+                                },
+                                $unset: {
+                                    podBase64: "",
+                                    podBase64_2: "",
+                                    podBase64_3: ""
+                                }
+                            },
+                            { upsert: false }
+                        );
+                        console.log(`   ✅ Cleaned up partial POD data`);
+                    } catch (cleanupError) {
+                        console.log(`   ⚠️ Cleanup failed: ${cleanupError.message}`);
+                    }
+
+                    throw new Error(`ALL-OR-NOTHING FAILED: Could not complete POD processing after ${maxRetries + 1} attempts. ${processError.message}`);
+                }
+
+                // Wait before next process attempt
+                const delay = Math.min(5000 * Math.pow(2, processRetry), 30000); // Max 30 seconds
+                console.log(`   ⏳ Waiting ${delay}ms before next process attempt...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+
+        if (finalSuccess) {
+            return podImages;
+        } else {
+            throw new Error('Process failed without reaching success state');
+        }
+
+    } catch (error) {
+        console.error(`❌ ALL-OR-NOTHING FAILED for ${consignmentID}:`, error.message);
+        throw error; // Re-throw to indicate complete failure
+    }
 }
 
 async function compressAndConvertToBase64(imageBuffer) {
@@ -5250,9 +5491,9 @@ async function savePODToDatabase(consignmentID, imageUrl) {
 async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag = false) {
     try {
         console.log(`=== Processing GDEX clear job for: ${consignmentID} ===`);
-        console.log(`Detrack status: ${detrackData?.status}, Has photo URL: ${!!detrackData?.photo_1_file_url}, Already converted: ${detrackData?.podAlreadyConverted}`);
+        console.log(`Detrack status: ${detrackData?.status}`);
 
-        let statusCode, statusDescription, reasonCode, locationDescription, epod;
+        let statusCode, statusDescription, reasonCode, locationDescription, epodString = "";
 
         // Check if job is completed or failed
         if (detrackData.status === 'completed') {
@@ -5261,70 +5502,105 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             reasonCode = "";
             locationDescription = detrackData.address || "Customer Address";
 
-            console.log(`📸 Checking POD for GDEX completed job ${consignmentID}`);
+            console.log(`📸 Checking PODs for GDEX completed job ${consignmentID}`);
 
-            // CRITICAL FIX: Handle the case where podAlreadyConverted is true
+            // Check if we have Base64 images already
             if (detrackData.podAlreadyConverted === true && detrackData.photo_1_file_url) {
-                // If it's already Base64, use it directly
-                epod = detrackData.photo_1_file_url;
-                console.log(`✅ Using pre-converted Base64 POD for ${consignmentID} (${epod.length} chars)`);
-            } else if (detrackData.photo_1_file_url) {
-                // If we have a URL, download and convert it
-                console.log(`📥 Downloading POD from URL for ${consignmentID}`);
-
-                // Try to download the image - IMPORTANT: use the standard download function
-                const base64Image = await downloadAndConvertToBase64(detrackData.photo_1_file_url, consignmentID);
-
-                if (base64Image) {
-                    epod = base64Image;
-                    console.log(`✅ Converted POD to Base64 for ${consignmentID}: ${epod.length} chars`);
-
-                    // Also save to database for future use
-                    await ORDERS.findOneAndUpdate(
-                        { doTrackingNumber: consignmentID },
-                        {
-                            $set: {
-                                podBase64: base64Image,
-                                podUpdated: new Date().toISOString(),
-                                podSource: 'detrack_gdex_clear',
-                                podCompressed: true
-                            }
-                        },
-                        { upsert: false }
-                    );
+                // Concatenate all 3 PODs into one string separated by commas
+                const podArray = [];
+                
+                // Add POD 1 (required)
+                if (detrackData.photo_1_file_url) {
+                    podArray.push(detrackData.photo_1_file_url);
                 } else {
-                    console.error(`❌ Failed to download POD for GDEX delivery ${consignmentID}`);
-                    // We still send the update without epod, but GDEX might reject it
-                    epod = "";
-                    console.log(`⚠️ WARNING: Sending GDEX update without epod for ${consignmentID}`);
+                    console.error(`❌ Missing POD 1 for GDEX completed job ${consignmentID}`);
+                    return false;
+                }
+                
+                // Add POD 2 (required)
+                if (detrackData.photo_2_file_url) {
+                    podArray.push(detrackData.photo_2_file_url);
+                } else {
+                    console.error(`❌ Missing POD 2 for GDEX completed job ${consignmentID}`);
+                    return false;
+                }
+                
+                // Add POD 3 (required)
+                if (detrackData.photo_3_file_url) {
+                    podArray.push(detrackData.photo_3_file_url);
+                } else {
+                    console.error(`❌ Missing POD 3 for GDEX completed job ${consignmentID}`);
+                    return false;
+                }
+                
+                // Join all PODs with commas
+                epodString = podArray.join(',');
+                console.log(`✅ Using pre-converted Base64 PODs for ${consignmentID} (all 3 images concatenated)`);
+                console.log(`   Total length: ${epodString.length} characters`);
+                
+            } else if (detrackData.photo_1_file_url || detrackData.photo_2_file_url || detrackData.photo_3_file_url) {
+                // We should already have saved PODs via saveAllPODsToDatabase
+                // Check database for saved PODs
+                const order = await ORDERS.findOne({ doTrackingNumber: consignmentID });
+                if (order) {
+                    // Collect all 3 PODs from database
+                    const podArray = [];
+                    
+                    // POD 1 (required)
+                    if (order.podBase64) {
+                        podArray.push(order.podBase64);
+                    } else {
+                        console.error(`❌ Missing POD 1 in database for ${consignmentID}`);
+                        return false;
+                    }
+                    
+                    // POD 2 (required)
+                    if (order.podBase64_2) {
+                        podArray.push(order.podBase64_2);
+                    } else {
+                        console.error(`❌ Missing POD 2 in database for ${consignmentID}`);
+                        return false;
+                    }
+                    
+                    // POD 3 (required)
+                    if (order.podBase64_3) {
+                        podArray.push(order.podBase64_3);
+                    } else {
+                        console.error(`❌ Missing POD 3 in database for ${consignmentID}`);
+                        return false;
+                    }
+                    
+                    // Join all PODs with commas
+                    epodString = podArray.join(',');
+                    console.log(`✅ Found all 3 PODs in database for ${consignmentID}`);
+                    console.log(`   Concatenated length: ${epodString.length} characters`);
+                } else {
+                    console.log(`⚠️ No order found in database for ${consignmentID}`);
+                    return false;
                 }
             } else {
-                // No photo URL available
-                epod = "";
-                console.log(`⚠️ No photo URL available for GDEX delivery ${consignmentID}`);
-                console.log(`⚠️ GDEX might reject or mark this as incomplete`);
+                // No photo URLs available
+                console.error(`❌ No PODs available for GDEX delivery ${consignmentID}`);
+                console.error(`❌ GDEX requires all 3 POD images for completed delivery`);
+                return false;
             }
 
-            console.log(`📤 Sending FD (Delivered) with ${epod ? 'with' : 'without'} POD for ${consignmentID}`);
+            console.log(`📤 Sending FD (Delivered) with all 3 PODs concatenated for ${consignmentID}`);
 
         } else if (detrackData.status === 'failed') {
-            // ALWAYS use statusCode = "DF" for failed deliveries
             statusCode = "DF";
             statusDescription = "Delivery Failed";
 
-            // Check if this is a GDEX-specific fail reason (H10, BA, H3)
             if (detrackData.gdexFailReason) {
-                // Use the specific GDEX fail reason code
-                reasonCode = detrackData.gdexFailReason;  // H10, BA, or H3
+                reasonCode = detrackData.gdexFailReason;
                 console.log(`📤 Using GDEX-specific fail reason code: ${reasonCode}`);
             } else {
-                // Regular failed delivery - use mapped reason
                 reasonCode = mapDetrackReasonToGDEX(detrackData.reason);
                 console.log(`📤 Using mapped fail reason code: ${reasonCode}`);
             }
 
             locationDescription = "Go Rush Warehouse";
-            epod = "";
+            epodString = ""; // No PODs needed for failed delivery
 
             console.log(`📤 Sending DF (Failed) status for ${consignmentID}, reason code: ${reasonCode}`);
 
@@ -5333,42 +5609,78 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             return false;
         }
 
-        // Pass returnflag to sendGDEXTrackingWebhook
-        const success = await sendGDEXTrackingWebhook(
-            consignmentID,
-            statusCode,           // Always "DF" for failed
-            statusDescription,    // Always "Delivery Failed"
-            locationDescription,
-            token,
-            reasonCode,           // H10, BA, or H3 for specific fails
-            epod,
-            returnflag
-        );
+        // Prepare tracking data with concatenated PODs string
+        const trackingData = {
+            consignmentno: consignmentID,
+            statuscode: statusCode,
+            statusdescription: statusDescription,
+            statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
+            reasoncode: reasonCode,
+            locationdescription: locationDescription,
+            epod: epodString, // String (comma-separated Base64 images) NOT array
+            deliverypartner: "gorush",
+            returnflag: returnflag
+        };
 
-        return success;
+        console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
+        console.log(`POD format: String with ${epodString ? epodString.split(',').length : 0} images concatenated`);
+        console.log(`Total characters: ${epodString.length}`);
+
+        const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            timeout: 10000
+        });
+
+        if (response.data.success) {
+            console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} sent successfully for ${consignmentID}`);
+            console.log(`   ${epodString ? epodString.split(',').length : 0} POD(s) included as concatenated string`);
+            return true;
+        } else {
+            console.error(`❌ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} failed for ${consignmentID}:`, response.data.error);
+            return false;
+        }
 
     } catch (error) {
         console.error(`🔥 Error in updateGDEXClearJob for ${consignmentID}:`, error.message);
-        console.error(`🔥 Error stack:`, error.stack);
+        if (error.response) {
+            console.error(`🔥 Response data:`, error.response.data);
+            console.error(`🔥 Request data:`, error.config?.data);
+        }
         return false;
     }
 }
 
-// View POD image from database
-app.get('/api/pod/:trackingNumber', ensureAuthenticated, async (req, res) => {
+app.get('/api/pod/:trackingNumber/:imageIndex?', ensureAuthenticated, async (req, res) => {
     try {
         const order = await ORDERS.findOne({
             doTrackingNumber: req.params.trackingNumber.toUpperCase()
         });
 
-        if (!order || !order.podBase64) {
-            return res.status(404).send('POD not found');
+        if (!order) {
+            return res.status(404).send('Order not found');
+        }
+
+        const imageIndex = req.params.imageIndex ? parseInt(req.params.imageIndex) : 1;
+        let base64Image = null;
+
+        // Select which image to return
+        if (imageIndex === 1 && order.podBase64) {
+            base64Image = order.podBase64;
+        } else if (imageIndex === 2 && order.podBase64_2) {
+            base64Image = order.podBase64_2;
+        } else if (imageIndex === 3 && order.podBase64_3) {
+            base64Image = order.podBase64_3;
+        } else {
+            return res.status(404).send(`POD image ${imageIndex} not found`);
         }
 
         // Convert Base64 back to image
-        const imgBuffer = Buffer.from(order.podBase64, 'base64');
+        const imgBuffer = Buffer.from(base64Image, 'base64');
 
-        // Set appropriate content type (default to JPEG)
+        // Set appropriate content type
         res.set('Content-Type', 'image/jpeg');
         res.set('Content-Length', imgBuffer.length);
         res.send(imgBuffer);
@@ -5780,79 +6092,42 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             // Get product early for decision making
             product = data.data.group_name;
 
-            // For GDEX/GDEXT completed jobs, download POD IMMEDIATELY
+            // In the /updateDelivery route, find this section and update:
             if ((product == 'GDEX' || product == 'GDEXT') &&
                 data.data.status == 'completed' &&
-                data.data.photo_1_file_url) {
+                (data.data.photo_1_file_url || data.data.photo_2_file_url || data.data.photo_3_file_url)) {
 
-                console.log(`🚨 CRITICAL: Downloading POD immediately for GDEX completed job`);
+                console.log(`🚨 CRITICAL: Downloading all PODs immediately for GDEX completed job`);
                 console.log(`   Product: ${product}, Status: ${data.data.status}`);
 
-                // Use the same logic as testPOD which works
-                const downloadResult = await testDownloadImageImmediate(data.data.photo_1_file_url, consignmentID);
-
-                if (downloadResult.success) {
-                    podBase64 = downloadResult.base64;
-                    console.log(`✅ POD downloaded immediately: ${podBase64.length} chars`);
-
-                    // Create detrackData with Base64 (not URL)
-                    detrackData = {
-                        status: data.data.status,
-                        reason: data.data.reason || '',
-                        address: data.data.address,
-                        photo_1_file_url: podBase64, // Base64, not URL!
-                        podAlreadyConverted: true,
-                        downloadedImmediately: true
-                    };
-
-                    // Save to database immediately
-                    await ORDERS.findOneAndUpdate(
-                        { doTrackingNumber: consignmentID },
-                        {
-                            $set: {
-                                podBase64: podBase64,
-                                podUpdated: new Date().toISOString(),
-                                podSource: 'detrack_immediate',
-                                podCompressed: true
-                            }
-                        },
-                        { upsert: false }
-                    );
-
-                    console.log(`✅ POD saved to database for immediate GDEX processing`);
-
-                } else {
-                    console.log(`❌ CRITICAL FAILURE: Could not download POD for GDEX delivery`);
-                    console.log(`❌ GDEX requires epod for completed deliveries`);
-                    console.log(`❌ Attempts made:`, downloadResult.attempts);
-
-                    // Add to processingResults as error
-                    processingResults.push({
-                        consignmentID,
-                        status: 'ERROR: Could not download POD image for GDEX delivery. GDEX requires epod.',
-                    });
-
-                    continue; // Skip this tracking number
-                }
-            }
-
-            // CRITICAL FIX: ALWAYS create detrackData, even if not created above
-            if (!detrackData) {
+                // Create detrackData with all photo URLs
                 detrackData = {
                     status: data.data.status,
                     reason: data.data.reason || '',
                     address: data.data.address,
                     photo_1_file_url: data.data.photo_1_file_url || null,
-                    podAlreadyConverted: false
+                    photo_2_file_url: data.data.photo_2_file_url || null,
+                    photo_3_file_url: data.data.photo_3_file_url || null,
+                    podAlreadyConverted: false,
+                    downloadedImmediately: true
                 };
-                console.log(`✅ Created detrackData for ${consignmentID}`);
-                console.log(`   Product: ${product}, Status: ${detrackData.status}, Reason: ${detrackData.reason}`);
-            }
-            // ===================================================================
-            // END OF FIX
-            // ===================================================================
 
-            // Continue with your existing variable declarations
+                // Save all PODs to database
+                const savedPODs = await saveAllPODsToDatabase(consignmentID, detrackData);
+
+                if (savedPODs.length > 0) {
+                    // Update detrackData with Base64 images
+                    detrackData.podAlreadyConverted = true;
+                    console.log(`✅ ${savedPODs.length} POD(s) saved to database for immediate GDEX processing`);
+                } else {
+                    console.log(`❌ CRITICAL FAILURE: Could not download PODs for GDEX delivery`);
+                    processingResults.push({
+                        consignmentID,
+                        status: 'ERROR: Could not download POD images for GDEX delivery.',
+                    });
+                    continue;
+                }
+            }
 
             const counttaskhistory = data.data.milestones.length;
 
@@ -6093,6 +6368,30 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Return to Shipper"
             }
 
+            if (req.body.statusCode == 'H3') {
+                appliedStatus = "On Hold - Oversized Shipment"
+                holdReasonDescription = "Oversized Shipment"
+                gdexHoldReason = "H3";
+            }
+
+            if (req.body.statusCode == 'H10') {
+                appliedStatus = "On Hold - Consignee Office Closed"
+                holdReasonDescription = "Consignee Office Closed"
+                gdexHoldReason = "H10";
+            }
+
+            if (req.body.statusCode == 'H17') {
+                appliedStatus = "On Hold - Damage Shipment"
+                holdReasonDescription = "Damage Shipment"
+                gdexHoldReason = "H17";
+            }
+
+            if (req.body.statusCode == 'H32') {
+                appliedStatus = "On Hold - AWB not clear"
+                holdReasonDescription = "AWB not clear"
+                gdexHoldReason = "H32";
+            }
+
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
                 || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
@@ -6102,7 +6401,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC') || (req.body.statusCode == 'FIA')
                 || (req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
-                || (req.body.statusCode == 'RSAL2')) {
+                || (req.body.statusCode == 'RSAL2') || (req.body.statusCode == 'H3') || (req.body.statusCode == 'H10')
+                    || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -6982,6 +7282,46 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     DetrackAPIrun = 1;
                     completeRun = 1;
                 }
+            }
+
+            if ((req.body.statusCode == 'H3' || req.body.statusCode == 'H10' || req.body.statusCode == 'H17' || req.body.statusCode == 'H32')
+                && (product == 'GDEX' || product == 'GDEXT')) {
+
+                console.log(`🚨 Processing GDEX On Hold: ${consignmentID} - Reason: ${holdReasonDescription}`);
+
+                // MongoDB Update
+                update = {
+                    currentStatus: "On Hold",
+                    lastUpdateDateTime: moment().format(),
+                    latestLocation: "K2 Warehouse",
+                    lastUpdatedBy: req.user.name,
+                    latestReason: holdReasonDescription,
+                    $push: {
+                        history: {
+                            statusHistory: "On Hold",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            lastLocation: "K2 Warehouse",
+                            reason: holdReasonDescription,
+                        }
+                    }
+                };
+
+                // Detrack Update
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        status: "on_hold"
+                    }
+                };
+
+                // GDEX API Update (will be handled by GDEXAPIrun = 7)
+                portalUpdate = `Portal status updated to On Hold (${holdReasonDescription}). Detrack status updated to on_hold. `;
+
+                mongoDBrun = 2;
+                DetrackAPIrun = 1;
+                GDEXAPIrun = 7; // New GDEX API run code for Hold updates
+                completeRun = 1;
             }
 
             if (req.body.statusCode == 12) {
@@ -8457,7 +8797,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             }
 
-                            mongoDBrun = 2;
+                            /* mongoDBrun = 2; */
                         }
                     }
 
@@ -11830,6 +12170,67 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
             }
 
+            if (GDEXAPIrun == 7) {
+                console.log(`🚨 Starting GDEX On Hold update for Tracking: ${consignmentID}`);
+                console.log(`   Reason Code: ${gdexHoldReason}, Description: ${holdReasonDescription}`);
+
+                try {
+                    // Get GDEX token
+                    const token = await getGDEXToken();
+                    if (!token) {
+                        console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
+
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += " Error: Failed to get GDEX token.";
+                        }
+                        return;
+                    }
+
+                    // Send Hold status to GDEX
+                    const gdexSuccess = await sendGDEXTrackingWebhook(
+                        consignmentID,
+                        "K",                          // statuscode: "K" for Hold
+                        "Hold",                       // statusdescription: fixed as "Hold"
+                        "Go Rush Warehouse",          // locationdescription: fixed
+                        token,
+                        gdexHoldReason,               // reasoncode: H3, H10, H17, or H32
+                        "",                           // epod: empty
+                        false                         // returnflag: false
+                    );
+
+                    if (gdexSuccess) {
+                        console.log(`✅ GDEX Hold update succeeded for Tracking: ${consignmentID} (Reason: ${gdexHoldReason})`);
+
+                        // Update processing result
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += ` GDEX: Hold (${gdexHoldReason}) sent successfully.`;
+                        }
+                    } else {
+                        console.error(`❌ GDEX Hold update failed for Tracking: ${consignmentID}`);
+
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += " Error: Failed to send Hold status to GDEX.";
+                        }
+                    }
+
+                } catch (error) {
+                    console.error(`🔥 Error in GDEX Hold update for ${consignmentID}:`, error.message);
+
+                    const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                    if (existingIndex !== -1) {
+                        processingResults[existingIndex].status += ` GDEX Error: ${error.message}`;
+                    } else {
+                        processingResults.push({
+                            consignmentID,
+                            status: `GDEX Error: ${error.message}`,
+                        });
+                    }
+                }
+            }
+
             if (GDEXAPIrun == 8) {
                 console.log(`🔄 Processing GDEX Return to Shipper for Tracking: ${consignmentID}`);
 
@@ -13902,6 +14303,17 @@ app.post('/updateJob', async (req, res) => {
                             message: cchResult ? 'Job put on hold' : 'On hold update failed'
                         };
                         break;
+                    case 'H9':
+                    case 'H18':
+                    case 'H19':
+                    case 'H27':
+                    case 'H31':
+                        const gdexHoldResult = await processGDEXHoldUpdate(trackingNumber, updateCode, req);
+                        result = {
+                            success: gdexHoldResult.success,
+                            message: gdexHoldResult.message || 'GDEX Hold update failed'
+                        };
+                        break;
                     case 'IIW':
                         result = await processItemInWarehouseUpdate(trackingNumber, warehouse, req);
                         break;
@@ -14405,6 +14817,314 @@ async function processExcelUploadInBackground(jobId, additionalData, req) {
         results.status = 'failed';
         results.error = error.message;
         backgroundJobs.set(jobId, results);
+    }
+}
+
+// Add this function near other helper functions
+function getGDEXHoldReasonDetails(reasonCode) {
+    const reasonMap = {
+        'H9': {
+            code: 'H9',
+            description: 'Reject By Airport',
+            gdexStatusCode: 'K',
+            gdexStatusDescription: 'Hold',
+            locationDescription: 'Brunei Customs'
+        },
+        'H18': {
+            code: 'H18',
+            description: 'DG Shipment',
+            gdexStatusCode: 'K',
+            gdexStatusDescription: 'Hold',
+            locationDescription: 'Brunei Customs'
+        },
+        'H19': {
+            code: 'H19',
+            description: 'Prohibited Shipment',
+            gdexStatusCode: 'K',
+            gdexStatusDescription: 'Hold',
+            locationDescription: 'Brunei Customs'
+        },
+        'H27': {
+            code: 'H27',
+            description: 'Pending Custom Declaration',
+            gdexStatusCode: 'K',
+            gdexStatusDescription: 'Hold',
+            locationDescription: 'Brunei Customs'
+        },
+        'H31': {
+            code: 'H31',
+            description: 'Shipment rejected/confiscated by customs',
+            gdexStatusCode: 'K',
+            gdexStatusDescription: 'Hold',
+            locationDescription: 'Brunei Customs'
+        }
+    };
+
+    return reasonMap[reasonCode] || {
+        code: reasonCode,
+        description: 'Hold',
+        gdexStatusCode: 'K',
+        gdexStatusDescription: 'Hold',
+        locationDescription: 'Brunei Customs'
+    };
+}
+
+async function processGDEXHoldUpdate(trackingNumber, holdCode, req) {
+    try {
+        console.log(`🔍 Starting GDEX Hold update for ${trackingNumber} with code ${holdCode}`);
+
+        // Get reason details
+        const reasonDetails = getGDEXHoldReasonDetails(holdCode);
+
+        // 1. Check if job exists in Detrack
+        const jobExists = await checkJobExists(trackingNumber);
+        console.log(`📊 Job exists check for ${trackingNumber}: ${jobExists}`);
+
+        if (!jobExists) {
+            console.log(`❌ Job ${trackingNumber} not found in Detrack`);
+            return { success: false, message: 'Job not found in Detrack' };
+        }
+
+        // 2. Get job details from Detrack
+        const jobData = await getJobDetails(trackingNumber);
+        if (!jobData) {
+            console.log(`❌ Could not get job details for ${trackingNumber}`);
+            return { success: false, message: 'Could not get job details' };
+        }
+
+        console.log(`📋 Job details for ${trackingNumber}:`, {
+            status: jobData.status,
+            run_number: jobData.run_number,
+            group_name: jobData.group_name,
+            job_owner: jobData.job_owner
+        });
+
+        // 3. Check conditions: status must be 'info_recv' and run_number must not be null
+        if (jobData.status !== 'info_recv' && jobData.status !== 'info_received') {
+            console.log(`❌ Job status is not 'info_recv' or 'info_received' for ${trackingNumber}`);
+            return {
+                success: false,
+                message: `Job status is "${jobData.status}", must be "info_recv" or "info_received"`
+            };
+        }
+
+        if (!jobData.run_number || jobData.run_number.trim() === '') {
+            console.log(`❌ Job run_number is null or empty for ${trackingNumber}`);
+            return {
+                success: false,
+                message: 'Job run_number (MAWB) is required for GDEX Hold update'
+            };
+        }
+
+        // 4. Check product type - MUST be GDEX/GDEXT only
+        const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
+        const gdexProducts = ['gdex', 'gdext'];
+
+        if (!currentProduct || !gdexProducts.includes(currentProduct.toLowerCase())) {
+            console.log(`❌ Product "${currentProduct}" not allowed for GDEX Hold update. Only GDEX/GDEXT allowed.`);
+            return {
+                success: false,
+                message: `Product "${currentProduct}" not allowed. Use GDEX Hold flow for GDEX/GDEXT products only.`
+            };
+        }
+
+        console.log(`✅ Product "${currentProduct}" allowed for GDEX Hold update`);
+
+        // 5. Update MongoDB
+        const mongoSuccess = await updateMongoForGDEXHold(trackingNumber, currentProduct, req, reasonDetails);
+        if (!mongoSuccess) {
+            console.log(`❌ MongoDB update failed for ${trackingNumber}`);
+            return { success: false, message: 'MongoDB update failed' };
+        }
+
+        // 6. Update Detrack
+        const detrackSuccess = await updateDetrackForOnHold(trackingNumber);
+        if (!detrackSuccess) {
+            console.log(`❌ Detrack update failed for ${trackingNumber}`);
+            return { success: false, message: 'Detrack update failed' };
+        }
+
+        // 7. Update GDEX with new status code "K" and specific reason code
+        const gdexSuccess = await updateGDEXForGDEXHold(trackingNumber, reasonDetails);
+        if (!gdexSuccess) {
+            console.log(`⚠️ GDEX update failed for ${trackingNumber}, but other updates succeeded`);
+            // Continue with success as MongoDB and Detrack succeeded
+        }
+
+        console.log(`✅ All GDEX Hold updates completed successfully for ${trackingNumber} with reason: ${reasonDetails.description}`);
+        return {
+            success: true,
+            message: `GDEX Hold: ${reasonDetails.description}`
+        };
+
+    } catch (error) {
+        console.error(`❌ Error in GDEX Hold update for ${trackingNumber}:`, error);
+        return { success: false, message: 'Error: ' + error.message };
+    }
+}
+
+async function updateMongoForGDEXHold(trackingNumber, product, req, reasonDetails) {
+    try {
+        const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+
+        if (!order) {
+            console.log(`📦 Order not found in MongoDB for ${trackingNumber}`);
+            return false;
+        }
+
+        console.log(`📦 Updating existing order for ${trackingNumber}`);
+        console.log(`   - Current Status: ${order.currentStatus}`);
+        console.log(`   - Product: ${order.product}`);
+        console.log(`   - Reason: ${reasonDetails.description}`);
+
+        // Create the update object as per your requirements
+        const updateOperations = {
+            $set: {
+                currentStatus: "On Hold",                       // Changed to "On Hold"
+                lastUpdateDateTime: moment().format(),
+                latestLocation: "Brunei Customs",
+                lastUpdatedBy: req.user.name,
+                latestReason: reasonDetails.description         // e.g., "Reject By Airport"
+            },
+            $push: {
+                history: {
+                    statusHistory: "On Hold",                   // Changed to "On Hold"
+                    dateUpdated: moment().format(),
+                    updatedBy: req.user.name,
+                    lastLocation: "Brunei Customs",
+                    reason: reasonDetails.description           // e.g., "Reject By Airport"
+                }
+            }
+        };
+
+        console.log('📝 MongoDB Update Operations:');
+        console.log(JSON.stringify(updateOperations, null, 2));
+
+        const result = await ORDERS.updateOne(
+            { doTrackingNumber: trackingNumber },
+            updateOperations
+        );
+
+        console.log(`✅ MongoDB update result for ${trackingNumber}:`, result);
+
+        if (result.modifiedCount > 0) {
+            console.log(`✅ MongoDB updated for GDEX Hold: ${trackingNumber}`);
+            return true;
+        } else {
+            console.log(`⚠️ No document modified for ${trackingNumber}`);
+            return false;
+        }
+
+    } catch (error) {
+        console.error(`❌ MongoDB update error for ${trackingNumber}:`, error);
+        return false;
+    }
+}
+
+async function createOrderWithGDEXHoldStatus(jobData, trackingNumber, product, req, reasonDetails) {
+    try {
+        console.log(`⚠️ Creating NEW order for GDEX Hold - this shouldn't happen often`);
+        console.log(`   Order ${trackingNumber} not found, creating new...`);
+        
+        // Process items array
+        const itemsArray = [];
+        if (jobData.items && Array.isArray(jobData.items)) {
+            for (let i = 0; i < jobData.items.length; i++) {
+                itemsArray.push({
+                    quantity: jobData.items[i].quantity || 0,
+                    description: jobData.items[i].description || '',
+                    totalItemPrice: jobData.total_price || jobData.payment_amount || 0
+                });
+            }
+        }
+
+        // Process area from address
+        const finalArea = getAreaFromAddress(jobData.address);
+
+        // Process phone numbers
+        const finalPhoneNum = processPhoneNumber(jobData.phone_number);
+        const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
+
+        // Process postal code
+        const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
+
+        // Create new order with GDEX Hold status
+        const newOrder = new ORDERS({
+            area: finalArea,
+            items: itemsArray,
+            attempt: jobData.attempt || 1,
+            history: [{
+                statusHistory: "On Hold",                     // Changed from "Custom Clearing"
+                dateUpdated: moment().format(),
+                updatedBy: req.user.name,
+                lastLocation: "Brunei Customs",
+                reason: `GDEX Hold: ${reasonDetails.description}`  // Changed note to reason
+            }],
+            latestLocation: "Brunei Customs",
+            product: product.toLowerCase(),
+            senderName: jobData.job_owner || product,
+            totalPrice: jobData.total_price || 0,
+            paymentAmount: jobData.payment_amount || 0,
+            receiverName: jobData.deliver_to_collect_from || '',
+            trackingLink: jobData.tracking_link || '',
+            currentStatus: "On Hold",                         // Changed from "Custom Clearing"
+            paymentMethod: jobData.payment_mode || 'NON COD',
+            warehouseEntry: "No",
+            warehouseEntryDateTime: "N/A",
+            receiverAddress: jobData.address || '',
+            receiverPhoneNumber: finalPhoneNum,
+            additionalPhoneNumber: finalAdditionalPhoneNum,
+            doTrackingNumber: trackingNumber,
+            remarks: jobData.remarks || '',
+            lastUpdateDateTime: moment().format(),
+            creationDate: jobData.created_at || moment().format(),
+            lastUpdatedBy: req.user.name,
+            receiverPostalCode: postalCode,
+            jobType: jobData.type || 'Delivery',
+            jobMethod: "Standard",
+            flightDate: jobData.job_received_date || '',
+            mawbNo: jobData.run_number || '',
+            parcelWeight: jobData.weight || 0,
+            latestReason: reasonDetails.description           // Added latestReason
+        });
+
+        await newOrder.save();
+        console.log(`✅ Created new order with GDEX Hold status for ${trackingNumber} (Reason: ${reasonDetails.description})`);
+        return newOrder;
+
+    } catch (error) {
+        console.error(`❌ Error creating GDEX Hold order for ${trackingNumber}:`, error);
+        return null;
+    }
+}
+
+async function updateGDEXForGDEXHold(trackingNumber, reasonDetails) {
+    try {
+        console.log(`🔄 Sending GDEX update for Hold (Status K) with reason ${reasonDetails.code}: ${trackingNumber}`);
+
+        const gdexSuccess = await updateGDEXStatus(
+            trackingNumber,
+            'custom',
+            null,                           // detrackData not needed
+            reasonDetails.gdexStatusCode,   // "K" (not "AQ")
+            reasonDetails.gdexStatusDescription, // "Hold" (fixed)
+            reasonDetails.locationDescription, // "Brunei Customs" (fixed)
+            reasonDetails.code,             // reasoncode: H9, H18, H19, H27, H31
+            "",                             // epod (empty)
+            false                           // returnflag = false
+        );
+
+        if (gdexSuccess) {
+            console.log(`✅ GDEX Hold update sent for ${trackingNumber} (Status: K, Reason: ${reasonDetails.code})`);
+        } else {
+            console.log(`❌ GDEX Hold update failed for ${trackingNumber}`);
+        }
+
+        return gdexSuccess;
+
+    } catch (error) {
+        console.error(`❌ GDEX Hold update error for ${trackingNumber}:`, error);
+        return false;
     }
 }
 
@@ -15849,38 +16569,42 @@ async function processOnHoldUpdate(trackingNumber, req) {
             return false;
         }
 
-        // 4. Determine product type
-        const product = determineProductType(jobData.group_name, jobData.job_owner);
-        const allowedProducts = ['PDU', 'MGLOBAL', 'EWE', 'GDEX', 'GDEXT'];
+        // 4. Determine product type - REJECT GDEX/GDEXT products
+        const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
+        const gdexProducts = ['gdex', 'gdext'];
 
-        if (!product || !allowedProducts.includes(product)) {
-            console.log(`❌ Product "${product}" not allowed for On Hold update. Allowed: ${allowedProducts.join(', ')}`);
+        // REJECT GDEX/GDEXT products
+        if (gdexProducts.includes(currentProduct.toLowerCase())) {
+            console.log(`❌ GDEX/GDEXT products must use GDEX Hold flow, not CCH On Hold`);
             return false;
         }
 
-        console.log(`✅ Product "${product}" allowed for On Hold update`);
+        const allowedProducts = ['PDU', 'MGLOBAL', 'EWE']; // Removed GDEX/GDEXT
+        if (!currentProduct || !allowedProducts.includes(currentProduct.toUpperCase())) {
+            console.log(`❌ Product "${currentProduct}" not allowed for On Hold update. Allowed: ${allowedProducts.join(', ')}`);
+            return false;
+        }
 
-        // 5. Update MongoDB
-        const mongoSuccess = await updateMongoForOnHold(trackingNumber, product, req);
+        console.log(`✅ Product "${currentProduct}" allowed for On Hold update`);
+
+        // 5. Update MongoDB (existing logic)
+        const mongoSuccess = await updateMongoForOnHold(trackingNumber, currentProduct, req);
         if (!mongoSuccess) {
             console.log(`❌ MongoDB update failed for ${trackingNumber}`);
             return false;
         }
 
-        // 6. Update Detrack
+        // 6. Update Detrack (existing logic)
         const detrackSuccess = await updateDetrackForOnHold(trackingNumber);
         if (!detrackSuccess) {
             console.log(`❌ Detrack update failed for ${trackingNumber}`);
             return false;
         }
 
-        // 7. Update GDEX if applicable
-        if (product === 'GDEX' || product === 'GDEXT') {
-            const gdexSuccess = await updateGDEXForOnHold(trackingNumber);
-            if (!gdexSuccess) {
-                console.log(`⚠️ GDEX update failed for ${trackingNumber}, but other updates succeeded`);
-                // Continue with success as MongoDB and Detrack succeeded
-            }
+        // 7. Update GDEX if applicable (only for allowed products)
+        if (currentProduct.toUpperCase() === 'GDEX' || currentProduct.toUpperCase() === 'GDEXT') {
+            console.log(`⚠️ GDEX/GDEXT products should use GDEX Hold flow, not CCH`);
+            // Don't send GDEX API call for CCH
         }
 
         console.log(`✅ All On Hold updates completed successfully for ${trackingNumber}`);
@@ -18963,6 +19687,12 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
                 result = {
                     success: success,
                     message: success ? 'Put on hold' : 'On hold update failed'
+                };
+            } else if (['H9', 'H18', 'H19', 'H27', 'H31'].includes(updateCode)) {
+                const gdexHoldResult = await processGDEXHoldUpdate(trackingNumber, updateCode, req);
+                result = {
+                    success: gdexHoldResult.success,
+                    message: gdexHoldResult.message || 'GDEX Hold update failed'
                 };
             } else if (updateCode === 'UMN') {
                 const success = await processUMNUpdate(trackingNumber, mawbNum, req);

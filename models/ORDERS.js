@@ -104,10 +104,11 @@ const orderSchema = new mongoose.Schema({
         reason: String,
         lastLocation: String,
     }],
-    // Add to your ORDERS schema:
-    podBase64: String,      // Pure Base64 string
+    podBase64: String,      // First Base64 image
+    podBase64_2: String,    // Second Base64 image  
+    podBase64_3: String,    // Third Base64 image
     podUpdated: String,     // ISO date string
-    podSource: String       // 'detrack' or other source
+    podSource: String        // 'detrack' or other source
 }, { collection: 'orders' });
 
 module.exports = orderSchema; // schema only
