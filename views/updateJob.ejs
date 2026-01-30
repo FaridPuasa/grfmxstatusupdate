@@ -496,11 +496,11 @@
                 if (data.success && data.mawbs && data.mawbs.length > 0) {
                     console.log(`✅ Found ${data.mawbs.length} MAWBs with unscanned jobs`);
 
-                    // Add MAWB options with "Unscanned" label
+                    // In loadRecentMAWBs function, update the option creation:
                     data.mawbs.forEach(mawb => {
                         const option = document.createElement('option');
                         option.value = mawb.mawbNo;
-                        // Format: MAWB (Unscanned / Total) - Product
+                        // Updated format with On Hold info
                         option.textContent = `${mawb.mawbNo} (${mawb.unscannedJobs}/${mawb.totalJobs} Unscanned) - ${mawb.product}`;
                         option.setAttribute('data-total', mawb.totalJobs);
                         option.setAttribute('data-unscanned', mawb.unscannedJobs);
@@ -509,6 +509,13 @@
                         option.setAttribute('data-product', mawb.product);
                         option.setAttribute('data-percentage-unscanned', mawb.percentageUnscanned);
                         option.setAttribute('data-percentage-scanned', mawb.percentageScanned);
+
+                        // NEW: Add On Hold breakdown attributes
+                        option.setAttribute('data-onhold-unscanned', mawb.statusBreakdown?.onHoldUnscanned || 0);
+                        option.setAttribute('data-onhold-scanned', mawb.statusBreakdown?.onHoldScanned || 0);
+                        option.setAttribute('data-info-received', mawb.statusBreakdown?.infoReceived || 0);
+                        option.setAttribute('data-custom-clearing', mawb.statusBreakdown?.customClearing || 0);
+
                         mawbSelect.appendChild(option);
                     });
 
@@ -3226,7 +3233,6 @@ EXAMPLE004\tBE9012\t
             }
         }
 
-        // Update the MAWB selection change event listener:
         document.getElementById('mawbNum').addEventListener('change', function () {
             const selectedOption = this.options[this.selectedIndex];
             const unscanned = selectedOption.getAttribute('data-unscanned');
@@ -3236,6 +3242,12 @@ EXAMPLE004\tBE9012\t
             const product = selectedOption.getAttribute('data-product');
             const percentageUnscanned = selectedOption.getAttribute('data-percentage-unscanned');
             const percentageScanned = selectedOption.getAttribute('data-percentage-scanned');
+
+            // NEW: Get On Hold breakdown if available
+            const onHoldUnscanned = selectedOption.getAttribute('data-onhold-unscanned') || 0;
+            const onHoldScanned = selectedOption.getAttribute('data-onhold-scanned') || 0;
+            const infoReceived = selectedOption.getAttribute('data-info-received') || 0;
+            const customClearing = selectedOption.getAttribute('data-custom-clearing') || 0;
 
             if (this.value) {
                 // Create or update status display
@@ -3250,15 +3262,28 @@ EXAMPLE004\tBE9012\t
                 const otherJobs = total - unscanned - scanned;
                 const percentageOther = Math.round(otherJobs / total * 100);
 
+                // Calculate On Hold percentages
+                const onHoldTotal = parseInt(onHoldUnscanned) + parseInt(onHoldScanned);
+                const percentageOnHoldUnscanned = onHoldTotal > 0 ?
+                    Math.round((onHoldUnscanned / onHoldTotal) * 100) : 0;
+                const percentageOnHoldScanned = onHoldTotal > 0 ?
+                    Math.round((onHoldScanned / onHoldTotal) * 100) : 0;
+
                 statusDiv.innerHTML = `
             <h6>MAWB ${this.value} Status Breakdown (${product}):</h6>
             <div class="row">
                 <div class="col-md-6">
-                    <p><strong>Unscanned (Info Received):</strong> ${unscanned} jobs <span class="badge bg-warning">${percentageUnscanned}%</span></p>
-                    <p><strong>Scanned (Processing):</strong> ${scanned} jobs <span class="badge bg-info">${percentageScanned}%</span></p>
-                    <p><strong>At Warehouse:</strong> ${warehouse} jobs</p>
+                    <p><strong>Unscanned (Ready to Scan):</strong> ${unscanned} jobs</p>
+                    <p class="ms-3">
+                        • Info Received: <span class="badge bg-warning">${infoReceived}</span><br>
+                        • Custom Clearing: <span class="badge bg-warning">${customClearing}</span><br>
+                        • On Hold (Unscanned): <span class="badge bg-warning">${onHoldUnscanned}</span>
+                    </p>
+                    <p><strong>Scanned (Processing/Completed):</strong> ${scanned} jobs</p>
+                    <p><strong>On Hold (Already Scanned):</strong> ${onHoldScanned} jobs <span class="badge bg-secondary">Done</span></p>
                 </div>
                 <div class="col-md-6">
+                    <p><strong>At Warehouse:</strong> ${warehouse} jobs <span class="badge bg-success">✓</span></p>
                     <p><strong>Other Status:</strong> ${otherJobs} jobs <span class="badge bg-secondary">${percentageOther}%</span></p>
                     <p><strong>Total Jobs:</strong> ${total}</p>
                     <p><strong>Ready to Scan:</strong> ${unscanned} unscanned jobs</p>
@@ -3278,6 +3303,19 @@ EXAMPLE004\tBE9012\t
                     Other (${percentageOther}%)
                 </div>
             </div>
+            ${onHoldTotal > 0 ? `
+            <div class="mt-2">
+                <small><strong>On Hold Breakdown:</strong></small>
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar bg-warning" style="width: ${percentageOnHoldUnscanned}%">
+                        Unscanned (${percentageOnHoldUnscanned}%)
+                    </div>
+                    <div class="progress-bar bg-secondary" style="width: ${percentageOnHoldScanned}%">
+                        Scanned (${percentageOnHoldScanned}%)
+                    </div>
+                </div>
+            </div>
+            ` : ''}
         `;
             } else {
                 // Remove status display if no MAWB selected

@@ -15951,6 +15951,7 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
 
         // Aggregate to get MAWB stats - only show MAWBs with unscanned jobs
         // Update the unscannedJobs calculation in the aggregation
+        // Update the aggregation pipeline in /updateJob/recentMAWBs route
         const mawbStats = await ORDERS.aggregate([
             {
                 $match: {
@@ -15962,37 +15963,42 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     lastUpdateDateTime: { $gte: thirtyDaysAgo.toISOString() },
                     product: {
                         $in: ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext']
-                    }
+                    },
+                    // ADD: Filter for jobs that need scanning
+                    $or: [
+                        { currentStatus: "Info Received" },
+                        { currentStatus: "Custom Clearing" },
+                        {
+                            $and: [
+                                { currentStatus: "On Hold" },
+                                { warehouseEntry: "No" }
+                            ]
+                        }
+                    ]
                 }
             },
             {
                 $group: {
                     _id: '$mawbNo',
                     totalJobs: { $sum: 1 },
-                    // FIXED: Include both "Info Received" AND "Custom Clearing" as unscanned
-                    unscannedJobs: {
+                    // NEW LOGIC: Count by status categories
+                    infoReceivedJobs: {
                         $sum: {
-                            $cond: [
-                                {
-                                    $or: [
-                                        { $eq: ['$currentStatus', 'Info Received'] },
-                                        { $eq: ['$currentStatus', 'Custom Clearing'] }
-                                    ]
-                                },
-                                1,
-                                0
-                            ]
+                            $cond: [{ $eq: ['$currentStatus', 'Info Received'] }, 1, 0]
                         }
                     },
-                    // FIXED: Also update scannedJobs logic
-                    scannedJobs: {
+                    customClearingJobs: {
+                        $sum: {
+                            $cond: [{ $eq: ['$currentStatus', 'Custom Clearing'] }, 1, 0]
+                        }
+                    },
+                    onHoldUnscannedJobs: {
                         $sum: {
                             $cond: [
                                 {
-                                    $or: [
-                                        { $eq: ['$currentStatus', 'At Warehouse'] },
-                                        { $eq: ['$currentStatus', 'In Sorting Area'] },
-                                        { $eq: ['$currentStatus', 'On Hold'] }
+                                    $and: [
+                                        { $eq: ['$currentStatus', 'On Hold'] },
+                                        { $eq: ['$warehouseEntry', 'No'] }
                                     ]
                                 },
                                 1,
@@ -16002,7 +16008,44 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     },
                     atWarehouseJobs: {
                         $sum: {
-                            $cond: [{ $eq: ['$warehouseEntry', 'Yes'] }, 1, 0]
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ['$warehouseEntry', 'Yes'] },
+                                        { $eq: ['$currentStatus', 'At Warehouse'] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    inSortingAreaJobs: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ['$warehouseEntry', 'Yes'] },
+                                        { $eq: ['$currentStatus', 'In Sorting Area'] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    onHoldScannedJobs: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ['$currentStatus', 'On Hold'] },
+                                        { $eq: ['$warehouseEntry', 'Yes'] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
                         }
                     },
                     latestUpdate: { $max: '$lastUpdateDateTime' },
@@ -16011,7 +16054,26 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                 }
             },
             {
-                // ONLY include MAWBs that still have unscanned jobs
+                // Calculate unscanned jobs
+                $addFields: {
+                    unscannedJobs: {
+                        $add: [
+                            '$infoReceivedJobs',
+                            '$customClearingJobs',
+                            '$onHoldUnscannedJobs'
+                        ]
+                    },
+                    scannedJobs: {
+                        $add: [
+                            '$atWarehouseJobs',
+                            '$inSortingAreaJobs',
+                            '$onHoldScannedJobs'
+                        ]
+                    }
+                }
+            },
+            {
+                // Only include MAWBs with unscanned jobs
                 $match: {
                     unscannedJobs: { $gt: 0 }
                 }
@@ -16022,13 +16084,16 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     totalJobs: 1,
                     unscannedJobs: 1,
                     scannedJobs: 1,
-                    atWarehouseJobs: 1,
-                    otherJobs: {
-                        $subtract: [
-                            '$totalJobs',
-                            { $add: ['$unscannedJobs', '$scannedJobs'] }
-                        ]
+                    // Detailed breakdown for frontend
+                    statusBreakdown: {
+                        infoReceived: '$infoReceivedJobs',
+                        customClearing: '$customClearingJobs',
+                        onHoldUnscanned: '$onHoldUnscannedJobs',
+                        atWarehouse: '$atWarehouseJobs',
+                        inSortingArea: '$inSortingAreaJobs',
+                        onHoldScanned: '$onHoldScannedJobs'
                     },
+                    atWarehouseJobs: 1,
                     latestUpdate: 1,
                     product: 1,
                     sampleTracking: 1,
@@ -16065,6 +16130,7 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
         }
 
         // Format for frontend
+        // Format for frontend
         const formattedMAWBs = mawbStats.map(mawb => ({
             mawbNo: mawb.mawbNo,
             totalJobs: mawb.totalJobs,
@@ -16076,7 +16142,16 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
             sampleTracking: mawb.sampleTracking,
             lastUpdated: formatDateForDisplay(mawb.latestUpdate),
             percentageUnscanned: Math.round(mawb.percentageUnscanned || 0),
-            percentageScanned: Math.round(mawb.percentageScanned || 0)
+            percentageScanned: Math.round(mawb.percentageScanned || 0),
+            // ADD status breakdown
+            statusBreakdown: mawb.statusBreakdown || {
+                infoReceived: 0,
+                customClearing: 0,
+                onHoldUnscanned: 0,
+                atWarehouse: 0,
+                inSortingArea: 0,
+                onHoldScanned: 0
+            }
         }));
 
         res.json({
