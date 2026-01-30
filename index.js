@@ -4741,7 +4741,7 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
     try {
         // epod should be an array of Base64 strings
         let epodArray = [];
-        
+
         if (Array.isArray(epod)) {
             epodArray = epod;
         } else if (typeof epod === 'string' && epod.length > 0) {
@@ -5519,10 +5519,10 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                     detrackData.photo_2_file_url,
                     detrackData.photo_3_file_url
                 ];
-                
+
                 console.log(`✅ Using pre-converted Base64 PODs for ${consignmentID} (3 images in array)`);
                 console.log(`   Array length: ${epodArray.length}`);
-                
+
             } else if (detrackData.photo_1_file_url || detrackData.photo_2_file_url || detrackData.photo_3_file_url) {
                 // Check database for saved PODs
                 const order = await ORDERS.findOne({ doTrackingNumber: consignmentID });
@@ -5533,7 +5533,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                         order.podBase64_2,
                         order.podBase64_3
                     ].filter(Boolean); // Remove any null/undefined
-                    
+
                     console.log(`✅ Found ${epodArray.length} PODs in database for ${consignmentID}`);
                 } else {
                     console.log(`⚠️ No order found in database for ${consignmentID}`);
@@ -5597,6 +5597,17 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             epod_count: trackingData.epod.length,
             epod_is_array: Array.isArray(trackingData.epod)
         }));
+
+        console.log(`\n📤📤📤 GDEX API REQUEST BODY 📤📤📤`);
+        console.log(`========================================`);
+        console.log(JSON.stringify(trackingData, null, 2));
+        console.log(`========================================\n`);
+
+        // Also add this to see the array structure clearly:
+        console.log(`🔍 POD ARRAY DETAILS:`);
+        console.log(`   Is Array: ${Array.isArray(trackingData.epod)}`);
+        console.log(`   Length: ${trackingData.epod.length}`);
+        console.log(`   First POD first 100 chars: "${trackingData.epod[0]?.substring(0, 100)}..."`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
