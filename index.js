@@ -1014,9 +1014,9 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkActiveDeliveriesStatus, 600000);
 setInterval(checkStaleInfoReceivedJobs, 86400000);
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
-/* checkActiveDeliveriesStatus();
+checkActiveDeliveriesStatus();
 checkStaleInfoReceivedJobs();
-checkAndUpdateEmptyAreaOrders(); */
+checkAndUpdateEmptyAreaOrders();
 
 // --- Utility: normalize Mongo date field (string or {$date}) ---
 function normalizeDate(raw) {
@@ -12816,14 +12816,14 @@ const queue = [];
 let isProcessing = false;
 
 // Watch for new order inserts
-/* orderWatch.on('change', async (change) => {
+orderWatch.on('change', async (change) => {
     if (change.operationType === "insert") {
         queue.push(change);
         if (!isProcessing) {
             processQueue();
         }
     }
-}); */
+});
 
 async function processQueue() {
     isProcessing = true;
