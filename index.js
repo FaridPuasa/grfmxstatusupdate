@@ -586,7 +586,94 @@ async function checkActiveDeliveriesStatus() {
                     continue; // Skip the regular processing below
                 }
 
-                // ... rest of non-GDEX processing (same as before) ...
+                // ========== NON-GDEX PRODUCT PROCESSING ==========
+                if (isCompleted && (product !== 'gdex' && product !== 'gdext')) {
+                    console.log(`\n✅ Processing non-GDEX completed order: ${trackingNumber}, Product: ${product}`);
+
+                    // Update MongoDB status for completed non-GDEX orders
+                    const update = {
+                        currentStatus: "Completed",
+                        lastUpdateDateTime: bruneiTimeString,
+                        latestLocation: "Customer",
+                        lastUpdatedBy: "System",
+                        assignedTo: data.data.assign_to || assignedTo || '-',
+                        detrackCompletedTime: data.data.completed_time || bruneiTimeString,
+                        $push: {
+                            history: {
+                                statusHistory: "Completed",
+                                dateUpdated: bruneiTimeString,
+                                updatedBy: "System",
+                                lastAssignedTo: data.data.assign_to || assignedTo || '-',
+                                lastLocation: "Customer",
+                                detrackCompletedTime: data.data.completed_time || bruneiTimeString
+                            }
+                        }
+                    };
+
+                    // If there's a POD image, download and save it (single POD for non-GDEX)
+                    if (data.data.photo_1_file_url) {
+                        console.log(`📸 Downloading POD for non-GDEX order ${trackingNumber}...`);
+                        try {
+                            const podBase64 = await downloadAndConvertToBase64(data.data.photo_1_file_url, trackingNumber);
+                            if (podBase64) {
+                                update.podBase64 = podBase64;
+                                update.podUpdated = new Date().toISOString();
+                                update.podSource = 'detrack';
+                                console.log(`✅ POD saved for non-GDEX order`);
+                            }
+                        } catch (podError) {
+                            console.log(`⚠️ Could not download POD for non-GDEX order: ${podError.message}`);
+                        }
+                    }
+
+                    await ORDERS.findOneAndUpdate(
+                        { doTrackingNumber: trackingNumber },
+                        update,
+                        { upsert: false }
+                    );
+
+                    console.log(`✅ Non-GDEX order ${trackingNumber} updated to Completed`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+
+                // Check for failed non-GDEX orders
+                if (data.data.status?.toLowerCase() === 'failed' && (product !== 'gdex' && product !== 'gdext')) {
+                    console.log(`\n❌ Processing failed non-GDEX order: ${trackingNumber}, Product: ${product}`);
+
+                    const update = {
+                        currentStatus: "Failed",
+                        lastUpdateDateTime: bruneiTimeString,
+                        latestLocation: "Customer",
+                        lastUpdatedBy: "System",
+                        latestReason: data.data.reason || 'Unknown reason',
+                        assignedTo: data.data.assign_to || assignedTo || '-',
+                        attempt: data.data.attempt || 1,
+                        $push: {
+                            history: {
+                                statusHistory: "Failed",
+                                dateUpdated: bruneiTimeString,
+                                updatedBy: "System",
+                                lastAssignedTo: data.data.assign_to || assignedTo || '-',
+                                reason: data.data.reason || 'Unknown reason',
+                                lastLocation: "Customer"
+                            }
+                        }
+                    };
+
+                    await ORDERS.findOneAndUpdate(
+                        { doTrackingNumber: trackingNumber },
+                        update,
+                        { upsert: false }
+                    );
+
+                    console.log(`✅ Non-GDEX order ${trackingNumber} updated to Failed`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+
+                // If still active (not completed or failed), just skip
+                console.log(`⏭️ Order ${trackingNumber} still active (${data.data.status}), skipping.`);
 
             } catch (apiError) {
                 console.error(`❌ Error checking tracking ${trackingNumber}:`, apiError.response?.data || apiError.message);
