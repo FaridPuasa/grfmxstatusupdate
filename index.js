@@ -4739,10 +4739,16 @@ async function getGDEXToken(retries = 3) {
 
 async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescription, locationDescription, token, reasoncode = "", epod = "", returnflag = false) {
     try {
-        // epod should already be a string (comma-separated Base64 images)
-        const epodString = typeof epod === 'string' ? epod :
-            Array.isArray(epod) ? epod.join(',') :
-                "";
+        // epod should be an array of Base64 strings
+        let epodArray = [];
+        
+        if (Array.isArray(epod)) {
+            epodArray = epod;
+        } else if (typeof epod === 'string' && epod.length > 0) {
+            // If it's a comma-separated string, convert to array
+            epodArray = epod.split(',');
+        }
+        // else: empty array
 
         const trackingData = {
             consignmentno: consignmentID,
@@ -4751,13 +4757,13 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
             statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
             reasoncode: reasoncode,
             locationdescription: locationDescription,
-            epod: epodString, // String (comma-separated Base64 images)
+            epod: epodArray, // ARRAY of Base64 strings
             deliverypartner: "gorush",
             returnflag: returnflag
         };
 
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
-        console.log(`POD format: ${epodString ? 'String with ' + epodString.split(',').length + ' images' : 'No POD'}`);
+        console.log(`POD format: ${epodArray.length > 0 ? 'Array with ' + epodArray.length + ' images' : 'Empty array'}`);
         console.log(`Return flag: ${returnflag ? 'TRUE (return goods)' : 'FALSE (normal delivery)'}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
@@ -4779,6 +4785,7 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
         console.error(`🔥 Error sending GDEX ${GDEX_ENV.toUpperCase()} tracking webhook ${statusCode} for ${consignmentID}:`, error.message);
         if (error.response) {
             console.error(`🔥 Response data:`, error.response.data);
+            console.error(`🔥 Request body sent:`, JSON.stringify(error.config?.data).substring(0, 500));
         }
         return false;
     }
@@ -5493,7 +5500,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
         console.log(`=== Processing GDEX clear job for: ${consignmentID} ===`);
         console.log(`Detrack status: ${detrackData?.status}`);
 
-        let statusCode, statusDescription, reasonCode, locationDescription, epodString = "";
+        let statusCode, statusDescription, reasonCode, locationDescription, epodArray = [];
 
         // Check if job is completed or failed
         if (detrackData.status === 'completed') {
@@ -5506,74 +5513,28 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
             // Check if we have Base64 images already
             if (detrackData.podAlreadyConverted === true && detrackData.photo_1_file_url) {
-                // Concatenate all 3 PODs into one string separated by commas
-                const podArray = [];
-
-                // Add POD 1 (required)
-                if (detrackData.photo_1_file_url) {
-                    podArray.push(detrackData.photo_1_file_url);
-                } else {
-                    console.error(`❌ Missing POD 1 for GDEX completed job ${consignmentID}`);
-                    return false;
-                }
-
-                // Add POD 2 (required)
-                if (detrackData.photo_2_file_url) {
-                    podArray.push(detrackData.photo_2_file_url);
-                } else {
-                    console.error(`❌ Missing POD 2 for GDEX completed job ${consignmentID}`);
-                    return false;
-                }
-
-                // Add POD 3 (required)
-                if (detrackData.photo_3_file_url) {
-                    podArray.push(detrackData.photo_3_file_url);
-                } else {
-                    console.error(`❌ Missing POD 3 for GDEX completed job ${consignmentID}`);
-                    return false;
-                }
-
-                // Join all PODs with commas
-                epodString = podArray.join(',');
-                console.log(`✅ Using pre-converted Base64 PODs for ${consignmentID} (all 3 images concatenated)`);
-                console.log(`   Total length: ${epodString.length} characters`);
-
+                // Create array with all 3 PODs
+                epodArray = [
+                    detrackData.photo_1_file_url,
+                    detrackData.photo_2_file_url,
+                    detrackData.photo_3_file_url
+                ];
+                
+                console.log(`✅ Using pre-converted Base64 PODs for ${consignmentID} (3 images in array)`);
+                console.log(`   Array length: ${epodArray.length}`);
+                
             } else if (detrackData.photo_1_file_url || detrackData.photo_2_file_url || detrackData.photo_3_file_url) {
-                // We should already have saved PODs via saveAllPODsToDatabase
                 // Check database for saved PODs
                 const order = await ORDERS.findOne({ doTrackingNumber: consignmentID });
                 if (order) {
-                    // Collect all 3 PODs from database
-                    const podArray = [];
-
-                    // POD 1 (required)
-                    if (order.podBase64) {
-                        podArray.push(order.podBase64);
-                    } else {
-                        console.error(`❌ Missing POD 1 in database for ${consignmentID}`);
-                        return false;
-                    }
-
-                    // POD 2 (required)
-                    if (order.podBase64_2) {
-                        podArray.push(order.podBase64_2);
-                    } else {
-                        console.error(`❌ Missing POD 2 in database for ${consignmentID}`);
-                        return false;
-                    }
-
-                    // POD 3 (required)
-                    if (order.podBase64_3) {
-                        podArray.push(order.podBase64_3);
-                    } else {
-                        console.error(`❌ Missing POD 3 in database for ${consignmentID}`);
-                        return false;
-                    }
-
-                    // Join all PODs with commas
-                    epodString = podArray.join(',');
-                    console.log(`✅ Found all 3 PODs in database for ${consignmentID}`);
-                    console.log(`   Concatenated length: ${epodString.length} characters`);
+                    // Collect all 3 PODs from database into array
+                    epodArray = [
+                        order.podBase64,
+                        order.podBase64_2,
+                        order.podBase64_3
+                    ].filter(Boolean); // Remove any null/undefined
+                    
+                    console.log(`✅ Found ${epodArray.length} PODs in database for ${consignmentID}`);
                 } else {
                     console.log(`⚠️ No order found in database for ${consignmentID}`);
                     return false;
@@ -5585,7 +5546,13 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                 return false;
             }
 
-            console.log(`📤 Sending FD (Delivered) with all 3 PODs concatenated for ${consignmentID}`);
+            // Validate we have exactly 3 PODs
+            if (epodArray.length !== 3) {
+                console.error(`❌ Missing PODs for GDEX. Expected 3, got ${epodArray.length}`);
+                return false;
+            }
+
+            console.log(`📤 Sending FD (Delivered) with 3 PODs in array for ${consignmentID}`);
 
         } else if (detrackData.status === 'failed') {
             statusCode = "DF";
@@ -5600,7 +5567,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             }
 
             locationDescription = "Go Rush Warehouse";
-            epodString = ""; // No PODs needed for failed delivery
+            epodArray = []; // Empty array for failed delivery
 
             console.log(`📤 Sending DF (Failed) status for ${consignmentID}, reason code: ${reasonCode}`);
 
@@ -5609,7 +5576,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             return false;
         }
 
-        // Prepare tracking data with concatenated PODs string
+        // Prepare tracking data with PODs as array
         const trackingData = {
             consignmentno: consignmentID,
             statuscode: statusCode,
@@ -5617,14 +5584,19 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
             reasoncode: reasonCode,
             locationdescription: locationDescription,
-            epod: epodString, // String (comma-separated Base64 images) NOT array
+            epod: epodArray, // ARRAY of Base64 strings
             deliverypartner: "gorush",
             returnflag: returnflag
         };
 
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
-        console.log(`POD format: String with ${epodString ? epodString.split(',').length : 0} images concatenated`);
-        console.log(`Total characters: ${epodString.length}`);
+        console.log(`POD format: Array with ${epodArray.length} images`);
+        console.log(`Request body preview:`, JSON.stringify({
+            consignmentno: trackingData.consignmentno,
+            statuscode: trackingData.statuscode,
+            epod_count: trackingData.epod.length,
+            epod_is_array: Array.isArray(trackingData.epod)
+        }));
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -5636,7 +5608,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
         if (response.data.success) {
             console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} sent successfully for ${consignmentID}`);
-            console.log(`   ${epodString ? epodString.split(',').length : 0} POD(s) included as concatenated string`);
+            console.log(`   ${epodArray.length} POD(s) included as array`);
             return true;
         } else {
             console.error(`❌ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} failed for ${consignmentID}:`, response.data.error);
@@ -5647,7 +5619,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
         console.error(`🔥 Error in updateGDEXClearJob for ${consignmentID}:`, error.message);
         if (error.response) {
             console.error(`🔥 Response data:`, error.response.data);
-            console.error(`🔥 Request data:`, error.config?.data);
+            console.error(`🔥 Request data sent:`, JSON.stringify(error.config?.data).substring(0, 500));
         }
         return false;
     }
