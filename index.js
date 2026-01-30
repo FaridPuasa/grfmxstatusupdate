@@ -1014,9 +1014,9 @@ async function checkAndUpdateEmptyAreaOrders() {
 setInterval(checkActiveDeliveriesStatus, 600000);
 setInterval(checkStaleInfoReceivedJobs, 86400000);
 setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
-checkActiveDeliveriesStatus();
+/* checkActiveDeliveriesStatus();
 checkStaleInfoReceivedJobs();
-checkAndUpdateEmptyAreaOrders();
+checkAndUpdateEmptyAreaOrders(); */
 
 // --- Utility: normalize Mongo date field (string or {$date}) ---
 function normalizeDate(raw) {
@@ -4883,120 +4883,227 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
 // ==================================================
 
 async function downloadAndConvertToBase64Immediate(imageUrl, consignmentID, imageNumber, maxRetries = 3) {
-    console.log(`   🚨 POD ${imageNumber} download for ${consignmentID} (max ${maxRetries} retries)`);
+    console.log(`   🚨 POD ${imageNumber} download for ${consignmentID}`);
+    console.log(`   Original URL: ${imageUrl}`);
+
+    // If URL is invalid or empty, throw immediately
+    if (!imageUrl || !imageUrl.startsWith('http')) {
+        throw new Error(`Invalid URL for POD ${imageNumber}: ${imageUrl}`);
+    }
 
     for (let retry = 0; retry <= maxRetries; retry++) {
-        console.log(`     Attempt ${retry + 1}/${maxRetries + 1} for POD ${imageNumber}...`);
+        console.log(`     📥 Attempt ${retry + 1}/${maxRetries + 1}`);
 
-        // Try multiple approaches each retry
-        const approaches = [
-            { name: 'original_url', url: imageUrl },
-            { name: 'detrack_api_fresh', getUrl: true }
-        ];
+        try {
+            // Try direct download first
+            console.log(`       Downloading from: ${imageUrl.substring(0, 80)}...`);
 
-        for (let i = 0; i < approaches.length; i++) {
-            const approach = approaches[i];
-            console.log(`       Approach: ${approach.name}`);
+            const response = await axios.get(imageUrl, {
+                responseType: 'arraybuffer',
+                headers: {
+                    'X-API-KEY': apiKey,
+                    'Accept': 'image/*',
+                    'User-Agent': 'Mozilla/5.0'
+                },
+                timeout: 15000 // Longer timeout
+            });
 
-            try {
-                let urlToDownload = approach.url;
-
-                if (approach.getUrl) {
-                    console.log(`       Fetching fresh data from Detrack API...`);
-                    const refreshResponse = await axios.get(
-                        `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-API-KEY': apiKey
-                            },
-                            timeout: 8000
-                        }
-                    );
-
-                    // Get the correct photo URL based on image number
-                    let photoField = '';
-                    switch (imageNumber) {
-                        case 1: photoField = 'photo_1_file_url'; break;
-                        case 2: photoField = 'photo_2_file_url'; break;
-                        case 3: photoField = 'photo_3_file_url'; break;
-                    }
-
-                    if (refreshResponse.data.data?.[photoField]) {
-                        urlToDownload = refreshResponse.data.data[photoField];
-                        console.log(`       Got fresh URL for POD ${imageNumber}: ${urlToDownload}`);
-                    } else {
-                        console.log(`       No photo ${imageNumber} URL in fresh data`);
-                        continue;
-                    }
-                }
-
-                const response = await axios.get(urlToDownload, {
-                    responseType: 'arraybuffer',
-                    headers: {
-                        'X-API-KEY': apiKey,
-                        'Accept': 'image/*'
-                    },
-                    timeout: 10000
-                });
-
-                console.log(`       ✅ POD ${imageNumber}: Downloaded ${response.data.length} bytes`);
-                const base64Image = await compressAndConvertToBase64(response.data);
-                console.log(`       ✅ POD ${imageNumber}: Converted to Base64 (${base64Image.length} chars)`);
-                return base64Image;
-
-            } catch (error) {
-                console.log(`       ❌ POD ${imageNumber} approach failed: ${error.message}`);
-
-                // If this was the last approach in the last retry, throw the error
-                if (i === approaches.length - 1 && retry === maxRetries) {
-                    throw new Error(`POD ${imageNumber} download failed after ${maxRetries + 1} attempts: ${error.message}`);
-                }
-
-                // Wait before next approach
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            if (!response.data || response.data.length === 0) {
+                throw new Error('Empty response data');
             }
-        }
 
-        // Wait before next retry (exponential backoff)
-        if (retry < maxRetries) {
-            const delay = Math.min(2000 * Math.pow(2, retry), 10000); // Max 10 seconds
-            console.log(`     ⏳ POD ${imageNumber}: Waiting ${delay}ms before retry...`);
+            console.log(`       ✅ Downloaded: ${response.data.length} bytes`);
+
+            const base64Image = await compressAndConvertToBase64(response.data);
+
+            // CRITICAL: Validate it's actually Base64
+            if (!base64Image || base64Image.length < 100) {
+                throw new Error(`Base64 too short: ${base64Image?.length || 0} chars`);
+            }
+
+            if (base64Image.startsWith('http')) {
+                throw new Error(`Base64 starts with http (wrong data)`);
+            }
+
+            console.log(`       ✅ Base64: ${base64Image.length} chars`);
+            console.log(`       ✅ Preview: ${base64Image.substring(0, 30)}...`);
+            return base64Image;
+
+        } catch (downloadError) {
+            console.error(`       ❌ Download attempt ${retry + 1} failed: ${downloadError.message}`);
+
+            // Try to get fresh URL from Detrack API
+            try {
+                console.log(`       🔄 Getting fresh URL from Detrack API...`);
+                const refreshResponse = await axios.get(
+                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey
+                        },
+                        timeout: 5000
+                    }
+                );
+
+                // Get the correct photo URL based on image number
+                let photoField = '';
+                switch (imageNumber) {
+                    case 1: photoField = 'photo_1_file_url'; break;
+                    case 2: photoField = 'photo_2_file_url'; break;
+                    case 3: photoField = 'photo_3_file_url'; break;
+                }
+
+                if (refreshResponse.data.data?.[photoField]) {
+                    const freshUrl = refreshResponse.data.data[photoField];
+                    console.log(`       🔄 Got fresh URL for retry: ${freshUrl.substring(0, 80)}...`);
+
+                    // Update imageUrl for next retry attempt
+                    imageUrl = freshUrl;
+                }
+            } catch (apiError) {
+                console.log(`       ⚠️ Could not get fresh URL: ${apiError.message}`);
+            }
+
+            // If last retry, throw error
+            if (retry === maxRetries) {
+                throw new Error(`POD ${imageNumber}: Failed after ${maxRetries + 1} attempts. Last error: ${downloadError.message}`);
+            }
+
+            // Wait before next retry
+            const delay = Math.min(3000 * Math.pow(2, retry), 30000);
+            console.log(`       ⏳ Waiting ${delay}ms before next retry...`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 
-    throw new Error(`POD ${imageNumber}: All ${maxRetries + 1} attempts failed`);
+    throw new Error(`POD ${imageNumber}: All attempts failed`);
+}
+
+async function downloadAndConvertToBase64Immediate(imageUrl, consignmentID, imageNumber, maxRetries = 3) {
+    console.log(`   🚨 POD ${imageNumber} download for ${consignmentID}`);
+    console.log(`   Original URL: ${imageUrl}`);
+
+    // If URL is invalid or empty, throw immediately
+    if (!imageUrl || !imageUrl.startsWith('http')) {
+        throw new Error(`Invalid URL for POD ${imageNumber}: ${imageUrl}`);
+    }
+
+    for (let retry = 0; retry <= maxRetries; retry++) {
+        console.log(`     📥 Attempt ${retry + 1}/${maxRetries + 1}`);
+
+        try {
+            // Try direct download first
+            console.log(`       Downloading from: ${imageUrl.substring(0, 80)}...`);
+
+            const response = await axios.get(imageUrl, {
+                responseType: 'arraybuffer',
+                headers: {
+                    'X-API-KEY': apiKey,
+                    'Accept': 'image/*',
+                    'User-Agent': 'Mozilla/5.0'
+                },
+                timeout: 15000 // Longer timeout
+            });
+
+            if (!response.data || response.data.length === 0) {
+                throw new Error('Empty response data');
+            }
+
+            console.log(`       ✅ Downloaded: ${response.data.length} bytes`);
+
+            const base64Image = await compressAndConvertToBase64(response.data);
+
+            // CRITICAL: Validate it's actually Base64
+            if (!base64Image || base64Image.length < 100) {
+                throw new Error(`Base64 too short: ${base64Image?.length || 0} chars`);
+            }
+
+            if (base64Image.startsWith('http')) {
+                throw new Error(`Base64 starts with http (wrong data)`);
+            }
+
+            console.log(`       ✅ Base64: ${base64Image.length} chars`);
+            console.log(`       ✅ Preview: ${base64Image.substring(0, 30)}...`);
+            return base64Image;
+
+        } catch (downloadError) {
+            console.error(`       ❌ Download attempt ${retry + 1} failed: ${downloadError.message}`);
+
+            // Try to get fresh URL from Detrack API
+            try {
+                console.log(`       🔄 Getting fresh URL from Detrack API...`);
+                const refreshResponse = await axios.get(
+                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': apiKey
+                        },
+                        timeout: 5000
+                    }
+                );
+
+                // Get the correct photo URL based on image number
+                let photoField = '';
+                switch (imageNumber) {
+                    case 1: photoField = 'photo_1_file_url'; break;
+                    case 2: photoField = 'photo_2_file_url'; break;
+                    case 3: photoField = 'photo_3_file_url'; break;
+                }
+
+                if (refreshResponse.data.data?.[photoField]) {
+                    const freshUrl = refreshResponse.data.data[photoField];
+                    console.log(`       🔄 Got fresh URL for retry: ${freshUrl.substring(0, 80)}...`);
+
+                    // Update imageUrl for next retry attempt
+                    imageUrl = freshUrl;
+                }
+            } catch (apiError) {
+                console.log(`       ⚠️ Could not get fresh URL: ${apiError.message}`);
+            }
+
+            // If last retry, throw error
+            if (retry === maxRetries) {
+                throw new Error(`POD ${imageNumber}: Failed after ${maxRetries + 1} attempts. Last error: ${downloadError.message}`);
+            }
+
+            // Wait before next retry
+            const delay = Math.min(3000 * Math.pow(2, retry), 30000);
+            console.log(`       ⏳ Waiting ${delay}ms before next retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    throw new Error(`POD ${imageNumber}: All attempts failed`);
 }
 
 async function downloadAllPODsForGDEX(consignmentID, detrackData, maxRetries = 3) {
     console.log(`📸 Starting ALL-OR-NOTHING multi-POD download for ${consignmentID}`);
-    console.log(`   Max ${maxRetries} retries per image, ALL images must succeed`);
 
-    const requiredImages = 3; // GDEX requires ALL 3 images
+    const requiredImages = 3;
     const podImages = [];
-    let downloadErrors = [];
 
-    // Define the images we need to download
     const imagesToDownload = [
-        { number: 1, url: detrackData.photo_1_file_url, required: true },
-        { number: 2, url: detrackData.photo_2_file_url, required: true },
-        { number: 3, url: detrackData.photo_3_file_url, required: true }
+        { number: 1, url: detrackData.photo_1_file_url },
+        { number: 2, url: detrackData.photo_2_file_url },
+        { number: 3, url: detrackData.photo_3_file_url }
     ];
 
-    // Step 1: Validate we have all URLs before starting downloads
-    const missingImages = imagesToDownload.filter(img => !img.url);
-    if (missingImages.length > 0) {
-        const missingNumbers = missingImages.map(img => img.number);
-        throw new Error(`❌ Missing required POD URLs: ${missingNumbers.join(', ')}. All 3 PODs are required for GDEX.`);
+    // Validate URLs before starting
+    for (const image of imagesToDownload) {
+        if (!image.url || !image.url.startsWith('http')) {
+            throw new Error(`Missing or invalid URL for POD ${image.number}`);
+        }
     }
 
-    console.log(`✅ All 3 POD URLs available, starting download sequence...`);
+    console.log(`✅ All 3 POD URLs available, starting download...`);
 
-    // Step 2: Download all images sequentially (so we can fail fast)
+    // Download sequentially with all-or-nothing
     for (const image of imagesToDownload) {
         try {
             console.log(`\n   ===== DOWNLOADING POD ${image.number} =====`);
+
             const base64Image = await downloadAndConvertToBase64Immediate(
                 image.url,
                 consignmentID,
@@ -5004,23 +5111,22 @@ async function downloadAllPODsForGDEX(consignmentID, detrackData, maxRetries = 3
                 maxRetries
             );
 
-            if (base64Image) {
-                podImages.push(base64Image);
-                console.log(`   ✅ POD ${image.number}: SUCCESS (${base64Image.length} chars)`);
-            } else {
-                throw new Error(`POD ${image.number}: Download returned null`);
+            // EXTRA VALIDATION
+            if (!base64Image || base64Image.length < 100 || base64Image.startsWith('http')) {
+                throw new Error(`Invalid Base64 result for POD ${image.number}`);
             }
+
+            podImages.push(base64Image);
+            console.log(`   ✅ POD ${image.number}: SUCCESS (${base64Image.length} chars)`);
 
         } catch (error) {
             console.error(`   ❌ POD ${image.number}: CRITICAL FAILURE - ${error.message}`);
-            downloadErrors.push({ image: image.number, error: error.message });
 
-            // If any image fails, we should abort immediately
-            throw new Error(`ABORTING: POD ${image.number} failed. All-or-nothing requirement violated.`);
+            // ABORT ALL downloads if one fails
+            throw new Error(`ABORTING: POD ${image.number} failed. All-or-nothing requirement violated. Error: ${error.message}`);
         }
     }
 
-    // Step 3: Verify we got exactly 3 images
     if (podImages.length !== requiredImages) {
         throw new Error(`Download incomplete. Expected ${requiredImages} PODs, got ${podImages.length}`);
     }
@@ -5511,48 +5617,101 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
             console.log(`📸 Checking PODs for GDEX completed job ${consignmentID}`);
 
-            // Check if we have Base64 images already
-            if (detrackData.podAlreadyConverted === true && detrackData.photo_1_file_url) {
-                // Create array with all 3 PODs
+            // ========== CHECK IF WE ALREADY HAVE BASE64 PODS ==========
+            console.log(`🔍 Checking POD format in detrackData...`);
+
+            // Check what format we have
+            const pod1Type = detrackData.photo_1_file_url?.startsWith('http') ? 'URL' :
+                detrackData.photo_1_file_url?.startsWith('/9j/') ? 'Base64' :
+                    detrackData.photo_1_file_url?.startsWith('data:image') ? 'Base64 Data URI' : 'Unknown';
+
+            console.log(`   POD 1: ${pod1Type} (${detrackData.photo_1_file_url?.length || 0} chars)`);
+
+            // If we already have Base64 PODs in detrackData, use them directly
+            if (detrackData.podAlreadyConverted === true &&
+                detrackData.photo_1_file_url &&
+                detrackData.photo_2_file_url &&
+                detrackData.photo_3_file_url &&
+                !detrackData.photo_1_file_url.startsWith('http') &&
+                !detrackData.photo_2_file_url.startsWith('http') &&
+                !detrackData.photo_3_file_url.startsWith('http')) {
+
+                console.log(`✅ Using already converted Base64 PODs from detrackData`);
                 epodArray = [
                     detrackData.photo_1_file_url,
                     detrackData.photo_2_file_url,
                     detrackData.photo_3_file_url
                 ];
 
-                console.log(`✅ Using pre-converted Base64 PODs for ${consignmentID} (3 images in array)`);
-                console.log(`   Array length: ${epodArray.length}`);
+            } else {
+                // ========== TRY TO GET FRESH URLS FROM DETRACK API ==========
+                console.log(`🔄 Getting fresh POD URLs from Detrack API...`);
 
-            } else if (detrackData.photo_1_file_url || detrackData.photo_2_file_url || detrackData.photo_3_file_url) {
-                // Check database for saved PODs
-                const order = await ORDERS.findOne({ doTrackingNumber: consignmentID });
-                if (order) {
-                    // Collect all 3 PODs from database into array
-                    epodArray = [
-                        order.podBase64,
-                        order.podBase64_2,
-                        order.podBase64_3
-                    ].filter(Boolean); // Remove any null/undefined
+                try {
+                    const freshResponse = await axios.get(
+                        `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-KEY': apiKey
+                            },
+                            timeout: 8000
+                        }
+                    );
 
-                    console.log(`✅ Found ${epodArray.length} PODs in database for ${consignmentID}`);
-                } else {
-                    console.log(`⚠️ No order found in database for ${consignmentID}`);
+                    const freshData = freshResponse.data.data;
+
+                    if (freshData.photo_1_file_url && freshData.photo_2_file_url && freshData.photo_3_file_url) {
+                        console.log(`✅ Got fresh URLs from Detrack API`);
+
+                        // Create fresh detrackData with URLs
+                        const freshDetrackData = {
+                            status: detrackData.status,
+                            reason: detrackData.reason || '',
+                            address: detrackData.address,
+                            photo_1_file_url: freshData.photo_1_file_url,
+                            photo_2_file_url: freshData.photo_2_file_url,
+                            photo_3_file_url: freshData.photo_3_file_url,
+                            podAlreadyConverted: false
+                        };
+
+                        // Download ALL PODs fresh
+                        console.log(`📥 Downloading ALL 3 PODs from fresh URLs...`);
+                        const savedPODs = await saveAllPODsToDatabase(consignmentID, freshDetrackData, 3);
+
+                        if (savedPODs.length === 3) {
+                            epodArray = savedPODs;
+                            console.log(`✅ Fresh download successful! All 3 PODs are Base64`);
+                        } else {
+                            throw new Error(`Expected 3 PODs, got ${savedPODs.length}`);
+                        }
+
+                    } else {
+                        console.error(`❌ Missing POD URLs in fresh Detrack data`);
+                        return false;
+                    }
+
+                } catch (apiError) {
+                    console.error(`❌ Failed to get fresh Detrack data: ${apiError.message}`);
                     return false;
                 }
-            } else {
-                // No photo URLs available
-                console.error(`❌ No PODs available for GDEX delivery ${consignmentID}`);
-                console.error(`❌ GDEX requires all 3 POD images for completed delivery`);
-                return false;
             }
 
-            // Validate we have exactly 3 PODs
-            if (epodArray.length !== 3) {
-                console.error(`❌ Missing PODs for GDEX. Expected 3, got ${epodArray.length}`);
-                return false;
+            // Validate all PODs are Base64, not URLs
+            const invalidPODs = epodArray.filter(pod =>
+                !pod || pod.length < 100 || pod.startsWith('http')
+            );
+
+            if (invalidPODs.length > 0) {
+                console.error(`❌ Invalid PODs found: ${invalidPODs.length}`);
+                // Try to use what we have, but sanitize URLs
+                epodArray = epodArray.map(pod =>
+                    (pod && pod.startsWith('http')) ? "" : pod
+                );
+                console.log(`🧹 Sanitized URLs to empty strings`);
             }
 
-            console.log(`📤 Sending FD (Delivered) with 3 PODs in array for ${consignmentID}`);
+            console.log(`📤 Sending FD (Delivered) with ${epodArray.filter(p => p && p.length > 0).length}/3 valid PODs for ${consignmentID}`);
 
         } else if (detrackData.status === 'failed') {
             statusCode = "DF";
@@ -5576,7 +5735,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             return false;
         }
 
-        // Prepare tracking data with PODs as array
+        // Prepare tracking data
         const trackingData = {
             consignmentno: consignmentID,
             statuscode: statusCode,
@@ -5589,25 +5748,16 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             returnflag: returnflag
         };
 
-        console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
-        console.log(`POD format: Array with ${epodArray.length} images`);
-        console.log(`Request body preview:`, JSON.stringify({
-            consignmentno: trackingData.consignmentno,
-            statuscode: trackingData.statuscode,
-            epod_count: trackingData.epod.length,
-            epod_is_array: Array.isArray(trackingData.epod)
-        }));
+        // Debug log
+        console.log(`\n📤 FINAL REQUEST TO GDEX:`);
+        console.log(`   Consignment: ${consignmentID}`);
+        console.log(`   Status: ${statusCode}`);
+        console.log(`   Valid PODs: ${epodArray.filter(p => p && p.length > 0).length}/3`);
+        console.log(`   First POD type: ${epodArray[0]?.startsWith('http') ? 'URL ❌' : 'Base64 ✅'}`);
 
-        console.log(`\n📤📤📤 GDEX API REQUEST BODY 📤📤📤`);
-        console.log(`========================================`);
-        console.log(JSON.stringify(trackingData, null, 2));
-        console.log(`========================================\n`);
-
-        // Also add this to see the array structure clearly:
-        console.log(`🔍 POD ARRAY DETAILS:`);
-        console.log(`   Is Array: ${Array.isArray(trackingData.epod)}`);
-        console.log(`   Length: ${trackingData.epod.length}`);
-        console.log(`   First POD first 100 chars: "${trackingData.epod[0]?.substring(0, 100)}..."`);
+        if (epodArray[0] && !epodArray[0].startsWith('http')) {
+            console.log(`   First POD preview: ${epodArray[0].substring(0, 50)}...`);
+        }
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -5619,7 +5769,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
         if (response.data.success) {
             console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} sent successfully for ${consignmentID}`);
-            console.log(`   ${epodArray.length} POD(s) included as array`);
+            console.log(`   Valid PODs sent: ${epodArray.filter(p => p && p.length > 0).length}/3`);
             return true;
         } else {
             console.error(`❌ GDEX ${GDEX_ENV.toUpperCase()} Tracking webhook ${statusCode} failed for ${consignmentID}:`, response.data.error);
@@ -5628,10 +5778,6 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
     } catch (error) {
         console.error(`🔥 Error in updateGDEXClearJob for ${consignmentID}:`, error.message);
-        if (error.response) {
-            console.error(`🔥 Response data:`, error.response.data);
-            console.error(`🔥 Request data sent:`, JSON.stringify(error.config?.data).substring(0, 500));
-        }
         return false;
     }
 }
@@ -6075,7 +6221,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             // Get product early for decision making
             product = data.data.group_name;
 
-            // In the /updateDelivery route, find this section and update:
             if ((product == 'GDEX' || product == 'GDEXT') &&
                 data.data.status == 'completed' &&
                 (data.data.photo_1_file_url || data.data.photo_2_file_url || data.data.photo_3_file_url)) {
@@ -6083,7 +6228,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 console.log(`🚨 CRITICAL: Downloading all PODs immediately for GDEX completed job`);
                 console.log(`   Product: ${product}, Status: ${data.data.status}`);
 
-                // Create detrackData with all photo URLs
+                // Create detrackData with all photo URLs (NOT Base64 yet)
                 detrackData = {
                     status: data.data.status,
                     reason: data.data.reason || '',
@@ -6091,7 +6236,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     photo_1_file_url: data.data.photo_1_file_url || null,
                     photo_2_file_url: data.data.photo_2_file_url || null,
                     photo_3_file_url: data.data.photo_3_file_url || null,
-                    podAlreadyConverted: false,
+                    podAlreadyConverted: false,  // IMPORTANT: Set to false
                     downloadedImmediately: true
                 };
 
@@ -6101,6 +6246,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (savedPODs.length > 0) {
                     // Update detrackData with Base64 images
                     detrackData.podAlreadyConverted = true;
+                    detrackData.photo_1_file_url = savedPODs[0];
+                    detrackData.photo_2_file_url = savedPODs[1];
+                    detrackData.photo_3_file_url = savedPODs[2];
                     console.log(`✅ ${savedPODs.length} POD(s) saved to database for immediate GDEX processing`);
                 } else {
                     console.log(`❌ CRITICAL FAILURE: Could not download PODs for GDEX delivery`);
@@ -12668,14 +12816,14 @@ const queue = [];
 let isProcessing = false;
 
 // Watch for new order inserts
-orderWatch.on('change', async (change) => {
+/* orderWatch.on('change', async (change) => {
     if (change.operationType === "insert") {
         queue.push(change);
         if (!isProcessing) {
             processQueue();
         }
     }
-});
+}); */
 
 async function processQueue() {
     isProcessing = true;
@@ -21183,6 +21331,153 @@ async function validateProductForIIW(trackingNumber, mawbNum, product) {
         };
     }
 }
+// Add this function near your other helper functions
+function analyzeEPODArray(epodArray, consignmentID) {
+    console.log(`\n🔍🔍🔍 EPOD ARRAY ANALYSIS FOR ${consignmentID} 🔍🔍🔍`);
+
+    let base64Count = 0;
+    let urlCount = 0;
+    let emptyCount = 0;
+    let mixedCount = 0;
+
+    epodArray.forEach((item, index) => {
+        console.log(`\nPOD ${index + 1}:`);
+        console.log(`   Type: ${typeof item}`);
+        console.log(`   Length: ${item?.length || 0} chars`);
+
+        if (!item || item.length === 0) {
+            console.log(`   ❌ EMPTY`);
+            emptyCount++;
+        } else if (item.startsWith('http')) {
+            console.log(`   ❌ URL (starts with http): ${item.substring(0, 80)}...`);
+            urlCount++;
+        } else if (item.startsWith('/9j/') || item.startsWith('iVBORw0KGgo')) {
+            console.log(`   ✅ Base64 (JPEG/PNG)`);
+            console.log(`   First 50 chars: ${item.substring(0, 50)}...`);
+            base64Count++;
+        } else if (item.startsWith('data:image')) {
+            console.log(`   ✅ Base64 with Data URI`);
+            base64Count++;
+        } else if (item.includes('detrack') || item.includes('app.detrack')) {
+            console.log(`   ❌ Detrack URL`);
+            urlCount++;
+        } else {
+            console.log(`   ❓ UNKNOWN: ${item.substring(0, 50)}...`);
+            mixedCount++;
+        }
+    });
+
+    console.log(`\n📊 SUMMARY:`);
+    console.log(`   Base64 PODs: ${base64Count}/3`);
+    console.log(`   URL PODs: ${urlCount}/3`);
+    console.log(`   Empty: ${emptyCount}/3`);
+    console.log(`   Unknown: ${mixedCount}/3`);
+
+    if (urlCount > 0) {
+        console.log(`\n🚨 PROBLEM: ${urlCount} POD(s) are still URLs, not Base64!`);
+        console.log(`   GDEX expects Base64 strings, not URLs`);
+    }
+
+    if (base64Count === 3) {
+        console.log(`\n✅ SUCCESS: All 3 PODs are Base64`);
+    } else {
+        console.log(`\n❌ FAILURE: Only ${base64Count}/3 PODs converted to Base64`);
+    }
+
+    console.log(`🔍🔍🔍 END ANALYSIS 🔍🔍🔍\n`);
+}
+
+// Add this helper function
+function validateAndCleanEPODArray(epodArray, consignmentID) {
+    console.log(`\n🧹 Cleaning EPOD array for ${consignmentID}...`);
+
+    const cleanedArray = epodArray.map((pod, index) => {
+        // If it's a URL, return empty string
+        if (pod && pod.startsWith('http')) {
+            console.error(`   ❌ Removing URL from POD ${index + 1}: ${pod.substring(0, 80)}...`);
+            return ""; // GDEX might accept empty string for missing POD
+        }
+
+        // If it's valid Base64, keep it
+        if (pod && (pod.startsWith('/9j/') || pod.startsWith('iVBORw0KGgo') || pod.startsWith('data:image'))) {
+            console.log(`   ✅ Keeping Base64 POD ${index + 1} (${pod.length} chars)`);
+            return pod;
+        }
+
+        // Empty or invalid
+        console.log(`   ⚠️ POD ${index + 1} empty or invalid`);
+        return pod || "";
+    });
+
+    const validCount = cleanedArray.filter(pod =>
+        pod && pod.length > 100 && !pod.startsWith('http')
+    ).length;
+
+    console.log(`   📊 Result: ${validCount}/3 valid Base64 PODs`);
+    return cleanedArray;
+}
+
+// Add this function to clean URLs before sending to GDEX
+function sanitizeEPODArray(epodArray) {
+    return epodArray.map(pod => {
+        // If it's a URL, return empty string
+        if (pod && pod.startsWith('http')) {
+            return "";
+        }
+        // If it's valid Base64, return it
+        if (pod && pod.length > 100 && !pod.startsWith('http')) {
+            return pod;
+        }
+        // Otherwise empty string
+        return "";
+    });
+}
+
+// Add this function and run it ONCE to clean existing bad data
+async function cleanupBadPODs() {
+    console.log(`🧹 Cleaning up bad POD data in database...`);
+
+    try {
+        // Find orders with GDEX/GDEXT products that have URLs in POD fields
+        const badOrders = await ORDERS.find({
+            product: { $in: ['gdex', 'gdext'] },
+            $or: [
+                { podBase64: { $regex: '^https?://', $options: 'i' } },
+                { podBase64_2: { $regex: '^https?://', $options: 'i' } },
+                { podBase64_3: { $regex: '^https?://', $options: 'i' } }
+            ]
+        });
+
+        console.log(`Found ${badOrders.length} orders with URL PODs`);
+
+        for (const order of badOrders) {
+            console.log(`\nCleaning order: ${order.doTrackingNumber}`);
+
+            // Clear the bad POD data
+            await ORDERS.findOneAndUpdate(
+                { doTrackingNumber: order.doTrackingNumber },
+                {
+                    $unset: {
+                        podBase64: "",
+                        podBase64_2: "",
+                        podBase64_3: "",
+                        podUpdated: "",
+                        podSource: ""
+                    }
+                }
+            );
+
+            console.log(`✅ Cleared bad POD data for ${order.doTrackingNumber}`);
+        }
+
+        console.log(`\n🎉 Cleanup complete!`);
+    } catch (error) {
+        console.error(`Cleanup failed:`, error);
+    }
+}
+
+// Uncomment and run this once:
+/* cleanupBadPODs(); */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
