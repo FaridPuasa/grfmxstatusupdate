@@ -92,10 +92,16 @@
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
                   <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-header">Pharmacy Form</div>
+                    <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms</a>
                   <% } %>
                   <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy Form List</a>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
                   <% } %>
                 </div>
@@ -174,10 +180,16 @@
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
                   <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="https://pharmacy.gorushbn.com/mohorders?">Create Pharmacy Form</a>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-header">Pharmacy Form</div>
+                    <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms</a>
                   <% } %>
                   <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="https://pharmacy.gorushbn.com/manifestviewer">Pharmacy Form List</a>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
                   <% } %>
                 </div>
