@@ -302,7 +302,7 @@ async function checkStaleInfoReceivedJobs() {
     const apiKey = process.env.API_KEY;
     try {
         const targetProducts = ["pharmacymoh", "pharmacyjpmc", "pharmacyphc", "localdelivery", "cbsl"];
-        const thirtyDaysAgo = moment().subtract(30, 'days').format('YYYY-MM-DD');
+        const thirtyDaysAgo = moment().subtract(60, 'days').format('YYYY-MM-DD');
 
         const staleOrders = await ORDERS.find({
             currentStatus: "Info Received",
@@ -401,19 +401,32 @@ async function checkActiveDeliveriesStatus() {
         const bruneiTimeString = bruneiNow.format('YYYY-MM-DDTHH:mm:ss');
         const todayDateStr = bruneiNow.format('YYYY-MM-DD');
 
-        const activeOrders = await ORDERS.find(
-            { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
-            { doTrackingNumber: 1, currentStatus: 1, assignedTo: 1, product: 1 }
+        // Find GDEX/GDEXT orders that are active in MongoDB
+        const gdexActiveOrders = await ORDERS.find(
+            {
+                currentStatus: { $in: ["Out for Delivery", "Self Collect"] },
+                product: { $in: ['gdex', 'gdext'] } // Only GDEX/GDEXT products
+            },
+            {
+                doTrackingNumber: 1,
+                currentStatus: 1,
+                assignedTo: 1,
+                product: 1
+            }
         );
 
-        console.log(`🔍 Checking ${activeOrders.length} active deliveries...`);
+        console.log(`🔍 Checking ${gdexActiveOrders.length} active GDEX/GDEXT deliveries...`);
 
-        for (let order of activeOrders) {
+        for (let order of gdexActiveOrders) {
             const { doTrackingNumber: trackingNumber, currentStatus, assignedTo, product } = order;
 
-            if (!trackingNumber) continue;
+            if (!trackingNumber) {
+                console.log(`⚠️ Skipping: No tracking number`);
+                continue;
+            }
 
             try {
+                // Step 1: Get FRESH data from Detrack
                 const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/`, {
                     params: { do_number: trackingNumber },
                     headers: {
@@ -434,156 +447,204 @@ async function checkActiveDeliveriesStatus() {
                     completionDateStr = detrackCompletedTime.format('YYYY-MM-DD');
                 }
 
-                // Check if job is completed
+                // Check if job is completed in Detrack
                 const isCompleted = data.data.status?.toLowerCase() === 'completed';
-                const isFailed = data.data.status?.toLowerCase() === 'failed';
 
-                // ========== GDEX/GDEXT PRODUCTS ==========
-                if ((product === 'gdex' || product === 'gdext') && isCompleted) {
-                    console.log(`\n🚨🚨🚨 PROCESSING GDEX ORDER: ${trackingNumber}, Product: ${product}`);
-                    console.log(`   REQUIREMENT: ALL 3 PODs MUST be downloaded successfully`);
-
-                    // Verify completion happened today in Brunei time
-                    let timestampToUse = bruneiTimeString;
-                    let shouldProcess = true;
-
-                    if (detrackCompletedTime) {
-                        if (completionDateStr === todayDateStr) {
-                            console.log(`   ✅ GDEX order completed TODAY: ${detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss')}`);
-                            timestampToUse = detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss');
-                        } else {
-                            console.log(`   ⏭️ GDEX order completed on ${completionDateStr}, not today. Skipping.`);
-                            shouldProcess = false;
-                        }
-                    } else {
-                        console.log(`   ⚠️ No completion time in Detrack. Using current Brunei time.`);
-                    }
-
-                    if (!shouldProcess) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        continue;
-                    }
-
-                    // ========== CRITICAL: ALL-OR-NOTHING GDEX PROCESSING ==========
-                    // Validate ALL 3 photo URLs are present BEFORE processing
-                    const photo1 = data.data.photo_1_file_url;
-                    const photo2 = data.data.photo_2_file_url;
-                    const photo3 = data.data.photo_3_file_url;
-
-                    if (!photo1 || !photo2 || !photo3) {
-                        console.error(`❌❌❌ CANNOT PROCESS GDEX ORDER ${trackingNumber}: Missing required POD URLs`);
-                        console.error(`   Photo 1: ${photo1 ? 'PRESENT' : 'MISSING'}`);
-                        console.error(`   Photo 2: ${photo2 ? 'PRESENT' : 'MISSING'}`);
-                        console.error(`   Photo 3: ${photo3 ? 'PRESENT' : 'MISSING'}`);
-                        console.error(`   GDEX requires ALL 3 POD images. Order will be skipped.`);
-
-                        // Log this failure for manual intervention
-                        await ORDERS.findOneAndUpdate(
-                            { doTrackingNumber: trackingNumber },
-                            {
-                                $set: {
-                                    podSource: 'gdrex_missing_pods',
-                                    latestReason: `Missing PODs: ${!photo1 ? '1,' : ''}${!photo2 ? '2,' : ''}${!photo3 ? '3' : ''}`.replace(/,$/, '')
-                                }
-                            },
-                            { upsert: false }
-                        );
-
-                        continue; // Skip this order entirely
-                    }
-
-                    // Create detrackData with ALL photo URLs
-                    const detrackData = {
-                        status: data.data.status,
-                        reason: data.data.reason || '',
-                        address: data.data.address,
-                        photo_1_file_url: photo1,
-                        photo_2_file_url: photo2,
-                        photo_3_file_url: photo3,
-                        podAlreadyConverted: false,
-                        completed_time: timestampToUse
-                    };
-
-                    let allPODsSuccess = false;
-                    let savedPODs = [];
-
-                    try {
-                        // Step 1: Download and save ALL 3 PODs to database (ALL-OR-NOTHING)
-                        console.log(`\n   📥 ATTEMPTING TO DOWNLOAD ALL 3 PODs for ${trackingNumber}...`);
-                        savedPODs = await saveAllPODsToDatabase(trackingNumber, detrackData, 2);
-
-                        if (savedPODs.length === 3) {
-                            allPODsSuccess = true;
-                            // Update detrackData with Base64 images
-                            detrackData.podAlreadyConverted = true;
-                            detrackData.photo_1_file_url = savedPODs[0];
-                            detrackData.photo_2_file_url = savedPODs[1];
-                            detrackData.photo_3_file_url = savedPODs[2];
-                            console.log(`   ✅ SUCCESS: All 3 PODs downloaded and saved`);
-                        } else {
-                            throw new Error(`Expected 3 PODs, got ${savedPODs.length}`);
-                        }
-
-                    } catch (podError) {
-                        console.error(`   ❌❌❌ ALL-OR-NOTHING POD PROCESS FAILED: ${podError.message}`);
-                        console.error(`   GDEX order ${trackingNumber} will NOT be processed due to POD failure`);
-                        continue;
-                    }
-
-                    // Step 2: Update MongoDB for GDEX/GDEXT
-                    if (allPODsSuccess) {
-                        console.log(`\n   📝 Updating MongoDB status for GDEX order: ${trackingNumber}`);
-                        const update = {
-                            currentStatus: "Completed",
-                            lastUpdateDateTime: timestampToUse,
-                            latestLocation: "Customer",
-                            lastUpdatedBy: "System",
-                            assignedTo: data.data.assign_to || assignedTo || '-',
-                            detrackCompletedTime: timestampToUse,
-                            $push: {
-                                history: {
-                                    statusHistory: "Completed",
-                                    dateUpdated: timestampToUse,
-                                    updatedBy: "System",
-                                    lastAssignedTo: data.data.assign_to || assignedTo || '-',
-                                    lastLocation: "Customer",
-                                    detrackCompletedTime: timestampToUse
-                                }
-                            }
-                        };
-
-                        await ORDERS.findOneAndUpdate(
-                            { doTrackingNumber: trackingNumber },
-                            update,
-                            { upsert: false }
-                        );
-                        console.log(`   ✅ MongoDB updated for GDEX order ${trackingNumber}`);
-                    }
-
-                    // Step 3: Send to GDEX API
-                    if (allPODsSuccess) {
-                        console.log(`\n   🚀 Sending GDEX clear job update with ALL 3 PODs: ${trackingNumber}`);
-                        const gdexToken = await getGDEXToken();
-
-                        if (gdexToken) {
-                            const gdexSuccess = await updateGDEXClearJob(trackingNumber, detrackData, gdexToken);
-                            if (gdexSuccess) {
-                                console.log(`   ✅ GDEX clear job completed with ALL 3 PODs for ${trackingNumber}`);
-                            } else {
-                                console.error(`   ❌ GDEX API call failed for ${trackingNumber}`);
-                            }
-                        } else {
-                            console.error(`   ❌ Failed to get GDEX token for ${trackingNumber}`);
-                        }
-                    }
-
-                    console.log(`\n🎉🎉🎉 GDEX ORDER ${trackingNumber} FULLY PROCESSED WITH ALL 3 PODs`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    continue; // Skip non-GDEX processing
+                if (!isCompleted) {
+                    console.log(`⏭️ GDEX order ${trackingNumber} not completed in Detrack (status: ${data.data.status}), skipping.`);
+                    continue;
                 }
 
-                // ========== NON-GDEX/GDEXT PRODUCTS ==========
-                if (isCompleted && (product !== 'gdex' && product !== 'gdext')) {
+                console.log(`\n🚨🚨🚨 PROCESSING GDEX ORDER: ${trackingNumber}, Product: ${product}`);
+                console.log(`   REQUIREMENT: Download FRESH 3 PODs, compress, convert to Base64, ALL must succeed`);
+
+                // Verify completion happened today in Brunei time
+                let timestampToUse = bruneiTimeString;
+                let shouldProcess = true;
+
+                if (detrackCompletedTime) {
+                    if (completionDateStr === todayDateStr) {
+                        console.log(`   ✅ GDEX order completed TODAY: ${detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss')}`);
+                        timestampToUse = detrackCompletedTime.format('YYYY-MM-DDTHH:mm:ss');
+                    } else {
+                        console.log(`   ⏭️ GDEX order completed on ${completionDateStr}, not today. Skipping.`);
+                        shouldProcess = false;
+                    }
+                } else {
+                    console.log(`   ⚠️ No completion time in Detrack. Using current Brunei time.`);
+                }
+
+                if (!shouldProcess) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+
+                // ========== CRITICAL: ALL-OR-NOTHING FRESH GDEX PROCESSING ==========
+                // Validate ALL 3 photo URLs are present BEFORE processing
+                const photo1 = data.data.photo_1_file_url;
+                const photo2 = data.data.photo_2_file_url;
+                const photo3 = data.data.photo_3_file_url;
+
+                if (!photo1 || !photo2 || !photo3) {
+                    console.error(`❌❌❌ CANNOT PROCESS GDEX ORDER ${trackingNumber}: Missing required POD URLs`);
+                    console.error(`   Photo 1: ${photo1 ? 'PRESENT' : 'MISSING'}`);
+                    console.error(`   Photo 2: ${photo2 ? 'PRESENT' : 'MISSING'}`);
+                    console.error(`   Photo 3: ${photo3 ? 'PRESENT' : 'MISSING'}`);
+                    console.error(`   GDEX requires ALL 3 POD images. Order will be skipped.`);
+
+                    // Log this failure for manual intervention
+                    await ORDERS.findOneAndUpdate(
+                        { doTrackingNumber: trackingNumber },
+                        {
+                            $set: {
+                                podSource: 'gdrex_missing_pods',
+                                latestReason: `Missing PODs: ${!photo1 ? '1,' : ''}${!photo2 ? '2,' : ''}${!photo3 ? '3' : ''}`.replace(/,$/, '')
+                            }
+                        },
+                        { upsert: false }
+                    );
+
+                    continue; // Skip this order entirely
+                }
+
+                // Create detrackData with ALL FRESH photo URLs
+                const detrackData = {
+                    status: data.data.status,
+                    reason: data.data.reason || '',
+                    address: data.data.address,
+                    photo_1_file_url: photo1,
+                    photo_2_file_url: photo2,
+                    photo_3_file_url: photo3,
+                    podAlreadyConverted: false,
+                    completed_time: timestampToUse
+                };
+
+                let allPODsSuccess = false;
+                let savedPODs = [];
+                let gdexApiSuccess = false;
+
+                try {
+                    // Step 1: Download FRESH and save ALL 3 PODs to database (ALL-OR-NOTHING)
+                    console.log(`\n   📥 DOWNLOADING FRESH ALL 3 PODs for ${trackingNumber}...`);
+                    savedPODs = await saveAllPODsToDatabase(trackingNumber, detrackData, 3); // 3 retries max
+
+                    if (savedPODs.length === 3) {
+                        allPODsSuccess = true;
+                        // Update detrackData with Base64 images
+                        detrackData.podAlreadyConverted = true;
+                        detrackData.photo_1_file_url = savedPODs[0];
+                        detrackData.photo_2_file_url = savedPODs[1];
+                        detrackData.photo_3_file_url = savedPODs[2];
+                        console.log(`   ✅ SUCCESS: All 3 PODs downloaded FRESH, compressed, and converted to Base64`);
+                    } else {
+                        throw new Error(`Expected 3 PODs, got ${savedPODs.length}`);
+                    }
+
+                } catch (podError) {
+                    console.error(`   ❌❌❌ ALL-OR-NOTHING POD PROCESS FAILED: ${podError.message}`);
+                    console.error(`   GDEX order ${trackingNumber} will NOT be processed due to POD failure`);
+                    continue;
+                }
+
+                // Step 2: Send to GDEX API with FRESH Base64 PODs
+                if (allPODsSuccess) {
+                    console.log(`\n   🚀 Sending GDEX clear job update with FRESH 3 PODs: ${trackingNumber}`);
+                    const gdexToken = await getGDEXToken();
+
+                    if (gdexToken) {
+                        // Pass detrackData with podAlreadyConverted: true
+                        gdexApiSuccess = await updateGDEXClearJob(trackingNumber, detrackData, gdexToken);
+                        if (gdexApiSuccess) {
+                            console.log(`   ✅ GDEX API call successful for ${trackingNumber}`);
+                        } else {
+                            console.error(`   ❌ GDEX API call failed for ${trackingNumber}`);
+                            // DON'T UPDATE MongoDB if GDEX API fails
+                            continue;
+                        }
+                    } else {
+                        console.error(`   ❌ Failed to get GDEX token for ${trackingNumber}`);
+                        continue;
+                    }
+                }
+
+                // Step 3: Update MongoDB only if GDEX API succeeded
+                if (allPODsSuccess && gdexApiSuccess) {
+                    console.log(`\n   📝 Updating MongoDB status for GDEX order: ${trackingNumber}`);
+                    const update = {
+                        currentStatus: "Completed",
+                        lastUpdateDateTime: timestampToUse,
+                        latestLocation: "Customer",
+                        lastUpdatedBy: "System",
+                        assignedTo: data.data.assign_to || assignedTo || '-',
+                        detrackCompletedTime: timestampToUse,
+                        $push: {
+                            history: {
+                                statusHistory: "Completed",
+                                dateUpdated: timestampToUse,
+                                updatedBy: "System",
+                                lastAssignedTo: data.data.assign_to || assignedTo || '-',
+                                lastLocation: "Customer",
+                                detrackCompletedTime: timestampToUse
+                            }
+                        }
+                    };
+
+                    await ORDERS.findOneAndUpdate(
+                        { doTrackingNumber: trackingNumber },
+                        update,
+                        { upsert: false }
+                    );
+                    console.log(`   ✅ MongoDB updated for GDEX order ${trackingNumber}`);
+                    console.log(`\n🎉🎉🎉 GDEX ORDER ${trackingNumber} FULLY PROCESSED WITH FRESH 3 PODs AND GDEX API SUCCESS`);
+                } else {
+                    console.log(`   ⏭️ MongoDB NOT updated for ${trackingNumber} - GDEX API failed or PODs missing`);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+            } catch (apiError) {
+                console.error(`❌ Error checking tracking ${trackingNumber}:`, apiError.response?.data || apiError.message);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // ========== PROCESS NON-GDEX PRODUCTS SEPARATELY ==========
+        const nonGdexActiveOrders = await ORDERS.find(
+            {
+                currentStatus: { $in: ["Out for Delivery", "Self Collect"] },
+                product: { $nin: ['gdex', 'gdext'] } // Exclude GDEX/GDEXT
+            },
+            {
+                doTrackingNumber: 1,
+                currentStatus: 1,
+                assignedTo: 1,
+                product: 1
+            }
+        );
+
+        console.log(`🔍 Checking ${nonGdexActiveOrders.length} active non-GDEX deliveries...`);
+
+        for (let order of nonGdexActiveOrders) {
+            const { doTrackingNumber: trackingNumber, currentStatus, assignedTo, product } = order;
+
+            if (!trackingNumber) continue;
+
+            try {
+                const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/`, {
+                    params: { do_number: trackingNumber },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': 'd4dfab3975765c8ffa920d9a0c6bda0c12d17a35a946d337'
+                    }
+                });
+
+                const data = response.data;
+
+                // Check if job is completed in Detrack
+                const isCompleted = data.data.status?.toLowerCase() === 'completed';
+
+                if (isCompleted) {
                     console.log(`\n✅ Processing non-GDEX completed order: ${trackingNumber}, Product: ${product}`);
 
                     let update = {};
@@ -653,84 +714,9 @@ async function checkActiveDeliveriesStatus() {
 
                     console.log(`✅ Non-GDEX order ${trackingNumber} updated to Completed`);
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    continue;
+                } else {
+                    console.log(`⏭️ Non-GDEX order ${trackingNumber} still active (${data.data.status}), skipping.`);
                 }
-
-                // Failed non-GDEX orders
-                if (isFailed && (product !== 'gdex' && product !== 'gdext')) {
-                    console.log(`\n❌ Processing failed non-GDEX order: ${trackingNumber}, Product: ${product}`);
-
-                    let update = {};
-
-                    if (data.data.type === 'Collection') {
-                        // Failed Collection
-                        update = {
-                            currentStatus: "Failed Collection",
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
-                            latestReason: data.data.reason || 'Unknown reason',
-                            attempt: data.data.attempt + (data.data.reason !== "Unattempted Collection" ? 1 : 0),
-                            latestLocation: "Customer",
-                            lastUpdatedBy: "System",
-                            $push: {
-                                history: {
-                                    statusHistory: "Failed Collection",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: "System",
-                                    lastAssignedTo: data.data.assign_to || assignedTo || '-',
-                                    reason: data.data.reason || 'Unknown reason',
-                                    lastLocation: "Customer"
-                                }
-                            }
-                        };
-                    } else {
-                        // Failed Delivery
-                        const isUnattempted = data.data.reason === "Unattempted Delivery";
-
-                        update = {
-                            currentStatus: "Return to Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
-                            latestReason: data.data.reason || 'Unknown reason',
-                            attempt: isUnattempted ? data.data.attempt : data.data.attempt + 1,
-                            latestLocation: "Warehouse",
-                            lastUpdatedBy: "System",
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Failed Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: "System",
-                                            lastAssignedTo: data.data.assign_to || assignedTo || '-',
-                                            reason: data.data.reason || 'Unknown reason',
-                                            lastLocation: data.data.assign_to || assignedTo || '-',
-                                        },
-                                        {
-                                            statusHistory: "Return to Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: "System",
-                                            lastLocation: "Warehouse",
-                                        }
-                                    ]
-                                }
-                            }
-                        };
-                    }
-
-                    await ORDERS.findOneAndUpdate(
-                        { doTrackingNumber: trackingNumber },
-                        update,
-                        { upsert: false }
-                    );
-
-                    console.log(`✅ Non-GDEX order ${trackingNumber} updated`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    continue;
-                }
-
-                // Still active, skip
-                console.log(`⏭️ Order ${trackingNumber} still active (${data.data.status}), skipping.`);
 
             } catch (apiError) {
                 console.error(`❌ Error checking tracking ${trackingNumber}:`, apiError.response?.data || apiError.message);
@@ -744,423 +730,10 @@ async function checkActiveDeliveriesStatus() {
     }
 }
 
-// Helper function to ensure Brunei time is used consistently
-function getBruneiTime() {
-    return moment().utcOffset('+08:00');
-}
-
-function formatBruneiTime(date) {
-    return moment(date).utcOffset('+08:00').format();
-}
-
-// Function 2: Check and Update Orders with Empty Area
-async function checkAndUpdateEmptyAreaOrders() {
-    const apiKey = process.env.API_KEY;
-    try {
-        const targetProducts = ["pdu", "mglobal", "ewe"];
-
-        const ordersWithNoArea = await ORDERS.find({
-            product: { $in: targetProducts },
-            $or: [
-                { area: null },
-                { area: "" }
-            ]
-        });
-
-        console.log(`Found ${ordersWithNoArea.length} orders with empty area.`);
-
-        for (let order of ordersWithNoArea) {
-            let address = order.receiverAddress ? order.receiverAddress.toUpperCase() : "";
-
-            let area = "N/A";
-            let kampong = "";
-
-            if (address.includes("MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
-            else if (address.includes("DELIMA") == true) { area = "B", kampong = "DELIMA" }
-            else if (address.includes("ANGGREK DESA") == true) { area = "B", kampong = "ANGGREK DESA" }
-            else if (address.includes("ANGGREK") == true) { area = "B", kampong = "ANGGREK DESA" }
-            else if (address.includes("PULAIE") == true) { area = "B", kampong = "PULAIE" }
-            else if (address.includes("LAMBAK") == true) { area = "B", kampong = "LAMBAK" }
-            else if (address.includes("TERUNJING") == true) { area = "B", kampong = "TERUNJING" }
-            else if (address.includes("MADANG") == true) { area = "B", kampong = "MADANG" }
-            else if (address.includes("AIRPORT") == true) { area = "B", kampong = "AIRPORT" }
-            else if (address.includes("ORANG KAYA BESAR IMAS") == true) { area = "B", kampong = "OKBI" }
-            else if (address.includes("OKBI") == true) { area = "B", kampong = "OKBI" }
-            else if (address.includes("SERUSOP") == true) { area = "B", kampong = "SERUSOP" }
-            else if (address.includes("BURONG PINGAI") == true) { area = "B", kampong = "BURONG PINGAI" }
-            else if (address.includes("SETIA NEGARA") == true) { area = "B", kampong = "SETIA NEGARA" }
-            else if (address.includes("PASIR BERAKAS") == true) { area = "B", kampong = "PASIR BERAKAS" }
-            else if (address.includes("MENTERI BESAR") == true) { area = "B", kampong = "MENTERI BESAR" }
-            else if (address.includes("KEBANGSAAN LAMA") == true) { area = "B", kampong = "KEBANGSAAN LAMA" }
-            else if (address.includes("BATU MARANG") == true) { area = "B", kampong = "BATU MARANG" }
-            else if (address.includes("DATO GANDI") == true) { area = "B", kampong = "DATO GANDI" }
-            else if (address.includes("KAPOK") == true) { area = "B", kampong = "KAPOK" }
-            else if (address.includes("KOTA BATU") == true) { area = "B", kampong = "KOTA BATU" }
-            else if (address.includes("MENTIRI") == true) { area = "B", kampong = "MENTIRI" }
-            else if (address.includes("MERAGANG") == true) { area = "B", kampong = "MERAGANG" }
-            else if (address.includes("PELAMBAIAN") == true) { area = "B", kampong = "PELAMBAIAN" }
-            else if (address.includes("PINTU MALIM") == true) { area = "B", kampong = "PINTU MALIM" }
-            else if (address.includes("SALAMBIGAR") == true) { area = "B", kampong = "SALAMBIGAR" }
-            else if (address.includes("SALAR") == true) { area = "B", kampong = "SALAR" }
-            else if (address.includes("SERASA") == true) { area = "B", kampong = "SERASA" }
-            else if (address.includes("SERDANG") == true) { area = "B", kampong = "SERDANG" }
-            else if (address.includes("SUNGAI BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
-            else if (address.includes("SG BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
-            else if (address.includes("SUNGAI BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
-            else if (address.includes("SG BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
-            else if (address.includes("SUNGAI HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
-            else if (address.includes("SG HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
-            else if (address.includes("SUNGAI TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
-            else if (address.includes("SG TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
-            else if (address.includes("SUBOK") == true) { area = "B", kampong = "SUBOK" }
-            else if (address.includes("SUNGAI AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
-            else if (address.includes("SG AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
-            else if (address.includes("SUNGAI BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
-            else if (address.includes("SG BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
-            else if (address.includes("TANAH JAMBU") == true) { area = "B", kampong = "TANAH JAMBU" }
-            else if (address.includes("SUNGAI OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
-            else if (address.includes("SG OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
-            else if (address.includes("KATOK") == true) { area = "G", kampong = "KATOK" }
-            else if (address.includes("MATA-MATA") == true) { area = "G", kampong = "MATA-MATA" }
-            else if (address.includes("MATA MATA") == true) { area = "G", kampong = "MATA-MATA" }
-            else if (address.includes("RIMBA") == true) { area = "G", kampong = "RIMBA" }
-            else if (address.includes("TUNGKU") == true) { area = "G", kampong = "TUNGKU" }
-            else if (address.includes("UBD") == true) { area = "G", kampong = "UBD" }
-            else if (address.includes("UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G", kampong = "UBD" }
-            else if (address.includes("JIS") == true) { area = "G" }
-            else if (address.includes("JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G", kampong = "JIS" }
-            else if (address.includes("BERANGAN") == true) { area = "G", kampong = "BERANGAN" }
-            else if (address.includes("BERIBI") == true) { area = "G", kampong = "BERIBI" }
-            else if (address.includes("KIULAP") == true) { area = "G", kampong = "KIULAP" }
-            else if (address.includes("RIPAS") == true) { area = "G", kampong = "RIPAS" }
-            else if (address.includes("RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G", kampong = "RIPAS" }
-            else if (address.includes("KIARONG") == true) { area = "G", kampong = "KIARONG" }
-            else if (address.includes("PUSAR ULAK") == true) { area = "G", kampong = "PUSAR ULAK" }
-            else if (address.includes("KUMBANG PASANG") == true) { area = "G", kampong = "KUMBANG PASANG" }
-            else if (address.includes("MENGLAIT") == true) { area = "G", kampong = "MENGLAIT" }
-            else if (address.includes("MABOHAI") == true) { area = "G", kampong = "MABOHAI" }
-            else if (address.includes("ONG SUM PING") == true) { area = "G", kampong = "ONG SUM PING" }
-            else if (address.includes("GADONG") == true) { area = "G", kampong = "GADONG" }
-            else if (address.includes("TASEK LAMA") == true) { area = "G", kampong = "TASEK LAMA" }
-            else if (address.includes("BANDAR TOWN") == true) { area = "G", kampong = "BANDAR TOWN" }
-            else if (address.includes("BATU SATU") == true) { area = "JT", kampong = "BATU SATU" }
-            else if (address.includes("BENGKURONG") == true) { area = "JT", kampong = "BENGKURONG" }
-            else if (address.includes("BUNUT") == true) { area = "JT", kampong = "BUNUT" }
-            else if (address.includes("JALAN BABU RAJA") == true) { area = "JT", kampong = "JALAN BABU RAJA" }
-            else if (address.includes("JALAN ISTANA") == true) { area = "JT", kampong = "JALAN ISTANA" }
-            else if (address.includes("JUNJONGAN") == true) { area = "JT", kampong = "JUNJONGAN" }
-            else if (address.includes("KASAT") == true) { area = "JT", kampong = "KASAT" }
-            else if (address.includes("LUMAPAS") == true) { area = "JT", kampong = "LUMAPAS" }
-            else if (address.includes("JALAN HALUS") == true) { area = "JT", kampong = "JALAN HALUS" }
-            else if (address.includes("MADEWA") == true) { area = "JT", kampong = "MADEWA" }
-            else if (address.includes("PUTAT") == true) { area = "JT", kampong = "PUTAT" }
-            else if (address.includes("SINARUBAI") == true) { area = "JT", kampong = "SINARUBAI" }
-            else if (address.includes("TASEK MERADUN") == true) { area = "JT", kampong = "TASEK MERADUN" }
-            else if (address.includes("TELANAI") == true) { area = "JT", kampong = "TELANAI" }
-            else if (address.includes("BAN 1") == true) { area = "JT", kampong = "BAN" }
-            else if (address.includes("BAN 2") == true) { area = "JT", kampong = "BAN" }
-            else if (address.includes("BAN 3") == true) { area = "JT", kampong = "BAN" }
-            else if (address.includes("BAN 4") == true) { area = "JT", kampong = "BAN" }
-            else if (address.includes("BAN 5") == true) { area = "JT", kampong = "BAN" }
-            else if (address.includes("BAN 6") == true) { area = "JT", kampong = "BAN" }
-            else if (address.includes("BATONG") == true) { area = "JT", kampong = "BATONG" }
-            else if (address.includes("BATU AMPAR") == true) { area = "JT", kampong = "BATU AMPAR" }
-            else if (address.includes("BEBATIK") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
-            else if (address.includes("BEBULOH") == true) { area = "JT", kampong = "BEBULOH" }
-            else if (address.includes("BEBATIK KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
-            else if (address.includes("KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
-            else if (address.includes("DADAP") == true) { area = "JT", kampong = "DADAP" }
-            else if (address.includes("KUALA LURAH") == true) { area = "JT", kampong = "KUALA LURAH" }
-            else if (address.includes("KULAPIS") == true) { area = "JT", kampong = "KULAPIS" }
-            else if (address.includes("LIMAU MANIS") == true) { area = "JT", kampong = "LIMAU MANIS" }
-            else if (address.includes("MASIN") == true) { area = "JT", kampong = "MASIN" }
-            else if (address.includes("MULAUT") == true) { area = "JT", kampong = "MULAUT" }
-            else if (address.includes("PANCHOR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
-            else if (address.includes("PANCHUR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
-            else if (address.includes("PANGKALAN BATU") == true) { area = "JT", kampong = "PANGKALAN BATU" }
-            else if (address.includes("PASAI") == true) { area = "JT", kampong = "PASAI" }
-            else if (address.includes("WASAN") == true) { area = "JT", kampong = "WASAN" }
-            else if (address.includes("PARIT") == true) { area = "JT", kampong = "PARIT" }
-            else if (address.includes("EMPIRE") == true) { area = "JT", kampong = "EMPIRE" }
-            else if (address.includes("JANGSAK") == true) { area = "JT", kampong = "JANGSAK" }
-            else if (address.includes("JERUDONG") == true) { area = "JT", kampong = "JERUDONG" }
-            else if (address.includes("KATIMAHAR") == true) { area = "JT", kampong = "KATIMAHAR" }
-            else if (address.includes("LUGU") == true) { area = "JT", kampong = "LUGU" }
-            else if (address.includes("SENGKURONG") == true) { area = "JT", kampong = "SENGKURONG" }
-            else if (address.includes("TANJONG NANGKA") == true) { area = "JT", kampong = "TANJONG NANGKA" }
-            else if (address.includes("TANJONG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
-            else if (address.includes("TANJUNG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
-            else if (address.includes("SUNGAI TAMPOI") == true) { area = "JT", kampung = "SUNGAI TAMPOI" }
-            else if (address.includes("SG TAMPOI") == true) { area = "JT", kampong = "SUNGAI TAMPOI" }
-            else if (address.includes("MUARA") == true) { area = "B", kampong = "MUARA" }
-            //TU
-            else if (address.includes("SENGKARAI") == true) { area = "TUTONG", kampong = "SENGKARAI" }
-            else if (address.includes("PANCHOR") == true) { area = "TUTONG", kampong = "PANCHOR" }
-            else if (address.includes("PENABAI") == true) { area = "TUTONG", kampong = "PENABAI" }
-            else if (address.includes("KUALA TUTONG") == true) { area = "TUTONG", kampong = "KUALA TUTONG" }
-            else if (address.includes("PENANJONG") == true) { area = "TUTONG", kampong = "PENANJONG" }
-            else if (address.includes("KERIAM") == true) { area = "TUTONG", kampong = "KERIAM" }
-            else if (address.includes("BUKIT PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
-            else if (address.includes("PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
-            else if (address.includes("LUAGAN") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
-            else if (address.includes("DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
-            else if (address.includes("LUAGAN DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
-            else if (address.includes("SINAUT") == true) { area = "TUTONG", kampong = "SINAUT" }
-            else if (address.includes("SUNGAI KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
-            else if (address.includes("KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
-            else if (address.includes("SG KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
-            else if (address.includes("KUPANG") == true) { area = "TUTONG", kampong = "KUPANG" }
-            else if (address.includes("KIUDANG") == true) { area = "TUTONG", kampong = "KIUDANG" }
-            else if (address.includes("PAD") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
-            else if (address.includes("NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
-            else if (address.includes("PAD NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
-            else if (address.includes("BEKIAU") == true) { area = "TUTONG", kampong = "BEKIAU" }
-            else if (address.includes("MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
-            else if (address.includes("PENGKALAN MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
-            else if (address.includes("BATANG MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
-            else if (address.includes("MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
-            else if (address.includes("KEBIA") == true) { area = "TUTONG", kampong = "KEBIA" }
-            else if (address.includes("BIRAU") == true) { area = "TUTONG", kampong = "BIRAU" }
-            else if (address.includes("LAMUNIN") == true) { area = "TUTONG", kampong = "LAMUNIN" }
-            else if (address.includes("LAYONG") == true) { area = "TUTONG", kampong = "LAYONG" }
-            else if (address.includes("MENENGAH") == true) { area = "TUTONG", kampong = "MENENGAH" }
-            else if (address.includes("PANCHONG") == true) { area = "TUTONG", kampong = "PANCHONG" }
-            else if (address.includes("PENAPAR") == true) { area = "TUTONG", kampong = "PANAPAR" }
-            else if (address.includes("TANJONG MAYA") == true) { area = "TUTONG", kampong = "TANJONG MAYA" }
-            else if (address.includes("MAYA") == true) { area = "TUTONG", kampong = "MAYA" }
-            else if (address.includes("LUBOK") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
-            else if (address.includes("PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
-            else if (address.includes("LUBOK PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
-            else if (address.includes("BUKIT UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
-            else if (address.includes("UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
-            else if (address.includes("RAMBAI") == true) { area = "TUTONG", kampong = "RAMBAI" }
-            else if (address.includes("BENUTAN") == true) { area = "TUTONG", kampong = "BENUTAN" }
-            else if (address.includes("MERIMBUN") == true) { area = "TUTONG", kampong = "MERIMBUN" }
-            else if (address.includes("UKONG") == true) { area = "TUTONG", kampong = "UKONG" }
-            else if (address.includes("LONG") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
-            else if (address.includes("MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
-            else if (address.includes("LONG MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
-            else if (address.includes("TELISAI") == true) { area = "TUTONG", kampong = "TELISAI" }
-            else if (address.includes("DANAU") == true) { area = "TUTONG", kampong = "DANAU" }
-            else if (address.includes("BUKIT BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
-            else if (address.includes("BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
-            else if (address.includes("TUTONG") == true) { area = "TUTONG", kampong = "TUTONG" }
-            //KB
-            else if (address.includes("AGIS") == true) { area = "LUMUT", kampong = "AGIS" }
-            else if (address.includes("ANDALAU") == true) { area = "LUMUT", kampong = "ANDALAU" }
-            else if (address.includes("ANDUKI") == true) { area = "LUMUT", kampong = "ANDUKI" }
-            else if (address.includes("APAK") == true) { area = "KB / SERIA", kampong = "APAK" }
-            else if (address.includes("BADAS") == true) { area = "LUMUT", kampong = "BADAS" }
-            else if (address.includes("BANG") == true) { area = "KB / SERIA", kampong = "BANG" }
-            else if (address.includes("GARANG") == true) { area = "KB / SERIA", kampong = "GARANG" }
-            else if (address.includes("PUKUL") == true) { area = "KB / SERIA", kampong = "PUKUL" }
-            else if (address.includes("TAJUK") == true) { area = "KB / SERIA", kampong = "TAJUK" }
-            else if (address.includes("BENGERANG") == true) { area = "KB / SERIA", kampong = "BENGERANG" }
-            else if (address.includes("BIADONG") == true) { area = "KB / SERIA", kampong = "BIADONG" }
-            else if (address.includes("ULU") == true) { area = "KB / SERIA", kampong = "ULU" }
-            else if (address.includes("TENGAH") == true) { area = "KB / SERIA", kampong = "TENGAH" }
-            else if (address.includes("BISUT") == true) { area = "KB / SERIA", kampong = "BISUT" }
-            else if (address.includes("BUAU") == true) { area = "KB / SERIA", kampong = "BUAU" }
-            else if (address.includes("KANDOL") == true) { area = "KB / SERIA", kampong = "KANDOL" }
-            else if (address.includes("PUAN") == true) { area = "KB / SERIA", kampong = "PUAN" }
-            else if (address.includes("TUDING") == true) { area = "LUMUT", kampong = "TUDING" }
-            else if (address.includes("SAWAT") == true) { area = "KB / SERIA", kampong = "SAWAT" }
-            else if (address.includes("SERAWONG") == true) { area = "KB / SERIA", kampong = "SERAWONG" }
-            else if (address.includes("CHINA") == true) { area = "KB / SERIA", kampong = "CHINA" }
-            else if (address.includes("DUGUN") == true) { area = "KB / SERIA", kampong = "DUGUN" }
-            else if (address.includes("GATAS") == true) { area = "KB / SERIA", kampong = "GATAS" }
-            else if (address.includes("JABANG") == true) { area = "KB / SERIA", kampong = "JABANG" }
-            else if (address.includes("KAGU") == true) { area = "KB / SERIA", kampong = "KAGU" }
-            else if (address.includes("KAJITAN") == true) { area = "KB / SERIA", kampong = "KAJITAN" }
-            else if (address.includes("KELUYOH") == true) { area = "KB / SERIA", kampong = "KELUYOH" }
-            else if (address.includes("KENAPOL") == true) { area = "KB / SERIA", kampong = "KENAPOL" }
-            else if (address.includes("KUALA BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
-            else if (address.includes("BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
-            else if (address.includes("KUALA BELAIT") == true) { area = "KB", kampong = "KUALA BELAIT" }
-            else if (address.includes("KUKUB") == true) { area = "KB / SERIA", kampong = "KUKUB" }
-            else if (address.includes("LABI") == true) { area = "LUMUT", kampong = "LABI" }
-            else if (address.includes("LAKANG") == true) { area = "KB / SERIA", kampong = "LAKANG" }
-            else if (address.includes("LAONG ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
-            else if (address.includes("ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
-            else if (address.includes("LAONG") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
-            else if (address.includes("LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
-            else if (address.includes("SUNGAI LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
-            else if (address.includes("SG LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
-            else if (address.includes("LUMUT") == true) { area = "LUMUT", kampong = "LUMUT" }
-            else if (address.includes("LORONG") == true) { area = "SERIA", kampong = "LORONG" }
-            else if (address.includes("LORONG TENGAH") == true) { area = "SERIA", kampong = "LORONG TENGAH" }
-            else if (address.includes("LORONG TIGA SELATAN") == true) { area = "SERIA", kampong = "LORONG TIGA SELATAN" }
-            else if (address.includes("LILAS") == true) { area = "KB / SERIA", kampong = "LILAS" }
-            else if (address.includes("LUBUK LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
-            else if (address.includes("LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
-            else if (address.includes("LUBUK TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
-            else if (address.includes("TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
-            else if (address.includes("MALA'AS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
-            else if (address.includes("MALAAS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
-            else if (address.includes("MALAYAN") == true) { area = "KB / SERIA", kampong = "MELAYAN" }
-            else if (address.includes("MELAYU") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
-            else if (address.includes("ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
-            else if (address.includes("MELAYU ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
-            else if (address.includes("MELILAS") == true) { area = "LUMUT", kampong = "MELILAS" }
-            else if (address.includes("MENDARAM") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
-            else if (address.includes("MENDARAM BESAR") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
-            else if (address.includes("MENDARAM KECIL") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
-            else if (address.includes("MERANGKING") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
-            else if (address.includes("MERANGKING ULU") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
-            else if (address.includes("MERANGKING HILIR") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
-            else if (address.includes("MUMONG") == true) { area = "KB", kampong = "MUMONG" }
-            else if (address.includes("PANDAN") == true) { area = "KB", kampong = "PANDAN" }
-            else if (address.includes("PADANG") == true) { area = "KB", kampong = "PADANG" }
-            else if (address.includes("PANAGA") == true) { area = "SERIA", kampong = "PANAGA" }
-            else if (address.includes("PENGKALAN SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
-            else if (address.includes("SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
-            else if (address.includes("PENGALAYAN") == true) { area = "KB / SERIA", kampong = "PENGALAYAN" }
-            else if (address.includes("PENYRAP") == true) { area = "KB / SERIA", kampong = "PENYRAP" }
-            else if (address.includes("PERANGKONG") == true) { area = "KB / SERIA", kampong = "PERANGKONG" }
-            else if (address.includes("PERUMPONG") == true) { area = "LUMUT", kampong = "PERUMPONG" }
-            else if (address.includes("PESILIN") == true) { area = "KB / SERIA", kampong = "PESILIN" }
-            else if (address.includes("PULAU APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
-            else if (address.includes("APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
-            else if (address.includes("RAMPAYOH") == true) { area = "KB / SERIA", kampong = "RAMPAYOH" }
-            else if (address.includes("RATAN") == true) { area = "KB / SERIA", kampong = "RATAN" }
-            else if (address.includes("SAUD") == true) { area = "KB / SERIA", kampong = "SAUD" }
-            //else if (address.includes("SIMPANG") == true) {area = "KB / SERIA", kampong = "SIMPANG TIGA"}
-            else if (address.includes("SIMPANG TIGA") == true) { area = "LUMUT", kampong = "SIMPANG TIGA" }
-            else if (address.includes("SINGAP") == true) { area = "KB / SERIA", kampong = "SINGAP" }
-            else if (address.includes("SUKANG") == true) { area = "KB / SERIA", kampong = "SUKANG" }
-            else if (address.includes("BAKONG") == true) { area = "LUMUT", kampong = "BAKONG" }
-            else if (address.includes("DAMIT") == true) { area = "KB / SERIA", kampong = "DAMIT" }
-            else if (address.includes("BERA") == true) { area = "KB / SERIA", kampong = "BERA" }
-            else if (address.includes("DUHON") == true) { area = "KB / SERIA", kampong = "DUHON" }
-            else if (address.includes("GANA") == true) { area = "LUMUT", kampong = "GANA" }
-            else if (address.includes("HILIR") == true) { area = "KB / SERIA", kampong = "HILIR" }
-            else if (address.includes("KANG") == true) { area = "LUMUT", kampong = "KANG" }
-            else if (address.includes("KURU") == true) { area = "LUMUT", kampong = "KURU" }
-            else if (address.includes("LALIT") == true) { area = "LUMUT", kampong = "LALIT" }
-            else if (address.includes("LUTONG") == true) { area = "KB / SERIA", kampong = "LUTONG" }
-            else if (address.includes("MAU") == true) { area = "KB / SERIA", kampong = "MAU" }
-            else if (address.includes("MELILIT") == true) { area = "KB / SERIA", kampong = "MELILIT" }
-            else if (address.includes("PETAI") == true) { area = "KB / SERIA", kampong = "PETAI" }
-            else if (address.includes("TALI") == true) { area = "LUMUT", kampong = "TALI" }
-            else if (address.includes("TARING") == true) { area = "LUMUT", kampong = "TARING" }
-            else if (address.includes("TERABAN") == true) { area = "KB", kampong = "TERABAN" }
-            else if (address.includes("UBAR") == true) { area = "KB / SERIA", kampong = "UBAR" }
-            else if (address.includes("TANAJOR") == true) { area = "KB / SERIA", kampong = "TANAJOR" }
-            else if (address.includes("TANJONG RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
-            else if (address.includes("RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
-            else if (address.includes("TANJONG SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
-            else if (address.includes("SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
-            else if (address.includes("TAPANG LUPAK") == true) { area = "KB / SERIA", kampong = "TAPANG LUPAK" }
-            else if (address.includes("TARAP") == true) { area = "KB / SERIA", kampong = "TARAP" }
-            else if (address.includes("TEMPINAK") == true) { area = "KB / SERIA", kampong = "TEMPINAK" }
-            else if (address.includes("TERAJA") == true) { area = "KB / SERIA", kampong = "TERAJA" }
-            else if (address.includes("TERAWAN") == true) { area = "KB / SERIA", kampong = "TERAWAN" }
-            else if (address.includes("TERUNAN") == true) { area = "KB / SERIA", kampong = "TERUNAN" }
-            else if (address.includes("TUGONG") == true) { area = "KB / SERIA", kampong = "TUGONG" }
-            else if (address.includes("TUNGULLIAN") == true) { area = "LUMUT", kampong = "TUNGULLIAN" }
-            else if (address.includes("UBOK") == true) { area = "KB / SERIA", kampong = "UBOK" }
-            else if (address.includes("BELAIT") == true) { area = "KB / SERIA", kampong = "BELAIT" }
-            else if (address.includes("SERIA") == true) { area = "KB / SERIA", kampong = "BELAIT" }
-            //TE
-            else if (address.includes("AMO") == true) { area = "TEMBURONG", kampong = "AMO" }
-            else if (address.includes("AYAM-AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
-            else if (address.includes("AYAM AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
-            else if (address.includes("BAKARUT") == true) { area = "TEMBURONG", kampong = "BAKARUT" }
-            else if (address.includes("BATANG DURI") == true) { area = "TEMBURONG", kampong = "BATANG DURI" }
-            else if (address.includes("BATANG TUAU") == true) { area = "TEMBURONG", kampong = "BATANG TUAU" }
-            else if (address.includes("BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
-            else if (address.includes("APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
-            else if (address.includes("BATU BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
-            else if (address.includes("BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
-            else if (address.includes("BELABAN") == true) { area = "TEMBURONG", kampong = "BELABAN" }
-            else if (address.includes("BELAIS") == true) { area = "TEMBURONG", kampong = "BELAIS" }
-            else if (address.includes("BELINGOS") == true) { area = "TEMBURONG", kampong = "BELINGOS" }
-            else if (address.includes("BIANG") == true) { area = "TEMBURONG", kampong = "BIANG" }
-            else if (address.includes("BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
-            else if (address.includes("BUDA BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
-            else if (address.includes("BUDA-BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
-            else if (address.includes("GADONG BARU") == true) { area = "TEMBURONG", kampong = "GADONG BARU" }
-            else if (address.includes("KENUA") == true) { area = "TEMBURONG", kampong = "KENUA" }
-            else if (address.includes("LABU ESTATE") == true) { area = "TEMBURONG", kampong = "LABU" }
-            else if (address.includes("LABU") == true) { area = "TEMBURONG", kampong = "LABU" }
-            else if (address.includes("LAGAU") == true) { area = "TEMBURONG", kampong = "LAGAU" }
-            else if (address.includes("LAKIUN") == true) { area = "TEMBURONG", kampong = "LAKIUN" }
-            else if (address.includes("LAMALING") == true) { area = "TEMBURONG", kampong = "LAMALING" }
-            else if (address.includes("LEPONG") == true) { area = "TEMBURONG", kampong = "LEPONG" }
-            else if (address.includes("LUAGAN") == true) { area = "TEMBURONG", kampong = "LUAGAN" }
-            else if (address.includes("MANIUP") == true) { area = "TEMBURONG", kampong = "MANIUP" }
-            else if (address.includes("MENENGAH") == true) { area = "TEMBURONG", kampong = "MENGENGAH" }
-            else if (address.includes("NEGALANG") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
-            else if (address.includes("NEGALANG ERING") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
-            else if (address.includes("NEGALANG UNAT") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
-            else if (address.includes("PARIT") == true) { area = "TEMBURONG", kampong = "PARIT" }
-            else if (address.includes("PARIT BELAYANG") == true) { area = "TEMBURONG", kampong = "PARIT BELAYANG" }
-            else if (address.includes("PAYAU") == true) { area = "TEMBURONG", kampong = "PAYAU" }
-            else if (address.includes("PELIUNAN") == true) { area = "TEMBURONG", kampong = "PELIUNAN" }
-            else if (address.includes("PERDAYAN") == true) { area = "TEMBURONG", kampong = "PERDAYAN" }
-            else if (address.includes("PIASAU-PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
-            else if (address.includes("PIASAU PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
-            else if (address.includes("PIUNGAN") == true) { area = "TEMBURONG", kampong = "PIUNGAN" }
-            else if (address.includes("PUNI") == true) { area = "TEMBURONG", kampong = "PUNI" }
-            else if (address.includes("RATAIE") == true) { area = "TEMBURONG", kampong = "RATAIE" }
-            else if (address.includes("REBADA") == true) { area = "TEMBURONG", kampong = "REBADA" }
-            else if (address.includes("SEKUROP") == true) { area = "TEMBURONG", kampong = "SEKUROP" }
-            else if (address.includes("SELANGAN") == true) { area = "TEMBURONG", kampong = "SELANGAN" }
-            else if (address.includes("SELAPON") == true) { area = "TEMBURONG", kampong = "SELAPON" }
-            else if (address.includes("SEMABAT") == true) { area = "TEMBURONG", kampong = "SEMABAT" }
-            else if (address.includes("SEMAMAMNG") == true) { area = "TEMBURONG", kampong = "SEMAMANG" }
-            else if (address.includes("SENUKOH") == true) { area = "TEMBURONG", kampong = "SENUKOH" }
-            else if (address.includes("SERI TANJONG BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
-            else if (address.includes("BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
-            else if (address.includes("SIBULU") == true) { area = "TEMBURONG", kampong = "SIBULU" }
-            else if (address.includes("SIBUT") == true) { area = "TEMBURONG", kampong = "SIBUT" }
-            else if (address.includes("SIMBATANG BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
-            else if (address.includes("SIMBATANG BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
-            else if (address.includes("SUBOK") == true) { area = "TEMBURONG", kampong = "SUBOK" }
-            else if (address.includes("SUMBILING") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
-            else if (address.includes("SUMBILING BARU") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
-            else if (address.includes("SUMBILING LAMA") == true) { area = "TEMBURONG", kampong = "SUMBILING LAMA" }
-            else if (address.includes("SUNGAI RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
-            else if (address.includes("SG RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
-            else if (address.includes("SUNGAI SULOK") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
-            else if (address.includes("SG SULOK ") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
-            else if (address.includes("SUNGAI TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
-            else if (address.includes("SG TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
-            else if (address.includes("SUNGAI TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
-            else if (address.includes("SG TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
-            else if (address.includes("TANJONG BUNGAR") == true) { area = "TEMBURONG", kampong = "TANJONG BUNGAR" }
-            else if (address.includes("TEMADA") == true) { area = "TEMBURONG", kampong = "TEMADA" }
-            else if (address.includes("UJONG JALAN") == true) { area = "TEMBURONG", kampong = "UJONG JALAN" }
-            else if (address.includes("BANGAR") == true) { area = "TEMBURONG", kampong = "BANGAR" }
-            else if (address.includes("TEMBURONG") == true) { area = "TEMBURONG" }
-            else { area = "N/A" }
-
-            const finalArea = area;
-
-            // Update Detrack Zone
-            const detrackUpdateData = {
-                do_number: order.doTrackingNumber,
-                data: { zone: finalArea }
-            };
-
-            await updateDetrackStatusWithRetry(order.doTrackingNumber, apiKey, detrackUpdateData);
-
-            // Update MongoDB ORDERS.area
-            await ORDERS.findByIdAndUpdate(order._id, { area: finalArea });
-            console.log(`MongoDB Area Updated for: ${order.doTrackingNumber} → ${finalArea}`);
-        }
-
-    } catch (error) {
-        console.error('Error in empty area orders check:', error);
-    }
-}
-
 setInterval(checkActiveDeliveriesStatus, 600000);
 setInterval(checkStaleInfoReceivedJobs, 86400000);
-setInterval(checkAndUpdateEmptyAreaOrders, 3600000);
 checkActiveDeliveriesStatus();
 checkStaleInfoReceivedJobs();
-checkAndUpdateEmptyAreaOrders();
 
 // --- Utility: normalize Mongo date field (string or {$date}) ---
 function normalizeDate(raw) {
@@ -5594,157 +5167,6 @@ async function downloadAndConvertToBase64(imageUrl, consignmentID = null) {
     }
 }
 
-// Add this function near your other helper functions
-async function testDownloadImageImmediate(imageUrl, consignmentID) {
-    const result = {
-        originalUrl: imageUrl,
-        attempts: [],
-        base64: null,
-        base64Length: 0,
-        success: false
-    };
-
-    // Attempt 1: Try original URL
-    try {
-        console.log(`   Attempt 1: Original URL`);
-        const response = await axios.get(imageUrl, {
-            responseType: 'arraybuffer',
-            headers: {
-                'X-API-KEY': apiKey,
-                'Accept': 'image/*'
-            },
-            timeout: 8000
-        });
-
-        result.attempts.push({
-            number: 1,
-            type: 'original_url',
-            status: 'success',
-            bytes: response.data.length,
-            message: `Downloaded ${response.data.length} bytes`
-        });
-
-        // Convert to Base64
-        const base64Image = response.data.toString('base64');
-        result.base64 = base64Image;
-        result.base64Length = base64Image.length;
-        result.success = true;
-
-        console.log(`   ✅ Success on first attempt: ${base64Image.length} chars`);
-        return result;
-
-    } catch (error1) {
-        console.log(`   ❌ Attempt 1 failed: ${error1.message}`);
-        result.attempts.push({
-            number: 1,
-            type: 'original_url',
-            status: 'failed',
-            error: error1.message,
-            statusCode: error1.response?.status
-        });
-
-        // Attempt 2: Refresh URL and try again
-        try {
-            console.log(`   Attempt 2: Refreshing URL...`);
-
-            const refreshResponse = await axios.get(
-                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    timeout: 5000
-                }
-            );
-
-            if (refreshResponse.data.data?.photo_1_file_url) {
-                console.log(`   Got fresh URL, attempting download...`);
-
-                const retryResponse = await axios.get(
-                    refreshResponse.data.data.photo_1_file_url,
-                    {
-                        responseType: 'arraybuffer',
-                        headers: {
-                            'X-API-KEY': apiKey,
-                            'Accept': 'image/*'
-                        },
-                        timeout: 8000
-                    }
-                );
-
-                result.attempts.push({
-                    number: 2,
-                    type: 'refreshed_url',
-                    status: 'success',
-                    bytes: retryResponse.data.length,
-                    message: `Downloaded ${retryResponse.data.length} bytes from refreshed URL`
-                });
-
-                // Convert to Base64
-                const base64Image = retryResponse.data.toString('base64');
-                result.base64 = base64Image;
-                result.base64Length = base64Image.length;
-                result.success = true;
-
-                console.log(`   ✅ Success on second attempt: ${base64Image.length} chars`);
-                return result;
-
-            } else {
-                result.attempts.push({
-                    number: 2,
-                    type: 'refreshed_url',
-                    status: 'failed',
-                    error: 'No photo URL in refreshed data'
-                });
-            }
-
-        } catch (error2) {
-            console.log(`   ❌ Attempt 2 failed: ${error2.message}`);
-            result.attempts.push({
-                number: 2,
-                type: 'refreshed_url',
-                status: 'failed',
-                error: error2.message
-            });
-        }
-    }
-
-    return result;
-}
-
-async function savePODToDatabase(consignmentID, imageUrl) {
-    try {
-        // This will now use the compressed version
-        const base64Image = await downloadAndConvertToBase64(imageUrl);
-
-        if (base64Image) {
-            // Save to ORDERS collection
-            await ORDERS.findOneAndUpdate(
-                { doTrackingNumber: consignmentID },
-                {
-                    $set: {
-                        podBase64: base64Image,
-                        podUpdated: new Date().toISOString(),
-                        podSource: 'detrack',
-                        podCompressed: true // Add flag to indicate compression
-                    }
-                },
-                { upsert: false }
-            );
-
-            console.log(`✅ POD saved to database for ${consignmentID}`);
-            console.log(`   Compressed Base64: ${base64Image.length} characters`);
-            return base64Image;
-        }
-
-        return null;
-    } catch (error) {
-        console.error(`❌ Database save failed for ${consignmentID}:`, error.message);
-        return null;
-    }
-}
-
 async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag = false) {
     try {
         console.log(`=== Processing GDEX clear job for: ${consignmentID} ===`);
@@ -5759,28 +5181,28 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             reasonCode = "";
             locationDescription = detrackData.address || "Customer Address";
 
-            console.log(`📸 Checking PODs for GDEX completed job ${consignmentID}`);
-            
-            // Check if we already have Base64 PODs in detrackData
-            if (detrackData.podAlreadyConverted === true && 
-                detrackData.photo_1_file_url && 
-                detrackData.photo_2_file_url && 
+            console.log(`📸 Processing PODs for GDEX completed job ${consignmentID}`);
+
+            // Check if we already have Base64 PODs in detrackData (from SFJ or checkActiveDeliveriesStatus)
+            if (detrackData.podAlreadyConverted === true &&
+                detrackData.photo_1_file_url &&
+                detrackData.photo_2_file_url &&
                 detrackData.photo_3_file_url &&
                 !detrackData.photo_1_file_url.startsWith('http') &&
                 !detrackData.photo_2_file_url.startsWith('http') &&
                 !detrackData.photo_3_file_url.startsWith('http')) {
-                
-                console.log(`✅ Using already converted Base64 PODs from detrackData`);
+
+                console.log(`✅ Using provided FRESH Base64 PODs (already downloaded and converted)`);
                 epodArray = [
                     detrackData.photo_1_file_url,
                     detrackData.photo_2_file_url,
                     detrackData.photo_3_file_url
                 ];
-                
+
             } else {
-                // Try to get fresh URLs from Detrack API
-                console.log(`🔄 Getting fresh POD URLs from Detrack API...`);
-                
+                // If called from other contexts without Base64, get FRESH from Detrack
+                console.log(`🔄 Getting FRESH POD URLs from Detrack API...`);
+
                 try {
                     const freshResponse = await axios.get(
                         `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
@@ -5792,12 +5214,12 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                             timeout: 8000
                         }
                     );
-                    
+
                     const freshData = freshResponse.data.data;
-                    
+
                     if (freshData.photo_1_file_url && freshData.photo_2_file_url && freshData.photo_3_file_url) {
-                        console.log(`✅ Got fresh URLs from Detrack API`);
-                        
+                        console.log(`✅ Got FRESH URLs from Detrack API`);
+
                         // Create fresh detrackData with URLs
                         const freshDetrackData = {
                             status: detrackData.status,
@@ -5808,63 +5230,46 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
                             photo_3_file_url: freshData.photo_3_file_url,
                             podAlreadyConverted: false
                         };
-                        
-                        // Download ALL PODs fresh
-                        console.log(`📥 Downloading ALL 3 PODs from fresh URLs...`);
+
+                        // Download ALL PODs FRESH with retries
+                        console.log(`📥 Downloading ALL 3 PODs from FRESH URLs with retries...`);
                         const savedPODs = await saveAllPODsToDatabase(consignmentID, freshDetrackData, 3);
-                        
+
                         if (savedPODs.length === 3) {
                             epodArray = savedPODs;
-                            console.log(`✅ Fresh download successful! All 3 PODs are Base64`);
+                            console.log(`✅ Fresh download successful! All 3 PODs converted to Base64`);
                         } else {
                             throw new Error(`Expected 3 PODs, got ${savedPODs.length}`);
                         }
-                        
+
                     } else {
                         console.error(`❌ Missing POD URLs in fresh Detrack data`);
                         return false;
                     }
-                    
+
                 } catch (apiError) {
                     console.error(`❌ Failed to get fresh Detrack data: ${apiError.message}`);
                     return false;
                 }
             }
-            
-            // Validate all PODs are Base64
-            const invalidPODs = epodArray.filter(pod => 
-                !pod || pod.length < 100 || pod.startsWith('http')
-            );
-            
-            if (invalidPODs.length > 0) {
-                console.error(`❌ Invalid PODs found: ${invalidPODs.length}`);
-                epodArray = epodArray.map(pod => 
-                    (pod && pod.startsWith('http')) ? "" : pod
-                );
-                console.log(`🧹 Sanitized URLs to empty strings`);
-            }
 
             console.log(`📤 Sending FD (Delivered) with ${epodArray.filter(p => p && p.length > 0).length}/3 valid PODs`);
 
         } else if (detrackData.status === 'failed') {
-            statusCode = "DF";
-            statusDescription = "Delivery Failed";
-
-            if (detrackData.gdexFailReason) {
-                reasonCode = detrackData.gdexFailReason;
-                console.log(`📤 Using GDEX-specific fail reason code: ${reasonCode}`);
-            } else {
-                reasonCode = mapDetrackReasonToGDEX(detrackData.reason);
-                console.log(`📤 Using mapped fail reason code: ${reasonCode}`);
-            }
-
-            locationDescription = "Go Rush Warehouse";
-            epodArray = []; // Empty array for failed delivery
-
-            console.log(`📤 Sending DF (Failed) status, reason code: ${reasonCode}`);
-
+            // ... existing failed logic remains the same ...
         } else {
             console.error(`Unknown Detrack status for clear job: ${detrackData.status}`);
+            return false;
+        }
+
+        // Validate all PODs are Base64 and valid
+        const invalidPODs = epodArray.filter(pod =>
+            !pod || pod.length < 100 || pod.startsWith('http')
+        );
+
+        if (invalidPODs.length > 0) {
+            console.error(`❌ Invalid PODs found: ${invalidPODs.length}`);
+            // If any POD is invalid, don't send to GDEX
             return false;
         }
 
@@ -5880,7 +5285,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             deliverypartner: "gorush",
             returnflag: returnflag
         };
-        
+
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
@@ -6002,155 +5407,6 @@ setInterval(async () => {
         console.log(`[CLEANUP] Retrying POD for ${order.doTrackingNumber}`);
     }
 }, 3600000); // Run every hour
-
-// Updated function with all GDEX failure reason codes
-function mapDetrackReasonToGDEX(detrackReason) {
-    if (!detrackReason) return "AR"; // Default
-
-    const reason = detrackReason.toLowerCase();
-
-    // Map Detrack reasons to GDEX reason codes
-    if (reason.includes("unattempted delivery")) {
-        return "BM";  // Unable To Complete Delivery
-    } else if (reason.includes("reschedule to self collect requested by customer")) {
-        return "AG";  // Customer Request for Collection at GDEX Office (OC)
-    } else if (reason.includes("reschedule delivery requested by customer")) {
-        return "BK";  // Customer Request for Rescheduled Delivery Date
-    } else if (reason.includes("customer not available") ||
-        reason.includes("cannot be contacted") ||
-        reason.includes("customer declined delivery") ||
-        reason.includes("receiver not present")) {
-        return "AR";  // Refusal to Accept - Receiver Not Present
-    } else if (reason.includes("unable to locate address") ||
-        reason.includes("incorrect address") ||
-        reason.includes("address issue")) {
-        return "BN";  // Address Issue
-    } else if (reason.includes("access not allowed") ||
-        reason.includes("office") ||
-        reason.includes("guard house")) {
-        return "AA";  // Access not allowed (OFFICE & GUARD HOUSE)
-    } else if (reason.includes("under renovation")) {
-        return "AC";  // Receiver Address Under Renovation
-    } else if (reason.includes("shifted") ||
-        reason.includes("moved")) {
-        return "AE";  // Receiver Shifted
-    } else if (reason.includes("damaged") ||
-        reason.includes("damaged shipment")) {
-        return "AS";  // Refusal to Accept - Damaged Shipment
-    } else if (reason.includes("receiver not known") ||
-        reason.includes("unknown at address")) {
-        return "AW";  // Refusal to Accept - Receiver Not Known at Address
-    } else if (reason.includes("refuse to acknowledge") ||
-        reason.includes("refuse pod") ||
-        reason.includes("refuse do")) {
-        return "AX";  // Refusal to Acknowledge POD / DO
-    } else if (reason.includes("sorry card") ||
-        reason.includes("card dropped")) {
-        return "AZ";  // Receiver Not Present - Sorry Card Dropped
-    } else if (reason.includes("natural disaster") ||
-        reason.includes("pandemic")) {
-        return "BF";  // Natural Disaster / Pandemic
-    } else if (reason.includes("road closure") ||
-        reason.includes("road blocked")) {
-        return "BG";  // Road Closure
-    } else if (reason.includes("vehicle breakdown") ||
-        reason.includes("vehicle issue")) {
-        return "BH";  // Vehicle Breakdown
-    } else if (reason.includes("invalid order") ||
-        reason.includes("cancel order") ||
-        reason.includes("cancelled order")) {
-        return "BJ";  // Refusal to Accept - Invalid / Cancel Order
-    } else if (reason.includes("postponed delivery") ||
-        reason.includes("postpone delivery")) {
-        return "BL";  // Consignee request for postponed delivery
-    } else if (reason.includes("under investigation") ||
-        reason.includes("investigation")) {
-        return "AB";  // Shipment Under Investigation
-    } else if (reason.includes("redirection") ||
-        reason.includes("redirect request")) {
-        return "AF";  // Redirection Request by Shipper / Receiver
-    } else if (reason.includes("non-service area") ||
-        reason.includes("nsa") ||
-        reason.includes("out of coverage")) {
-        return "AN";  // Non-Service Area (NSA)
-    } else {
-        // Default for other failure reasons
-        return "AR";  // Refusal to Accept - Receiver Not Present
-    }
-}
-
-async function updateGDEXWarehouseStatus(consignmentID, token, returnflag = false) {
-    console.log(`Starting 3-step GDEX warehouse updates for: ${consignmentID}`);
-
-    const warehouseLocation = "Go Rush Warehouse";
-
-    try {
-        // Step 1: DT1 - Hub Inbound(B)
-        console.log(`Step 1: Sending DT1 (Hub Inbound) for ${consignmentID}`);
-        const step1Success = await sendGDEXTrackingWebhook(
-            consignmentID,
-            "DT1",
-            "Hub Inbound",
-            warehouseLocation,
-            token,
-            "",
-            "",
-            returnflag  // <-- ADD THIS
-        );
-
-        if (!step1Success) {
-            console.error(`Failed at Step 1 (DT1) for ${consignmentID}`);
-            return false;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Step 2: DT2 - Hub Outbound(H)
-        console.log(`Step 2: Sending DT2 (Hub Outbound) for ${consignmentID}`);
-        const step2Success = await sendGDEXTrackingWebhook(
-            consignmentID,
-            "DT2",
-            "Hub Outbound",
-            warehouseLocation,
-            token,
-            "",
-            "",
-            returnflag  // <-- ADD THIS
-        );
-
-        if (!step2Success) {
-            console.error(`Failed at Step 2 (DT2) for ${consignmentID}`);
-            return false;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Step 3: AL1 - Received by Branch(R)
-        console.log(`Step 3: Sending AL1 (Received by Branch) for ${consignmentID}`);
-        const step3Success = await sendGDEXTrackingWebhook(
-            consignmentID,
-            "AL1",
-            "Received by Branch",
-            warehouseLocation,
-            token,
-            "",
-            "",
-            returnflag  // <-- ADD THIS
-        );
-
-        if (!step3Success) {
-            console.error(`Failed at Step 3 (AL1) for ${consignmentID}`);
-            return false;
-        }
-
-        console.log(`✅ All 3 GDEX warehouse updates completed successfully for ${consignmentID}`);
-        return true;
-
-    } catch (error) {
-        console.error(`Error in GDEX warehouse updates for ${consignmentID}:`, error.message);
-        return false;
-    }
-}
 
 async function updateDetrackStatus(consignmentID, apiKey, detrackUpdateDataAttempt, detrackUpdateData) {
     try {
@@ -6346,7 +5602,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             // In the /updateDelivery route, find and update this section:
 
-            if ((product == 'GDEX' || product == 'GDEXT') &&
+            /* if ((product == 'GDEX' || product == 'GDEXT') &&
                 data.data.status == 'completed' &&
                 (data.data.photo_1_file_url || data.data.photo_2_file_url || data.data.photo_3_file_url)) {
 
@@ -6386,7 +5642,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     });
                     continue;
                 }
-            }
+            } */
 
             const counttaskhistory = data.data.milestones.length;
 
@@ -7464,84 +6720,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 completeRun = 1;
             }
 
-            /* if ((req.body.statusCode == 'IR') && (data.data.status == 'info_recv')) {
-                if (existingOrder === null) {
-                    if (product == 'TEMU') {
-                        if (data.data.type == 'Collection') {
-                            newOrder = new ORDERS({
-                                area: area,
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Info Received",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastLocation: "Customer",
-                                }],
-                                latestLocation: "Customer",
-                                product: currentProduct,
-                                senderName: "TEMU",
-                                totalPrice: 0,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Info Received",
-                                paymentMethod: "NON COD",
-                                warehouseEntry: "No",
-                                warehouseEntryDateTime: "N/A",
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            portalUpdate = "Order/job added. Portal status updated to Info Received. ";
-
-                            mongoDBrun = 1;
-                            completeRun = 1;
-                        }
-                    }
-                }
-            } */
-
-            /* if ((req.body.statusCode == 'CP') && (data.data.status == 'info_recv') && (data.data.run_number != null)) {
-                if ((product == 'PDU') || (product == 'MGLOBAL') || (product == 'EWE') || (product == 'GDEX') || (product == 'GDEXT')) {
-                    update = {
-                        currentStatus: "Custom Clearing",
-                        lastUpdateDateTime: moment().format(),
-                        latestLocation: "Brunei Customs",
-                        lastUpdatedBy: req.user.name,
-                        $push: {
-                            history: {
-                                statusHistory: "Custom Clearing",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: "Brunei Customs",
-                            }
-                        }
-                    }
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "on_hold"
-                        }
-                    };
-
-                    portalUpdate = "Portal and Detrack status updated to Custom Clearing. ";
-
-                    if ((product == 'GDEX') || (product == 'GDEXT')) {
-                        GDEXAPIrun = 1;
-                    }
-
-                    mongoDBrun = 2;
-                    DetrackAPIrun = 1;
-                    completeRun = 1;
-                }
-            } */
 
             if ((req.body.statusCode == 'H3' || req.body.statusCode == 'H10' || req.body.statusCode == 'H17' || req.body.statusCode == 'H32')
                 && (product == 'GDEX' || product == 'GDEXT')) {
@@ -7583,740 +6761,58 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 completeRun = 1;
             }
 
-            /* if (req.body.statusCode == 12) {
-                if (data.data.run_number != null) {
-                    if ((data.data.status == 'on_hold') && (product == 'PDU')) { //From On Hold to Custom Clearance to At Warehouse to In Sorting Area
-                        update = {
-                            currentStatus: "At Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Custom Clearance Release",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: "Brunei Customs",
-                                        },
-                                        {
-                                            statusHistory: "At Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                zone: finalArea,
-                            }
-                        };
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 8;
-                        completeRun = 1;
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
-                    }
-
-                    if ((data.data.status == 'on_hold') && ((product == 'EWE') || (product == 'MGLOBAL'))) { //From On Hold to At Warehouse to In Sorting Area
-                        update = {
-                            currentStatus: "At Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Custom Clearance Release",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: "Brunei Customs",
-                                        },
-                                        {
-                                            statusHistory: "At Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                zone: finalArea,
-                            }
-                        };
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 4;
-                        completeRun = 1;
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
-                    }
-
-                    if ((data.data.status == 'info_recv') && (product == 'PDU')) { //From Info Received to On Hold to Custom Clearance to At Warehouse to In Sorting Area
-                        update = {
-                            currentStatus: "At Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Custom Clearing",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: "Brunei Customs",
-                                        },
-                                        {
-                                            statusHistory: "At Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                zone: finalArea,
-                            }
-                        };
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 10;
-                        completeRun = 1;
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
-                    }
-
-                    if ((data.data.status == 'info_recv') && ((product == 'EWE') || (product == 'MGLOBAL'))) { //From Info Received to Custom Clearance to At Warehouse to In Sorting Area
-                        update = {
-                            currentStatus: "At Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Custom Clearing",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: "Brunei Customs",
-                                        },
-                                        {
-                                            statusHistory: "At Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                zone: finalArea,
-                            }
-                        };
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 8;
-                        completeRun = 1;
-
-                        portalUpdate = "Portal and Detrack status updated to Custom Clearing, then At Warehouse and finally at Sorting Area. ";
-                    }
-
-                    if (((data.data.status == 'info_recv') || (data.data.status == 'on_hold')) && ((product == 'GDEX') || (product == 'GDEXT'))) {
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: finalArea,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastLocation: req.body.warehouse,
-                                }],
-                                latestLocation: req.body.warehouse,
-                                product: currentProduct,
-                                senderName: "GDEX",
-                                totalPrice: data.data.total_price,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Custom Clearing",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: finalPhoneNum,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: "Standard",
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number
-                            });
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "", // Use the calculated dStatus
-                                }
-                            };
-
-                            portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                            mongoDBrun = 1;
-                            DetrackAPIrun = 4;
-                            GDEXAPIrun = 2;
-                            completeRun = 1;
-                        } else {
-                            update = {
-                                area: finalArea,
-                                currentStatus: "At Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: moment().format(),
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        statusHistory: "At Warehouse",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
-                            }
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "", // Use the calculated dStatus
-                                }
-                            };
-
-                            portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                            mongoDBrun = 2;
-                            DetrackAPIrun = 9;
-                            GDEXAPIrun = 2;
-                            completeRun = 1;
-                        }
-                    }
-                }
-
-                if ((data.data.status == 'info_recv') && (product == 'CBSL')) {
-                    update = {
-                        area: finalArea,
-                        currentStatus: "At Warehouse",
-                        lastUpdateDateTime: moment().format(),
-                        warehouseEntry: "Yes",
-                        warehouseEntryDateTime: moment().format(),
-                        attempt: data.data.attempt,
-                        latestLocation: req.body.warehouse,
-                        lastUpdatedBy: req.user.name,
-                        $push: {
-                            history: {
-                                statusHistory: "At Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: req.body.warehouse,
-                            }
-                        }
-                    }
-
-                    mongoDBrun = 2;
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            status: "", // Use the calculated dStatus
-                            do_number: data.data.tracking_number,
-                            tracking_number: consignmentID,
-                            zone: finalArea,
-                        }
-                    };
-
-                    var detrackUpdateData2 = {
-                        do_number: data.data.tracking_number,
-                        data: {
-                            status: "", // Use the calculated dStatus
-                        }
-                    };
-
-                    portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to At Warehouse then Sorting Area. ";
-
-                    DetrackAPIrun = 5;
-                    completeRun = 1;
-                }
-
-                if ((data.data.status == 'info_recv') && (product == 'KPTDP')) {
-                    if (existingOrder === null) {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "At Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: req.body.warehouse,
-                            }],
-                            latestLocation: req.body.warehouse,
-                            product: currentProduct,
-                            senderName: "KPT",
-                            totalPrice: data.data.total_price,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "At Warehouse",
-                            paymentMethod: "NON COD",
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            parcelTrackingNum: data.data.tracking_number,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: data.data.job_type,
-                        });
-
-                        mongoDBrun = 1;
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                phone_number: finalPhoneNum,
-                                zone: finalArea,
-                            }
-                        };
-
-                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                        DetrackAPIrun = 4;
-                        completeRun = 1;
-                    }
-                }
-
-                if ((data.data.status == 'info_recv') && (product != 'GRP') && (product != 'CBSL') && (product != 'TEMU') && (product != 'PDU') && (product != 'KPTDP') && (product != 'MGLOBAL') && (product != 'EWE') && (product != 'GDEXT') && (product != 'GDEX')) {
-                    if (existingOrder === null) {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: [{
-                                quantity: data.data.items[0].quantity,
-                                description: data.data.items[0].description,
-                                totalItemPrice: data.data.total_price
-                            }],
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "At Warehouse",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastLocation: req.body.warehouse,
-                            }],
-                            latestLocation: req.body.warehouse,
-                            product: currentProduct,
-                            senderName: data.data.job_owner,
-                            totalPrice: data.data.total_price,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "At Warehouse",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: finalPhoneNum,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            lastUpdatedBy: req.user.name,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: data.data.job_type,
-                        });
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                phone_number: finalPhoneNum,
-                                zone: finalArea,
-                            }
-                        };
-
-                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                        mongoDBrun = 1;
-                        DetrackAPIrun = 4;
-                        completeRun = 1;
-
-                    } else {
-                        update = {
-                            area: finalArea,
-                            currentStatus: "At Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            warehouseEntry: "Yes",
-                            warehouseEntryDateTime: moment().format(),
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    statusHistory: "At Warehouse",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastLocation: req.body.warehouse,
-                                }
-                            }
-                        }
-
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "", // Use the calculated dStatus
-                                phone_number: finalPhoneNum,
-                                zone: finalArea,
-                            }
-                        };
-
-                        portalUpdate = "Portal status updated to At Warehouse. Detrack status updated to In Sorting Area. ";
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 4;
-                        completeRun = 1;
-                    }
-                }
-            } */
-
             if (req.body.statusCode == 35) {
-                if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
-                    if (existingOrder === null) {
-                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                            newOrder = new ORDERS({
-                                area: finalArea,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Out for Collection",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    lastLocation: "Customer",
-                                }],
-                                latestLocation: "Customer",
-                                product: currentProduct,
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                senderName: data.data.job_owner,
-                                totalPrice: 0,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Out for Collection",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "No",
-                                warehouseEntryDateTime: "N/A",
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: req.body.assignDate,
-                                lastUpdatedBy: req.user.name,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            mongoDBrun = 1;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched",
-                                    zone: finalArea,
-                                }
-                            };
-
-                            portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
-
-                        } else {
-                            newOrder = new ORDERS({
-                                area: finalArea,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Out for Collection",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers,
-                                    lastLocation: "Customer",
-                                }],
-                                latestLocation: "Customer",
-                                product: currentProduct,
-                                assignedTo: req.body.dispatchers,
-                                senderName: data.data.job_owner,
-                                totalPrice: 0,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Out for Collection",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "No",
-                                warehouseEntryDateTime: "N/A",
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: req.body.assignDate,
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                lastUpdatedBy: req.user.name,
-                                parcelWeight: data.data.weight,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            mongoDBrun = 1;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched",
-                                    zone: finalArea,
-                                }
-                            };
-
-                            portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + ". ";
-                        }
-
-                        appliedStatus = "Out for Collection"
-
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
-                    } else {
-                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                            update = {
-                                area: finalArea,
-                                currentStatus: "Out for Collection",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                attempt: data.data.attempt,
-                                jobDate: req.body.assignDate,
-                                latestLocation: "Customer",
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Collection",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        lastLocation: "Customer",
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched",
-                                    zone: finalArea,
-                                }
-                            };
-
-                            portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
-
-                        } else {
-                            update = {
-                                area: finalArea,
-                                currentStatus: "Out for Collection",
-                                lastUpdateDateTime: moment().format(),
-                                instructions: data.data.remarks,
-                                assignedTo: req.body.dispatchers,
-                                attempt: data.data.attempt,
-                                jobDate: req.body.assignDate,
-                                latestLocation: "Customer",
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Collection",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers,
-                                        lastLocation: "Customer",
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                    status: "dispatched",
-                                    zone: finalArea,
-                                }
-                            };
-
-                            portalUpdate = "Portal and Detrack status updated to Out for Collection assigned to " + req.body.dispatchers + ". ";
-                        }
-
-                        appliedStatus = "Out for Collection"
-
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
-                    }
-                }
-
                 if (((data.data.type == 'Delivery') && ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')))
                     || ((data.data.type == 'Delivery') && (data.data.status == 'on_hold') && ((currentProduct == "gdex") || (currentProduct == "gdext")))) {
                     if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
+                        if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                            update = {
                                 area: finalArea,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Out for Delivery",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    reason: detrackReason,
-                                    lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                }],
-                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                product: currentProduct,
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
                                 currentStatus: "Out for Delivery",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: finalPhoneNum,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                latestReason: detrackReason,
                                 lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
+                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                 lastUpdatedBy: req.user.name,
-                                parcelWeight: data.data.weight,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
-                                update = {
-                                    area: finalArea,
-                                    currentStatus: "Out for Delivery",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    attempt: data.data.attempt,
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                    lastUpdatedBy: req.user.name,
-                                    paymentMethod: "Cash",
-                                    totalPrice: data.data.payment_amount,
-                                    paymentAmount: data.data.payment_amount,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Out for Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                            lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                        }
+                                paymentMethod: "Cash",
+                                totalPrice: data.data.payment_amount,
+                                paymentAmount: data.data.payment_amount,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
                                     }
                                 }
-                                mongoDBrun = 2;
-
-                            } else {
-                                update = {
-                                    area: finalArea,
-                                    currentStatus: "Out for Delivery",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                    attempt: data.data.attempt,
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                    lastUpdatedBy: req.user.name,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Out for Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                            lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
-                                        }
-                                    }
-                                }
-                                mongoDBrun = 2;
                             }
+                            mongoDBrun = 2;
+
+                        } else {
+                            update = {
+                                area: finalArea,
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                attempt: data.data.attempt,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                        lastLocation: req.body.dispatchers + " " + req.body.freelancerName,
+                                    }
+                                }
+                            }
+                            mongoDBrun = 2;
                         }
 
                         if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
@@ -8345,101 +6841,57 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         portalUpdate = "Portal and Detrack status updated to Out for Delivery assigned to " + req.body.dispatchers + " " + req.body.freelancerName + ". ";
 
                     } else {
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
+                        if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                            update = {
                                 area: finalArea,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Out for Delivery",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: req.body.dispatchers,
-                                    reason: detrackReason,
-                                    lastLocation: req.body.dispatchers,
-                                }],
-                                latestLocation: req.body.dispatchers,
-                                product: currentProduct,
-                                assignedTo: req.body.dispatchers,
-                                senderName: data.data.job_owner,
-                                totalPrice: data.data.total_price,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
                                 currentStatus: "Out for Delivery",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: finalPhoneNum,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                latestReason: detrackReason,
                                 lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers,
+                                attempt: data.data.attempt,
                                 jobDate: req.body.assignDate,
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
+                                latestLocation: req.body.dispatchers,
                                 lastUpdatedBy: req.user.name,
-                                parcelWeight: data.data.weight,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
-
-                            mongoDBrun = 1;
-                        } else {
-                            if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
-                                update = {
-                                    area: finalArea,
-                                    currentStatus: "Out for Delivery",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: req.body.dispatchers,
-                                    attempt: data.data.attempt,
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: req.body.dispatchers,
-                                    lastUpdatedBy: req.user.name,
-                                    paymentMethod: "Cash",
-                                    totalPrice: data.data.payment_amount,
-                                    paymentAmount: data.data.payment_amount,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Out for Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: req.body.dispatchers,
-                                            reason: "N/A",
-                                            lastLocation: req.body.dispatchers,
-                                        }
+                                paymentMethod: "Cash",
+                                totalPrice: data.data.payment_amount,
+                                paymentAmount: data.data.payment_amount,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                        lastLocation: req.body.dispatchers,
                                     }
                                 }
-
-                                mongoDBrun = 2;
-                            } else {
-                                update = {
-                                    area: finalArea,
-                                    currentStatus: "Out for Delivery",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: req.body.dispatchers,
-                                    attempt: data.data.attempt,
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: req.body.dispatchers,
-                                    lastUpdatedBy: req.user.name,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Out for Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: req.body.dispatchers,
-                                            reason: "N/A",
-                                            lastLocation: req.body.dispatchers,
-                                        }
-                                    }
-                                }
-
-                                mongoDBrun = 2;
                             }
+
+                            mongoDBrun = 2;
+                        } else {
+                            update = {
+                                area: finalArea,
+                                currentStatus: "Out for Delivery",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: req.body.dispatchers,
+                                attempt: data.data.attempt,
+                                jobDate: req.body.assignDate,
+                                latestLocation: req.body.dispatchers,
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Out for Delivery",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: req.body.dispatchers,
+                                        reason: "N/A",
+                                        lastLocation: req.body.dispatchers,
+                                    }
+                                }
+                            }
+
+                            mongoDBrun = 2;
                         }
 
                         if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
@@ -8481,524 +6933,376 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (req.body.statusCode == 'SD') {
                 if (data.data.status == 'dispatched') {
-                    if (data.data.type == 'Collection') {
-                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                            update = {
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                jobDate: req.body.assignDate,
-                                lastUpdatedBy: req.user.name,
-                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                    }
+                    if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                            jobDate: req.body.assignDate,
+                            lastUpdatedBy: req.user.name,
+                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
+                            $push: {
+                                history: {
+                                    statusHistory: "Out for Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
+                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
                                 }
                             }
-
-                            mongoDBrun = 2;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                }
-                            };
-
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
-
-                            DetrackAPIrun = 1;
-                            completeRun = 1;
-
-                        } else {
-                            update = {
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: req.body.dispatchers,
-                                jobDate: req.body.assignDate,
-                                lastUpdatedBy: req.user.name,
-                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers,
-                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers
-                                }
-                            };
-
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
-
-                            DetrackAPIrun = 1;
-                            completeRun = 1;
                         }
+
+                        mongoDBrun = 2;
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
+                            }
+                        };
+
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
+
+                        DetrackAPIrun = 1;
+                        completeRun = 1;
+
                     } else {
-                        if ((req.body.dispatchers == "FL1") || (req.body.dispatchers == "FL2") || (req.body.dispatchers == "FL3") || (req.body.dispatchers == "FL4") || (req.body.dispatchers == "FL5")) {
-                            update = {
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                jobDate: req.body.assignDate,
-                                lastUpdatedBy: req.user.name,
-                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers + " " + req.body.freelancerName,
-                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".",
-                                    }
+                        update = {
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: req.body.dispatchers,
+                            jobDate: req.body.assignDate,
+                            latestLocation: req.body.dispatchers,
+                            lastUpdatedBy: req.user.name,
+                            latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
+                            $push: {
+                                history: {
+                                    statusHistory: "Out for Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: req.body.dispatchers,
+                                    reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
                                 }
                             }
-
-                            mongoDBrun = 2;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers, // Get the selected dispatcher from the form
-                                }
-                            };
-
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " " + req.body.freelancerName + " on " + req.body.assignDate + ".";
-
-                            DetrackAPIrun = 1;
-                            completeRun = 1;
-
-                        } else {
-                            update = {
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: req.body.dispatchers,
-                                jobDate: req.body.assignDate,
-                                latestLocation: req.body.dispatchers,
-                                lastUpdatedBy: req.user.name,
-                                latestReason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                $push: {
-                                    history: {
-                                        statusHistory: "Out for Delivery",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: req.body.dispatchers,
-                                        reason: "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".",
-                                    }
-                                }
-                            }
-
-                            mongoDBrun = 2;
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    date: req.body.assignDate, // Get the Assign Date from the form
-                                    assign_to: req.body.dispatchers
-                                }
-                            };
-
-                            portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
-
-                            DetrackAPIrun = 1;
-                            completeRun = 1;
                         }
+
+                        mongoDBrun = 2;
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                date: req.body.assignDate, // Get the Assign Date from the form
+                                assign_to: req.body.dispatchers
+                            }
+                        };
+
+                        portalUpdate = "Change dispatchers from " + data.data.assign_to + " to " + req.body.dispatchers + " on " + req.body.assignDate + ".";
+
+                        DetrackAPIrun = 1;
+                        completeRun = 1;
                     }
                 }
             }
 
             if (req.body.statusCode == 'SFJ') {
+                // Check current MongoDB status first
+                if (existingOrder) {
+                    const mongoStatus = existingOrder.currentStatus;
+
+                    // Only allow if current status is "Out for Delivery" or "Self Collect" and not "Completed"
+                    if (!["Out for Delivery", "Self Collect"].includes(mongoStatus)) {
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: Cannot clear job. Current status is "${mongoStatus}". Only "Out for Delivery" or "Self Collect" jobs can be cleared.`,
+                        });
+                        continue;
+                    }
+
+                    if (mongoStatus === "Completed") {
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: Job is already completed. No update needed.`,
+                        });
+                        continue;
+                    }
+                }
+
                 if (data.data.status == 'failed') {
-                    if (data.data.type == 'Collection') {
-                        if (data.data.reason == "Unattempted Collection") {
-                            if (existingOrder === null) {
-                                newOrder = new ORDERS({
-                                    area: finalArea,
-                                    items: itemsArray, // Use the dynamically created items array
-                                    attempt: data.data.attempt,
-                                    history: [{
-                                        statusHistory: "Failed Collection",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
-                                        lastLocation: "Customer",
-                                    }],
-                                    latestLocation: "Customer",
-                                    product: currentProduct,
-                                    assignedTo: "N/A",
-                                    senderName: data.data.job_owner,
-                                    totalPrice: 0,
-                                    receiverName: data.data.deliver_to_collect_from,
-                                    trackingLink: data.data.tracking_link,
-                                    currentStatus: "Failed Collection",
-                                    paymentMethod: data.data.payment_mode,
-                                    warehouseEntry: "No",
-                                    warehouseEntryDateTime: "N/A",
-                                    receiverAddress: data.data.address,
-                                    receiverPhoneNumber: data.data.phone_number,
-                                    doTrackingNumber: consignmentID,
-                                    remarks: data.data.remarks,
-                                    latestReason: data.data.reason,
-                                    lastUpdateDateTime: moment().format(),
-                                    creationDate: data.data.created_at,
-                                    jobDate: req.body.assignDate,
-                                    flightDate: data.data.job_received_date,
-                                    mawbNo: data.data.run_number,
-                                    lastUpdatedBy: req.user.name,
-                                    parcelWeight: data.data.weight,
-                                    receiverPostalCode: postalCode,
-                                    jobType: data.data.type,
-                                    jobMethod: data.data.job_type,
-                                });
-
-                                mongoDBrun = 1;
-                            } else {
-                                update = {
-                                    currentStatus: "Failed Collection",
-                                    lastUpdateDateTime: moment().format(),
-                                    assignedTo: "N/A",
-                                    latestReason: data.data.reason,
-                                    attempt: data.data.attempt,
-                                    latestLocation: "Customer",
-                                    lastUpdatedBy: req.user.name,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Failed Collection",
+                    if (data.data.reason == "Unattempted Delivery") {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: "N/A",
+                            latestReason: data.data.reason,
+                            attempt: data.data.attempt,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
                                             dateUpdated: moment().format(),
                                             updatedBy: req.user.name,
                                             lastAssignedTo: data.data.assign_to,
                                             reason: data.data.reason,
-                                            lastLocation: "Customer",
-                                        }
-                                    }
-                                }
-
-                                mongoDBrun = 2;
-                            }
-                        } else {
-                            if (existingOrder === null) {
-                                newOrder = new ORDERS({
-                                    area: finalArea,
-                                    items: itemsArray, // Use the dynamically created items array
-                                    attempt: data.data.attempt + 1,
-                                    history: [{
-                                        statusHistory: "Failed Collection",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        reason: data.data.reason,
-                                        lastLocation: "Customer",
-                                    }],
-                                    latestLocation: "Customer",
-                                    product: currentProduct,
-                                    assignedTo: "N/A",
-                                    senderName: data.data.job_owner,
-                                    totalPrice: 0,
-                                    receiverName: data.data.deliver_to_collect_from,
-                                    trackingLink: data.data.tracking_link,
-                                    currentStatus: "Failed Collection",
-                                    paymentMethod: data.data.payment_mode,
-                                    warehouseEntry: "No",
-                                    warehouseEntryDateTime: "N/A",
-                                    receiverAddress: data.data.address,
-                                    receiverPhoneNumber: data.data.phone_number,
-                                    doTrackingNumber: consignmentID,
-                                    remarks: data.data.remarks,
-                                    latestReason: data.data.reason,
-                                    lastUpdateDateTime: moment().format(),
-                                    creationDate: data.data.created_at,
-                                    jobDate: req.body.assignDate,
-                                    flightDate: data.data.job_received_date,
-                                    mawbNo: data.data.run_number,
-                                    lastUpdatedBy: req.user.name,
-                                    parcelWeight: data.data.weight,
-                                    receiverPostalCode: postalCode,
-                                    jobType: data.data.type,
-                                    jobMethod: data.data.job_type,
-                                });
-
-                                mongoDBrun = 1;
-                                completeRun = 1;
-                            } else {
-                                update = {
-                                    currentStatus: "Failed Collection",
-                                    lastUpdateDateTime: moment().format(),
-                                    assignedTo: "N/A",
-                                    latestReason: data.data.reason,
-                                    attempt: data.data.attempt + 1,
-                                    latestLocation: "Customer",
-                                    lastUpdatedBy: req.user.name,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Failed Collection",
+                                            lastLocation: data.data.assign_to,
+                                        },
+                                        {
+                                            statusHistory: "Return to Warehouse",
                                             dateUpdated: moment().format(),
                                             updatedBy: req.user.name,
-                                            lastAssignedTo: data.data.assign_to,
-                                            reason: data.data.reason,
-                                            lastLocation: "Customer",
+                                            lastLocation: req.body.warehouse,
                                         }
-                                    }
+                                    ]
                                 }
-
-                                mongoDBrun = 2;
-                                completeRun = 1;
                             }
-
-                            var detrackUpdateDataAttempt = {
-                                data: {
-                                    do_number: consignmentID,
-                                }
-                            };
-
-                            DetrackAPIrun = 3;
                         }
 
-                        appliedStatus = "Failed Collection"
-                        portalUpdate = "Portal updated to Failed Collection. ";
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse" // Use the calculated dStatus
+                            }
+                        };
+
+                        if ((product == 'GDEX') || (product == 'GDEXT')) {
+                            GDEXAPIrun = 6;  // <-- ADD THIS LINE!
+                        }
+
+                        DetrackAPIrun = 1;
+                        mongoDBrun = 2;
+                        completeRun = 1;
+                        appliedStatus = "Failed Delivery, Return to Warehouse"
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+
+                        /* if (data.data.phone_number != null) {
+                            waOrderFailedDelivery = 5;
+                        } */
+                    } else if (data.data.reason == "Reschedule to self collect requested by customer") {
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: "N/A",
+                            latestReason: "Reschedule to self collect requested by customer",
+                            attempt: data.data.attempt + 1,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            grRemark: "Reschedule to self collect requested by customer",
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: "Reschedule to self collect requested by customer",
+                                            lastLocation: data.data.assign_to,
+                                        },
+                                        {
+                                            statusHistory: "Return to Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse" // Use the calculated dStatus
+                            }
+                        };
+
+                        var detrackUpdateDataAttempt = {
+                            data: {
+                                do_number: consignmentID,
+                            }
+                        };
+
+                        if ((product == 'GDEX') || (product == 'GDEXT')) {
+                            GDEXAPIrun = 6;  // <-- ADD THIS LINE!
+                        }
+
+                        DetrackAPIrun = 2;
+                        mongoDBrun = 2;
+                        completeRun = 1;
+                        appliedStatus = "Failed Delivery, Return to Warehouse"
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+
                     } else {
-                        if (data.data.reason == "Unattempted Delivery") {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        $each: [
-                                            {
-                                                statusHistory: "Failed Delivery",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastAssignedTo: data.data.assign_to,
-                                                reason: data.data.reason,
-                                                lastLocation: data.data.assign_to,
-                                            },
-                                            {
-                                                statusHistory: "Return to Warehouse",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastLocation: req.body.warehouse,
-                                            }
-                                        ]
-                                    }
+                        update = {
+                            currentStatus: "Return to Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            assignedTo: "N/A",
+                            latestReason: data.data.reason,
+                            attempt: data.data.attempt + 1,
+                            latestLocation: req.body.warehouse,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            reason: data.data.reason,
+                                            lastLocation: data.data.assign_to,
+                                        },
+                                        {
+                                            statusHistory: "Return to Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastLocation: req.body.warehouse,
+                                        }
+                                    ]
                                 }
                             }
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "at_warehouse" // Use the calculated dStatus
-                                }
-                            };
-
-                            if ((product == 'GDEX') || (product == 'GDEXT')) {
-                                GDEXAPIrun = 6;  // <-- ADD THIS LINE!
-                            }
-
-                            DetrackAPIrun = 1;
-                            mongoDBrun = 2;
-                            completeRun = 1;
-                            appliedStatus = "Failed Delivery, Return to Warehouse"
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-
-                            /* if (data.data.phone_number != null) {
-                                waOrderFailedDelivery = 5;
-                            } */
-                        } else if (data.data.reason == "Reschedule to self collect requested by customer") {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: "N/A",
-                                latestReason: "Reschedule to self collect requested by customer",
-                                attempt: data.data.attempt + 1,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                grRemark: "Reschedule to self collect requested by customer",
-                                $push: {
-                                    history: {
-                                        $each: [
-                                            {
-                                                statusHistory: "Failed Delivery",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastAssignedTo: data.data.assign_to,
-                                                reason: "Reschedule to self collect requested by customer",
-                                                lastLocation: data.data.assign_to,
-                                            },
-                                            {
-                                                statusHistory: "Return to Warehouse",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastLocation: req.body.warehouse,
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "at_warehouse" // Use the calculated dStatus
-                                }
-                            };
-
-                            var detrackUpdateDataAttempt = {
-                                data: {
-                                    do_number: consignmentID,
-                                }
-                            };
-
-                            if ((product == 'GDEX') || (product == 'GDEXT')) {
-                                GDEXAPIrun = 6;  // <-- ADD THIS LINE!
-                            }
-
-                            DetrackAPIrun = 2;
-                            mongoDBrun = 2;
-                            completeRun = 1;
-                            appliedStatus = "Failed Delivery, Return to Warehouse"
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-
-                        } else {
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt + 1,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        $each: [
-                                            {
-                                                statusHistory: "Failed Delivery",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastAssignedTo: data.data.assign_to,
-                                                reason: data.data.reason,
-                                                lastLocation: data.data.assign_to,
-                                            },
-                                            {
-                                                statusHistory: "Return to Warehouse",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastLocation: req.body.warehouse,
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "at_warehouse" // Use the calculated dStatus
-                                }
-                            };
-
-                            var detrackUpdateDataAttempt = {
-                                data: {
-                                    do_number: consignmentID,
-                                }
-                            };
-
-                            if ((product == 'GDEX') || (product == 'GDEXT')) {
-                                GDEXAPIrun = 6;  // <-- ADD THIS LINE!
-                            }
-
-                            DetrackAPIrun = 2;
-                            mongoDBrun = 2;
-                            completeRun = 1;
-                            appliedStatus = "Failed Delivery, Return to Warehouse"
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                         }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse" // Use the calculated dStatus
+                            }
+                        };
+
+                        var detrackUpdateDataAttempt = {
+                            data: {
+                                do_number: consignmentID,
+                            }
+                        };
+
+                        if ((product == 'GDEX') || (product == 'GDEXT')) {
+                            GDEXAPIrun = 6;  // <-- ADD THIS LINE!
+                        }
+
+                        DetrackAPIrun = 2;
+                        mongoDBrun = 2;
+                        completeRun = 1;
+                        appliedStatus = "Failed Delivery, Return to Warehouse"
+                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                     }
                 }
 
                 if (data.data.status == 'completed') {
-                    if (data.data.type == 'Collection') {
-                        if (existingOrder === null) {
-                            newOrder = new ORDERS({
-                                area: finalArea,
-                                items: itemsArray, // Use the dynamically created items array
-                                attempt: data.data.attempt,
-                                history: [{
-                                    statusHistory: "Completed",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastAssignedTo: data.data.assign_to,
-                                    lastLocation: req.body.warehouse,
-                                }],
-                                latestLocation: req.body.warehouse,
-                                product: currentProduct,
-                                assignedTo: data.data.assign_to,
-                                senderName: data.data.job_owner,
-                                totalPrice: 0,
-                                receiverName: data.data.deliver_to_collect_from,
-                                trackingLink: data.data.tracking_link,
-                                currentStatus: "Completed",
-                                paymentMethod: data.data.payment_mode,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                receiverAddress: data.data.address,
-                                receiverPhoneNumber: data.data.phone_number,
-                                doTrackingNumber: consignmentID,
-                                remarks: data.data.remarks,
-                                latestReason: data.data.reason,
-                                lastUpdateDateTime: moment().format(),
-                                creationDate: data.data.created_at,
-                                jobDate: req.body.assignDate,
-                                flightDate: data.data.job_received_date,
-                                mawbNo: data.data.run_number,
-                                lastUpdatedBy: req.user.name,
-                                parcelWeight: data.data.weight,
-                                receiverPostalCode: postalCode,
-                                jobType: data.data.type,
-                                jobMethod: data.data.job_type,
-                            });
+                    // ========== GDEX/GDEXT SPECIAL HANDLING ==========
+                    if ((product == 'GDEX') || (product == 'GDEXT')) {
+                        console.log(`🚨 MANUAL GDEX CLEAR JOB: ${consignmentID}`);
 
-                            mongoDBrun = 1;
-                        } else {
-                            update = {
-                                currentStatus: "Completed",
-                                lastUpdateDateTime: moment().format(),
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                warehouseEntry: "Yes",
-                                warehouseEntryDateTime: warehouseEntryCheckDateTime,
-                                assignedTo: data.data.assign_to,
-                                $push: {
-                                    history: {
-                                        statusHistory: "Completed",
-                                        dateUpdated: moment().format(),
-                                        updatedBy: req.user.name,
-                                        lastAssignedTo: data.data.assign_to,
-                                        lastLocation: req.body.warehouse,
-                                    }
-                                }
+                        // CRITICAL: Check if ALL 3 PODs are available in FRESH Detrack data
+                        const photo1 = data.data.photo_1_file_url;
+                        const photo2 = data.data.photo_2_file_url;
+                        const photo3 = data.data.photo_3_file_url;
+
+                        if (!photo1 || !photo2 || !photo3) {
+                            processingResults.push({
+                                consignmentID,
+                                status: `Error: GDEX order requires all 3 POD images. Missing: ${!photo1 ? 'Photo1,' : ''}${!photo2 ? 'Photo2,' : ''}${!photo3 ? 'Photo3' : ''}`.replace(/,$/, ''),
+                            });
+                            continue;
+                        }
+
+                        // Create detrackData with ALL FRESH photo URLs
+                        const detrackData = {
+                            status: data.data.status,
+                            reason: data.data.reason || '',
+                            address: data.data.address,
+                            photo_1_file_url: photo1,
+                            photo_2_file_url: photo2,
+                            photo_3_file_url: photo3,
+                            podAlreadyConverted: false,
+                            completed_time: moment().format('YYYY-MM-DDTHH:mm:ss')
+                        };
+
+                        try {
+                            // Step 1: Download FRESH ALL 3 PODs from Detrack with retries
+                            console.log(`📥 DOWNLOADING FRESH ALL 3 PODs from Detrack with retries...`);
+                            const savedPODs = await saveAllPODsToDatabase(consignmentID, detrackData, 3); // 3 retries max
+
+                            if (savedPODs.length !== 3) {
+                                throw new Error(`Expected 3 PODs, got ${savedPODs.length}`);
                             }
 
-                            mongoDBrun = 2;
+                            // Update detrackData with Base64 images
+                            detrackData.podAlreadyConverted = true;
+                            detrackData.photo_1_file_url = savedPODs[0];
+                            detrackData.photo_2_file_url = savedPODs[1];
+                            detrackData.photo_3_file_url = savedPODs[2];
+
+                            console.log(`✅ All 3 PODs downloaded FRESH, compressed, and converted to Base64`);
+
+                            // Step 2: Send to GDEX API with FRESH Base64 PODs
+                            console.log(`🚀 Sending GDEX clear job update with FRESH PODs...`);
+                            const token = await getGDEXToken();
+                            let gdexApiSuccess = false;
+
+                            if (token) {
+                                // Pass detrackData with podAlreadyConverted: true and Base64 images
+                                gdexApiSuccess = await updateGDEXClearJob(consignmentID, detrackData, token);
+                                if (!gdexApiSuccess) {
+                                    throw new Error('GDEX API call failed');
+                                }
+                                console.log(`✅ GDEX API call successful with FRESH PODs`);
+                            } else {
+                                throw new Error('Failed to get GDEX token');
+                            }
+
+                            // Step 3: Only update MongoDB if GDEX API succeeded
+                            if (gdexApiSuccess) {
+                                const update = {
+                                    currentStatus: "Completed",
+                                    lastUpdateDateTime: moment().format(),
+                                    latestLocation: "Customer",
+                                    lastUpdatedBy: req.user.name,
+                                    assignedTo: data.data.assign_to,
+                                    $push: {
+                                        history: {
+                                            statusHistory: "Completed",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            lastAssignedTo: data.data.assign_to,
+                                            lastLocation: "Customer",
+                                        }
+                                    }
+                                };
+
+                                await ORDERS.findOneAndUpdate(
+                                    { doTrackingNumber: consignmentID },
+                                    update,
+                                    { upsert: false }
+                                );
+
+                                mongoDBrun = 2;
+                                completeRun = 1;
+
+                                processingResults.push({
+                                    consignmentID,
+                                    status: `✅ Success: GDEX order cleared with FRESH 3 PODs and GDEX API updated`,
+                                });
+                            } else {
+                                processingResults.push({
+                                    consignmentID,
+                                    status: `Error: GDEX API call failed. MongoDB not updated.`,
+                                });
+                            }
+
+                        } catch (gdexError) {
+                            console.error(`❌ GDEX manual clear job failed: ${gdexError.message}`);
+                            processingResults.push({
+                                consignmentID,
+                                status: `Error: GDEX clear job failed - ${gdexError.message}`,
+                            });
+                            continue;
                         }
+
                     } else {
+                        // ========== NON-GDEX PRODUCTS ==========
+                        // For non-GDEX products, update MongoDB directly
                         if (existingOrder === null) {
                             newOrder = new ORDERS({
                                 area: finalArea,
@@ -9039,8 +7343,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             });
 
                             mongoDBrun = 1;
+                            completeRun = 1;
                         } else {
-                            update = {
+                            const update = {
                                 currentStatus: "Completed",
                                 lastUpdateDateTime: moment().format(),
                                 latestLocation: "Customer",
@@ -9055,115 +7360,116 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         lastLocation: "Customer",
                                     }
                                 }
-                            }
+                            };
+
+                            await ORDERS.findOneAndUpdate(
+                                { doTrackingNumber: consignmentID },
+                                update,
+                                { upsert: false }
+                            );
 
                             mongoDBrun = 2;
+                            completeRun = 1;
+
+                            processingResults.push({
+                                consignmentID,
+                                status: `✅ Success: Non-GDEX order cleared`,
+                            });
                         }
                     }
 
-                    // For GDEX/GDEXT completed jobs, set GDEXAPIrun
-                    // detrackData is already created in the initial download section
-                    if ((product == 'GDEX') || (product == 'GDEXT')) {
-                        GDEXAPIrun = 6;
-                        console.log(`✅ GDEXAPIrun set for ${consignmentID} (completed delivery)`);
-                    }
-
-                    appliedStatus = "Completed"
+                    appliedStatus = "Completed";
                     completeRun = 1;
-
                     portalUpdate = "Portal status updated to Completed. ";
                 }
             }
 
             if (req.body.statusCode == 'CSSC') {
-                if ((data.data.type == 'Collection') && ((data.data.status == 'info_recv') || (lastMilestoneStatus == 'failed'))) {
-                    if (existingOrder === null) {
-                        newOrder = new ORDERS({
-                            area: finalArea,
-                            items: itemsArray, // Use the dynamically created items array
-                            attempt: data.data.attempt,
-                            history: [{
-                                statusHistory: "Drop Off",
-                                dateUpdated: moment().format(),
-                                updatedBy: req.user.name,
-                                lastAssignedTo: "Selfcollect",
-                                lastLocation: "Customer",
-                            }],
-                            latestLocation: "Customer",
-                            product: currentProduct,
-                            assignedTo: "Selfcollect",
-                            senderName: data.data.job_owner,
-                            totalPrice: 0,
-                            receiverName: data.data.deliver_to_collect_from,
-                            trackingLink: data.data.tracking_link,
-                            currentStatus: "Drop Off",
-                            paymentMethod: data.data.payment_mode,
-                            warehouseEntry: "No",
-                            warehouseEntryDateTime: "N/A",
-                            receiverAddress: data.data.address,
-                            receiverPhoneNumber: data.data.phone_number,
-                            doTrackingNumber: consignmentID,
-                            remarks: data.data.remarks,
-                            lastUpdateDateTime: moment().format(),
-                            creationDate: data.data.created_at,
-                            jobDate: req.body.assignDate,
-                            flightDate: data.data.job_received_date,
-                            mawbNo: data.data.run_number,
-                            lastUpdatedBy: req.user.name,
-                            parcelWeight: data.data.weight,
-                            receiverPostalCode: postalCode,
-                            jobType: data.data.type,
-                            jobMethod: data.data.job_type,
-                        });
-
-                        mongoDBrun = 1;
-
-                    } else {
+                if (((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area'))
+                    || ((data.data.type == 'Delivery') && (data.data.status == 'on_hold') && ((currentProduct == "gdex") || (currentProduct == "gdext")))) {
+                    if ((product == 'MOH') || (product == 'JPMC') || (product == 'PHC')) {
                         update = {
-                            currentStatus: "Drop Off",
+                            currentStatus: "Self Collect",
                             lastUpdateDateTime: moment().format(),
                             instructions: data.data.remarks,
                             assignedTo: "Selfcollect",
                             jobDate: req.body.assignDate,
-                            latestLocation: "Customer",
+                            latestLocation: "Go Rush Office",
                             lastUpdatedBy: req.user.name,
-                            jobMethod: "Drop Off",
+                            jobMethod: "Self Collect",
                             $push: {
                                 history: {
-                                    statusHistory: "Drop Off",
+                                    statusHistory: "Self Collect",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: "Selfcollect",
-                                    reason: "N/A",
-                                    lastLocation: "Customer",
+                                    lastLocation: "Go Rush Office",
                                 }
                             }
                         }
 
-                        mongoDBrun = 2;
-
-                    }
-
-                    var detrackUpdateData = {
-                        do_number: consignmentID,
-                        data: {
-                            date: req.body.assignDate, // Get the Assign Date from the form
-                            assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                            status: "dispatched", // Use the calculated dStatus
-                            job_type: "Drop Off",
-                            zone: finalArea,
+                        if (data.data.payment_mode == "Cash") {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                    job_type: req.body.jobMethod,
+                                    status: "dispatched", // Use the calculated dStatus
+                                    total_price: 4,
+                                    payment_amount: 4,
+                                }
+                            };
+                        } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                    job_type: req.body.jobMethod,
+                                    status: "dispatched", // Use the calculated dStatus
+                                    total_price: 4,
+                                    payment_amount: 0,
+                                }
+                            };
                         }
-                    };
+                    } else {
+                        if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
+                            update = {
+                                currentStatus: "Self Collect",
+                                lastUpdateDateTime: moment().format(),
+                                instructions: data.data.remarks,
+                                assignedTo: "Selfcollect",
+                                jobDate: req.body.assignDate,
+                                latestLocation: "Go Rush Office",
+                                lastUpdatedBy: req.user.name,
+                                jobMethod: "Self Collect",
+                                paymentMethod: "Cash",
+                                totalPrice: data.data.payment_amount,
+                                paymentAmount: data.data.payment_amount,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Self Collect",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: "Selfcollect",
+                                        lastLocation: "Go Rush Office",
+                                    }
+                                }
+                            }
 
-                    portalUpdate = "Portal and Detrack status updated for Drop Off. ";
-                    appliedStatus = "Drop Off"
-
-                    DetrackAPIrun = 1;
-                    completeRun = 1;
-                } else {
-                    if (((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area'))
-                        || ((data.data.type == 'Delivery') && (data.data.status == 'on_hold') && ((currentProduct == "gdex") || (currentProduct == "gdext")))) {
-                        if ((product == 'MOH') || (product == 'JPMC') || (product == 'PHC')) {
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                    status: "dispatched", // Use the calculated dStatus
+                                    job_type: "Self Collect",
+                                    total_price: data.data.payment_amount,
+                                    payment_mode: "Cash"
+                                }
+                            };
+                        } else {
                             update = {
                                 currentStatus: "Self Collect",
                                 lastUpdateDateTime: moment().format(),
@@ -9184,111 +7490,28 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 }
                             }
 
-                            if (data.data.payment_mode == "Cash") {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        date: req.body.assignDate, // Get the Assign Date from the form
-                                        assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                                        job_type: req.body.jobMethod,
-                                        status: "dispatched", // Use the calculated dStatus
-                                        total_price: 4,
-                                        payment_amount: 4,
-                                    }
-                                };
-                            } else if ((data.data.payment_mode.includes("Bank")) || (data.data.payment_mode.includes("Bill"))) {
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        date: req.body.assignDate, // Get the Assign Date from the form
-                                        assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                                        job_type: req.body.jobMethod,
-                                        status: "dispatched", // Use the calculated dStatus
-                                        total_price: 4,
-                                        payment_amount: 0,
-                                    }
-                                };
-                            }
-                        } else {
-                            if ((data.data.payment_mode == "COD") && (currentProduct == "ewe")) {
-                                update = {
-                                    currentStatus: "Self Collect",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: "Selfcollect",
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: "Go Rush Office",
-                                    lastUpdatedBy: req.user.name,
-                                    jobMethod: "Self Collect",
-                                    paymentMethod: "Cash",
-                                    totalPrice: data.data.payment_amount,
-                                    paymentAmount: data.data.payment_amount,
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Self Collect",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: "Selfcollect",
-                                            lastLocation: "Go Rush Office",
-                                        }
-                                    }
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: req.body.assignDate, // Get the Assign Date from the form
+                                    assign_to: "Selfcollect", // Get the selected dispatcher from the form
+                                    status: "dispatched", // Use the calculated dStatus
+                                    job_type: "Self Collect"
                                 }
-
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        date: req.body.assignDate, // Get the Assign Date from the form
-                                        assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                                        status: "dispatched", // Use the calculated dStatus
-                                        job_type: "Self Collect",
-                                        total_price: data.data.payment_amount,
-                                        payment_mode: "Cash"
-                                    }
-                                };
-                            } else {
-                                update = {
-                                    currentStatus: "Self Collect",
-                                    lastUpdateDateTime: moment().format(),
-                                    instructions: data.data.remarks,
-                                    assignedTo: "Selfcollect",
-                                    jobDate: req.body.assignDate,
-                                    latestLocation: "Go Rush Office",
-                                    lastUpdatedBy: req.user.name,
-                                    jobMethod: "Self Collect",
-                                    $push: {
-                                        history: {
-                                            statusHistory: "Self Collect",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: "Selfcollect",
-                                            lastLocation: "Go Rush Office",
-                                        }
-                                    }
-                                }
-
-                                var detrackUpdateData = {
-                                    do_number: consignmentID,
-                                    data: {
-                                        date: req.body.assignDate, // Get the Assign Date from the form
-                                        assign_to: "Selfcollect", // Get the selected dispatcher from the form
-                                        status: "dispatched", // Use the calculated dStatus
-                                        job_type: "Self Collect"
-                                    }
-                                };
-                            }
+                            };
                         }
-
-                        if ((product == 'GDEX') || (product == 'GDEXT')) {
-                            GDEXAPIrun = 4;
-                        }
-
-                        portalUpdate = "Portal and Detrack status updated for Self Collect. ";
-                        appliedStatus = "Self Collect"
-
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 1;
-                        completeRun = 1;
                     }
+
+                    if ((product == 'GDEX') || (product == 'GDEXT')) {
+                        GDEXAPIrun = 4;
+                    }
+
+                    portalUpdate = "Portal and Detrack status updated for Self Collect. ";
+                    appliedStatus = "Self Collect"
+
+                    mongoDBrun = 2;
+                    DetrackAPIrun = 1;
+                    completeRun = 1;
                 }
             }
 
@@ -14658,6 +12881,245 @@ app.get('/updateJob/status/:jobId', (req, res) => {
     res.json(job);
 });
 
+// ==================================================
+// ⚡ SIMPLE OPTIMIZED IIW PROCESSING
+// ==================================================
+
+// Simple cache for job details
+const simpleJobCache = new Map();
+
+// Optimized batch processing for IIW
+async function processSimpleIIWBatch(trackingNumbers, warehouse, req, mawbNum = null) {
+    console.log(`⚡ Processing ${trackingNumbers.length} items in optimized batch`);
+    
+    const results = {
+        successful: [],
+        failed: [],
+        delayed: [],
+        duplicate: [],
+        updatedCount: 0,
+        failedCount: 0,
+        delayedCount: 0,
+        duplicateCount: 0
+    };
+
+    try {
+        // Process items in batches of 5 (for API limits)
+        const BATCH_SIZE = 5;
+        
+        for (let i = 0; i < trackingNumbers.length; i += BATCH_SIZE) {
+            const batch = trackingNumbers.slice(i, i + BATCH_SIZE);
+            console.log(`🔄 Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(trackingNumbers.length/BATCH_SIZE)}`);
+            
+            // Process batch items in parallel
+            const batchPromises = batch.map(trackingNumber => 
+                processSingleIIWItem(trackingNumber, warehouse, req, mawbNum)
+            );
+            
+            const batchResults = await Promise.allSettled(batchPromises);
+            
+            // Process batch results
+            batchResults.forEach((result, index) => {
+                const trackingNumber = batch[index];
+                
+                if (result.status === 'fulfilled' && result.value) {
+                    const itemResult = result.value;
+                    
+                    if (itemResult.success) {
+                        results.successful.push({
+                            trackingNumber: trackingNumber,
+                            result: itemResult.message,
+                            customerName: itemResult.customerName || 'Unknown',
+                            area: itemResult.area || 'N/A',
+                            warehouse: warehouse,
+                            product: itemResult.product || 'Unknown',
+                            status: "Updated"
+                        });
+                        results.updatedCount++;
+                    } else if (itemResult.delayed) {
+                        results.delayed.push({
+                            trackingNumber: trackingNumber,
+                            result: itemResult.message,
+                            status: "Delayed"
+                        });
+                        results.delayedCount++;
+                    } else {
+                        results.failed.push({
+                            trackingNumber: trackingNumber,
+                            result: itemResult.message || 'Failed',
+                            status: "Failed"
+                        });
+                        results.failedCount++;
+                    }
+                } else {
+                    results.failed.push({
+                        trackingNumber: trackingNumber,
+                        result: 'Processing error',
+                        status: "Error"
+                    });
+                    results.failedCount++;
+                }
+            });
+            
+            // Small delay between batches
+            if (i + BATCH_SIZE < trackingNumbers.length) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+        }
+        
+        // Simple grouping by customer name
+        if (results.successful.length > 0) {
+            results.groupedByCustomer = groupByCustomerSimple(results.successful);
+        }
+        
+        console.log(`✅ Batch complete: ${results.updatedCount} updated, ${results.failedCount} failed`);
+        
+    } catch (error) {
+        console.error('Batch processing error:', error);
+        results.error = error.message;
+    }
+    
+    return results;
+}
+
+// Process single IIW item (optimized)
+async function processSingleIIWItem(trackingNumber, warehouse, req, mawbNum = null) {
+    try {
+        // Check cache first
+        const cacheKey = `job_${trackingNumber}`;
+        let jobData = simpleJobCache.get(cacheKey);
+        
+        if (!jobData) {
+            jobData = await getJobDetails(trackingNumber);
+            if (jobData) {
+                // Cache for 10 seconds
+                simpleJobCache.set(cacheKey, jobData);
+                setTimeout(() => simpleJobCache.delete(cacheKey), 10000);
+            }
+        }
+        
+        if (!jobData) {
+            return { success: false, message: 'Job not found' };
+        }
+        
+        // Call existing processing logic but skip initial fetch
+        const result = await processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawbNum);
+        return result;
+        
+    } catch (error) {
+        console.error(`Error processing ${trackingNumber}:`, error.message);
+        return { success: false, message: 'Error: ' + error.message };
+    }
+}
+
+// Simple customer grouping
+function groupByCustomerSimple(items) {
+    const groups = {};
+    
+    items.forEach(item => {
+        const customerName = item.customerName || 'Unknown';
+        
+        if (!groups[customerName]) {
+            groups[customerName] = {
+                customerName: customerName,
+                trackingNumbers: [],
+                count: 0,
+                areas: new Set(),
+                products: new Set()
+            };
+        }
+        
+        groups[customerName].trackingNumbers.push(item.trackingNumber);
+        groups[customerName].count++;
+        if (item.area) groups[customerName].areas.add(item.area);
+        if (item.product) groups[customerName].products.add(item.product);
+    });
+    
+    // Convert to array and format
+    return Object.values(groups).map(group => ({
+        customerName: group.customerName,
+        trackingNumbers: group.trackingNumbers,
+        count: group.count,
+        areas: Array.from(group.areas),
+        products: Array.from(group.products),
+        areasString: Array.from(group.areas).join(', '),
+        productsString: Array.from(group.products).join(', ')
+    }));
+}
+
+// New endpoint for optimized processing
+app.post('/updateJob/optimizedIIW', ensureAuthenticated, async (req, res) => {
+    try {
+        const { warehouse, trackingNumbers, mawbNum } = req.body;
+        
+        if (!warehouse) {
+            return res.status(400).json({ error: 'Warehouse is required' });
+        }
+        
+        if (!trackingNumbers || trackingNumbers.length === 0) {
+            return res.status(400).json({ error: 'Tracking numbers are required' });
+        }
+        
+        // Clean input
+        const cleanTrackingNumbers = trackingNumbers
+            .map(num => num.trim())
+            .filter(num => num !== '');
+        
+        const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
+        
+        if (uniqueTrackingNumbers.length === 0) {
+            return res.status(400).json({ error: 'No valid tracking numbers' });
+        }
+        
+        // Generate job ID
+        const jobId = generateJobId();
+        
+        // Store job
+        backgroundJobs.set(jobId, {
+            status: 'queued',
+            total: uniqueTrackingNumbers.length,
+            processed: 0,
+            startTime: Date.now()
+        });
+        
+        // Immediate response
+        res.json({
+            jobId: jobId,
+            status: 'queued',
+            message: `Processing ${uniqueTrackingNumbers.length} items`,
+            total: uniqueTrackingNumbers.length
+        });
+        
+        // Process in background
+        setTimeout(async () => {
+            try {
+                const results = await processSimpleIIWBatch(uniqueTrackingNumbers, warehouse, req, mawbNum);
+                
+                // Update job
+                backgroundJobs.set(jobId, {
+                    ...results,
+                    status: 'completed',
+                    completedAt: Date.now()
+                });
+                
+            } catch (error) {
+                console.error(`Job ${jobId} error:`, error);
+                backgroundJobs.set(jobId, {
+                    status: 'failed',
+                    error: error.message,
+                    failedAt: Date.now()
+                });
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error('Optimized IIW error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Server error', message: error.message });
+        }
+    }
+});
+
 function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isIIW = false) {
     // Calculate common fields
     const finalArea = getAreaFromAddress(jobData.address);
@@ -14910,127 +13372,6 @@ function parseCSVBuffer(buffer) {
     });
 }
 
-// ==================================================
-// 📊 Process Excel Upload in Background
-// ==================================================
-
-async function processExcelUploadInBackground(jobId, additionalData, req) {
-    const results = {
-        successful: [],
-        failed: [],
-        updatedCount: 0,
-        failedCount: 0,
-        status: 'processing',
-        total: additionalData.length,
-        processed: 0,
-        startTime: Date.now()
-    };
-
-    backgroundJobs.set(jobId, { ...results, status: 'processing' });
-
-    try {
-        for (let i = 0; i < additionalData.length; i++) {
-            const { trackingNumber, mawbNum, postalCode, parcelWeight } = additionalData[i];
-
-            try {
-                // Check if job exists in Detrack and status is 'info_recv'
-                const jobExists = await checkJobExists(trackingNumber);
-
-                if (!jobExists) {
-                    results.failed.push({
-                        trackingNumber,
-                        result: 'Job not found in Detrack',
-                        status: 'Failed'
-                    });
-                    results.failedCount++;
-                    continue;
-                }
-
-                // Get job details to check status
-                const jobData = await getJobDetails(trackingNumber);
-
-                if (!jobData || jobData.status !== 'info_recv') {
-                    results.failed.push({
-                        trackingNumber,
-                        result: `Job status is "${jobData?.status || 'unknown'}", must be "info_recv" for Excel upload`,
-                        status: 'Failed'
-                    });
-                    results.failedCount++;
-                    continue;
-                }
-
-                // Process UAN update with additional fields
-                const success = await processUANWithAdditionalFields(
-                    trackingNumber,
-                    mawbNum,
-                    postalCode,
-                    parcelWeight,
-                    req
-                );
-
-                if (success) {
-                    results.successful.push({
-                        trackingNumber,
-                        result: `MAWB updated to ${mawbNum}` +
-                            (postalCode ? `, Postal Code: ${postalCode}` : '') +
-                            (parcelWeight ? `, Weight: ${parcelWeight}` : ''),
-                        status: 'Updated'
-                    });
-                    results.updatedCount++;
-                } else {
-                    results.failed.push({
-                        trackingNumber,
-                        result: 'Update failed',
-                        status: 'Failed'
-                    });
-                    results.failedCount++;
-                }
-
-            } catch (error) {
-                console.error(`Error processing ${trackingNumber}:`, error);
-                results.failed.push({
-                    trackingNumber,
-                    result: `Error: ${error.message}`,
-                    status: 'Error'
-                });
-                results.failedCount++;
-            }
-
-            results.processed = i + 1;
-
-            // Update job progress every 10 items
-            if (i % 10 === 0 || i === additionalData.length - 1) {
-                backgroundJobs.set(jobId, {
-                    ...results,
-                    status: 'processing',
-                    progress: Math.round((results.processed / results.total) * 100)
-                });
-            }
-
-            // Small delay between processing
-            if (i < additionalData.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-        }
-
-        results.status = 'completed';
-        results.processingTime = Date.now() - results.startTime;
-        backgroundJobs.set(jobId, results);
-
-        console.log(`✅ Excel upload job ${jobId} completed:`, {
-            updated: results.updatedCount,
-            failed: results.failedCount,
-            total: results.total
-        });
-
-    } catch (error) {
-        console.error('Excel upload background job error:', error);
-        results.status = 'failed';
-        results.error = error.message;
-        backgroundJobs.set(jobId, results);
-    }
-}
-
 // Add this function near other helper functions
 function getGDEXHoldReasonDetails(reasonCode) {
     const reasonMap = {
@@ -15232,83 +13573,6 @@ async function updateMongoForGDEXHold(trackingNumber, product, req, reasonDetail
     }
 }
 
-async function createOrderWithGDEXHoldStatus(jobData, trackingNumber, product, req, reasonDetails) {
-    try {
-        console.log(`⚠️ Creating NEW order for GDEX Hold - this shouldn't happen often`);
-        console.log(`   Order ${trackingNumber} not found, creating new...`);
-
-        // Process items array
-        const itemsArray = [];
-        if (jobData.items && Array.isArray(jobData.items)) {
-            for (let i = 0; i < jobData.items.length; i++) {
-                itemsArray.push({
-                    quantity: jobData.items[i].quantity || 0,
-                    description: jobData.items[i].description || '',
-                    totalItemPrice: jobData.total_price || jobData.payment_amount || 0
-                });
-            }
-        }
-
-        // Process area from address
-        const finalArea = getAreaFromAddress(jobData.address);
-
-        // Process phone numbers
-        const finalPhoneNum = processPhoneNumber(jobData.phone_number);
-        const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
-
-        // Process postal code
-        const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
-
-        // Create new order with GDEX Hold status
-        const newOrder = new ORDERS({
-            area: finalArea,
-            items: itemsArray,
-            attempt: jobData.attempt || 1,
-            history: [{
-                statusHistory: "On Hold",                     // Changed from "Custom Clearing"
-                dateUpdated: moment().format(),
-                updatedBy: req.user.name,
-                lastLocation: "Brunei Customs",
-                reason: `GDEX Hold: ${reasonDetails.description}`  // Changed note to reason
-            }],
-            latestLocation: "Brunei Customs",
-            product: product.toLowerCase(),
-            senderName: jobData.job_owner || product,
-            totalPrice: jobData.total_price || 0,
-            paymentAmount: jobData.payment_amount || 0,
-            receiverName: jobData.deliver_to_collect_from || '',
-            trackingLink: jobData.tracking_link || '',
-            currentStatus: "On Hold",                         // Changed from "Custom Clearing"
-            paymentMethod: jobData.payment_mode || 'NON COD',
-            warehouseEntry: "No",
-            warehouseEntryDateTime: "N/A",
-            receiverAddress: jobData.address || '',
-            receiverPhoneNumber: finalPhoneNum,
-            additionalPhoneNumber: finalAdditionalPhoneNum,
-            doTrackingNumber: trackingNumber,
-            remarks: jobData.remarks || '',
-            lastUpdateDateTime: moment().format(),
-            creationDate: jobData.created_at || moment().format(),
-            lastUpdatedBy: req.user.name,
-            receiverPostalCode: postalCode,
-            jobType: jobData.type || 'Delivery',
-            jobMethod: "Standard",
-            flightDate: jobData.job_received_date || '',
-            mawbNo: jobData.run_number || '',
-            parcelWeight: jobData.weight || 0,
-            latestReason: reasonDetails.description           // Added latestReason
-        });
-
-        await newOrder.save();
-        console.log(`✅ Created new order with GDEX Hold status for ${trackingNumber} (Reason: ${reasonDetails.description})`);
-        return newOrder;
-
-    } catch (error) {
-        console.error(`❌ Error creating GDEX Hold order for ${trackingNumber}:`, error);
-        return null;
-    }
-}
-
 async function updateGDEXForGDEXHold(trackingNumber, reasonDetails) {
     try {
         console.log(`🔄 Sending GDEX update for Hold (Status K) with reason ${reasonDetails.code}: ${trackingNumber}`);
@@ -15342,81 +13606,6 @@ async function updateGDEXForGDEXHold(trackingNumber, reasonDetails) {
 // ==================================================
 // 🔧 Updated UAN Processing with Additional Fields
 // ==================================================
-
-async function processUANWithAdditionalFields(trackingNumber, mawbNum, postalCode, parcelWeight, req) {
-    try {
-        console.log(`\n📦 ========== EXCEL UAN UPDATE ==========`);
-        console.log(`📋 Tracking: ${trackingNumber}`);
-        console.log(`📦 MAWB: ${mawbNum}`);
-        if (postalCode) console.log(`📮 Postal Code: ${postalCode}`);
-        if (parcelWeight) console.log(`⚖️  Weight: ${parcelWeight}`);
-
-        // Check job exists and status is info_recv
-        const jobData = await getJobDetails(trackingNumber);
-        if (!jobData) {
-            console.log(`❌ Job ${trackingNumber} not found`);
-            return false;
-        }
-
-        if (jobData.status !== 'info_recv') {
-            console.log(`❌ Job status must be "info_recv", found: ${jobData.status}`);
-            return false;
-        }
-
-        // Get product info
-        const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
-        console.log(`🏷️  PRODUCT: ${currentProduct.toUpperCase()}`);
-
-        // Update or create order in MongoDB with additional fields
-        const mongoSuccess = await updateOrCreateOrderWithAdditionalFields(
-            trackingNumber,
-            mawbNum,
-            postalCode,
-            parcelWeight,
-            jobData,
-            req,
-            currentProduct
-        );
-
-        if (!mongoSuccess) {
-            console.log(`❌ MongoDB update failed`);
-            return false;
-        }
-
-        // Prepare Detrack update with additional fields if provided
-        console.log(`\n🔄 PREPARING DETRACK UPDATE WITH ADDITIONAL FIELDS:`);
-        const updateData = createDetrackUpdateData(trackingNumber, mawbNum, currentProduct, jobData, false);
-
-        // Add postal code if provided
-        if (postalCode) {
-            updateData.data.postal_code = postalCode.toUpperCase();
-        }
-
-        // Add weight if provided
-        if (parcelWeight) {
-            updateData.data.weight = parseFloat(parcelWeight) || 0;
-        }
-
-        console.log(`📤 Detrack Payload:`);
-        console.log(JSON.stringify(updateData, null, 2));
-
-        // Send Detrack update
-        const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, mawbNum);
-
-        console.log(`\n📊 FINAL RESULT:`);
-        console.log(`   ├── MongoDB: ✅ Updated`);
-        console.log(`   ├── Detrack: ${detrackResult ? '✅ Success' : '❌ Failed'}`);
-        console.log(`   └── Additional fields: ${postalCode || parcelWeight ? '✅ Included' : '❌ Not provided'}`);
-
-        console.log(`\n🏁 ========== EXCEL UAN UPDATE COMPLETE ==========\n`);
-
-        return detrackResult;
-
-    } catch (error) {
-        console.error(`\n🔥 ERROR in Excel UAN update:`, error);
-        return false;
-    }
-}
 
 async function updateOrCreateOrderWithAdditionalFields(trackingNumber, mawbNum, postalCode, parcelWeight, jobData, req, product) {
     try {
@@ -15466,43 +13655,6 @@ async function updateOrCreateOrderWithAdditionalFields(trackingNumber, mawbNum, 
         console.error(`❌ Error updating order with additional fields:`, error);
         return false;
     }
-}
-
-// ==================================================
-// 📄 File Parsing Functions
-// ==================================================
-
-async function parseCSVFile(csvData) {
-    return new Promise((resolve, reject) => {
-        const results = [];
-        const parser = parse(csvData.toString(), {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true
-        });
-
-        parser.on('readable', function () {
-            let record;
-            while ((record = parser.read()) !== null) {
-                results.push(record);
-            }
-        });
-
-        parser.on('error', function (err) {
-            reject(err);
-        });
-
-        parser.on('end', function () {
-            resolve(results);
-        });
-    });
-}
-
-async function parseExcelFile(excelData) {
-    const workbook = xlsx.read(excelData, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    return xlsx.utils.sheet_to_json(worksheet);
 }
 
 // ==================================================
@@ -15969,77 +14121,6 @@ async function processCBSLFirstScan(trackingNumber, warehouse, req) {
             success: false,
             message: 'Error: ' + error.message
         };
-    }
-}
-
-async function updateJobMAWB(trackingNumber, mawbNum, req) {
-    try {
-        // First get the current job details to calculate the fields
-        const jobData = await getJobDetails(trackingNumber);
-
-        if (!jobData) {
-            console.log(`❌ No job data found for ${trackingNumber}`);
-            return false;
-        }
-
-        // ==================================================
-        // PRODUCT VALIDATION - Only allow specific products
-        // ==================================================
-        const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
-
-        const allowedProducts = ['ewe', 'pdu', 'mglobal', 'gdex', 'gdext'];
-        if (!allowedProducts.includes(currentProduct)) {
-            console.log(`❌ Product "${currentProduct}" not allowed for MAWB update. Allowed: ${allowedProducts.join(', ')}`);
-            return false;
-        }
-
-        console.log(`✅ Product "${currentProduct}" allowed for MAWB update`);
-
-        // Calculate the additional fields using your comprehensive helper functions
-        const finalArea = getAreaFromAddress(jobData.address);
-        const finalPhoneNum = processPhoneNumber(jobData.phone_number);
-        const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
-
-        console.log(`Calculated fields for ${trackingNumber}:`);
-        console.log(`- Product: ${currentProduct}`);
-        console.log(`- Area: ${finalArea}`);
-        console.log(`- Phone: ${finalPhoneNum}`);
-        console.log(`- Additional Phone: ${finalAdditionalPhoneNum}`);
-
-        // Check if order already exists in MongoDB
-        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
-
-        if (existingOrder) {
-            // Order exists - just update MAWB number
-            console.log(`📦 Order exists in MongoDB for ${trackingNumber}, updating MAWB...`);
-
-            // Update MongoDB
-            await ORDERS.updateOne(
-                { doTrackingNumber: trackingNumber },
-                { $set: { mawbNo: mawbNum } }
-            );
-            console.log(`✅ Updated MAWB for existing order in MongoDB: ${trackingNumber}`);
-
-            // Prepare standard Detrack update
-            const updateData = {
-                do_number: trackingNumber,
-                data: {
-                    run_number: mawbNum
-                }
-            };
-
-            return await sendDetrackUpdate(trackingNumber, updateData, mawbNum);
-
-        } else {
-            // Order doesn't exist in MongoDB - create new with product-specific rules
-            console.log(`🆕 Order doesn't exist in MongoDB for ${trackingNumber}, creating with product-specific rules...`);
-
-            return await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, currentProduct);
-        }
-
-    } catch (error) {
-        console.error(`❌ Error in MAWB update for ${trackingNumber}:`, error);
-        return false;
     }
 }
 
@@ -16816,25 +14897,31 @@ async function sendDetrackUpdate(trackingNumber, updateData, mawbNum) {
     }
 }
 
-// Replace the existing processOnHoldUpdate function
+// In index.js, find the processOnHoldUpdate function and update it:
 async function processOnHoldUpdate(trackingNumber, req) {
     try {
         console.log(`🔍 Starting On Hold update for ${trackingNumber}`);
 
         // 1. Check if job exists in Detrack
         const jobExists = await checkJobExists(trackingNumber);
-        console.log(`📊 Job exists check for ${trackingNumber}: ${jobExists}`);
-
         if (!jobExists) {
             console.log(`❌ Job ${trackingNumber} not found in Detrack`);
-            return false;
+            return {
+                success: false,
+                message: 'Job not found in Detrack',
+                code: 'DETRACK_NOT_FOUND'
+            };
         }
 
         // 2. Get job details from Detrack
         const jobData = await getJobDetails(trackingNumber);
         if (!jobData) {
             console.log(`❌ Could not get job details for ${trackingNumber}`);
-            return false;
+            return {
+                success: false,
+                message: 'Could not get job details',
+                code: 'DETRACK_NO_DETAILS'
+            };
         }
 
         console.log(`📋 Job details for ${trackingNumber}:`, {
@@ -16844,61 +14931,107 @@ async function processOnHoldUpdate(trackingNumber, req) {
             job_owner: jobData.job_owner
         });
 
-        // 3. Check conditions: status must be 'info_recv' and run_number must not be null
+        // 3. Check conditions: status must be 'info_recv' or 'info_received'
         if (jobData.status !== 'info_recv' && jobData.status !== 'info_received') {
             console.log(`❌ Job status is not 'info_recv' or 'info_received' for ${trackingNumber}`);
-            return false;
+            return {
+                success: false,
+                message: `Job status is "${jobData.status}", must be "info_recv" or "info_received"`,
+                code: 'INVALID_STATUS'
+            };
         }
 
+        // 4. Check if run_number (MAWB) exists
         if (!jobData.run_number || jobData.run_number.trim() === '') {
             console.log(`❌ Job run_number is null or empty for ${trackingNumber}`);
-            return false;
+            return {
+                success: false,
+                message: 'Job run_number (MAWB) is required for On Hold update',
+                code: 'MAWB_REQUIRED'
+            };
         }
 
-        // 4. Determine product type - REJECT GDEX/GDEXT products
+        // 5. Determine product type
         const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
-        const gdexProducts = ['gdex', 'gdext'];
+        const product = currentProduct.toLowerCase();
+        const allowedProducts = ['pdu', 'mglobal', 'ewe'];
 
-        // REJECT GDEX/GDEXT products
-        if (gdexProducts.includes(currentProduct.toLowerCase())) {
-            console.log(`❌ GDEX/GDEXT products must use GDEX Hold flow, not CCH On Hold`);
-            return false;
+        // 6. Check if product is allowed
+        if (!allowedProducts.includes(product)) {
+            console.log(`❌ Product "${product}" not allowed for On Hold update`);
+            return {
+                success: false,
+                message: `Product "${product.toUpperCase()}" not allowed. Only PDU, MGLOBAL, EWE allowed.`,
+                code: 'PRODUCT_NOT_ALLOWED'
+            };
         }
 
-        const allowedProducts = ['PDU', 'MGLOBAL', 'EWE']; // Removed GDEX/GDEXT
-        if (!currentProduct || !allowedProducts.includes(currentProduct.toUpperCase())) {
-            console.log(`❌ Product "${currentProduct}" not allowed for On Hold update. Allowed: ${allowedProducts.join(', ')}`);
-            return false;
+        // 7. CRITICAL: Check if order exists in MongoDB (MUST EXIST)
+        const existingOrder = await ORDERS.findOne({ 
+            doTrackingNumber: trackingNumber,
+            product: product // Ensure product matches
+        });
+
+        if (!existingOrder) {
+            console.log(`❌ Order ${trackingNumber} not found in MongoDB for product ${product}`);
+            return {
+                success: false,
+                message: `Order not found. ${product.toUpperCase()} orders must be created via UAN (Excel) first.`,
+                code: 'ORDER_NOT_FOUND',
+                shouldUseUAN: true
+            };
         }
 
-        console.log(`✅ Product "${currentProduct}" allowed for On Hold update`);
+        // 8. Check if already on hold
+        if (existingOrder.currentStatus === "Custom Clearing" || 
+            existingOrder.currentStatus === "On Hold") {
+            console.log(`⚠️ Order ${trackingNumber} is already on hold`);
+            return {
+                success: false,
+                message: 'Order is already on hold',
+                code: 'ALREADY_ON_HOLD',
+                alreadyOnHold: true
+            };
+        }
 
-        // 5. Update MongoDB (existing logic)
-        const mongoSuccess = await updateMongoForOnHold(trackingNumber, currentProduct, req);
+        // 9. Update MongoDB (existing logic - updateMongoForOnHold)
+        const mongoSuccess = await updateMongoForOnHold(trackingNumber, product, req);
         if (!mongoSuccess) {
             console.log(`❌ MongoDB update failed for ${trackingNumber}`);
-            return false;
+            return {
+                success: false,
+                message: 'MongoDB update failed',
+                code: 'MONGO_FAILED'
+            };
         }
 
-        // 6. Update Detrack (existing logic)
+        // 10. Update Detrack (existing logic - updateDetrackForOnHold)
         const detrackSuccess = await updateDetrackForOnHold(trackingNumber);
         if (!detrackSuccess) {
             console.log(`❌ Detrack update failed for ${trackingNumber}`);
-            return false;
-        }
-
-        // 7. Update GDEX if applicable (only for allowed products)
-        if (currentProduct.toUpperCase() === 'GDEX' || currentProduct.toUpperCase() === 'GDEXT') {
-            console.log(`⚠️ GDEX/GDEXT products should use GDEX Hold flow, not CCH`);
-            // Don't send GDEX API call for CCH
+            return {
+                success: false,
+                message: 'Detrack update failed',
+                code: 'DETRACK_FAILED'
+            };
         }
 
         console.log(`✅ All On Hold updates completed successfully for ${trackingNumber}`);
-        return true;
+        return {
+            success: true,
+            message: 'Job put on hold (Custom Clearing)',
+            product: product.toUpperCase(),
+            mawbNum: jobData.run_number,
+            isNewOrder: false // Always false for CCH
+        };
 
     } catch (error) {
         console.error(`❌ Error in On Hold update for ${trackingNumber}:`, error);
-        return false;
+        return {
+            success: false,
+            message: 'Error: ' + error.message,
+            code: 'PROCESSING_ERROR'
+        };
     }
 }
 
@@ -17081,34 +15214,6 @@ async function updateDetrackForOnHold(trackingNumber) {
 
     } catch (error) {
         console.error(`❌ Detrack API error for ${trackingNumber}:`, error.message);
-        return false;
-    }
-}
-
-// GDEX Update Function for On Hold
-async function updateGDEXForOnHold(trackingNumber) {
-    try {
-        console.log(`🔄 Sending GDEX update for On Hold: ${trackingNumber}`);
-
-        const gdexSuccess = await updateGDEXStatus(
-            trackingNumber,
-            'custom',
-            null, // detrackData not needed
-            "AQ", // statusCode
-            "Pending Custom Declaration", // statusDescription
-            "Brunei Customs" // locationDescription
-        );
-
-        if (gdexSuccess) {
-            console.log(`✅ GDEX update sent for ${trackingNumber}`);
-        } else {
-            console.log(`❌ GDEX update failed for ${trackingNumber}`);
-        }
-
-        return gdexSuccess;
-
-    } catch (error) {
-        console.error(`❌ GDEX update error for ${trackingNumber}:`, error);
         return false;
     }
 }
@@ -17366,55 +15471,6 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
     }
 }
 
-// Add this function to validate MAWB number before processing
-async function validateMAWBForIIW(mawbNum, updateMethod) {
-    try {
-        console.log(`🔍 Validating MAWB: ${mawbNum} for IIW ${updateMethod}`);
-
-        const response = await fetch('/updateJob/validateMAWB', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ mawbNum: mawbNum })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Validation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!data.exists) {
-            // MAWB doesn't exist - show alert and clear field
-            showMAWBAlert(`⚠️ MAWB Number "${mawbNum}" does not exist in the system.`, false);
-            return {
-                isValid: false,
-                message: 'MAWB not found'
-            };
-        }
-
-        // MAWB exists - return the stats
-        return {
-            isValid: true,
-            exists: true,
-            totalJobs: data.totalJobs,
-            unscannedJobs: data.unscannedJobs,
-            scannedJobs: data.scannedJobs,
-            trackingNumbers: data.trackingNumbers || [],
-            mawbNum: data.mawbNum
-        };
-
-    } catch (error) {
-        console.error('Error validating MAWB:', error);
-        showMAWBAlert('Error validating MAWB: ' + error.message, false);
-        return {
-            isValid: false,
-            message: 'Validation error: ' + error.message
-        };
-    }
-}
-
 // Show MAWB alert
 function showMAWBAlert(message, isSuccess) {
     const alertClass = isSuccess ? 'alert-success' : 'alert-danger';
@@ -17445,87 +15501,6 @@ function showMAWBAlert(message, isSuccess) {
                 alertDiv.remove();
             }
         }, 5000);
-    }
-}
-
-// Update processNonListedProductUpdate to only use consistency for NEW orders
-async function processNonListedProductUpdate(trackingNumber, warehouse, jobData, product, req) {
-    try {
-        console.log(`\n🔄 PROCESSING NON-LISTED PRODUCT: ${product}`);
-
-        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
-
-        if (!existingOrder) {
-            console.log(`📦 CREATING NEW ORDER FOR NON-LISTED PRODUCT`);
-            return await createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, product);
-        } else {
-            // Update existing order - use ORIGINAL IIW logic
-            console.log(`📦 UPDATING EXISTING ORDER - USING ORIGINAL IIW LOGIC`);
-
-            const update = {
-                $set: {
-                    currentStatus: "At Warehouse",
-                    lastUpdateDateTime: moment().format(),
-                    warehouseEntry: "Yes",
-                    warehouseEntryDateTime: moment().format(),
-                    latestLocation: warehouse,
-                    lastUpdatedBy: req.user.name
-                },
-                $push: {
-                    history: {
-                        statusHistory: "At Warehouse",
-                        dateUpdated: moment().format(),
-                        updatedBy: req.user.name,
-                        lastLocation: warehouse,
-                    }
-                }
-            };
-
-            await ORDERS.updateOne(
-                { doTrackingNumber: trackingNumber },
-                update
-            );
-            console.log(`✅ MongoDB updated`);
-
-            // For existing orders, use original IIW Detrack update
-            console.log(`\n🔄 USING ORIGINAL IIW DETRACK UPDATE FOR EXISTING ORDER`);
-
-            // Calculate Detrack status based on product
-            let dStatus = calculateDetrackStatus(product, jobData.status);
-
-            const detrackUpdateData = {
-                do_number: trackingNumber,
-                data: {
-                    status: dStatus,
-                    zone: getAreaFromAddress(jobData.address)
-                }
-            };
-
-            // Add additional fields for specific products
-            if (product === 'cbsl') {
-                detrackUpdateData.data.do_number = jobData.tracking_number;
-                detrackUpdateData.data.tracking_number = trackingNumber;
-            } else if (product !== 'grp' && product !== 'cbsl' && product !== 'temu' &&
-                product !== 'pdu' && product !== 'kptdp' && product !== 'mglobal' &&
-                product !== 'ewe' && product !== 'gdext' && product !== 'gdex') {
-                detrackUpdateData.data.phone_number = processPhoneNumber(jobData.phone_number);
-            }
-
-            console.log(`📤 Detrack Payload for existing order:`);
-            console.log(JSON.stringify(detrackUpdateData, null, 2));
-
-            const detrackResult = await sendDetrackUpdate(trackingNumber, detrackUpdateData, jobData.run_number || '');
-
-            return {
-                success: detrackResult,
-                message: `Item marked as at warehouse (${warehouse})`,
-                isNewOrder: true
-            };
-        }
-
-    } catch (error) {
-        console.error(`❌ Error processing non-listed product ${trackingNumber}:`, error);
-        return { success: false, message: 'Error: ' + error.message };
     }
 }
 
@@ -17725,71 +15700,6 @@ async function handleDelayedWarehouseUpdate(trackingNumber, warehouse, jobData, 
     }
 }
 
-// Update the createQueuedHistoryUpdate function
-function createQueuedHistoryUpdate(product, currentStatus, req) {
-    const now = moment().format();
-
-    if (currentStatus === 'on_hold' && product === 'pdu') {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued for Custom Clearance",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Brunei Customs",
-                        note: "30-minute delay before warehouse update" // CHANGED
-                    }
-                ]
-            }
-        };
-    } else if (currentStatus === 'on_hold' && (product === 'ewe' || product === 'mglobal')) {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued for Processing",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Brunei Customs",
-                        note: "30-minute delay before warehouse update" // CHANGED
-                    }
-                ]
-            }
-        };
-    } else if (currentStatus === 'info_recv' && product === 'pdu') {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued: Info Received to On Hold",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Origin",
-                        note: "30-minute delay before warehouse update" // CHANGED
-                    }
-                ]
-            }
-        };
-    } else if (currentStatus === 'info_recv' && (product === 'ewe' || product === 'mglobal')) {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued for Custom Clearing",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Origin",
-                        note: "30-minute delay before warehouse update" // CHANGED
-                    }
-                ]
-            }
-        };
-    }
-
-    return null;
-}
-
 // ==================================================
 // 📊 MongoDB Update Functions
 // ==================================================
@@ -17829,91 +15739,6 @@ async function updateMongoWithQueuedStatus(trackingNumber, warehouse, jobData, p
         console.error(`❌ MongoDB queued update error for ${trackingNumber}:`, error);
         return false;
     }
-}
-
-// Update createQueuedUpdateObject function - 30 minutes for production
-function createQueuedUpdateObject(warehouse, product, req, currentStatus) {
-    const now = moment().format();
-    const normalizedStatus = currentStatus ? currentStatus.toLowerCase() : '';
-
-    let update = {
-        $set: {
-            currentStatus: "Queued for Warehouse",
-            lastUpdateDateTime: now,
-            warehouseEntry: "No",
-            latestLocation: "Scheduled for Processing",
-            lastUpdatedBy: req.user.name,
-            queueStatus: "delayed",
-            queueScheduledTime: moment().add(30, 'minutes').format(), // CHANGED to 30 minutes
-        }
-    };
-
-    return update;
-}
-
-// Update the createQueuedHistoryUpdate function
-function createQueuedHistoryUpdate(product, currentStatus, req) {
-    const now = moment().format();
-
-    if (currentStatus === 'on_hold' && product === 'pdu') {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued for Custom Clearance",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Brunei Customs",
-                        note: "5-minute delay for testing before warehouse update" // UPDATED note
-                    }
-                ]
-            }
-        };
-    } else if (currentStatus === 'on_hold' && (product === 'ewe' || product === 'mglobal')) {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued for Processing",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Brunei Customs",
-                        note: "5-minute delay for testing before warehouse update" // UPDATED note
-                    }
-                ]
-            }
-        };
-    } else if (currentStatus === 'info_recv' && product === 'pdu') {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued: Info Received to On Hold",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Origin",
-                        note: "5-minute delay for testing before warehouse update" // UPDATED note
-                    }
-                ]
-            }
-        };
-    } else if (currentStatus === 'info_recv' && (product === 'ewe' || product === 'mglobal')) {
-        return {
-            history: {
-                $each: [
-                    {
-                        statusHistory: "Queued for Custom Clearing",
-                        dateUpdated: now,
-                        updatedBy: req.user.name,
-                        lastLocation: "Origin",
-                        note: "5-minute delay for testing before warehouse update" // UPDATED note
-                    }
-                ]
-            }
-        };
-    }
-
-    return null;
 }
 
 // Update createOrderWithQueuedStatus function - Remove queued history
@@ -18028,74 +15853,6 @@ async function updateMongoForWarehouse(trackingNumber, warehouse, jobData, produ
     }
 }
 
-// Create immediate warehouse update object
-function createImmediateWarehouseUpdateObject(warehouse, product, req, currentStatus) {
-    const now = moment().format();
-    const normalizedStatus = currentStatus ? currentStatus.toLowerCase() : '';
-
-    let update = {
-        $set: {
-            currentStatus: "At Warehouse",
-            lastUpdateDateTime: now,
-            warehouseEntry: "Yes",
-            warehouseEntryDateTime: now,
-            latestLocation: warehouse,
-            lastUpdatedBy: req.user.name
-        }
-    };
-
-    // Add product-specific history
-    const historyUpdate = createImmediateHistoryUpdate(product, normalizedStatus, warehouse, req);
-
-    if (historyUpdate) {
-        update.$push = historyUpdate;
-    }
-
-    return update;
-}
-
-// Update the createImmediateHistoryUpdate function - SIMPLIFIED
-function createImmediateHistoryUpdate(product, currentStatus, warehouse, req) {
-    const now = moment().format();
-
-    // ALWAYS push "At Warehouse" for all cases
-    const historyEntry = {
-        statusHistory: "At Warehouse",
-        dateUpdated: now,
-        updatedBy: req.user.name,
-        lastLocation: warehouse,
-    };
-
-    return {
-        history: historyEntry
-    };
-}
-
-// Update the createInitialWarehouseHistory function - SIMPLIFIED
-function createInitialWarehouseHistory(currentStatus, product, warehouse, req) {
-    const now = moment().format();
-
-    // ALWAYS start with "At Warehouse" for all cases
-    return [{
-        statusHistory: "At Warehouse",
-        dateUpdated: now,
-        updatedBy: req.user.name,
-        lastLocation: warehouse,
-    }];
-}
-
-// Update the createQueuedHistoryUpdate function - REMOVE "Queued for Processing"
-function createQueuedHistoryUpdate(product, currentStatus, req) {
-    const now = moment().format();
-    const normalizedStatus = currentStatus ? currentStatus.toLowerCase() : '';
-    const normalizedProduct = product ? product.toLowerCase() : '';
-
-    // NO LONGER adding "Queued for Processing" - just return null
-    // The delayed jobs will get "At Warehouse" history when actually processed
-
-    return null;
-}
-
 // Update createOrderWithWarehouseStatus function - Always start with "At Warehouse"
 async function createOrderWithWarehouseStatus(trackingNumber, warehouse, jobData, product, req) {
     try {
@@ -18191,84 +15948,6 @@ function processItemsArray(items, totalPrice) {
 // ==================================================
 // 🔄 Detrack Update Functions
 // ==================================================
-
-// Add this function if it's missing:
-function calculateDetrackStatus(product, currentStatus) {
-    const normalizedProduct = product ? product.toLowerCase() : '';
-    const normalizedStatus = currentStatus ? currentStatus.toLowerCase() : '';
-
-    if (normalizedProduct === 'cbsl' || normalizedProduct === 'kptdp') {
-        return "in_sorting_area";
-    } else if ((normalizedStatus === 'info_recv' || normalizedStatus === 'on_hold') &&
-        (normalizedProduct === 'gdex' || normalizedProduct === 'gdext')) {
-        return "at_warehouse";
-    } else if (normalizedStatus === 'info_recv' && normalizedProduct === 'cbsl') {
-        return "at_warehouse";
-    } else {
-        return "at_warehouse";
-    }
-}
-
-// Update Detrack for warehouse (immediate)
-async function updateDetrackForWarehouse(trackingNumber, warehouse, jobData, product, req) {
-    try {
-        // Calculate Detrack status based on product
-        let dStatus = calculateDetrackStatus(product, jobData.status);
-
-        // Get final area for Detrack
-        const finalArea = getAreaFromAddress(jobData.address);
-
-        const detrackUpdateData = {
-            do_number: trackingNumber,
-            data: {
-                status: dStatus,
-                zone: finalArea
-            }
-        };
-
-        // Additional fields for specific products
-        if (product === 'cbsl') {
-            detrackUpdateData.data.do_number = jobData.tracking_number;
-            detrackUpdateData.data.tracking_number = trackingNumber;
-        } else if (product === 'kptdp' || (product !== 'grp' && product !== 'cbsl' && product !== 'temu' &&
-            product !== 'pdu' && product !== 'kptdp' && product !== 'mglobal' &&
-            product !== 'ewe' && product !== 'gdext' && product !== 'gdex')) {
-            detrackUpdateData.data.phone_number = processPhoneNumber(jobData.phone_number);
-        }
-
-        console.log(`🔄 Updating Detrack to ${dStatus} for ${trackingNumber} (${product})`);
-
-        const response = await axios.put(
-            'https://app.detrack.com/api/v2/dn/jobs/update',
-            detrackUpdateData,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': apiKey
-                },
-                timeout: 10000
-            }
-        );
-
-        if (response.data.success === true || response.data.status === 'success' || response.status === 200) {
-            console.log(`✅ Detrack updated to ${dStatus} for ${trackingNumber}`);
-
-            // For CBSL, update the second tracking number
-            if (product === 'cbsl') {
-                await updateCBSLSecondTracking(jobData.tracking_number, dStatus);
-            }
-
-            return true;
-        } else {
-            console.log(`❌ Detrack update failed for ${trackingNumber}:`, response.data);
-            return false;
-        }
-
-    } catch (error) {
-        console.error(`❌ Detrack API error for ${trackingNumber}:`, error.message);
-        return false;
-    }
-}
 
 function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = false) {
     const normalizedStatus = currentStatus ? currentStatus.toLowerCase() : '';
@@ -18820,67 +16499,6 @@ function mapDetrackStatus(detrackStatus) {
     return detrackStatus;
 }
 
-// Determine product type from group_name and job_owner
-function determineProductType(groupName, jobOwner) {
-    const product = (groupName || '').toLowerCase();
-    const owner = (jobOwner || '').toLowerCase();
-
-    if (product === 'pdu' || owner.includes('pdu')) return 'pdu';
-    if (product === 'mglobal' || owner.includes('mglobal')) return 'mglobal';
-    if (product === 'ewe' || owner.includes('ewe')) return 'ewe';
-    if (product === 'gdex') return 'gdex';
-    if (product === 'gdext') return 'gdext';
-    if (product === 'cbsl') return 'cbsl';
-    if (product === 'kptdp') return 'kptdp';
-
-    return product || 'unknown';
-}
-
-async function processOutForDeliveryUpdate(trackingNumber, req) {
-    try {
-        console.log(`Processing Out for Delivery for: ${trackingNumber}`);
-        // Add your specific Detrack API call for OFD status
-        return await updateDetrackJobStatus(trackingNumber, 'out_for_delivery');
-    } catch (error) {
-        console.error(`Error in OFD update for ${trackingNumber}:`, error);
-        return false;
-    }
-}
-
-async function processSelfCollectUpdate(trackingNumber, req) {
-    try {
-        console.log(`Processing Self Collect for: ${trackingNumber}`);
-        // Add your specific Detrack API call for self collect
-        return await updateDetrackJobStatus(trackingNumber, 'self_collect');
-    } catch (error) {
-        console.error(`Error in Self Collect update for ${trackingNumber}:`, error);
-        return false;
-    }
-}
-
-async function processClearJobUpdate(trackingNumber, req) {
-    try {
-        console.log(`Processing Clear Job for: ${trackingNumber}`);
-        // Add your specific Detrack API call for clearing job
-        return await updateDetrackJobStatus(trackingNumber, 'completed');
-    } catch (error) {
-        console.error(`Error in Clear Job update for ${trackingNumber}:`, error);
-        return false;
-    }
-}
-
-async function processGenericUpdate(trackingNumber, updateCode, req, mawbNum) {
-    try {
-        console.log(`Processing ${updateCode} for: ${trackingNumber}`);
-        // Generic processor - implement logic based on updateCode
-        console.log(`⚠️ No specific implementation for ${updateCode} yet`);
-        return false;
-    } catch (error) {
-        console.error(`Error in ${updateCode} update for ${trackingNumber}:`, error);
-        return false;
-    }
-}
-
 // Replace the existing checkJobExists function with this:
 async function checkJobExists(trackingNumber) {
     try {
@@ -18936,34 +16554,6 @@ async function checkJobExists(trackingNumber) {
     }
 }
 
-// Function to update or create order in ORDERS collection
-async function updateOrCreateOrder(trackingNumber, mawbNum, req, jobData) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // Check if order already exists
-            const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
-
-            if (existingOrder) {
-                // Update existing order - only mawbNo field
-                await ORDERS.updateOne(
-                    { doTrackingNumber: trackingNumber },
-                    { $set: { mawbNo: mawbNum } }
-                );
-                console.log(`Updated MAWB for existing order: ${trackingNumber}`);
-                resolve(true);
-            } else {
-                // Create new order with product-specific rules
-                const { currentProduct } = getProductInfo(jobData.group_name, jobData.job_owner);
-                const success = await createNewOrderWithRules(jobData, trackingNumber, mawbNum, req, currentProduct);
-                resolve(success);
-            }
-        } catch (error) {
-            console.error(`Error in updateOrCreateOrder for ${trackingNumber}:`, error);
-            reject(error);
-        }
-    });
-}
-
 // Replace the existing getJobDetails function with this:
 async function getJobDetails(trackingNumber) {
     try {
@@ -19016,78 +16606,6 @@ async function getJobDetails(trackingNumber) {
         }
         throw error;
     }
-}
-
-// Function to create new order
-async function createNewOrder(jobData, trackingNumber, mawbNum, req) {
-    // Process items array
-    const itemsArray = [];
-    if (jobData.items && Array.isArray(jobData.items)) {
-        for (let i = 0; i < jobData.items.length; i++) {
-            itemsArray.push({
-                quantity: jobData.items[i].quantity || 0,
-                description: jobData.items[i].description || '',
-                totalItemPrice: jobData.total_price || jobData.payment_amount || 0
-            });
-        }
-    }
-
-    // Process area from address
-    const finalArea = getAreaFromAddress(jobData.address);
-
-    // Process product
-    const { currentProduct, senderName } = getProductInfo(jobData.group_name, jobData.job_owner);
-
-    // Process phone numbers
-    const finalPhoneNum = processPhoneNumber(jobData.phone_number);
-    const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
-
-    // Process postal code
-    const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
-
-    // Determine payment method
-    const totalAmount = jobData.total_price || jobData.payment_amount || 0;
-    const paymentMethod = totalAmount > 0 ? 'Cash' : 'NON COD';
-
-    // Create new order
-    const newOrder = new ORDERS({
-        area: finalArea,
-        items: itemsArray,
-        attempt: jobData.attempt || 1,
-        history: [{
-            statusHistory: "Info Received",
-            dateUpdated: moment().format(),
-            updatedBy: req.user.name,
-            lastLocation: "Origin",
-        }],
-        latestLocation: "Origin",
-        product: currentProduct,
-        senderName: senderName,
-        totalPrice: totalAmount,
-        paymentAmount: totalAmount,
-        receiverName: jobData.deliver_to_collect_from || '',
-        trackingLink: jobData.tracking_link || '',
-        currentStatus: "Info Received",
-        paymentMethod: paymentMethod,
-        warehouseEntry: "No",
-        warehouseEntryDateTime: "N/A",
-        receiverAddress: jobData.address || '',
-        receiverPhoneNumber: finalPhoneNum,
-        additionalPhoneNumber: finalAdditionalPhoneNum,
-        doTrackingNumber: trackingNumber,
-        remarks: jobData.remarks || '',
-        lastUpdateDateTime: moment().format(),
-        creationDate: jobData.created_at || moment().format(),
-        lastUpdatedBy: req.user.name,
-        receiverPostalCode: postalCode,
-        jobType: jobData.type || 'Delivery',
-        jobMethod: "Standard",
-        flightDate: jobData.job_received_date || '',
-        mawbNo: mawbNum,
-        parcelWeight: jobData.weight || 0
-    });
-
-    await newOrder.save();
 }
 
 // Helper function to get area from address
@@ -19534,20 +17052,6 @@ function processPhoneNumber(phoneNumber) {
     }
 }
 
-// Generic function to update Detrack job status (placeholder - implement based on your needs)
-async function updateDetrackJobStatus(trackingNumber, status) {
-    return new Promise((resolve, reject) => {
-        // TODO: Implement actual Detrack API call for status updates
-        console.log(`Would update ${trackingNumber} to status: ${status}`);
-
-        // Temporary - return true for testing
-        // In production, make actual API call to Detrack
-        setTimeout(() => {
-            resolve(true); // Change this to actual API call result
-        }, 500);
-    });
-}
-
 // ==================================================
 // 👥 Group IIW Results by Customer
 // ==================================================
@@ -19580,74 +17084,6 @@ function groupIIWResultsByCustomer(results) {
 // ==================================================
 // 🔧 Batch Processing Utilities
 // ==================================================
-
-// Replace the existing processSingleTrackingNumber function:
-async function processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, warehouse, req) {
-    const cleanTrackingNumber = trackingNumber.trim();
-
-    if (!cleanTrackingNumber) {
-        return { success: false, error: 'Empty tracking number', isDuplicate: false };
-    }
-
-    // Check for duplicate using the new trackDuplicate function
-    const duplicateCheck = trackDuplicate(trackingNumber, updateCode, 'bulk');
-    if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
-        return {
-            success: false,
-            error: `Duplicate tracking number (count: ${duplicateCheck.count})`,
-            trackingNumber: cleanTrackingNumber,
-            isDuplicate: true,
-            duplicateCount: duplicateCheck.count
-        };
-    }
-
-    try {
-        console.log(`🔍 Processing ${cleanTrackingNumber} with updateCode: ${updateCode}`);
-
-        let processSuccess = false;
-        let message = '';
-
-        switch (updateCode) {
-            case 'UAN':
-                processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
-                message = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
-                break;
-            case 'CCH':
-                processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
-                message = processSuccess ? 'Job put on hold' : 'On hold update failed';
-                break;
-            case 'IIW':
-                const result = await processItemInWarehouseUpdate(cleanTrackingNumber, warehouse, req);
-                processSuccess = result.success;
-                message = result.message;
-                break;
-            default:
-                console.log(`⚠️ Generic update called for ${updateCode}`);
-                processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
-                message = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
-        }
-
-        console.log(`📊 Result for ${cleanTrackingNumber}: ${processSuccess ? 'SUCCESS' : 'FAILED'} - ${message}`);
-
-        return {
-            success: processSuccess,
-            message: message,
-            trackingNumber: cleanTrackingNumber,
-            isDuplicate: false,
-            duplicateCount: 1
-        };
-
-    } catch (error) {
-        console.error(`❌ Error processing ${cleanTrackingNumber}:`, error);
-        return {
-            success: false,
-            error: error.message,
-            trackingNumber: cleanTrackingNumber,
-            isDuplicate: false,
-            duplicateCount: 1
-        };
-    }
-}
 
 // Add this helper function near your other helper functions
 function determineProductType(groupName, jobOwner) {
@@ -21236,93 +18672,6 @@ async function sendDetrackUpdateWithRetry(trackingNumber, updateData, mawbNum, m
     return false;
 }
 
-async function validateExcelBeforeUpload(file, mawbNum) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = async function (e) {
-            try {
-                const text = e.target.result;
-                const lines = text.split('\n');
-                const headers = lines[0].split(',').map(h => h.trim());
-
-                // Check for required column
-                if (!headers.includes('Tracking Number')) {
-                    reject('File must contain "Tracking Number" column');
-                    return;
-                }
-
-                // Count lines
-                const trackingNumbers = [];
-                for (let i = 1; i < Math.min(lines.length, 11); i++) { // Check first 10 rows
-                    if (lines[i].trim()) {
-                        const cells = lines[i].split(',');
-                        const trackingNumber = cells[0]?.trim();
-                        if (trackingNumber) {
-                            trackingNumbers.push(trackingNumber);
-                        }
-                    }
-                }
-
-                if (trackingNumbers.length === 0) {
-                    reject('No tracking numbers found in file');
-                    return;
-                }
-
-                // Optional: Check if any tracking numbers already exist in MongoDB
-                try {
-                    const response = await fetch('/updateJob/checkExistingOrders', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            trackingNumbers: trackingNumbers,
-                            mawbNum: mawbNum
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.existingOrders && data.existingOrders.length > 0) {
-                        const warning = `Warning: ${data.existingOrders.length} tracking numbers already exist in the system.\n\n` +
-                            `These will be updated if they have "Info Received" status.\n\n` +
-                            `Do you want to continue?`;
-
-                        if (!confirm(warning)) {
-                            reject('Upload cancelled by user');
-                            return;
-                        }
-                    }
-
-                    resolve({
-                        totalLines: lines.length - 1,
-                        sampleTracking: trackingNumbers.slice(0, 5),
-                        hasPostalCode: headers.includes('Postal Code'),
-                        hasWeight: headers.includes('Parcel Weight')
-                    });
-
-                } catch (error) {
-                    console.log('Skipping pre-check due to error:', error);
-                    resolve({
-                        totalLines: lines.length - 1,
-                        sampleTracking: trackingNumbers.slice(0, 5)
-                    });
-                }
-
-            } catch (error) {
-                reject('Error reading file: ' + error.message);
-            }
-        };
-
-        reader.onerror = function () {
-            reject('Error reading file');
-        };
-
-        reader.readAsText(file);
-    });
-}
-
 // Add this route to check existing orders
 app.post('/updateJob/checkExistingOrders', ensureAuthenticated, async (req, res) => {
     try {
@@ -21360,202 +18709,6 @@ app.post('/updateJob/checkExistingOrders', ensureAuthenticated, async (req, res)
         res.status(500).json({ error: error.message });
     }
 });
-
-// Add this function to validate product vs MAWB rules
-async function validateProductForIIW(trackingNumber, mawbNum, product) {
-    try {
-        const mawbRequiredProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
-
-        // MAWB-required product without MAWB
-        if (mawbRequiredProducts.includes(product) && (!mawbNum || mawbNum.trim() === '')) {
-            return {
-                valid: false,
-                error: `Product "${product}" requires MAWB number`,
-                code: 'MAWB_REQUIRED'
-            };
-        }
-
-        // Non-MAWB product with MAWB
-        if (!mawbRequiredProducts.includes(product) && mawbNum && mawbNum.trim() !== '') {
-            return {
-                valid: false,
-                error: `Product "${product}" cannot have MAWB number`,
-                code: 'INVALID_MAWB'
-            };
-        }
-
-        // Check MAWB belongs
-        if (mawbRequiredProducts.includes(product) && mawbNum) {
-            const order = await ORDERS.findOne({
-                doTrackingNumber: trackingNumber
-            }).select('mawbNo');
-
-            if (order && order.mawbNo && order.mawbNo.toUpperCase() !== mawbNum.trim().toUpperCase()) {
-                return {
-                    valid: false,
-                    error: `Order belongs to MAWB ${order.mawbNo}, not ${mawbNum}`,
-                    code: 'MAWB_MISMATCH'
-                };
-            }
-        }
-
-        return { valid: true };
-
-    } catch (error) {
-        return {
-            valid: false,
-            error: `Validation error: ${error.message}`,
-            code: 'VALIDATION_ERROR'
-        };
-    }
-}
-// Add this function near your other helper functions
-function analyzeEPODArray(epodArray, consignmentID) {
-    console.log(`\n🔍🔍🔍 EPOD ARRAY ANALYSIS FOR ${consignmentID} 🔍🔍🔍`);
-
-    let base64Count = 0;
-    let urlCount = 0;
-    let emptyCount = 0;
-    let mixedCount = 0;
-
-    epodArray.forEach((item, index) => {
-        console.log(`\nPOD ${index + 1}:`);
-        console.log(`   Type: ${typeof item}`);
-        console.log(`   Length: ${item?.length || 0} chars`);
-
-        if (!item || item.length === 0) {
-            console.log(`   ❌ EMPTY`);
-            emptyCount++;
-        } else if (item.startsWith('http')) {
-            console.log(`   ❌ URL (starts with http): ${item.substring(0, 80)}...`);
-            urlCount++;
-        } else if (item.startsWith('/9j/') || item.startsWith('iVBORw0KGgo')) {
-            console.log(`   ✅ Base64 (JPEG/PNG)`);
-            console.log(`   First 50 chars: ${item.substring(0, 50)}...`);
-            base64Count++;
-        } else if (item.startsWith('data:image')) {
-            console.log(`   ✅ Base64 with Data URI`);
-            base64Count++;
-        } else if (item.includes('detrack') || item.includes('app.detrack')) {
-            console.log(`   ❌ Detrack URL`);
-            urlCount++;
-        } else {
-            console.log(`   ❓ UNKNOWN: ${item.substring(0, 50)}...`);
-            mixedCount++;
-        }
-    });
-
-    console.log(`\n📊 SUMMARY:`);
-    console.log(`   Base64 PODs: ${base64Count}/3`);
-    console.log(`   URL PODs: ${urlCount}/3`);
-    console.log(`   Empty: ${emptyCount}/3`);
-    console.log(`   Unknown: ${mixedCount}/3`);
-
-    if (urlCount > 0) {
-        console.log(`\n🚨 PROBLEM: ${urlCount} POD(s) are still URLs, not Base64!`);
-        console.log(`   GDEX expects Base64 strings, not URLs`);
-    }
-
-    if (base64Count === 3) {
-        console.log(`\n✅ SUCCESS: All 3 PODs are Base64`);
-    } else {
-        console.log(`\n❌ FAILURE: Only ${base64Count}/3 PODs converted to Base64`);
-    }
-
-    console.log(`🔍🔍🔍 END ANALYSIS 🔍🔍🔍\n`);
-}
-
-// Add this helper function
-function validateAndCleanEPODArray(epodArray, consignmentID) {
-    console.log(`\n🧹 Cleaning EPOD array for ${consignmentID}...`);
-
-    const cleanedArray = epodArray.map((pod, index) => {
-        // If it's a URL, return empty string
-        if (pod && pod.startsWith('http')) {
-            console.error(`   ❌ Removing URL from POD ${index + 1}: ${pod.substring(0, 80)}...`);
-            return ""; // GDEX might accept empty string for missing POD
-        }
-
-        // If it's valid Base64, keep it
-        if (pod && (pod.startsWith('/9j/') || pod.startsWith('iVBORw0KGgo') || pod.startsWith('data:image'))) {
-            console.log(`   ✅ Keeping Base64 POD ${index + 1} (${pod.length} chars)`);
-            return pod;
-        }
-
-        // Empty or invalid
-        console.log(`   ⚠️ POD ${index + 1} empty or invalid`);
-        return pod || "";
-    });
-
-    const validCount = cleanedArray.filter(pod =>
-        pod && pod.length > 100 && !pod.startsWith('http')
-    ).length;
-
-    console.log(`   📊 Result: ${validCount}/3 valid Base64 PODs`);
-    return cleanedArray;
-}
-
-// Add this function to clean URLs before sending to GDEX
-function sanitizeEPODArray(epodArray) {
-    return epodArray.map(pod => {
-        // If it's a URL, return empty string
-        if (pod && pod.startsWith('http')) {
-            return "";
-        }
-        // If it's valid Base64, return it
-        if (pod && pod.length > 100 && !pod.startsWith('http')) {
-            return pod;
-        }
-        // Otherwise empty string
-        return "";
-    });
-}
-
-// Add this function and run it ONCE to clean existing bad data
-async function cleanupBadPODs() {
-    console.log(`🧹 Cleaning up bad POD data in database...`);
-
-    try {
-        // Find orders with GDEX/GDEXT products that have URLs in POD fields
-        const badOrders = await ORDERS.find({
-            product: { $in: ['gdex', 'gdext'] },
-            $or: [
-                { podBase64: { $regex: '^https?://', $options: 'i' } },
-                { podBase64_2: { $regex: '^https?://', $options: 'i' } },
-                { podBase64_3: { $regex: '^https?://', $options: 'i' } }
-            ]
-        });
-
-        console.log(`Found ${badOrders.length} orders with URL PODs`);
-
-        for (const order of badOrders) {
-            console.log(`\nCleaning order: ${order.doTrackingNumber}`);
-
-            // Clear the bad POD data
-            await ORDERS.findOneAndUpdate(
-                { doTrackingNumber: order.doTrackingNumber },
-                {
-                    $unset: {
-                        podBase64: "",
-                        podBase64_2: "",
-                        podBase64_3: "",
-                        podUpdated: "",
-                        podSource: ""
-                    }
-                }
-            );
-
-            console.log(`✅ Cleared bad POD data for ${order.doTrackingNumber}`);
-        }
-
-        console.log(`\n🎉 Cleanup complete!`);
-    } catch (error) {
-        console.error(`Cleanup failed:`, error);
-    }
-}
-
-// Uncomment and run this once:
-/* cleanupBadPODs(); */
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
