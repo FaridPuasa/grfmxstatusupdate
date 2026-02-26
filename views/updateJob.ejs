@@ -65,18 +65,17 @@
                         <% if (['warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
                             <optgroup label="EWE/MGLOBAL/PDU/GDEX Flow">
                                 <option value="UAN">1. MAWB Number</option>
-                                <option value="CCH">1.1. On Hold</option>
                             </optgroup>
-                            <!-- <optgroup label="EWE/MGLOBAL/PDU Flow">
+                            <optgroup label="EWE/MGLOBAL/PDU Flow">
                                 <option value="CCH">2. On Hold</option>
-                            </optgroup> -->
-                            <!-- <optgroup label="GDEX On Hold Flow">
+                            </optgroup>
+                            <optgroup label="GDEX On Hold Flow">
                                 <option value="H9">Reject By Airport</option>
                                 <option value="H18">DG Shipment</option>
                                 <option value="H19">Prohibited Shipment</option>
                                 <option value="H27">Pending Custom Declaration</option>
                                 <option value="H31">Shipment rejected/confiscated by customs</option>
-                            </optgroup> -->
+                            </optgroup>
                             <% } %>
                                 <!-- Other optgroups remain the same -->
                                 <optgroup label="Standard Flow">
