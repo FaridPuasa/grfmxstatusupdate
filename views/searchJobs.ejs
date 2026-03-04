@@ -175,12 +175,20 @@ table.dataTable { width: 100% !important; }
         <label class="form-label">Assigned To</label>
         <select class="form-control select2" name="assignedTo[]" multiple>
           <option value="Ghafar">Ghafar</option>
-                        <option value="Sowdeq">Sowdeq</option>
-                        <option value="Leo">Leo</option>
-                        <option value="Hairol">Hairol</option>
-                        <option value="Hamidin">Hamidin</option>
-                        <option value="Edey">Edey</option>
-                        <option value="Zura">Zura</option>
+          <option value="Sowdeq">Sowdeq</option>
+          <option value="Leo">Leo</option>
+          <option value="Hairol">Hairol</option>
+          <option value="Hamidin">Hamidin</option>
+          <option value="Edey">Edey</option>
+          <option value="Adiwardi">Adiwardi</option>
+          <option value="Zainul">Zainul</option>
+          <option value="Zura">Zura</option>
+          <option value="Feeza">Feeza</option>
+          <option value="Yui">Yui</option>
+          <option value="Ermi">Ermi</option>
+          <option value="Agung">Agung</option>
+          <option value="Rizal">Rizal</option>
+          <option value="Saiful">Saiful</option>
           <option value="Selfcollect">Selfcollect</option>
         </select>
       </div>
@@ -299,42 +307,43 @@ table.dataTable { width: 100% !important; }
 <div class="table-responsive">
   <table id="jobsTable" class="table table-striped table-bordered w-100">
     <thead>
-      <tr>
-        <th>S/N</th>
-        <th>Action</th>
-        <th>Go Rush Remark</th>
-        <th>Customer Remark</th>
-        <th>Go Rush Tracking No.</th>
-        <th>Product</th>
-        <th>Job Status</th>
-        <th>Latest Location</th>
-        <th>Age (Days)</th>
-        <th>Job Method</th>
-        <th>Job Date</th>
-        <th>Assigned To</th>
-        <th>Attempt</th>
-        <th>Payment Method</th>
-        <th>Payment Amount</th>
-        <th>Name</th>
-        <th>Main Phone No.</th>
-        <th>Additional Phone No.</th>
-        <th>Customer Address</th>
-        <th>Postal Code</th>
-        <th>Area</th>
-        <th>Job Created Date</th>
-        <th>MAWB No.</th>
-        <th>IC/Passport No.</th>
-        <th>Patient No.</th>
-        <th>Item Description</th>
-        <th>Quantity</th>
-        <th>Invoice/Item Screenshot</th>
-        <th>Original Tracking No.</th>
-        <th>Item Original Price</th>
-        <th>Weight (KG)</th>
-        <th>No. of Packages</th>
-        <th>Handling Charge</th>
-      </tr>
-    </thead>
+  <tr>
+    <th>S/N</th>
+    <th>Action</th>
+    <th>Go Rush Remark</th>
+    <th>Customer Remark</th>
+    <th>Go Rush Tracking No.</th>
+    <th>Product</th>
+    <th>Job Status</th>
+    <th>Latest Location</th>
+    <th>Age (Days)</th>
+    <th>Job Method</th>
+    <th>Job Date</th>
+    <th>Assigned To</th>
+    <th>Attempt</th>
+    <th>Payment Method</th>
+    <th>Payment Amount</th>
+    <th>Name</th>
+    <th>Main Phone No.</th>
+    <th>Additional Phone No.</th>
+    <th>Customer Address</th>
+    <th>Postal Code</th>
+    <th>Area</th>
+    <th>Job Created Date</th>
+    <th>MAWB No.</th>
+    <th>IC/Passport No.</th>
+    <th>Patient No.</th>
+    <th>Item Description</th>
+    <th>Quantity</th>
+    <th>Invoice/Item Screenshot</th>
+    <th>Original Tracking No.</th>
+    <th>Item Original Price</th>
+    <th>Weight (KG)</th>
+    <th>No. of Packages</th>
+    <th>Handling Charge</th>
+    <th>Shipment Received</th>
+  </tr>
+</thead>
     <tbody></tbody>
   </table>
 </div>
@@ -389,88 +398,237 @@ table.dataTable { width: 100% !important; }
 <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.colVis.min.js"></script>
-<script>
+<script src="https://cdn.datatables.net/colreorder/1.5.6/js/dataTables.colReorder.min.js"></script>
+<!-- <script>
 $(document).ready(function() {
   // Initialize Select2
   $('.select2').select2({ width: '100%' });
 
   let manifestView = false; // Toggle state for Manifest to Bill view
+  let gdexView = false;
+
+  // Function to reset all column headers to original
+function resetColumnHeaders(dt) {
+  const originalHeaders = [
+    'S/N', 'Action', 'Go Rush Remark', 'Customer Remark', 'Go Rush Tracking No.',
+    'Product', 'Job Status', 'Latest Location', 'Age (Days)', 'Job Method',
+    'Job Date', 'Assigned To', 'Attempt', 'Payment Method', 'Payment Amount',
+    'Name', 'Main Phone No.', 'Additional Phone No.', 'Customer Address',
+    'Postal Code', 'Area', 'Job Created Date', 'MAWB No.', 'IC/Passport No.',
+    'Patient No.', 'Item Description', 'Quantity', 'Invoice/Item Screenshot',
+    'Original Tracking No.', 'Item Original Price', 'Weight (KG)', 'No. of Packages',
+    'Handling Charge'
+  ];
+  
+  dt.columns().every(function(index) {
+    if (index < originalHeaders.length) {
+      this.header().innerHTML = originalHeaders[index];
+    }
+  });
+  
+  // Also reset any data formatting for Latest Scan column
+  redrawTableWithOriginalData(dt);
+}
+
+// Function to update Latest Scan column with mapped status
+function updateLatestScanColumn(dt) {
+  dt.rows().every(function() {
+    const data = this.data();
+    const jobStatus = data.currentStatus || '';
+    let latestScan = 'UNDEL'; // Default
+    
+    if (jobStatus === 'Completed') {
+      latestScan = 'POD';
+    } else if (jobStatus === 'Return to Warehouse' || jobStatus === 'Return') {
+      latestScan = 'RTS';
+    }
+    
+    // Update the cell data for column 6 (Latest Scan)
+    // We need to store the original data and also have the mapped version
+    data.mappedLatestScan = latestScan;
+    
+    // Update the display
+    if (this.nodes().length) {
+      $(this.nodes()).find('td:eq(6)').text(latestScan);
+    }
+  });
+  
+  // Redraw to apply changes
+  dt.draw();
+}
+
+// Function to redraw table with original data
+function redrawTableWithOriginalData(dt) {
+  dt.rows().every(function() {
+    const data = this.data();
+    // Restore original job status display
+    if (this.nodes().length) {
+      $(this.nodes()).find('td:eq(6)').text(data.currentStatus || '');
+    }
+  });
+  dt.draw();
+}
 
   // Initialize DataTable
   let table = $('#jobsTable').DataTable({
     scrollX: true,   // 👈 enables horizontal scroll
     dom: 'lBfrtip',
     buttons: [
-      {
-  extend: 'excelHtml5',
-  text: 'Export Excel',
-  exportOptions: {
-    columns: ':visible',
-    orthogonal: 'export',
-    format: {
-      body: function (data, row, column, node) {
-        if (column === 0) return row + 1; // S/N column
-        return data;
-      }
-    }
-  },
-  filename: function() {
-    // Build the filter part of the filename
-    let filters = [];
-    $('#searchForm').find('input[type="text"], textarea').each(function() {
-      const val = $(this).val().trim();
-      if (val) filters.push(val.replace(/[\s\/\\:*?"<>|]/g, '_'));
-    });
-    $('#searchForm').find('select.select2').each(function() {
-      const val = $(this).val();
-      if (val && val.length) filters.push(val.join('-').replace(/[\s\/\\:*?"<>|]/g, '_'));
-    });
-    const filterText = filters.length ? filters.join('_') : 'SearchJob';
-
-    // Get today's date
-    const today = moment().format('DD.MM.YYYY');
-
-    // Get number of rows currently displayed in the table
-    const rowCount = table.rows({ filter: 'applied' }).data().length;
-
-    return `${filterText}_${today}(${rowCount})`;
-  }
-},
-      {
-        extend: 'colvis',
-        text: 'Show/Hide Columns'
-      },
-      <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
-      {
-        text: 'Manifest to Bill',
-        action: function(e, dt, node, config) {
-          const manifestCols = [
-            0,  // S/N
-            4,  // Go Rush Tracking No.
-            15, // Name
-            16, // Main Phone No.
-            18, // Customer Address
-            19, // Postal Code
-            30, // Weight (KG)
-            31, // No. of Packages
-            32  // Handling Charge
-          ];
-
-          if (!manifestView) {
-            // Hide all other columns
-            dt.columns().every(function(index) {
-              if (!manifestCols.includes(index)) this.visible(false);
-            });
-          } else {
-            // Show all columns
-            dt.columns().visible(true);
-          }
-
-          manifestView = !manifestView;
+  {
+    extend: 'excelHtml5',
+    text: 'Export Excel',
+    exportOptions: {
+      columns: ':visible',
+      orthogonal: 'export',
+      format: {
+        body: function (data, row, column, node) {
+          if (column === 0) return row + 1; // S/N column
+          return data;
         }
       }
-      <% } %>
-    ],
+    },
+    filename: function() {
+      // Build the filter part of the filename
+      let filters = [];
+      $('#searchForm').find('input[type="text"], textarea').each(function() {
+        const val = $(this).val().trim();
+        if (val) filters.push(val.replace(/[\s\/\\:*?"<>|]/g, '_'));
+      });
+      $('#searchForm').find('select.select2').each(function() {
+        const val = $(this).val();
+        if (val && val.length) filters.push(val.join('-').replace(/[\s\/\\:*?"<>|]/g, '_'));
+      });
+      const filterText = filters.length ? filters.join('_') : 'SearchJob';
+
+      // Get today's date
+      const today = moment().format('DD.MM.YYYY');
+
+      // Get number of rows currently displayed in the table
+      const rowCount = table.rows({ filter: 'applied' }).data().length;
+
+      return `${filterText}_${today}(${rowCount})`;
+    }
+  },
+  {
+    extend: 'colvis',
+    text: 'Show/Hide Columns'
+  },
+  <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
+  {
+    text: 'Manifest to Bill',
+    action: function(e, dt, node, config) {
+      const manifestCols = [
+        0,  // S/N
+        4,  // Go Rush Tracking No.
+        15, // Name
+        16, // Main Phone No.
+        18, // Customer Address
+        19, // Postal Code
+        30, // Weight (KG)
+        31, // No. of Packages
+        32  // Handling Charge
+      ];
+
+      if (!manifestView) {
+        // Hide all other columns
+        dt.columns().every(function(index) {
+          if (!manifestCols.includes(index)) this.visible(false);
+        });
+        
+        // Update column headers for Manifest view
+        dt.column(0).header().innerHTML = 'S/N';
+        dt.column(4).header().innerHTML = 'Go Rush Tracking No.';
+        dt.column(15).header().innerHTML = 'Name';
+        dt.column(16).header().innerHTML = 'Main Phone No.';
+        dt.column(18).header().innerHTML = 'Customer Address';
+        dt.column(19).header().innerHTML = 'Postal Code';
+        dt.column(30).header().innerHTML = 'Weight (KG)';
+        dt.column(31).header().innerHTML = 'No. of Packages';
+        dt.column(32).header().innerHTML = 'Handling Charge';
+      } else {
+        // Show all columns
+        dt.columns().visible(true);
+        // Reset all column headers to original
+        resetColumnHeaders(dt);
+      }
+
+      manifestView = !manifestView;
+      gdexView = false; // Turn off GDEX view if it was on
+    }
+  },
+  {
+    text: 'GDEX Billing',
+    action: function(e, dt, node, config) {
+      const gdexCols = [
+        0,  // Bil (S/N)
+        4,  // Consignment Note (Go Rush Tracking No.)
+        15, // Receiver name (Name)
+        30, // Weight (KG)
+        32, // Service Charge (Handling Charge)
+        22, // MAWB No.
+        6   // Latest Scan (Job Status mapped)
+      ];
+
+      if (!gdexView) {
+        // Hide all other columns
+        dt.columns().every(function(index) {
+          if (!gdexCols.includes(index)) this.visible(false);
+        });
+        
+        // Update column headers for GDEX view
+        dt.column(0).header().innerHTML = 'Bil';
+        dt.column(4).header().innerHTML = 'Consignment Note';
+        dt.column(15).header().innerHTML = 'Receiver name';
+        dt.column(30).header().innerHTML = 'Weight (KG)';
+        dt.column(32).header().innerHTML = 'Service Charge';
+        dt.column(22).header().innerHTML = 'MAWB';
+        
+        // Special handling for Shipment Received column
+        // We need to add a new column for warehouseEntryDateTime
+        // Let's check if we need to add it dynamically
+        let shipmentReceivedColIndex = -1;
+        
+        // Check if we already have a Shipment Received column (column 33 if exists)
+        if (dt.columns().indexes().length > 33) {
+          // Use existing column if available
+          shipmentReceivedColIndex = 33;
+        } else {
+          // Add a new column for Shipment Received
+          dt.column(33).visible(true);
+          shipmentReceivedColIndex = 33;
+        }
+        
+        // Make sure the Shipment Received column is visible
+        dt.column(shipmentReceivedColIndex).visible(true);
+        dt.column(shipmentReceivedColIndex).header().innerHTML = 'Shipment Received';
+        
+        // Update Latest Scan column with mapped status
+        updateLatestScanColumn(dt);
+        
+        // Update the order of columns to match GDEX Billing format
+        // Bil (0), Consignment Note (4), Receiver name (15), Weight (30), 
+        // Service Charge (32), Shipment Received (33), MAWB (22), Latest Scan (6)
+        
+        // Reorder columns
+        dt.columns([0, 4, 15, 30, 32, shipmentReceivedColIndex, 22, 6]).order();
+      } else {
+        // Show all columns
+        dt.columns().visible(true);
+        // Reset all column headers to original
+        resetColumnHeaders(dt);
+        
+        // Hide the Shipment Received column if it was added
+        if (dt.columns().indexes().length > 33) {
+          dt.column(33).visible(false);
+        }
+      }
+
+      gdexView = !gdexView;
+      manifestView = false; // Turn off Manifest view if it was on
+    }
+  }
+  <% } %>
+],
     pageLength: 25,
     lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
     ordering: true,
@@ -502,7 +660,18 @@ $(document).ready(function() {
       { data: 'remarks' },
       { data: 'doTrackingNumber' },
       { data: 'product' },
-      { data: 'currentStatus' },
+      { 
+    data: 'currentStatus',
+    render: function(data, type, row, meta) {
+      if (type === 'display' && gdexView) {
+        // In GDEX view, return mapped status
+        if (data === 'Completed') return 'POD';
+        if (data === 'Return to Warehouse' || data === 'Return') return 'RTS';
+        return 'UNDEL';
+      }
+      return data; // Default view shows original status
+    }
+  },
       { data: 'latestLocation' },
       { data: 'age' },
       { data: 'jobMethod' },
@@ -535,11 +704,31 @@ $(document).ready(function() {
       { data: 'parcelWeight' },
       { data: 'noOfpackages' },
       <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
-{ data: 'handlingCharge' }
+{ data: 'handlingCharge' },
 <% } else { %>
-{ data: 'handlingCharge', visible: false }
+{ data: 'handlingCharge', visible: false },
 <% } %>
-    ]
+    { 
+  data: null,
+  title: 'Shipment Received',
+  visible: false, // Hidden by default
+  render: function(data, type, row) {
+    if (type === 'display' || type === 'export') {
+      // Format warehouseEntryDateTime if it exists
+      if (row.warehouseEntryDateTime) {
+        const date = new Date(row.warehouseEntryDateTime);
+        if (!isNaN(date.getTime())) {
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}/${month}/${year}`;
+        }
+      }
+      return '';
+    }
+    return row.warehouseEntryDateTime || '';
+  }
+}]
   });
 
   // Reset Filters
@@ -591,6 +780,533 @@ $(document).ready(function() {
         const filterText = filterNames.length ? filterNames.join(' | ') : 'All Jobs';
         const rowCount = data.length;
         $('#tableHeader').text(`${filterText} (${rowCount})`);
+      },
+      error: function() {
+        alert('Error fetching jobs');
+      },
+      complete: function() { $('#loadingOverlay').hide(); }
+    });
+  });
+
+  table.on('draw', function() {
+    $('#loadingOverlay').hide();
+  });
+
+  // Reorder button click
+  $(document).on('click', '.reorder-btn', function() {
+    const trackingNumber = $(this).data('tracking');
+    const address = $(this).data('address').toLowerCase();
+    const product = $(this).data('product').toLowerCase();
+
+    const jobMethodSelect = $('#jobMethod');
+    jobMethodSelect.empty();
+
+    const currentDay = moment().day();
+    const currentTime = moment().hour();
+
+    function isExpressAvailable() {
+      if (currentDay === 4 && currentTime >= 11) return false; 
+      if (currentDay === 5 || currentDay === 6) return false;
+      return true;
+    }
+    function isImmediateAvailable() {
+      if (currentDay === 0 || currentDay === 5) return false;
+      return currentTime >= 8 && currentTime <= 15;
+    }
+
+    if (product === 'pharmacymoh' || product === 'pharmacyjpmc') {
+      if (address.includes('brunei muara') || address.includes('brunei-muara')) {
+        jobMethodSelect.append('<option value="Standard">Standard</option>');
+        if (isExpressAvailable()) jobMethodSelect.append('<option value="Express">Express</option>');
+        if (isImmediateAvailable()) jobMethodSelect.append('<option value="Immediate">Immediate</option>');
+        jobMethodSelect.append('<option value="Self Collect">Self Collect</option>');
+      } else {
+        jobMethodSelect.append('<option value="Standard">Standard</option>');
+        jobMethodSelect.append('<option value="Self Collect">Self Collect</option>');
+      }
+    } else if (product === 'pharmacyphc') {
+      jobMethodSelect.append('<option value="Standard">Standard</option>');
+      jobMethodSelect.append('<option value="Self Collect">Self Collect</option>');
+    }
+
+    $('#trackingNumber').val(trackingNumber);
+    $('#reorderModal').modal('show');
+  });
+
+  $('#reorderForm').on('submit', async function(e) {
+    e.preventDefault();
+    const trackingNumber = $('#trackingNumber').val();
+    const jobMethod = $('#jobMethod').val();
+    const paymentMethod = $('#paymentMethod').val();
+    const remarks = $('#remarks').val();
+
+    try {
+      const response = await fetch('/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackingNumber, jobMethod, paymentMethod, remarks })
+      });
+      const result = await response.json();
+      if (result.success) alert('Order is submitted');
+      else alert('Order submission failed: ' + result.message);
+      $('#reorderModal').modal('hide');
+    } catch(err) {
+      console.error(err);
+      alert('Error submitting reorder');
+    }
+  });
+});
+</script> -->
+
+<script>
+$(document).ready(function() {
+  // Initialize Select2
+  $('.select2').select2({ width: '100%' });
+
+  let manifestView = false;
+  let gdexView = false;
+
+  // Store original column headers (including Shipment Received)
+  const originalHeaders = [
+    'S/N', 'Action', 'Go Rush Remark', 'Customer Remark', 'Go Rush Tracking No.',
+    'Product', 'Job Status', 'Latest Location', 'Age (Days)', 'Job Method',
+    'Job Date', 'Assigned To', 'Attempt', 'Payment Method', 'Payment Amount',
+    'Name', 'Main Phone No.', 'Additional Phone No.', 'Customer Address',
+    'Postal Code', 'Area', 'Job Created Date', 'MAWB No.', 'IC/Passport No.',
+    'Patient No.', 'Item Description', 'Quantity', 'Invoice/Item Screenshot',
+    'Original Tracking No.', 'Item Original Price', 'Weight (KG)', 'No. of Packages',
+    'Handling Charge', 'Shipment Received'
+  ];
+
+  // Function to safely update column header
+  function safeUpdateHeader(dt, columnIndex, newHeader) {
+    try {
+      if (dt.column(columnIndex) && dt.column(columnIndex).header()) {
+        dt.column(columnIndex).header().innerHTML = newHeader;
+      }
+    } catch (e) {
+      console.log('Error updating header for column', columnIndex, e);
+    }
+  }
+
+  // Function to reset all column headers to original
+  function resetColumnHeaders(dt) {
+    try {
+      for (let i = 0; i < originalHeaders.length; i++) {
+        safeUpdateHeader(dt, i, originalHeaders[i]);
+      }
+    } catch (e) {
+      console.log('Error resetting column headers', e);
+    }
+  }
+
+  // Function to update column headers for GDEX view
+  function setGDEXHeaders(dt) {
+    try {
+      safeUpdateHeader(dt, 0, 'Bil');
+      safeUpdateHeader(dt, 4, 'Consignment Note');
+      safeUpdateHeader(dt, 15, 'Receiver name');
+      safeUpdateHeader(dt, 30, 'Weight (KG)');
+      safeUpdateHeader(dt, 32, 'Service Charge');
+      safeUpdateHeader(dt, 33, 'Shipment Received');
+      safeUpdateHeader(dt, 22, 'MAWB');
+      safeUpdateHeader(dt, 6, 'Latest Scan');
+    } catch (e) {
+      console.log('Error setting GDEX headers', e);
+    }
+  }
+
+  // Function to update column headers for Manifest view
+  function setManifestHeaders(dt) {
+    try {
+      safeUpdateHeader(dt, 0, 'S/N');
+      safeUpdateHeader(dt, 4, 'Go Rush Tracking No.');
+      safeUpdateHeader(dt, 15, 'Name');
+      safeUpdateHeader(dt, 16, 'Main Phone No.');
+      safeUpdateHeader(dt, 18, 'Customer Address');
+      safeUpdateHeader(dt, 19, 'Postal Code');
+      safeUpdateHeader(dt, 30, 'Weight (KG)');
+      safeUpdateHeader(dt, 31, 'No. of Packages');
+      safeUpdateHeader(dt, 32, 'Handling Charge');
+    } catch (e) {
+      console.log('Error setting Manifest headers', e);
+    }
+  }
+
+  // Function to reset all views
+  function resetAllViews(dt) {
+    try {
+      dt.columns().visible(true);
+      resetColumnHeaders(dt);
+      dt.rows().every(function() {
+        const data = this.data();
+        if (this.nodes().length) {
+          $(this.nodes()).find('td:eq(6)').text(data.currentStatus || '');
+        }
+      });
+      dt.draw();
+    } catch (e) {
+      console.log('Error resetting views', e);
+    }
+  }
+
+  // Initialize DataTable
+  let table = $('#jobsTable').DataTable({
+    scrollX: true,
+    dom: 'lBfrtip',
+    colReorder: true, // Enable colReorder
+    buttons: [
+      {
+        extend: 'excelHtml5',
+        text: 'Export Excel',
+        exportOptions: {
+          columns: ':visible',
+          orthogonal: 'export',
+          format: {
+            body: function (data, row, column, node) {
+              if (column === 0) return row + 1;
+              return data;
+            }
+          }
+        },
+        filename: function() {
+          let filters = [];
+          $('#searchForm').find('input[type="text"], textarea').each(function() {
+            const val = $(this).val().trim();
+            if (val) filters.push(val.replace(/[\s\/\\:*?"<>|]/g, '_'));
+          });
+          $('#searchForm').find('select.select2').each(function() {
+            const val = $(this).val();
+            if (val && val.length) filters.push(val.join('-').replace(/[\s\/\\:*?"<>|]/g, '_'));
+          });
+          const filterText = filters.length ? filters.join('_') : 'SearchJob';
+          const today = moment().format('DD.MM.YYYY');
+          const rowCount = table.rows({ filter: 'applied' }).data().length;
+          return `${filterText}_${today}(${rowCount})`;
+        }
+      },
+      {
+        extend: 'colvis',
+        text: 'Show/Hide Columns'
+      },
+      <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
+      {
+        text: 'Manifest to Bill',
+        action: function(e, dt, node, config) {
+          try {
+            if (!manifestView) {
+              // Turn off GDEX view
+              gdexView = false;
+              
+              // First reset everything to default
+              dt.columns().visible(true);
+              
+              // Then hide non-manifest columns
+              for (let i = 0; i < originalHeaders.length; i++) {
+                if (![0, 4, 15, 16, 18, 19, 30, 31, 32].includes(i)) {
+                  dt.column(i).visible(false);
+                }
+              }
+              
+              // Set manifest headers
+              setManifestHeaders(dt);
+              
+              manifestView = true;
+            } else {
+              resetAllViews(dt);
+              manifestView = false;
+            }
+            dt.draw();
+          } catch (e) {
+            console.log('Error in Manifest button action', e);
+          }
+        }
+      },
+      {
+  text: 'GDEX Billing',
+  action: function(e, dt, node, config) {
+    try {
+      if (!gdexView) {
+        // Turn off Manifest view
+        manifestView = false;
+        
+        // First, hide all columns
+        dt.columns().visible(false);
+        
+        // Reorder columns using colReorder to the exact order you want
+        // Original indices: [0, 4, 15, 30, 32, 33, 22, 6]
+        dt.colReorder.order([0, 4, 15, 30, 32, 33, 22, 6]);
+        
+        // Now show the columns (they will appear in the reordered sequence)
+        dt.column(0).visible(true);  // Bil (was S/N)
+        dt.column(1).visible(true);  // Consignment Note (was Go Rush Tracking No.)
+        dt.column(2).visible(true);  // Receiver name (was Name)
+        dt.column(3).visible(true);  // Weight (KG)
+        dt.column(4).visible(true);  // Service Charge (was Handling Charge)
+        dt.column(5).visible(true);  // Shipment Received (was warehouseEntryDateTime)
+        dt.column(6).visible(true);  // MAWB
+        dt.column(7).visible(true);  // Latest Scan (was Job Status)
+        
+        // Update column headers
+        dt.column(0).header().innerHTML = 'Bil';
+        dt.column(1).header().innerHTML = 'Consignment Note';
+        dt.column(2).header().innerHTML = 'Receiver name';
+        dt.column(3).header().innerHTML = 'Weight (KG)';
+        dt.column(4).header().innerHTML = 'Service Charge';
+        dt.column(5).header().innerHTML = 'Shipment Received';
+        dt.column(6).header().innerHTML = 'MAWB';
+        dt.column(7).header().innerHTML = 'Latest Scan';
+        
+        // Update status mapping for Latest Scan column (now at position 7)
+        dt.rows().every(function() {
+          const data = this.data();
+          if (this.nodes().length) {
+            const jobStatus = data.currentStatus || '';
+            let latestScan = 'UNDEL';
+            if (jobStatus === 'Completed') {
+              latestScan = 'POD';
+            } else if (jobStatus === 'Return') {
+              latestScan = 'RTS';
+            }
+            // Update the cell at the current position of the Job Status column
+            // After reordering, we need to find which column index contains the currentStatus data
+            const cells = $(this.nodes()).find('td');
+            // The status should be in the last visible column (position 7)
+            if (cells.length > 7) {
+              $(cells[7]).text(latestScan);
+            }
+          }
+        });
+        
+        gdexView = true;
+      } else {
+        // Reset colReorder to default order
+        dt.colReorder.reset();
+        
+        // Show all columns
+        dt.columns().visible(true);
+        
+        // Reset all column headers to original
+        resetColumnHeaders(dt);
+        
+        // Reset status mapping
+        dt.rows().every(function() {
+  const data = this.data();
+  if (this.nodes().length) {
+    // Find and reset all status cells
+    const cells = $(this.nodes()).find('td');
+    for (let i = 0; i < cells.length; i++) {
+      const cellText = $(cells[i]).text();
+      // Check for any of the mapped values
+      if (cellText === 'POD' || cellText === 'RTS' || cellText === 'UNDEL') {
+        $(cells[i]).text(data.currentStatus || '');
+        break;
+      }
+    }
+  }
+});
+        
+        gdexView = false;
+      }
+      dt.draw();
+    } catch (e) {
+      console.log('Error in GDEX button action', e);
+    }
+  }
+}
+      <% } %>
+    ],
+    pageLength: 25,
+    lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+    ordering: true,
+    order: [[1, 'desc']],
+    columns: [
+      {
+        data: null,
+        orderable: false,
+        className: 'no-export',
+        render: function(data, type, row, meta) {
+          return meta.row + 1;
+        }
+      },
+      { 
+        data: null, 
+        orderable: false, 
+        className: 'no-export',
+        render: function(data, type, row) {
+          if (row && row.product && ['pharmacymoh','pharmacyjpmc','pharmacyphc'].includes(row.product.toLowerCase())) {
+            return `<button class="btn btn-sm btn-primary reorder-btn" 
+                      data-tracking="${row.doTrackingNumber || ''}" 
+                      data-address="${row.receiverAddress || ''}" 
+                      data-product="${row.product || ''}">Reorder</button>`;
+          }
+          return '';
+        }
+      },
+      { data: 'grRemark', defaultContent: '' },
+      { data: 'remarks', defaultContent: '' },
+      { data: 'doTrackingNumber', defaultContent: '' },
+      { data: 'product', defaultContent: '' },
+      { 
+  data: 'currentStatus',
+  defaultContent: '',
+  render: function(data, type, row, meta) {
+    if (type === 'display') {
+      // Check if we're in GDEX view
+      if (gdexView) {
+        if (data === 'Completed') return 'POD';
+         if (data === 'Return') return 'RTS';
+        return 'UNDEL';
+      }
+    }
+    return data || '';
+  }
+},
+      { data: 'latestLocation', defaultContent: '' },
+      { data: 'age', defaultContent: '' },
+      { data: 'jobMethod', defaultContent: '' },
+      { data: 'jobDate', defaultContent: '' },
+      { data: 'assignedTo', defaultContent: '' },
+      { data: 'attempt', defaultContent: '' },
+      { data: 'paymentMethod', defaultContent: '' },
+      { data: 'paymentAmount', defaultContent: '' },
+      { data: 'receiverName', defaultContent: '' },
+      { data: 'receiverPhoneNumber', defaultContent: '' },
+      { data: 'additionalPhoneNumber', defaultContent: '' },
+      { data: 'receiverAddress', defaultContent: '' },
+      { data: 'receiverPostalCode', defaultContent: '' },
+      { data: 'area', defaultContent: '' },
+      { data: 'creationDate', defaultContent: '' },
+      { data: 'mawbNo', defaultContent: '' },
+      { data: 'icPassNum', defaultContent: '' },
+      { data: 'patientNumber', defaultContent: '' },
+      { data: 'itemsDescription', defaultContent: '' },
+      { data: 'itemsQuantity', defaultContent: '' },
+      { 
+        data: 'screenshotInvoice',
+        defaultContent: '',
+        render: function (data, type, row) {
+          if (type === 'export' || type === 'excel') return data || '';
+          if (!data) return '';
+          return '<a href="' + data + '" target="_blank">View Invoice</a>';
+        }
+      },
+      { data: 'parcelTrackingNum', defaultContent: '' },
+      { data: 'cargoPrice', defaultContent: '' },
+      { data: 'parcelWeight', defaultContent: '' },
+      { data: 'noOfpackages', defaultContent: '' },
+      <% if (['finance', 'manager', 'admin'].includes(user.role)) { %>
+      { data: 'handlingCharge', defaultContent: '' },
+      <% } else { %>
+      { data: 'handlingCharge', visible: false, defaultContent: '' },
+      <% } %>
+      { 
+        data: 'warehouseEntryDateTime',
+        defaultContent: '',
+        render: function(data, type, row) {
+          if (type === 'display' || type === 'export') {
+            if (data) {
+              const date = new Date(data);
+              if (!isNaN(date.getTime())) {
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+              }
+            }
+            return '';
+          }
+          return data || '';
+        }
+      }
+    ],
+    // Add error handling to drawCallback
+    drawCallback: function(settings) {
+      try {
+        if (gdexView) {
+          setGDEXHeaders(this);
+        } else if (manifestView) {
+          setManifestHeaders(this);
+        }
+      } catch (e) {
+        console.log('Error in drawCallback', e);
+      }
+    }
+  });
+
+  // Reset Filters
+  $('#resetFilters').on('click', function() {
+    $('#searchForm')[0].reset();
+    $('.select2').val(null).trigger('change');
+    $('#searchForm').find('input, textarea, select').removeClass('filter-applied');
+    $('#tableHeader').text('');
+    
+    // Reset views if any are active
+    if (manifestView || gdexView) {
+      resetAllViews(table);
+      manifestView = false;
+      gdexView = false;
+    }
+  });
+
+  // Handle search form submission
+  $('#searchForm').on('submit', function(e) {
+    e.preventDefault();
+    const filters = {};
+
+    $('#loadingOverlay').show();
+
+    $(this).find('input[type="text"], input[type="date"], textarea').each(function() {
+      const val = $(this).val();
+      if (val) { 
+        filters[$(this).attr('name')] = val; 
+        $(this).addClass('filter-applied'); 
+      }
+      else { 
+        $(this).removeClass('filter-applied'); 
+      }
+    });
+
+    $(this).find('select.select2').each(function() {
+      const name = $(this).attr('name').replace('[]','');
+      const val = $(this).val();
+      if (val && val.length) { 
+        filters[name] = val; 
+        $(this).addClass('filter-applied'); 
+      }
+      else { 
+        $(this).removeClass('filter-applied'); 
+      }
+    });
+
+    $.ajax({
+      url: '/searchJobs',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify(filters),
+      success: function(data) {
+        table.clear().rows.add(data).draw();
+
+        // Build header with applied filters and row count
+        let filterNames = [];
+        $('#searchForm').find('input[type="text"], textarea').each(function() {
+          const val = $(this).val().trim();
+          if (val) filterNames.push(val);
+        });
+        $('#searchForm').find('select.select2').each(function() {
+          const val = $(this).val();
+          if (val && val.length) filterNames.push(val.join(', '));
+        });
+        const filterText = filterNames.length ? filterNames.join(' | ') : 'All Jobs';
+        const rowCount = data.length;
+        $('#tableHeader').text(`${filterText} (${rowCount})`);
+        
+        // Reapply current view if active
+        if (gdexView) {
+          setGDEXHeaders(table);
+        } else if (manifestView) {
+          setManifestHeaders(table);
+        }
       },
       error: function() {
         alert('Error fetching jobs');

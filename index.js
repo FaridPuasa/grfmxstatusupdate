@@ -2185,12 +2185,43 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
             let weight = parseFloat(o.parcelWeight) || 0;
             let product = (o.product || '').toLowerCase();
 
-            if (product.includes('mglobal')) {
+            // GDEX/GDEXT Handling Charge
+            if (product.includes('gdex') || product.includes('gdext')) {
+                if (weight >= 25.01 && weight <= 30.0) {
+                    handlingCharge = '12.65';
+                } else if (weight >= 20.01 && weight <= 25.0) {
+                    handlingCharge = '12.00';
+                } else if (weight >= 15.01 && weight <= 20.0) {
+                    handlingCharge = '9.30';
+                } else if (weight >= 10.01 && weight <= 15.0) {
+                    handlingCharge = '7.30';
+                } else if (weight >= 5.01 && weight <= 10.0) {
+                    handlingCharge = '5.85';
+                } else if (weight >= 4.01 && weight <= 5.0) {
+                    handlingCharge = '4.55';
+                } else if (weight >= 3.01 && weight <= 4.0) {
+                    handlingCharge = '3.90';
+                } else if (weight >= 2.01 && weight <= 3.0) {
+                    handlingCharge = '3.25';
+                } else if (weight >= 1.01 && weight <= 2.0) {
+                    handlingCharge = '3.25';
+                } else if (weight >= 0.01 && weight <= 1.0) {
+                    handlingCharge = '2.65';
+                } else if (weight > 30.0) {
+                    // For weights above 30kg, use the clearance rate
+                    handlingCharge = (0.95 * weight).toFixed(2);
+                }
+            }
+            // Mglobal Products
+            else if (product.includes('mglobal')) {
                 handlingCharge = (Math.round((2.5 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-            } else if (product.includes('pdu')) {
+            }
+            // PDU Products
+            else if (product.includes('pdu')) {
                 handlingCharge = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
-
-            } else if (product.includes('ewe') || product.includes('ewens')) {
+            }
+            // EWE/EWENS Products
+            else if (product.includes('ewe') || product.includes('ewens')) {
                 let charge2_8 = (Math.round((2.8 + 0.25 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
                 let charge3_5 = (Math.round((3.5 + 0.50 * Math.max(0, weight - 3)) * 1000) / 1000).toFixed(3);
 
@@ -2242,8 +2273,9 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
                 itemsQuantity: o.items ? o.items.map(i => i.quantity || '').join(', ') : '',
                 parcelWeight: o.parcelWeight || '',
                 noOfpackages: '1',
-                handlingCharge: handlingCharge, // <-- only filled for pdu/ewe/mglobal
+                handlingCharge: handlingCharge,
                 attempt: o.attempt || '',
+                warehouseEntryDateTime: o.warehouseEntryDateTime || '',
             };
         });
 
@@ -6756,50 +6788,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         // ===== IN SORTING AREA =====
                         else if (status === 'in_sorting_area') {
-                            // Send DT1 first
-                            const dt1Data = {
-                                consignmentno: consignmentID,
-                                statuscode: "DT1",
-                                statusdescription: "Hub Inbound",
-                                statusdatetime: moment(created_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-                                reasoncode: "",
-                                locationdescription: "Go Rush Warehouse",
-                                epod: [],
-                                deliverypartner: "gorush",
-                                returnflag: false
-                            };
-
-                            console.log(`📤 Sending IN SORTING AREA - DT1 (Hub Inbound)`);
-                            const dt1Success = await sendGDEXTrackingWebhookWithData(consignmentID, dt1Data, token);
-
-                            if (dt1Success) {
-                                gdexUpdatesSent++;
-
-                                // Send DT2 after a small delay
-                                await new Promise(resolve => setTimeout(resolve, 500));
-
-                                const dt2Data = {
-                                    consignmentno: consignmentID,
-                                    statuscode: "DT2",
-                                    statusdescription: "Hub Outbound",
-                                    statusdatetime: moment(created_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-                                    reasoncode: "",
-                                    locationdescription: "Go Rush Warehouse",
-                                    epod: [],
-                                    deliverypartner: "gorush",
-                                    returnflag: false
-                                };
-
-                                console.log(`📤 Sending IN SORTING AREA - DT2 (Hub Outbound)`);
-                                const dt2Success = await sendGDEXTrackingWebhookWithData(consignmentID, dt2Data, token);
-
-                                if (dt2Success) {
-                                    gdexUpdatesSent++;
-                                }
-                            }
-
+                            console.log(`⏭️ Skipping IN SORTING AREA milestone - DT1/DT2 no longer sent to GDEX`);
                             lastStatus = status;
-                            continue; // Skip the rest of the loop for this milestone
+                            continue; // Skip this milestone completely
                         }
 
                         // ===== AT WAREHOUSE (FIRST ONLY) =====
@@ -15905,7 +15896,6 @@ async function processWarehouseUpdateLogic(trackingNumber, warehouse, jobData, p
     }
 }
 
-// Update handleImmediateWarehouseUpdate for listed products
 async function handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData, product, req, hasMAWB) {
     try {
         console.log(`⚡ Starting immediate warehouse update for ${trackingNumber} (${product})`);
@@ -15913,20 +15903,7 @@ async function handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData
         // Check if order exists
         const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
 
-        // ========== FIXED ORDER: DT1 FIRST ==========
-        // Send GDEX DT1 BEFORE any other updates (for GDEX/GDEXT products)
-        let gdexDt1Success = true;
-        if (product === 'gdex' || product === 'gdext') {
-            console.log(`📤 SENDING DT1 FIRST - Hub Inbound for ${trackingNumber}`);
-            const gdexSuccess = await updateGDEXStatus(trackingNumber, 'warehouse');
-            if (!gdexSuccess) {
-                console.log(`⚠️ GDEX DT1 update failed for ${trackingNumber}`);
-                gdexDt1Success = false;
-                // Continue anyway - don't block the rest of the process
-            } else {
-                console.log(`✅ GDEX DT1 sent successfully for ${trackingNumber}`);
-            }
-        }
+        // REMOVED: DT1 GDEX update - No longer sending DT1
 
         // 1. Update MongoDB
         const mongoSuccess = await updateMongoForWarehouse(trackingNumber, warehouse, jobData, product, req, hasMAWB);
@@ -15938,7 +15915,7 @@ async function handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData
 
         console.log(`✅ MongoDB updated for ${trackingNumber}`);
 
-        // 2. Execute Detrack updates (these will trigger DT2 and AL1)
+        // 2. Execute Detrack updates (these will trigger AL1)
         const detrackResults = await executeDetrackUpdates(
             trackingNumber,
             product,
@@ -15956,15 +15933,15 @@ async function handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData
             console.log(`❌ Detrack update failed for ${trackingNumber}`);
             return {
                 success: false,
-                message: 'Detrack update failed',
-                gdexDt1Sent: gdexDt1Success // Include whether DT1 was sent
+                message: 'Detrack update failed'
+                // REMOVED: gdexDt1Sent property
             };
         }
 
         console.log(`✅ Detrack updates executed for ${trackingNumber}`);
 
-        // Note: DT2 and AL1 are now triggered INSIDE executeDetrackUpdates
-        // when status changes to in_sorting_area and at_warehouse
+        // Note: AL1 is now triggered INSIDE executeDetrackUpdates
+        // when status changes to at_warehouse
 
         return {
             success: true,
@@ -15972,10 +15949,7 @@ async function handleImmediateWarehouseUpdate(trackingNumber, warehouse, jobData
             customerName: jobData.deliver_to_collect_from || 'Unknown',
             area: getAreaFromAddress(jobData.address),
             isNewOrder: !existingOrder,
-            gdexUpdates: {
-                dt1: gdexDt1Success ? 'sent' : 'failed',
-                // dt2 and al1 status will come from detrackResults
-            }
+            // REMOVED: gdexUpdates object with dt1 status
         };
 
     } catch (error) {
@@ -16588,7 +16562,7 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
 
         let results = [];
 
-        // ========== NEW: GDEX SEQUENCE FOR WAREHOUSE UPDATES ==========
+        // ========== UPDATED: Only AL1 for GDEX products ==========
         const isGDEX = (product === 'gdex' || product === 'gdext');
 
         // Execute immediate updates with GDEX integration
@@ -16608,21 +16582,18 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
             if (success) {
                 console.log(`✅ Immediate Detrack update to ${status} for ${trackingNumber}`);
 
-                // 2. If GDEX product, send corresponding GDEX status
-                if (isGDEX) {
-                    if (status === 'in_sorting_area') {
-                        // Send DT2 - Hub Outbound
-                        console.log(`📤 Sending GDEX DT2 (Hub Outbound) for ${trackingNumber}`);
-                        const gdexSuccess = await updateGDEXStatus(trackingNumber, 'hub_outbound', jobData);
-                        results.push({ status: 'DT2', success: gdexSuccess, gdex: true });
-                    } else if (status === 'at_warehouse') {
-                        // Send AL1 - Received by Branch
-                        console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
-                        const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
-                        results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
-                    }
+                // 2. If GDEX product and this is 'at_warehouse' status, send AL1 only
+                if (isGDEX && status === 'at_warehouse') {
+                    // Send AL1 - Received by Branch (only once)
+                    console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
+                    const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
+                    results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
 
-                    // Small delay between Detrack and GDEX updates
+                    // REMOVED: DT2 is no longer sent
+                }
+
+                // Small delay between Detrack and GDEX updates
+                if (isGDEX && status === 'at_warehouse') {
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
             }
@@ -16645,17 +16616,13 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
                 if (success) {
                     console.log(`✅ Final Detrack update to ${status} for ${trackingNumber}`);
 
-                    // 2. If GDEX product and this is a relevant status
-                    if (isGDEX) {
-                        if (status === 'in_sorting_area') {
-                            console.log(`📤 Sending GDEX DT2 (Hub Outbound) for ${trackingNumber}`);
-                            const gdexSuccess = await updateGDEXStatus(trackingNumber, 'hub_outbound', jobData);
-                            results.push({ status: 'DT2', success: gdexSuccess, gdex: true });
-                        } else if (status === 'at_warehouse') {
-                            console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
-                            const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
-                            results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
-                        }
+                    // 2. If GDEX product and this is 'at_warehouse' status, send AL1 only
+                    if (isGDEX && status === 'at_warehouse') {
+                        console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
+                        const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
+                        results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
+
+                        // REMOVED: DT2 is no longer sent
 
                         await new Promise(resolve => setTimeout(resolve, 500));
                     }
