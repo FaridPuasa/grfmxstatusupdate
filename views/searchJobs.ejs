@@ -966,34 +966,53 @@ $(document).ready(function() {
     colReorder: true, // Enable colReorder
     buttons: [
       {
-        extend: 'excelHtml5',
-        text: 'Export Excel',
-        exportOptions: {
-          columns: ':visible',
-          orthogonal: 'export',
-          format: {
-            body: function (data, row, column, node) {
-              if (column === 0) return row + 1;
-              return data;
+  extend: 'excelHtml5',
+  text: 'Export Excel',
+  exportOptions: {
+    columns: ':visible',
+    orthogonal: 'export', // This tells DataTables to use the 'export' type from render functions
+    format: {
+      body: function (data, row, column, node) {
+        if (column === 0) return row + 1; // S/N column
+        
+        // For the Job Status column (column 6 in original, but we need to handle it dynamically)
+        const headerText = $(node).closest('table').find('th').eq(column).text();
+        if (headerText === 'Latest Scan' || headerText === 'Job Status') {
+          // Get the row data
+          const rowData = table.row(row).data();
+          if (rowData) {
+            const jobStatus = rowData.currentStatus || '';
+            if (gdexView) {
+              if (jobStatus === 'Completed') return 'POD';
+              if (jobStatus === 'Return') return 'RTS';
+              return 'UNDEL';
             }
           }
-        },
-        filename: function() {
-          let filters = [];
-          $('#searchForm').find('input[type="text"], textarea').each(function() {
-            const val = $(this).val().trim();
-            if (val) filters.push(val.replace(/[\s\/\\:*?"<>|]/g, '_'));
-          });
-          $('#searchForm').find('select.select2').each(function() {
-            const val = $(this).val();
-            if (val && val.length) filters.push(val.join('-').replace(/[\s\/\\:*?"<>|]/g, '_'));
-          });
-          const filterText = filters.length ? filters.join('_') : 'SearchJob';
-          const today = moment().format('DD.MM.YYYY');
-          const rowCount = table.rows({ filter: 'applied' }).data().length;
-          return `${filterText}_${today}(${rowCount})`;
         }
-      },
+        
+        return data;
+      }
+    }
+  },
+  filename: function() {
+    let filters = [];
+    $('#searchForm').find('input[type="text"], textarea').each(function() {
+      const val = $(this).val().trim();
+      if (val) filters.push(val.replace(/[\s\/\\:*?"<>|]/g, '_'));
+    });
+    $('#searchForm').find('select.select2').each(function() {
+      const val = $(this).val();
+      if (val && val.length) filters.push(val.join('-').replace(/[\s\/\\:*?"<>|]/g, '_'));
+    });
+    const filterText = filters.length ? filters.join('_') : 'SearchJob';
+    const today = moment().format('DD.MM.YYYY');
+    const rowCount = table.rows({ filter: 'applied' }).data().length;
+    
+    // Add GDEX to filename if in that view
+    const viewSuffix = gdexView ? '_GDEX' : '';
+    return `${filterText}${viewSuffix}_${today}(${rowCount})`;
+  }
+},
       {
         extend: 'colvis',
         text: 'Show/Hide Columns'
@@ -1160,11 +1179,19 @@ $(document).ready(function() {
   data: 'currentStatus',
   defaultContent: '',
   render: function(data, type, row, meta) {
-    if (type === 'display') {
-      // Check if we're in GDEX view
+    // For export (excel) in GDEX view, return mapped value
+    if (type === 'export' || type === 'excel') {
       if (gdexView) {
         if (data === 'Completed') return 'POD';
-         if (data === 'Return') return 'RTS';
+        if (data === 'Return') return 'RTS';
+        return 'UNDEL';
+      }
+    }
+    // For display in GDEX view, return mapped value
+    if (type === 'display') {
+      if (gdexView) {
+        if (data === 'Completed') return 'POD';
+        if (data === 'Return') return 'RTS';
         return 'UNDEL';
       }
     }

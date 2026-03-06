@@ -13091,6 +13091,15 @@ app.post('/updateJob', async (req, res) => {
                             message: uanResult ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed'
                         };
                         break;
+                    case 'UWP':  // NEW UWP CASE
+                        // For one-by-one, we'll need postalCode and parcelWeight from somewhere
+                        // This would need a different UI for single updates
+                        // For now, we can return an error or implement a different approach
+                        result = {
+                            success: false,
+                            message: 'One-by-one UWP updates not supported yet. Please use Excel upload.'
+                        };
+                        break;
                     case 'CCH':
                         const cchResult = await processOnHoldUpdate(trackingNumber, req);
                         result = {
@@ -19102,6 +19111,406 @@ app.post('/updateJob/checkExistingOrders', ensureAuthenticated, async (req, res)
         res.status(500).json({ error: error.message });
     }
 });
+
+// ==================================================
+// 📁 Excel Upload Route for UWP (Update Weight/Postal Code)
+// ==================================================
+
+app.post('/updateJob/uwpExcelUpload', ensureAuthenticated, upload.single('excelFile'), async (req, res) => {
+    try {
+        console.log('📥 UWP Excel upload request received');
+
+        if (!req.file) {
+            return res.status(400).json({
+                error: 'No file uploaded',
+                message: 'Please select a file to upload'
+            });
+        }
+
+        const file = req.file;
+        console.log(`📁 File: ${file.originalname}, ${file.size} bytes`);
+
+        // Parse file
+        let data = [];
+        const fileExt = file.originalname.split('.').pop().toLowerCase();
+
+        if (fileExt === 'csv') {
+            data = await parseCSVBuffer(file.buffer);
+        } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+            data = await parseExcelBuffer(file.buffer);
+        } else {
+            return res.status(400).json({
+                error: 'Unsupported file type',
+                message: 'Please upload Excel (.xlsx, .xls) or CSV (.csv) files only'
+            });
+        }
+
+        console.log(`📈 Parsed ${data.length} rows from file`);
+
+        if (data.length === 0) {
+            return res.status(400).json({
+                error: 'Empty file',
+                message: 'The file contains no data'
+            });
+        }
+
+        // Check for required column
+        const firstRow = data[0];
+        const headers = Object.keys(firstRow);
+
+        if (!headers.includes('Tracking Number')) {
+            return res.status(400).json({
+                error: 'Missing required column',
+                message: 'File must contain "Tracking Number" column',
+                found: headers
+            });
+        }
+
+        // Process data - extract tracking numbers and optional fields
+        const updates = [];
+
+        data.forEach((row, index) => {
+            const trackingNumber = row['Tracking Number']?.toString().trim();
+            const postalCode = row['Postal Code']?.toString().trim();
+            const parcelWeight = row['Parcel Weight (kg)']?.toString().trim() || row['Parcel Weight']?.toString().trim();
+
+            if (trackingNumber) {
+                updates.push({
+                    trackingNumber,
+                    postalCode: postalCode || null,  // null means skip update
+                    parcelWeight: parcelWeight ? parseFloat(parcelWeight) : null,  // null means skip update
+                    rowNumber: index + 2 // +2 because row 1 is header
+                });
+            }
+        });
+
+        if (updates.length === 0) {
+            return res.status(400).json({
+                error: 'No valid data',
+                message: 'No valid tracking numbers found in the file'
+            });
+        }
+
+        console.log(`✅ Found ${updates.length} valid tracking numbers for UWP update`);
+
+        // Generate job ID
+        const jobId = generateJobId();
+
+        // Store job data
+        backgroundJobs.set(jobId, {
+            status: 'queued',
+            total: updates.length,
+            processed: 0,
+            successful: [],
+            failed: [],
+            updatedCount: 0,
+            failedCount: 0,
+            startTime: Date.now(),
+            uploadType: 'uwp',
+            data: updates,
+            fileName: file.originalname,
+            retryCount: 0
+        });
+
+        console.log(`✅ UWP Job created: ${jobId} with ${updates.length} records`);
+
+        // Send immediate response
+        res.json({
+            jobId: jobId,
+            status: 'queued',
+            message: `File uploaded successfully. Processing ${updates.length} tracking numbers for weight/postal code updates`,
+            totalJobs: updates.length,
+            fileName: file.originalname
+        });
+
+        // Start background processing
+        setTimeout(() => {
+            processUWPUploadInBackground(jobId, updates, req);
+        }, 100);
+
+    } catch (error) {
+        console.error('❌ UWP Excel upload error:', error);
+        res.status(500).json({
+            error: 'File processing failed',
+            message: error.message
+        });
+    }
+});
+
+// ==================================================
+// 🔄 UWP Background Processing
+// ==================================================
+
+async function processUWPUploadInBackground(jobId, updates, req) {
+    const job = backgroundJobs.get(jobId);
+    if (!job) {
+        console.error(`❌ Job ${jobId} not found`);
+        return;
+    }
+
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+        status: 'processing',
+        total: updates.length,
+        processed: 0,
+        startTime: Date.now()
+    };
+
+    backgroundJobs.set(jobId, { ...job, ...results, status: 'processing' });
+
+    try {
+        // Process in smaller batches
+        const BATCH_SIZE = 50;
+        const BATCH_DELAY = 1000;
+
+        const totalBatches = Math.ceil(updates.length / BATCH_SIZE);
+
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const start = batchIndex * BATCH_SIZE;
+            const end = Math.min(start + BATCH_SIZE, updates.length);
+            const batch = updates.slice(start, end);
+
+            console.log(`🔄 Processing UWP batch ${batchIndex + 1}/${totalBatches} for job ${jobId}`);
+
+            // Process batch
+            const batchResults = await processUWPBatch(batch, req);
+
+            // Merge results
+            results.successful.push(...batchResults.successful);
+            results.failed.push(...batchResults.failed);
+            results.updatedCount += batchResults.updatedCount;
+            results.failedCount += batchResults.failedCount;
+            results.skippedCount += batchResults.skippedCount || 0;
+            results.processed = end;
+
+            // Update progress
+            backgroundJobs.set(jobId, {
+                ...results,
+                status: 'processing',
+                currentBatch: batchIndex + 1,
+                totalBatches: totalBatches,
+                progress: Math.round((results.processed / results.total) * 100)
+            });
+
+            // Delay between batches
+            if (batchIndex < totalBatches - 1) {
+                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+            }
+        }
+
+        results.status = 'completed';
+        results.processingTime = Date.now() - results.startTime;
+
+        console.log(`✅ UWP Job ${jobId} completed:`);
+        console.log(`   Total processed: ${results.total}`);
+        console.log(`   Successfully updated: ${results.updatedCount}`);
+        console.log(`   Failed: ${results.failedCount}`);
+        console.log(`   Skipped (no changes): ${results.skippedCount}`);
+
+        backgroundJobs.set(jobId, results);
+
+    } catch (error) {
+        console.error(`❌ UWP Job ${jobId} processing error:`, error);
+        results.status = 'failed';
+        results.error = error.message;
+        backgroundJobs.set(jobId, results);
+    }
+}
+
+async function processUWPBatch(batch, req) {
+    const results = {
+        successful: [],
+        failed: [],
+        updatedCount: 0,
+        failedCount: 0,
+        skippedCount: 0
+    };
+
+    // Process with concurrency limit
+    const CONCURRENCY = 10;
+    const chunks = [];
+
+    for (let i = 0; i < batch.length; i += CONCURRENCY) {
+        chunks.push(batch.slice(i, i + CONCURRENCY));
+    }
+
+    for (const chunk of chunks) {
+        const chunkPromises = chunk.map(async (item) => {
+            try {
+                const result = await processSingleUWPUpdate(
+                    item.trackingNumber,
+                    item.postalCode,
+                    item.parcelWeight,
+                    req
+                );
+
+                if (result.success) {
+                    results.successful.push({
+                        trackingNumber: item.trackingNumber,
+                        result: result.message,
+                        updates: result.updates
+                    });
+                    results.updatedCount++;
+                } else if (result.skipped) {
+                    results.skippedCount++;
+                    // Optionally track skipped items
+                    if (result.message) {
+                        console.log(`ℹ️ ${item.trackingNumber}: ${result.message}`);
+                    }
+                } else {
+                    results.failed.push({
+                        trackingNumber: item.trackingNumber,
+                        result: result.message || 'Update failed',
+                        reason: result.reason
+                    });
+                    results.failedCount++;
+                }
+            } catch (error) {
+                results.failed.push({
+                    trackingNumber: item.trackingNumber,
+                    result: `Error: ${error.message}`
+                });
+                results.failedCount++;
+            }
+        });
+
+        await Promise.allSettled(chunkPromises);
+
+        // Small delay between chunks
+        if (chunks.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+    }
+
+    return results;
+}
+
+async function processSingleUWPUpdate(trackingNumber, postalCode, parcelWeight, req) {
+    try {
+        console.log(`🔍 Processing UWP update for ${trackingNumber}`);
+        console.log(`   Postal Code: ${postalCode || '(skip)'}`);
+        console.log(`   Weight: ${parcelWeight || '(skip)'}`);
+
+        // Check if there's anything to update
+        if (!postalCode && !parcelWeight) {
+            return {
+                success: false,
+                skipped: true,
+                message: 'No fields to update (both postal code and weight empty)'
+            };
+        }
+
+        // Check if job exists in Detrack
+        const jobExists = await checkJobExists(trackingNumber);
+        if (!jobExists) {
+            console.log(`❌ Job ${trackingNumber} not found in Detrack`);
+            return {
+                success: false,
+                reason: 'not_found',
+                message: 'Tracking number not found in Detrack'
+            };
+        }
+
+        // Get job details to verify it exists and get current values
+        const jobData = await getJobDetails(trackingNumber);
+        if (!jobData) {
+            return {
+                success: false,
+                reason: 'no_details',
+                message: 'Could not retrieve job details from Detrack'
+            };
+        }
+
+        console.log(`✅ Job exists in Detrack, current values:`);
+        console.log(`   Current Postal Code: ${jobData.postal_code || 'none'}`);
+        console.log(`   Current Weight: ${jobData.weight || 'none'}`);
+
+        // Prepare updates object - only include fields that have values
+        const updates = {};
+        const mongoUpdates = {};
+
+        if (postalCode) {
+            updates.postal_code = postalCode.toUpperCase();
+            mongoUpdates.receiverPostalCode = postalCode.toUpperCase();
+        }
+
+        if (parcelWeight) {
+            updates.weight = parseFloat(parcelWeight);
+            mongoUpdates.parcelWeight = parseFloat(parcelWeight);
+        }
+
+        // Check if values are actually changing (optional, but nice to know)
+        const postalChanged = postalCode && jobData.postal_code?.toUpperCase() !== postalCode.toUpperCase();
+        const weightChanged = parcelWeight && parseFloat(jobData.weight) !== parseFloat(parcelWeight);
+
+        if ((postalCode && !postalChanged) && (parcelWeight && !weightChanged)) {
+            return {
+                success: false,
+                skipped: true,
+                message: 'Values are already the same, no update needed'
+            };
+        }
+
+        // 1. Update MongoDB
+        if (Object.keys(mongoUpdates).length > 0) {
+            await ORDERS.updateOne(
+                { doTrackingNumber: trackingNumber },
+                {
+                    $set: {
+                        ...mongoUpdates,
+                        lastUpdateDateTime: moment().format(),
+                        lastUpdatedBy: req.user.name
+                    }
+                },
+                { upsert: false } // Don't create if doesn't exist
+            );
+            console.log(`✅ MongoDB updated for ${trackingNumber}`);
+        }
+
+        // 2. Update Detrack
+        const detrackUpdateData = {
+            do_number: trackingNumber,
+            data: updates
+        };
+
+        console.log(`📤 Sending Detrack update:`, JSON.stringify(detrackUpdateData, null, 2));
+
+        const detrackSuccess = await sendDetrackUpdateWithRetry(trackingNumber, detrackUpdateData, null);
+
+        if (detrackSuccess) {
+            const updatedFields = [];
+            if (postalCode) updatedFields.push('postal code');
+            if (parcelWeight) updatedFields.push('weight');
+
+            console.log(`✅ UWP update successful for ${trackingNumber}`);
+            return {
+                success: true,
+                message: `Updated ${updatedFields.join(' and ')}`,
+                updates: updatedFields,
+                trackingNumber
+            };
+        } else {
+            console.log(`❌ Detrack update failed for ${trackingNumber}`);
+            return {
+                success: false,
+                reason: 'detrack_failed',
+                message: 'Failed to update Detrack'
+            };
+        }
+
+    } catch (error) {
+        console.error(`❌ Error in UWP update for ${trackingNumber}:`, error);
+        return {
+            success: false,
+            reason: 'error',
+            message: `Error: ${error.message}`
+        };
+    }
+}
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

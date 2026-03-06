@@ -82,9 +82,10 @@
                                     <option value="IIW">2.2. Item in Warehouse</option>
                                     <!-- <option value="OFD">2.1. Out for Delivery</option> -->
                                 </optgroup>
-                                <!-- <optgroup label="Change Details">
-                                    <option value="UMN">Update MAWB Number</option>
-                                </optgroup> -->
+                                <optgroup label="Change Details">
+                                    <option value="UWP">Update Weight/Postal Code</option>
+                                    <!-- <option value="UMN">Update MAWB Number</option> -->
+                                </optgroup>
                     </select>
                 </div>
 
@@ -344,7 +345,7 @@
             const readyToScan = document.getElementById('readyToScan');
             const gdexHoldCodes = ['H9', 'H18', 'H19', 'H27', 'H31'];
 
-            if (this.value === 'UAN' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN' || this.value === 'H9' ||
+            if (this.value === 'UAN' || this.value === 'UWP' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN' || this.value === 'H9' ||
                 this.value === 'H18' ||
                 this.value === 'H19' ||
                 this.value === 'H27' ||
@@ -371,6 +372,22 @@
 
                     // Show file upload button
                     showExcelUploadButton();
+
+                } else if (this.value === 'UWP') {  // NEW UWP CASE
+                    // Update Weight/Postal Code - Excel Upload Only
+                    mawbNumContainer.style.display = 'none'; // No MAWB input needed
+                    warehouseFields.style.display = 'none';
+                    updateMethodSection.style.display = 'none'; // HIDE UPDATE METHOD
+                    mawbInput.required = false;
+                    warehouseSelect.required = false;
+                    mawbHelp.textContent = 'Upload Excel file to update weight and/or postal code';
+
+                    // Hide bulk/one-by-one sections
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
+                    // Show file upload button for UWP
+                    showUWPExcelUploadButton();
 
                 } else if (this.value === 'UMN') {
                     // UMN Update - Show update method
@@ -3358,6 +3375,257 @@ EXAMPLE004\tBE9012\t
             };
             return descriptions[code] || 'GDEX Hold';
         }
+
+        // Function to show UWP Excel upload button
+        function showUWPExcelUploadButton() {
+            let uploadButton = document.getElementById('uwpExcelUploadButton');
+            if (!uploadButton) {
+                uploadButton = document.createElement('button');
+                uploadButton.id = 'uwpExcelUploadButton';
+                uploadButton.type = 'button';
+                uploadButton.className = 'btn btn-outline-success mt-2';
+                uploadButton.innerHTML = '<i class="fas fa-file-excel"></i> Upload Excel/CSV File to Update Weight/Postal Code';
+                uploadButton.onclick = showUWPExcelUploadModal;
+
+                const mawbFields = document.getElementById('mawbFields');
+                if (mawbFields) {
+                    mawbFields.appendChild(uploadButton);
+                }
+            } else {
+                uploadButton.style.display = 'block';
+            }
+        }
+
+        function showUWPExcelUploadModal() {
+            // Create modal HTML
+            const modalHTML = `
+    <div class="modal fade" id="uwpExcelUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Upload Excel/CSV File to Update Weight/Postal Code</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> File Requirements:</h6>
+                        <ul class="mb-2">
+                            <li><strong>Required columns:</strong> Tracking Number</li>
+                            <li><strong>Optional columns:</strong> Postal Code, Parcel Weight (kg)</li>
+                            <li><strong>Behavior:</strong> Only columns with values will be updated</li>
+                            <li><strong>Empty values:</strong> Leave cell blank to skip updating that field</li>
+                            <li><strong>Formats:</strong> .xlsx, .xls, .csv</li>
+                            <li><strong>Requirement:</strong> Tracking number must exist in Detrack</li>
+                            <li><strong>Max records:</strong> 3000 per file</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="uwpExcelFile" class="form-label">Select File:</label>
+                        <input type="file" id="uwpExcelFile" class="form-control" accept=".xlsx,.xls,.csv">
+                        <div class="form-text">File must contain "Tracking Number" column. Leave Postal Code or Parcel Weight blank to skip updating.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-success" onclick="uploadUWPExcelFile()">
+                            <i class="fas fa-upload"></i> Upload & Process
+                        </button>
+                        <div class="btn-group ms-2" role="group">
+                            <button type="button" class="btn btn-outline-primary" onclick="generateUWPTemplate('excel')">
+                                <i class="fas fa-file-excel"></i> Excel Template
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="generateUWPTemplate('csv')">
+                                <i class="fas fa-file-csv"></i> CSV Template
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="uwpUploadProgress" style="display: none;">
+                        <div class="progress">
+                            <div id="uwpUploadProgressBar" class="progress-bar progress-bar-striped" 
+                                 role="progressbar" style="width: 0%">0%</div>
+                        </div>
+                        <p id="uwpUploadStatus" class="mt-2 small"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+            // Add modal to page if not exists
+            let modal = document.getElementById('uwpExcelUploadModal');
+            if (!modal) {
+                const modalContainer = document.createElement('div');
+                modalContainer.innerHTML = modalHTML;
+                document.body.appendChild(modalContainer);
+                modal = document.getElementById('uwpExcelUploadModal');
+            }
+
+            // Show modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Reset file input and progress
+            document.getElementById('uwpExcelFile').value = '';
+            document.getElementById('uwpUploadProgress').style.display = 'none';
+        }
+
+        function generateUWPTemplate(format) {
+            try {
+                console.log(`📋 Generating UWP ${format} template...`);
+
+                if (format === 'excel') {
+                    generateUWPExcelTemplate();
+                } else {
+                    generateUWPCsvTemplate();
+                }
+            } catch (error) {
+                console.error(`❌ Error generating ${format} template:`, error);
+                alert(`Error generating template: ${error.message}`);
+            }
+        }
+
+        function generateUWPCsvTemplate() {
+            const csvContent = `Tracking Number,Postal Code,Parcel Weight (kg)
+EXAMPLE001,BE1234,1.5
+EXAMPLE002,BE5678,
+EXAMPLE003,,0.8
+EXAMPLE004,,
+
+=== INSTRUCTIONS FOR UWP (Update Weight/Postal Code) ===
+1. Tracking Number is REQUIRED
+2. Postal Code and Parcel Weight are OPTIONAL
+3. Leave cell BLANK to skip updating that field
+4. Only tracking numbers that exist in Detrack will be processed
+5. Do NOT modify column headers
+6. Save as .csv file
+7. Maximum 3000 records per file
+8. Remove sample data before uploading`;
+
+            downloadFile(csvContent, 'text/csv', `UWP_template.csv`);
+            console.log(`✅ CSV template generated`);
+        }
+
+        function generateUWPExcelTemplate() {
+            // Use tab-separated values for better Excel compatibility
+            const csvContent = `Tracking Number\tPostal Code\tParcel Weight (kg)
+EXAMPLE001\tBE1234\t1.5
+EXAMPLE002\tBE5678\t
+EXAMPLE003\t\t0.8
+EXAMPLE004\t\t
+
+=== INSTRUCTIONS FOR UWP (Update Weight/Postal Code) ===
+1. Tracking Number is REQUIRED
+2. Postal Code and Parcel Weight are OPTIONAL
+3. Leave cell BLANK to skip updating that field
+4. Only tracking numbers that exist in Detrack will be processed
+5. Do NOT modify column headers
+6. Save as .xls or .xlsx file
+7. Maximum 3000 records per file
+8. Remove sample data before uploading`;
+
+            downloadFile(csvContent, 'application/vnd.ms-excel', `UWP_template.xls`);
+            console.log(`✅ Excel template generated`);
+        }
+
+        async function uploadUWPExcelFile() {
+            const fileInput = document.getElementById('uwpExcelFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            console.log('📁 Uploading UWP file:', file.name);
+
+            const formData = new FormData();
+            formData.append('excelFile', file);
+            formData.append('updateCode', 'UWP');
+
+            // Show progress
+            const uploadProgress = document.getElementById('uwpUploadProgress');
+            const uploadProgressBar = document.getElementById('uwpUploadProgressBar');
+            const uploadStatus = document.getElementById('uwpUploadStatus');
+
+            uploadProgress.style.display = 'block';
+            uploadProgressBar.style.width = '0%';
+            uploadProgressBar.textContent = '0%';
+            uploadStatus.textContent = 'Uploading file...';
+
+            try {
+                console.log('🚀 Sending UWP upload request...');
+
+                const response = await fetch('/updateJob/uwpExcelUpload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let errorDetails = '';
+                    try {
+                        const errorData = await response.json();
+                        errorDetails = JSON.stringify(errorData);
+                    } catch (e) {
+                        errorDetails = await response.text();
+                    }
+                    throw new Error(`Upload failed: ${response.status} - ${response.statusText}\nDetails: ${errorDetails}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ UWP Upload successful, result:', result);
+
+                if (result.jobId) {
+                    uploadStatus.textContent = 'File uploaded successfully. Processing in background...';
+                    uploadProgressBar.style.width = '100%';
+                    uploadProgressBar.textContent = '100%';
+
+                    // Close modal after delay
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('uwpExcelUploadModal'));
+                        if (modal) modal.hide();
+                    }, 1000);
+
+                    // Switch to active update mode to show progress
+                    switchToActiveUpdateMode('UWP', 'bulk');
+                    currentJobId = result.jobId;
+
+                    // Show loading with file info
+                    document.getElementById('loading').innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h4>Processing UWP Upload</h4>
+                    <p>File: ${file.name}</p>
+                    <p>Total Records: ${result.totalJobs || 'Unknown'}</p>
+                    <div class="progress mt-3" style="height: 25px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%; font-weight: bold;">0%</div>
+                    </div>
+                    <p id="progressText" class="mt-2">Starting processing...</p>
+                </div>
+            `;
+                    document.getElementById('loading').style.display = 'block';
+
+                    // Start polling for results
+                    startPollingResults();
+
+                } else {
+                    throw new Error('No job ID received from server');
+                }
+
+            } catch (error) {
+                console.error('❌ UWP Upload error:', error);
+                uploadStatus.textContent = `Error: ${error.message}`;
+                uploadProgressBar.className = 'progress-bar progress-bar-striped bg-danger';
+                uploadProgressBar.textContent = 'Error';
+                alert(`Upload failed:\n\n${error.message}\n\nCheck console for details.`);
+            }
+        }
+
+
     </script>
 </body>
 
