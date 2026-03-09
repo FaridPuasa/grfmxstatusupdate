@@ -6152,7 +6152,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Clear Job"
             }
 
-            if (req.body.statusCode == 'FAB') {
+            else if (req.body.statusCode == 'FAR') {
+                appliedStatus = "Update Fail due to Customer not available / cannot be contacted"
+                failReasonDescription = "Customer not available / cannot be contacted"
+                gdexFailReason = "AR";
+            } else if (req.body.statusCode == 'FAB') {
                 appliedStatus = "Update Fail due to Shipment Under Investigation"
                 failReasonDescription = "Shipment Under Investigation"
                 gdexFailReason = "AB";
@@ -6210,7 +6214,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
                 || (req.body.statusCode == 'RSAL2') || (req.body.statusCode == 'H3') || (req.body.statusCode == 'H10')
-                || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32') || (req.body.statusCode == 'SFJA')) {
+                || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32') || (req.body.statusCode == 'SFJA')
+                || (req.body.statusCode == 'FAR')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -10558,7 +10563,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             // Update the condition to include only FAB, FAF, FAG, FAN, FBA:
             if ((req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') ||
                 (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN') ||
-                (req.body.statusCode == 'FBA')) {
+                (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FAR')) {
 
                 if ((product == 'GDEX') || (product == 'GDEXT')) {
                     if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
