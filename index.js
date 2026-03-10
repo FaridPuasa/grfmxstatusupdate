@@ -5889,50 +5889,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             // Get product early for decision making
             product = data.data.group_name;
 
-            // In the /updateDelivery route, find and update this section:
-
-            /* if ((product == 'GDEX' || product == 'GDEXT') &&
-                data.data.status == 'completed' &&
-                (data.data.photo_1_file_url || data.data.photo_2_file_url || data.data.photo_3_file_url)) {
-
-                console.log(`🚨 CRITICAL: Downloading all PODs immediately for GDEX completed job`);
-                console.log(`   Product: ${product}, Status: ${data.data.status}`);
-
-                // Create detrackData with all photo URLs
-                detrackData = {
-                    status: data.data.status,
-                    reason: data.data.reason || '',
-                    address: data.data.address,
-                    photo_1_file_url: data.data.photo_1_file_url || null,
-                    photo_2_file_url: data.data.photo_2_file_url || null,
-                    photo_3_file_url: data.data.photo_3_file_url || null,
-                    podAlreadyConverted: false,
-                    downloadedImmediately: true
-                };
-
-                // Save all PODs to database
-                const savedPODs = await saveAllPODsToDatabase(consignmentID, detrackData);
-
-                if (savedPODs.length > 0) {
-                    // Update detrackData with Base64 images
-                    detrackData.podAlreadyConverted = true;
-                    detrackData.photo_1_file_url = savedPODs[0];
-                    detrackData.photo_2_file_url = savedPODs[1];
-                    detrackData.photo_3_file_url = savedPODs[2];
-                    console.log(`✅ ${savedPODs.length} POD(s) saved to database for immediate GDEX processing`);
-
-                    // Set GDEXAPIrun for GDEX/GDEXT products only
-                    GDEXAPIrun = 6;
-                } else {
-                    console.log(`❌ CRITICAL FAILURE: Could not download PODs for GDEX delivery`);
-                    processingResults.push({
-                        consignmentID,
-                        status: 'ERROR: Could not download POD images for GDEX delivery.',
-                    });
-                    continue;
-                }
-            } */
-
             const counttaskhistory = data.data.milestones.length;
 
             // Check if data.data.phone_number is null or empty
