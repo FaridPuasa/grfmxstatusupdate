@@ -7391,51 +7391,75 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 }
 
-                if (data.data.status == 'failed') {
-                    if (data.data.reason == "Unattempted Delivery") {
-                        update = {
-                            currentStatus: "Return to Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
-                            latestReason: data.data.reason,
-                            attempt: data.data.attempt,
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Failed Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: data.data.assign_to,
-                                            reason: data.data.reason,
-                                            lastLocation: data.data.assign_to,
-                                        },
-                                        {
-                                            statusHistory: "Return to Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
-                                        }
-                                    ]
-                                }
-                            }
+                // In the SFJ section where data.data.status === 'failed'
+                if (data.data.status === 'failed') {
+                    // ========== UPDATED: Handle failed deliveries with photos for GDEX/GDEXT ==========
+
+                    // Check if this is a GDEX/GDEXT product
+                    const isGdexProduct = (product == 'GDEX' || product == 'GDEXT');
+
+                    // For GDEX products, we need to handle photos
+                    if (isGdexProduct) {
+                        console.log(`🚨 MANUAL GDEX FAILED JOB: ${consignmentID}`);
+                        console.log(`   Reason: ${data.data.reason}`);
+
+                        // CRITICAL: Check if AT LEAST 1 POD is available in FRESH Detrack data
+                        const photo1 = data.data.photo_1_file_url;
+                        const photo2 = data.data.photo_2_file_url;
+                        const photo3 = data.data.photo_3_file_url;
+
+                        // Count available photos
+                        const availablePhotos = [photo1, photo2, photo3].filter(url => url && url.startsWith('http'));
+                        const photoCount = availablePhotos.length;
+
+                        console.log(`   📸 Available photos: ${photoCount}/3`);
+
+                        if (photoCount === 0) {
+                            processingResults.push({
+                                consignmentID,
+                                status: `Error: GDEX failed order requires at least 1 POD image. No photos available.`,
+                            });
+                            continue; // Skip this order entirely
                         }
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse" // Use the calculated dStatus
-                            }
+                        // Create detrackData with available photo URLs
+                        const detrackData = {
+                            status: data.data.status,
+                            reason: data.data.reason || '',
+                            address: data.data.address,
+                            assign_to: data.data.assign_to,
+                            photo_1_file_url: photo1,
+                            photo_2_file_url: photo2,
+                            photo_3_file_url: photo3,
+                            podAlreadyConverted: false,
+                            failed_time: moment().format() // Add failed timestamp
                         };
 
-                        if ((product == 'GDEX') || (product == 'GDEXT')) {
-                            console.log(`\n🚨 Sending DF for failed job: ${consignmentID}`);
-                            console.log(`   Reason: ${data.data.reason}`);
+                        try {
+                            // Step 1: Download AVAILABLE PODs from Detrack with retries (minimum 1 required)
+                            console.log(`📥 DOWNLOADING ${photoCount} POD(s) from Detrack with retries...`);
 
-                            // Get GDEX token
+                            // Custom function to download only available PODs (minimum 1 required)
+                            const savedPODs = await downloadAvailablePODsForGDEXFailed(
+                                consignmentID,
+                                detrackData,
+                                photoCount,  // Pass the count of expected photos
+                                3            // 3 retries max
+                            );
+
+                            if (savedPODs.length === 0) {
+                                throw new Error(`Failed to download any PODs after retries`);
+                            }
+
+                            console.log(`✅ ${savedPODs.length}/${photoCount} PODs downloaded successfully`);
+                            savedPODs.forEach((pod, index) => {
+                                console.log(`   POD ${index + 1}: ${pod.length} chars`);
+                            });
+
+                            // Step 2: Send to GDEX API with EPOF field (for failed deliveries)
+                            console.log(`🚀 Sending GDEX failed job update with ${savedPODs.length} POD(s)...`);
                             const token = await getGDEXToken();
+
                             if (token) {
                                 // Map the fail reason to GDEX code
                                 const reasonCodeMap = {
@@ -7468,7 +7492,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 const reasonCode = reasonCodeMap[data.data.reason] || "";
                                 console.log(`📝 Mapped reason: "${data.data.reason}" → Code: ${reasonCode || 'UNMAPPED'}`);
 
-                                // Create DF-only tracking data
+                                // Create GDEX tracking data with EPOF field for failed deliveries
                                 const gdexTrackingData = {
                                     consignmentno: consignmentID,
                                     statuscode: "DF",
@@ -7476,288 +7500,289 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
                                     reasoncode: reasonCode,
                                     locationdescription: "Go Rush Warehouse",
-                                    epod: [],
+                                    epod: [],                    // Empty for failed deliveries
+                                    epof: savedPODs,              // Use epof for failed delivery photos
                                     deliverypartner: "gorush",
                                     returnflag: false
                                 };
 
-                                // Send directly to GDEX (no AL2 first)
+                                console.log(`   📤 Using EPOF field with ${savedPODs.length} photo(s) for failed delivery`);
+
+                                // Send to GDEX using your enhanced function
                                 const result = await sendGDEXTrackingWebhookWithData(consignmentID, gdexTrackingData, token);
 
                                 if (result && result.success === true) {
-                                    console.log(`✅ DF sent successfully for ${consignmentID}`);
-                                    // Optionally add to processingResults
-                                    processingResults.push({
-                                        consignmentID,
-                                        status: `DF sent to GDEX with reason code: ${reasonCode || 'none'}`,
-                                    });
-                                } else {
-                                    console.error(`❌ DF failed for ${consignmentID}:`, result?.error);
-                                    processingResults.push({
-                                        consignmentID,
-                                        status: `Error: Failed to send DF to GDEX - ${result?.error || 'Unknown error'}`,
-                                    });
-                                }
-                            } else {
-                                console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
-                            }
-                        }
+                                    console.log(`✅ GDEX API call successful with ${savedPODs.length} failed delivery POD(s)`);
 
-                        DetrackAPIrun = 1;
-                        mongoDBrun = 2;
-                        completeRun = 1;
-                        appliedStatus = "Failed Delivery, Return to Warehouse"
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                                    // Step 3: Update MongoDB only if GDEX API succeeded
+                                    // Determine location based on assign_to
+                                    let latestLocation = '';
+                                    if (data.data.assign_to === 'Selfcollect') {
+                                        latestLocation = 'Go Rush Kiulap Office';
+                                    } else {
+                                        latestLocation = data.data.address || 'Customer Address';
+                                    }
 
-                        /* if (data.data.phone_number != null) {
-                            waOrderFailedDelivery = 5;
-                        } */
-                    } else if (data.data.reason == "Reschedule to self collect requested by customer") {
-                        update = {
-                            currentStatus: "Return to Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
-                            latestReason: "Reschedule to self collect requested by customer",
-                            attempt: data.data.attempt + 1,
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            grRemark: "Reschedule to self collect requested by customer",
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Failed Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: data.data.assign_to,
-                                            reason: "Reschedule to self collect requested by customer",
-                                            lastLocation: data.data.assign_to,
-                                        },
-                                        {
-                                            statusHistory: "Return to Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
+                                    const update = {
+                                        currentStatus: "Return to Warehouse",
+                                        lastUpdateDateTime: moment().format(),
+                                        assignedTo: "N/A",
+                                        latestReason: data.data.reason,
+                                        attempt: data.data.attempt + 1,
+                                        latestLocation: req.body.warehouse,
+                                        lastUpdatedBy: req.user.name,
+                                        $push: {
+                                            history: {
+                                                $each: [
+                                                    {
+                                                        statusHistory: "Failed Delivery",
+                                                        dateUpdated: moment().format(),
+                                                        updatedBy: req.user.name,
+                                                        lastAssignedTo: data.data.assign_to,
+                                                        reason: data.data.reason,
+                                                        lastLocation: latestLocation,
+                                                    },
+                                                    {
+                                                        statusHistory: "Return to Warehouse",
+                                                        dateUpdated: moment().format(),
+                                                        updatedBy: req.user.name,
+                                                        lastLocation: req.body.warehouse,
+                                                    }
+                                                ]
+                                            }
                                         }
-                                    ]
-                                }
-                            }
-                        }
+                                    };
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse" // Use the calculated dStatus
-                            }
-                        };
+                                    // Add grRemark for specific cases
+                                    if (data.data.reason == "Reschedule to self collect requested by customer") {
+                                        update.grRemark = "Reschedule to self collect requested by customer";
+                                    }
 
-                        var detrackUpdateDataAttempt = {
-                            data: {
-                                do_number: consignmentID,
-                            }
-                        };
+                                    // Save the PODs to MongoDB based on how many we have
+                                    if (savedPODs.length >= 1) update.podBase64 = savedPODs[0];
+                                    if (savedPODs.length >= 2) update.podBase64_2 = savedPODs[1];
+                                    if (savedPODs.length >= 3) update.podBase64_3 = savedPODs[2];
 
-                        if ((product == 'GDEX') || (product == 'GDEXT')) {
-                            console.log(`\n🚨 Sending DF for failed job: ${consignmentID}`);
-                            console.log(`   Reason: ${data.data.reason}`);
+                                    update.podUpdated = moment().format();
+                                    update.podSource = 'detrack_failed';
+                                    update.podCompressed = true;
 
-                            // Get GDEX token
-                            const token = await getGDEXToken();
-                            if (token) {
-                                // Map the fail reason to GDEX code
-                                const reasonCodeMap = {
-                                    "Unattempted Delivery": "BM",
-                                    "Reschedule delivery requested by customer": "BK",
-                                    "Reschedule to self collect requested by customer": "AG",
-                                    "Cash/Duty Not Ready": "BM",
-                                    "Customer not available / cannot be contacted": "AR",
-                                    "No Such Person": "AW",
-                                    "Customer declined delivery": "BM",
-                                    "Unable to Locate Address": "BM",
-                                    "Incorrect Address": "BM",
-                                    "Access not allowed (OFFICE & GUARD HOUSE)": "AA",
-                                    "Shipment Under Investigation": "AB",
-                                    "Receiver Address Under Renovation": "AC",
-                                    "Receiver Shifted": "AE",
-                                    "Redirection Request by Shipper / Receiver": "AF",
-                                    "Non-Service Area (NSA)": "AN",
-                                    "Refusal to Accept – Damaged Shipment": "AS",
-                                    "Refusal to Accept – Receiver Not Known at Address": "AW",
-                                    "Refusal to Acknowledge POD / DO": "AX",
-                                    "Receiver Not Present - Sorry Card Dropped": "AZ",
-                                    "Natural Disaster / Pandemic": "BF",
-                                    "Road Closure": "BG",
-                                    "Refusal to Accept – Invalid / cancel Order": "BJ",
-                                    "Consignee request for postponed delivery": "BL",
-                                    "Shipper/HQ Instruction to Cancel Delivery": "BA"
-                                };
+                                    await ORDERS.findOneAndUpdate(
+                                        { doTrackingNumber: consignmentID },
+                                        update,
+                                        { upsert: false }
+                                    );
 
-                                const reasonCode = reasonCodeMap[data.data.reason] || "";
-                                console.log(`📝 Mapped reason: "${data.data.reason}" → Code: ${reasonCode || 'UNMAPPED'}`);
+                                    mongoDBrun = 2;
+                                    completeRun = 1;
 
-                                // Create DF-only tracking data
-                                const gdexTrackingData = {
-                                    consignmentno: consignmentID,
-                                    statuscode: "DF",
-                                    statusdescription: "Delivery Failed",
-                                    statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
-                                    reasoncode: reasonCode,
-                                    locationdescription: "Go Rush Warehouse",
-                                    epod: [],
-                                    deliverypartner: "gorush",
-                                    returnflag: false
-                                };
+                                    // Update Detrack status
+                                    var detrackUpdateData = {
+                                        do_number: consignmentID,
+                                        data: {
+                                            status: "at_warehouse"
+                                        }
+                                    };
 
-                                // Send directly to GDEX (no AL2 first)
-                                const result = await sendGDEXTrackingWebhookWithData(consignmentID, gdexTrackingData, token);
+                                    if (data.data.reason == "Unattempted Delivery") {
+                                        DetrackAPIrun = 1;  // Just update to at_warehouse
+                                    } else {
+                                        // Need to increment attempt first
+                                        var detrackUpdateDataAttempt = {
+                                            data: {
+                                                do_number: consignmentID,
+                                            }
+                                        };
+                                        DetrackAPIrun = 2;  // Increment attempt + update to at_warehouse
+                                    }
 
-                                if (result && result.success === true) {
-                                    console.log(`✅ DF sent successfully for ${consignmentID}`);
-                                    // Optionally add to processingResults
                                     processingResults.push({
                                         consignmentID,
-                                        status: `DF sent to GDEX with reason code: ${reasonCode || 'none'}`,
+                                        status: `✅ Success: GDEX failed order processed with ${savedPODs.length}/3 photos. GDEX API updated with EPOF. Reason: ${data.data.reason}`,
                                     });
+
                                 } else {
-                                    console.error(`❌ DF failed for ${consignmentID}:`, result?.error);
+                                    console.error(`❌ GDEX API call failed for ${consignmentID}`);
                                     processingResults.push({
                                         consignmentID,
-                                        status: `Error: Failed to send DF to GDEX - ${result?.error || 'Unknown error'}`,
+                                        status: `Error: GDEX API call failed. MongoDB not updated. ${result?.error || ''}`,
                                     });
                                 }
                             } else {
-                                console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
+                                throw new Error('Failed to get GDEX token');
                             }
-                        }
 
-                        DetrackAPIrun = 2;
-                        mongoDBrun = 2;
-                        completeRun = 1;
-                        appliedStatus = "Failed Delivery, Return to Warehouse"
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        } catch (gdexError) {
+                            console.error(`❌ GDEX failed job processing error: ${gdexError.message}`);
+                            processingResults.push({
+                                consignmentID,
+                                status: `Error: GDEX failed job processing failed - ${gdexError.message}`,
+                            });
+                            continue;
+                        }
 
                     } else {
-                        update = {
-                            currentStatus: "Return to Warehouse",
-                            lastUpdateDateTime: moment().format(),
-                            assignedTo: "N/A",
-                            latestReason: data.data.reason,
-                            attempt: data.data.attempt + 1,
-                            latestLocation: req.body.warehouse,
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    $each: [
-                                        {
-                                            statusHistory: "Failed Delivery",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastAssignedTo: data.data.assign_to,
-                                            reason: data.data.reason,
-                                            lastLocation: data.data.assign_to,
-                                        },
-                                        {
-                                            statusHistory: "Return to Warehouse",
-                                            dateUpdated: moment().format(),
-                                            updatedBy: req.user.name,
-                                            lastLocation: req.body.warehouse,
-                                        }
-                                    ]
+                        // ========== NON-GDEX PRODUCTS (keep existing logic) ==========
+                        if (data.data.reason == "Unattempted Delivery") {
+                            // Keep existing non-GDEX failed delivery logic here
+                            // [Your existing code for non-GDEX products]
+
+                            update = {
+                                currentStatus: "Return to Warehouse",
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: "N/A",
+                                latestReason: data.data.reason,
+                                attempt: data.data.attempt,
+                                latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
+                                        $each: [
+                                            {
+                                                statusHistory: "Failed Delivery",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: data.data.assign_to,
+                                                reason: data.data.reason,
+                                                lastLocation: data.data.assign_to,
+                                            },
+                                            {
+                                                statusHistory: "Return to Warehouse",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastLocation: req.body.warehouse,
+                                            }
+                                        ]
+                                    }
                                 }
                             }
-                        }
 
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "at_warehouse" // Use the calculated dStatus
-                            }
-                        };
-
-                        var detrackUpdateDataAttempt = {
-                            data: {
+                            var detrackUpdateData = {
                                 do_number: consignmentID,
-                            }
-                        };
-
-                        if ((product == 'GDEX') || (product == 'GDEXT')) {
-                            console.log(`\n🚨 Sending DF for failed job: ${consignmentID}`);
-                            console.log(`   Reason: ${data.data.reason}`);
-
-                            // Get GDEX token
-                            const token = await getGDEXToken();
-                            if (token) {
-                                // Map the fail reason to GDEX code
-                                const reasonCodeMap = {
-                                    "Unattempted Delivery": "BM",
-                                    "Reschedule delivery requested by customer": "BK",
-                                    "Reschedule to self collect requested by customer": "AG",
-                                    "Cash/Duty Not Ready": "BM",
-                                    "Customer not available / cannot be contacted": "AR",
-                                    "No Such Person": "AW",
-                                    "Customer declined delivery": "BM",
-                                    "Unable to Locate Address": "BM",
-                                    "Incorrect Address": "BM",
-                                    "Access not allowed (OFFICE & GUARD HOUSE)": "AA",
-                                    "Shipment Under Investigation": "AB",
-                                    "Receiver Address Under Renovation": "AC",
-                                    "Receiver Shifted": "AE",
-                                    "Redirection Request by Shipper / Receiver": "AF",
-                                    "Non-Service Area (NSA)": "AN",
-                                    "Refusal to Accept – Damaged Shipment": "AS",
-                                    "Refusal to Accept – Receiver Not Known at Address": "AW",
-                                    "Refusal to Acknowledge POD / DO": "AX",
-                                    "Receiver Not Present - Sorry Card Dropped": "AZ",
-                                    "Natural Disaster / Pandemic": "BF",
-                                    "Road Closure": "BG",
-                                    "Refusal to Accept – Invalid / cancel Order": "BJ",
-                                    "Consignee request for postponed delivery": "BL",
-                                    "Shipper/HQ Instruction to Cancel Delivery": "BA"
-                                };
-
-                                const reasonCode = reasonCodeMap[data.data.reason] || "";
-                                console.log(`📝 Mapped reason: "${data.data.reason}" → Code: ${reasonCode || 'UNMAPPED'}`);
-
-                                // Create DF-only tracking data
-                                const gdexTrackingData = {
-                                    consignmentno: consignmentID,
-                                    statuscode: "DF",
-                                    statusdescription: "Delivery Failed",
-                                    statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
-                                    reasoncode: reasonCode,
-                                    locationdescription: "Go Rush Warehouse",
-                                    epod: [],
-                                    deliverypartner: "gorush",
-                                    returnflag: false
-                                };
-
-                                // Send directly to GDEX (no AL2 first)
-                                const result = await sendGDEXTrackingWebhookWithData(consignmentID, gdexTrackingData, token);
-
-                                if (result && result.success === true) {
-                                    console.log(`✅ DF sent successfully for ${consignmentID}`);
-                                    // Optionally add to processingResults
-                                    processingResults.push({
-                                        consignmentID,
-                                        status: `DF sent to GDEX with reason code: ${reasonCode || 'none'}`,
-                                    });
-                                } else {
-                                    console.error(`❌ DF failed for ${consignmentID}:`, result?.error);
-                                    processingResults.push({
-                                        consignmentID,
-                                        status: `Error: Failed to send DF to GDEX - ${result?.error || 'Unknown error'}`,
-                                    });
+                                data: {
+                                    status: "at_warehouse"
                                 }
-                            } else {
-                                console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
+                            };
+
+                            DetrackAPIrun = 1;
+                            mongoDBrun = 2;
+                            completeRun = 1;
+                            appliedStatus = "Failed Delivery, Return to Warehouse"
+                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+
+                        } else if (data.data.reason == "Reschedule to self collect requested by customer") {
+                            // Keep existing non-GDEX failed delivery logic here
+                            // [Your existing code for non-GDEX products]
+
+                            update = {
+                                currentStatus: "Return to Warehouse",
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: "N/A",
+                                latestReason: "Reschedule to self collect requested by customer",
+                                attempt: data.data.attempt + 1,
+                                latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
+                                grRemark: "Reschedule to self collect requested by customer",
+                                $push: {
+                                    history: {
+                                        $each: [
+                                            {
+                                                statusHistory: "Failed Delivery",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: data.data.assign_to,
+                                                reason: "Reschedule to self collect requested by customer",
+                                                lastLocation: data.data.assign_to,
+                                            },
+                                            {
+                                                statusHistory: "Return to Warehouse",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastLocation: req.body.warehouse,
+                                            }
+                                        ]
+                                    }
+                                }
                             }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    status: "at_warehouse"
+                                }
+                            };
+
+                            var detrackUpdateDataAttempt = {
+                                data: {
+                                    do_number: consignmentID,
+                                }
+                            };
+
+                            DetrackAPIrun = 2;
+                            mongoDBrun = 2;
+                            completeRun = 1;
+                            appliedStatus = "Failed Delivery, Return to Warehouse"
+                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+
+                        } else {
+                            // Keep existing non-GDEX failed delivery logic here
+                            // [Your existing code for non-GDEX products]
+
+                            update = {
+                                currentStatus: "Return to Warehouse",
+                                lastUpdateDateTime: moment().format(),
+                                assignedTo: "N/A",
+                                latestReason: data.data.reason,
+                                attempt: data.data.attempt + 1,
+                                latestLocation: req.body.warehouse,
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
+                                        $each: [
+                                            {
+                                                statusHistory: "Failed Delivery",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastAssignedTo: data.data.assign_to,
+                                                reason: data.data.reason,
+                                                lastLocation: data.data.assign_to,
+                                            },
+                                            {
+                                                statusHistory: "Return to Warehouse",
+                                                dateUpdated: moment().format(),
+                                                updatedBy: req.user.name,
+                                                lastLocation: req.body.warehouse,
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    status: "at_warehouse"
+                                }
+                            };
+
+                            var detrackUpdateDataAttempt = {
+                                data: {
+                                    do_number: consignmentID,
+                                }
+                            };
+
+                            DetrackAPIrun = 2;
+                            mongoDBrun = 2;
+                            completeRun = 1;
+                            appliedStatus = "Failed Delivery, Return to Warehouse"
+                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                         }
 
-                        DetrackAPIrun = 2;
-                        mongoDBrun = 2;
-                        completeRun = 1;
-                        appliedStatus = "Failed Delivery, Return to Warehouse"
-                        portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
+                        // For non-GDEX, just add success message (no photo handling)
+                        processingResults.push({
+                            consignmentID,
+                            status: `✅ Success: Non-GDEX failed order processed. Reason: ${data.data.reason}`,
+                        });
                     }
                 }
 
@@ -19471,6 +19496,65 @@ async function processSingleUWPUpdate(trackingNumber, postalCode, parcelWeight, 
             message: `Error: ${error.message}`
         };
     }
+}
+
+// ==================================================
+// 📸 Multi-POD Download Functions for GDEX FAILED Deliveries
+// ==================================================
+
+async function downloadAvailablePODsForGDEXFailed(consignmentID, detrackData, expectedCount, maxRetries = 3) {
+    console.log(`📸 Starting flexible POD download for failed GDEX ${consignmentID}`);
+    console.log(`   Expected photos: ${expectedCount}/3 (minimum 1 required)`);
+
+    const podImages = [];
+    const imagesToDownload = [];
+
+    // Only add URLs that exist
+    if (detrackData.photo_1_file_url && detrackData.photo_1_file_url.startsWith('http')) {
+        imagesToDownload.push({ number: 1, url: detrackData.photo_1_file_url });
+    }
+    if (detrackData.photo_2_file_url && detrackData.photo_2_file_url.startsWith('http')) {
+        imagesToDownload.push({ number: 2, url: detrackData.photo_2_file_url });
+    }
+    if (detrackData.photo_3_file_url && detrackData.photo_3_file_url.startsWith('http')) {
+        imagesToDownload.push({ number: 3, url: detrackData.photo_3_file_url });
+    }
+
+    console.log(`   Attempting to download ${imagesToDownload.length} available photos...`);
+
+    // Download each available photo (continue even if some fail)
+    for (const image of imagesToDownload) {
+        try {
+            console.log(`\n   ===== DOWNLOADING POD ${image.number} =====`);
+
+            const base64Image = await downloadAndConvertToBase64Immediate(
+                image.url,
+                consignmentID,
+                image.number,
+                maxRetries
+            );
+
+            // Validate the result
+            if (base64Image && base64Image.length > 100 && !base64Image.startsWith('http')) {
+                podImages.push(base64Image);
+                console.log(`   ✅ POD ${image.number}: SUCCESS (${base64Image.length} chars)`);
+            } else {
+                console.log(`   ⚠️ POD ${image.number}: Invalid result, skipping`);
+            }
+
+        } catch (error) {
+            console.log(`   ⚠️ POD ${image.number}: Failed but continuing with other PODs - ${error.message}`);
+            // Continue to next POD even if this one fails
+        }
+    }
+
+    // Check if we got at least 1 photo
+    if (podImages.length === 0) {
+        throw new Error(`CRITICAL: Failed to download any PODs after all attempts`);
+    }
+
+    console.log(`\n🎉 SUCCESS: Downloaded ${podImages.length}/${imagesToDownload.length} available PODs (minimum requirement met!)`);
+    return podImages;
 }
 
 app.listen(port, () => {
