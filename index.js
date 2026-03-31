@@ -216,7 +216,7 @@ function ensureAdmin(req, res, next) {
 }
 
 function ensureGeneratePODandUpdateDelivery(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'warehouse' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
+    if (req.isAuthenticated() && (req.user.role === 'warehouse' || req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -2320,8 +2320,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         const { date } = req.query;
         if (!date) return res.status(400).json({ error: "Missing date" });
 
-        const start = new Date(date + "T00:00:00+08:00");
-        const end = new Date(date + "T23:59:59+08:00");
+        console.log(`Fetching freelancer report for date: ${date}`);
 
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
@@ -2329,143 +2328,150 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
             "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
         ];
 
-        // Fetch orders
-        const orders = await ORDERS.find({ jobDate: date }).lean();
+        // Fetch completed orders for the selected date directly
+        const orders = await ORDERS.find({ 
+            jobDate: date, 
+            currentStatus: "Completed" 
+        }).lean();
+
+        console.log(`Found ${orders.length} completed orders for date ${date}`);
+
+        // Log first few orders to see structure
+        if (orders.length > 0) {
+            console.log('Sample order:', {
+                assignedTo: orders[0].assignedTo,
+                product: orders[0].product,
+                jobDate: orders[0].jobDate,
+                currentStatus: orders[0].currentStatus
+            });
+        }
 
         // Fetch morning report for area mapping
         const reportDateFormatted = new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".");
         const reportName = `Operation Morning Report ${reportDateFormatted}`;
         const reportDoc = await REPORTS.findOne({ reportName }).lean();
 
-        // Build dispatcher map
+        // Build dispatcher map for area information
         const dispatcherMap = {};
         if (reportDoc?.assignedDispatchers) {
             reportDoc.assignedDispatchers.forEach(d => {
                 const names = d.dispatcherName.split('/').map(n => n.trim());
                 names.forEach(name => {
                     dispatcherMap[name] = {
-                        vehicle: d.vehicle || "-",
                         area: d.area || "-",
                         fullName: d.dispatcherName
                     };
                 });
                 dispatcherMap[d.dispatcherName] = {
-                    vehicle: d.vehicle || "-",
                     area: d.area || "-",
                     fullName: d.dispatcherName
                 };
             });
         }
 
-        const staffMap = {};
+        console.log('Dispatcher map keys:', Object.keys(dispatcherMap));
+
+        // Group orders by freelancer and product
+        const freelancerMap = {};
         const allProducts = new Set();
 
-        // Process orders
         for (const order of orders) {
             const product = order.product || "N/A";
             allProducts.add(product);
-
-            const histories = (order.history || [])
-                .filter(h => {
-                    const d = new Date(h.dateUpdated);
-                    return d >= start && d <= end;
-                });
-
-            // Deduplicate by date
-            const perDay = new Map();
-            histories.forEach(h => {
-                const d = new Date(h.dateUpdated);
-                const dateKey = d.toISOString().split('T')[0];
-                if (!perDay.has(dateKey)) {
-                    perDay.set(dateKey, { current: null, final: null });
-                }
-                const existing = perDay.get(dateKey);
-                const isCurrent = h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect";
-                const isFinal = h.statusHistory === "Completed" || h.statusHistory === "Failed Delivery";
-                if (isCurrent && (!existing.current || d > new Date(existing.current.dateUpdated))) {
-                    existing.current = h;
-                } else if (isFinal && (!existing.final || d > new Date(existing.final.dateUpdated))) {
-                    existing.final = h;
-                }
-            });
-
-            // Process each day's entries
-            for (const { current, final } of perDay.values()) {
-                [current, final].forEach((h, index) => {
-                    if (!h) return;
-                    const staff = h.lastAssignedTo || "Unassigned";
-                    
-                    // Check if staff name contains any excluded name
-                    const isExcluded = excludedNames.some(excluded => 
-                        staff.includes(excluded)
-                    );
-                    
-                    // Skip excluded staff
-                    if (isExcluded) return;
-                    
-                    if (!staffMap[staff]) {
-                        staffMap[staff] = {
-                            products: {},
-                            totals: { current: 0, completed: 0, failed: 0 }
-                        };
-                    }
-                    if (!staffMap[staff].products[product]) {
-                        staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
-                    }
-                    const productData = staffMap[staff].products[product];
-                    const totals = staffMap[staff].totals;
-                    if (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") {
-                        productData.current++;
-                        totals.current++;
-                    } else if (h.statusHistory === "Completed") {
-                        productData.completed++;
-                        totals.completed++;
-                    } else if (h.statusHistory === "Failed Delivery") {
-                        productData.failed++;
-                        totals.failed++;
-                    }
-                });
+            
+            // Get the assigned freelancer
+            let freelancer = order.assignedTo || "Unassigned";
+            
+            console.log(`Processing order - Freelancer: ${freelancer}, Product: ${product}`);
+            
+            // Check if this order should be excluded (operation staff)
+            const isExcluded = excludedNames.some(excluded => 
+                freelancer.includes(excluded)
+            );
+            
+            // Skip excluded freelancers
+            if (isExcluded) {
+                console.log(`Skipping excluded freelancer: ${freelancer}`);
+                continue;
             }
+            
+            // Skip if freelancer is "Unassigned" or empty
+            if (freelancer === "Unassigned" || !freelancer || freelancer.trim() === "") {
+                console.log(`Skipping unassigned order`);
+                continue;
+            }
+            
+            // Initialize freelancer in map
+            if (!freelancerMap[freelancer]) {
+                freelancerMap[freelancer] = {
+                    products: {},
+                    totalCompleted: 0
+                };
+            }
+            
+            // Initialize product count
+            if (!freelancerMap[freelancer].products[product]) {
+                freelancerMap[freelancer].products[product] = 0;
+            }
+            
+            // Increment count
+            freelancerMap[freelancer].products[product]++;
+            freelancerMap[freelancer].totalCompleted++;
+            
+            console.log(`Added to ${freelancer} - ${product} count: ${freelancerMap[freelancer].products[product]}`);
         }
 
-        const products = Array.from(allProducts).filter(p =>
-            Object.values(staffMap).some(data =>
-                Object.values(data.products[p] || {}).some(count => count > 0)
-            )
-        );
+        console.log('Freelancer map after processing:', Object.keys(freelancerMap));
 
-        const results = Object.entries(staffMap)
-            .map(([staff, data]) => {
+        // Get list of products that actually have data
+        const products = Array.from(allProducts).filter(p =>
+            Object.values(freelancerMap).some(data => 
+                data.products[p] > 0
+            )
+        ).sort();
+
+        console.log('Products with data:', products);
+
+        // Build results array
+        const results = Object.entries(freelancerMap)
+            .map(([freelancer, data]) => {
                 const productCounts = {};
+                // Include ALL products that exist in the report, not just ones with data
                 products.forEach(p => {
-                    productCounts[p] = data.products[p] || { current: 0, completed: 0, failed: 0 };
+                    productCounts[p] = data.products[p] || 0;
                 });
-                const { current, completed, failed } = data.totals;
-                const total = current + completed + failed;
-                const successRate = completed + failed > 0
-                    ? Math.round((completed / (completed + failed)) * 100)
-                    : 0;
                 
+                // Get area from dispatcher map
                 let area = "-";
-                if (staff !== "Selfcollect" && dispatcherMap[staff]) {
-                    area = dispatcherMap[staff].area;
+                if (freelancer !== "Selfcollect" && dispatcherMap[freelancer]) {
+                    area = dispatcherMap[freelancer].area;
+                } else if (freelancer !== "Selfcollect") {
+                    // Try to find if this freelancer exists in dispatcher map as part of compound name
+                    const dispatcherEntry = Object.entries(dispatcherMap).find(([name]) => 
+                        name.includes(freelancer) || freelancer.includes(name)
+                    );
+                    if (dispatcherEntry) {
+                        area = dispatcherEntry[1].area;
+                    }
                 }
                 
                 return {
-                    staff,
-                    area,
-                    productCounts,
-                    totals: data.totals,
-                    total,
-                    successRate
+                    staff: freelancer,
+                    area: area,
+                    productCounts: productCounts,
+                    totalCompleted: data.totalCompleted
                 };
             })
+            .filter(result => result.totalCompleted > 0) // Only show freelancers with completed jobs
             .sort((a, b) => a.staff.localeCompare(b.staff));
 
+        console.log(`Returning ${results.length} freelancers with completed jobs`);
+
         res.json({ products, results });
+        
     } catch (err) {
         console.error('Freelancer delivery result report error:', err);
-        res.status(500).json({ error: "Server error" });
+        res.status(500).json({ error: "Server error: " + err.message });
     }
 });
 

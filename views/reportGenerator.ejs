@@ -333,30 +333,10 @@ freelancerGenerateBtn.addEventListener('click', async () => {
     const res = await fetch(`/api/freelancer-delivery-result-report?date=${reportDate}`);
     const data = await res.json();
     
+    console.log('Freelancer report data:', data); // Debug log
+    
     if (!data.results || data.results.length === 0) {
-      alert('No data found for the selected date');
-      freelancerGenerateBtn.style.display = "block";
-      hideLoading();
-      return;
-    }
-
-    // Define excluded names (won't be shown)
-    const excludedNames = [
-      "Ghafar", "Sowdeq", "Leo", "Hairol", 
-      "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
-    ];
-
-    // Filter results to exclude the specified names
-    const filteredResults = data.results.filter(result => {
-      const staffName = result.staff || '';
-      const isExcluded = excludedNames.some(excluded => 
-        staffName.includes(excluded)
-      );
-      return !isExcluded;
-    });
-
-    if (filteredResults.length === 0) {
-      alert('No freelancer data found for the selected date');
+      alert('No completed jobs found for freelancers on this date');
       freelancerGenerateBtn.style.display = "block";
       hideLoading();
       return;
@@ -373,7 +353,6 @@ freelancerGenerateBtn.addEventListener('click', async () => {
     `;
 
     // Table header - No Jobs column, No Success Rate column
-    // Total columns: Freelancer(1) + Area(1) + products(N) + Total(1)
     const totalColumns = 2 + data.products.length + 1;
     freelancerJobsHeader.innerHTML = `
       <tr style="background:lightblue;font-weight:bold;">
@@ -387,11 +366,11 @@ freelancerGenerateBtn.addEventListener('click', async () => {
       </tr>
     `;
 
-    // Build table body - Only show completed values
+    // Build table body
     const tbody = freelancerJobsTable.querySelector('tbody');
     tbody.innerHTML = '';
 
-    filteredResults.forEach(result => {
+    data.results.forEach(result => {
       const row = document.createElement('tr');
       
       // Freelancer name
@@ -405,20 +384,18 @@ freelancerGenerateBtn.addEventListener('click', async () => {
       areaCell.contentEditable = true;
       row.appendChild(areaCell);
       
-      // Product cells - only show completed values (no color coding)
-      let totalCompleted = 0;
+      // Product cells - show values (these should now have numbers > 0)
       data.products.forEach(product => {
         const td = document.createElement('td');
-        const completedValue = result.productCounts[product]?.completed || 0;
-        td.innerText = completedValue;
+        const value = result.productCounts[product] || 0;
+        td.innerText = value;
         td.contentEditable = true;
-        totalCompleted += completedValue;
         row.appendChild(td);
       });
       
       // Total cell
       const totalCell = document.createElement('td');
-      totalCell.innerText = totalCompleted;
+      totalCell.innerText = result.totalCompleted || 0;
       totalCell.contentEditable = true;
       row.appendChild(totalCell);
       
@@ -430,23 +407,22 @@ freelancerGenerateBtn.addEventListener('click', async () => {
     freelancerCheckedByContainer.style.fontWeight = 'bold';
     freelancerCheckedByContainer.style.marginTop = '10px';
 
-    // Show save and reset buttons, hide generate
+    // Show save and reset buttons
     freelancerSaveBtn.classList.remove("hidden");
     freelancerResetBtn.classList.remove("hidden");
     freelancerPrintBtn.classList.add("hidden");
     freelancerSaveBtn.removeAttribute("disabled");
     
-    alert("Freelancer End of Day Report generated successfully.");
+    alert(`Freelancer report generated with ${data.results.length} freelancers`);
     
   } catch (err) {
     console.error('Error generating freelancer report:', err);
-    alert('Error fetching report data');
+    alert('Error fetching report data: ' + err.message);
   } finally {
     hideLoading();
     freelancerGenerateBtn.style.display = "block";
   }
 });
-
 // Freelancer Save Button
 freelancerSaveBtn.addEventListener('click', async () => {
   const reportDate = document.getElementById('freelancerReportDate').value;
