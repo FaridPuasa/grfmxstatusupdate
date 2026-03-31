@@ -1043,7 +1043,6 @@ app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// --- Delivery Result Report ---
 app.get('/api/delivery-result-report', async (req, res) => {
     try {
         const { date } = req.query;
@@ -1054,13 +1053,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
-            "Ghafar", "Sowdeq", "Leo", "Hairol",
-            "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
-        ];
-
-        // For Freelancer End of Day Report - EXCLUDE these names, show all others
-        const freelancerExcludedNames = [
-            "Ghafar", "Sowdeq", "Leo", "Hairol",
+            "Ghafar", "Sowdeq", "Leo", "Hairol", 
             "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
         ];
 
@@ -1074,7 +1067,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         // 2. Build dispatcher map with proper name handling
         const dispatcherMap = {};
-        const fullNameMap = {}; // Map individual names to full dispatcherName
+        const fullNameMap = {};
 
         if (reportDoc?.assignedDispatchers) {
             reportDoc.assignedDispatchers.forEach(d => {
@@ -1084,12 +1077,11 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     dispatcherMap[name] = {
                         vehicle: d.vehicle || "-",
                         area: d.area || "-",
-                        fullName: d.dispatcherName // Store the full name
+                        fullName: d.dispatcherName
                     };
-                    fullNameMap[name] = d.dispatcherName; // Map individual to full name
+                    fullNameMap[name] = d.dispatcherName;
                 });
 
-                // Also map the full name itself
                 dispatcherMap[d.dispatcherName] = {
                     vehicle: d.vehicle || "-",
                     area: d.area || "-",
@@ -1101,98 +1093,88 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const staffMap = {};
         const allProducts = new Set();
 
-        // 3. Process orders in batches for better memory management
-        const batchSize = 100;
-        for (let i = 0; i < orders.length; i += batchSize) {
-            const batch = orders.slice(i, i + batchSize);
+        // 3. Process orders
+        for (const order of orders) {
+            const product = order.product || "N/A";
+            allProducts.add(product);
 
-            for (const order of batch) {
-                const product = order.product || "N/A";
-                allProducts.add(product);
-
-                // 4. Optimize history filtering and processing
-                const histories = (order.history || [])
-                    .filter(h => {
-                        const d = new Date(h.dateUpdated);
-                        return d >= start && d <= end;
-                    });
-
-                // 5. Use Map for better deduplication performance
-                const perDay = new Map();
-
-                histories.forEach(h => {
+            const histories = (order.history || [])
+                .filter(h => {
                     const d = new Date(h.dateUpdated);
-                    const dateKey = d.toISOString().split('T')[0];
-
-                    if (!perDay.has(dateKey)) {
-                        perDay.set(dateKey, { current: null, final: null });
-                    }
-
-                    const existing = perDay.get(dateKey);
-                    const isCurrent = h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect";
-                    const isFinal = h.statusHistory === "Completed" || h.statusHistory === "Failed Delivery";
-
-                    if (isCurrent && (!existing.current || d > new Date(existing.current.dateUpdated))) {
-                        existing.current = h;
-                    } else if (isFinal && (!existing.final || d > new Date(existing.final.dateUpdated))) {
-                        existing.final = h;
-                    }
+                    return d >= start && d <= end;
                 });
 
-                // 6. Process deduped histories more efficiently
-                for (const { current, final } of perDay.values()) {
-                    [current, final].forEach((h, index) => {
-                        if (!h) return;
+            const perDay = new Map();
 
-                        const staff = h.lastAssignedTo || "Unassigned";
+            histories.forEach(h => {
+                const d = new Date(h.dateUpdated);
+                const dateKey = d.toISOString().split('T')[0];
 
-                        // ========== FILTER: Only include allowed staff ==========
-                        // Check if staff name (or any part of compound name) is in allowed list
-                        const staffNames = staff.split('/').map(n => n.trim());
-                        const hasAllowedStaff = staffNames.some(name =>
-                            allowedStaff.includes(name)
-                        );
-
-                        // Skip if not an allowed staff member
-                        if (!hasAllowedStaff) return;
-
-                        if (!staffMap[staff]) {
-                            staffMap[staff] = {
-                                products: {},
-                                totals: { current: 0, completed: 0, failed: 0 }
-                            };
-                        }
-
-                        if (!staffMap[staff].products[product]) {
-                            staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
-                        }
-
-                        const productData = staffMap[staff].products[product];
-                        const totals = staffMap[staff].totals;
-
-                        if (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") {
-                            productData.current++;
-                            totals.current++;
-                        } else if (h.statusHistory === "Completed") {
-                            productData.completed++;
-                            totals.completed++;
-                        } else if (h.statusHistory === "Failed Delivery") {
-                            productData.failed++;
-                            totals.failed++;
-                        }
-                    });
+                if (!perDay.has(dateKey)) {
+                    perDay.set(dateKey, { current: null, final: null });
                 }
+
+                const existing = perDay.get(dateKey);
+                const isCurrent = h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect";
+                const isFinal = h.statusHistory === "Completed" || h.statusHistory === "Failed Delivery";
+
+                if (isCurrent && (!existing.current || d > new Date(existing.current.dateUpdated))) {
+                    existing.current = h;
+                } else if (isFinal && (!existing.final || d > new Date(existing.final.dateUpdated))) {
+                    existing.final = h;
+                }
+            });
+
+            for (const { current, final } of perDay.values()) {
+                [current, final].forEach((h, index) => {
+                    if (!h) return;
+
+                    const staff = h.lastAssignedTo || "Unassigned";
+                    
+                    // ========== FILTER: Only include operation staff ==========
+                    // Check if staff name (or any part of compound name) is in operationStaff list
+                    const staffNames = staff.split('/').map(n => n.trim());
+                    const hasAllowedStaff = staffNames.some(name => 
+                        operationStaff.includes(name)
+                    );
+                    
+                    // Skip if not an operation staff member
+                    if (!hasAllowedStaff) return;
+                    
+                    if (!staffMap[staff]) {
+                        staffMap[staff] = {
+                            products: {},
+                            totals: { current: 0, completed: 0, failed: 0 }
+                        };
+                    }
+
+                    if (!staffMap[staff].products[product]) {
+                        staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
+                    }
+
+                    const productData = staffMap[staff].products[product];
+                    const totals = staffMap[staff].totals;
+
+                    if (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") {
+                        productData.current++;
+                        totals.current++;
+                    } else if (h.statusHistory === "Completed") {
+                        productData.completed++;
+                        totals.completed++;
+                    } else if (h.statusHistory === "Failed Delivery") {
+                        productData.failed++;
+                        totals.failed++;
+                    }
+                });
             }
         }
 
-        // 7. Optimize products filtering
         const products = Array.from(allProducts).filter(p =>
             Object.values(staffMap).some(data =>
                 Object.values(data.products[p] || {}).some(count => count > 0)
             )
         );
 
-        // 8. Optimize results mapping
         const results = Object.entries(staffMap)
             .map(([staff, data]) => {
                 const productCounts = {};
@@ -1206,28 +1188,19 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     ? Math.round((completed / (completed + failed)) * 100)
                     : 0;
 
-                // Improved Vehicle & Area lookup with better name matching
                 let vehicle = "-";
                 let area = "-";
                 let reportStaffName = staff;
 
                 if (staff !== "Selfcollect") {
-                    // First try exact match
                     if (dispatcherMap[staff]) {
                         vehicle = dispatcherMap[staff].vehicle;
                         area = dispatcherMap[staff].area;
                         reportStaffName = dispatcherMap[staff].fullName || staff;
                     } else {
-                        // Try partial matching for names like "Zakwan" in "Zakwan/Wafi"
                         const dispatcherEntry = Object.entries(dispatcherMap).find(([name]) => {
-                            // Check if staff name is part of a compound name
-                            if (name.includes('/') && name.includes(staff)) {
-                                return true;
-                            }
-                            // Check if compound name contains staff name
-                            if (staff.includes('/') && staff.includes(name)) {
-                                return true;
-                            }
+                            if (name.includes('/') && name.includes(staff)) return true;
+                            if (staff.includes('/') && staff.includes(name)) return true;
                             return false;
                         });
 
@@ -1249,13 +1222,11 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     successRate
                 };
             })
-            // Final filter to ensure only allowed staff appear (in case of any edge cases)
             .filter(result => {
                 if (result.staff === "Selfcollect") return true;
                 const staffNames = result.staff.split('/').map(n => n.trim());
-                return staffNames.some(name => allowedStaff.includes(name));
+                return staffNames.some(name => operationStaff.includes(name));
             })
-            // Sort results: Selfcollect last, then alphabetically by staff name
             .sort((a, b) => {
                 if (a.staff === "Selfcollect") return 1;
                 if (b.staff === "Selfcollect") return -1;

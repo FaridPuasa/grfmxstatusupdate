@@ -329,7 +329,7 @@ freelancerGenerateBtn.addEventListener('click', async () => {
   freelancerGenerateBtn.style.display = "none";
 
   try {
-    // Fetch delivery result data
+    // Fetch delivery result data from freelancer endpoint
     const res = await fetch(`/api/freelancer-delivery-result-report?date=${reportDate}`);
     const data = await res.json();
     
@@ -348,7 +348,6 @@ freelancerGenerateBtn.addEventListener('click', async () => {
 
     // Filter results to exclude the specified names
     const filteredResults = data.results.filter(result => {
-      // Check if staff name contains any excluded name
       const staffName = result.staff || '';
       const isExcluded = excludedNames.some(excluded => 
         staffName.includes(excluded)
@@ -373,112 +372,57 @@ freelancerGenerateBtn.addEventListener('click', async () => {
       <h2>${reportTitle}</h2>
     `;
 
-    // Table header (Freelancer Jobs) - No Vehicle column
-    const totalColumns = 3 + data.products.length + 2;
-freelancerJobsHeader.innerHTML = `
-  <tr style="background:lightblue;font-weight:bold;">
-    <th colspan="${totalColumns}" style="text-align:left;">Job Result</th>
-  </tr>
-  <tr>
-    <th>Freelancer</th>
-    <th>Area</th>
-    <th>Jobs</th>
-    ${data.products.map(p => `<th>${p}</th>`).join('')}
-    <th>Total</th>
-    <th>Success Rate</th>
-  </tr>
-`;
+    // Table header - No Jobs column, No Success Rate column
+    // Total columns: Freelancer(1) + Area(1) + products(N) + Total(1)
+    const totalColumns = 2 + data.products.length + 1;
+    freelancerJobsHeader.innerHTML = `
+      <tr style="background:lightblue;font-weight:bold;">
+        <th colspan="${totalColumns}" style="text-align:left;">Job Result</th>
+      </tr>
+      <tr>
+        <th>Freelancer</th>
+        <th>Area</th>
+        ${data.products.map(p => `<th>${p}</th>`).join('')}
+        <th>Total</th>
+      </tr>
+    `;
 
-    // Build table body
+    // Build table body - Only show completed values
     const tbody = freelancerJobsTable.querySelector('tbody');
     tbody.innerHTML = '';
 
-    // Display names for job types
-    const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
-    const rowTypes = ["current", "completed", "failed"];
-
-    filteredResults.forEach(r => {
-      const tdSR = document.createElement("td");
-      tdSR.rowSpan = 3;
-      tdSR.contentEditable = false;
-
-      rowTypes.forEach((type, idx) => {
-        const row = document.createElement("tr");
-
-        if (idx === 0) {
-          // Freelancer cell with rowspan
-          const staffCell = document.createElement("td");
-          staffCell.rowSpan = 3;
-          staffCell.innerText = r.staff;
-          row.appendChild(staffCell);
-
-          // Area cell with rowspan
-          const areaCell = document.createElement("td");
-          areaCell.rowSpan = 3;
-          areaCell.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
-          areaCell.contentEditable = true;
-          row.appendChild(areaCell);
-        }
-
-        // Jobs column
-        const tdJobs = document.createElement("td");
-        tdJobs.innerText = displayNames[type];
-        tdJobs.style.fontWeight = "bold";
-        row.appendChild(tdJobs);
-
-        // Product cells
-        const productTds = data.products.map(p => {
-          const td = document.createElement("td");
-          td.contentEditable = true;
-          td.innerText = r.productCounts[p][type];
-          
-          // Highlight completed/failed
-          if (type === "completed" && parseInt(td.innerText) > 0) {
-            td.style.backgroundColor = "#d4f4d4";
-          } else if (type === "failed" && parseInt(td.innerText) > 0) {
-            td.style.backgroundColor = "#f4d4d4";
-          }
-          
-          return td;
-        });
-
-        productTds.forEach(td => row.appendChild(td));
-
-        // Total column
-        const tdTotal = document.createElement("td");
-        const calculateTotal = () => {
-          const total = productTds.reduce((sum, td) => sum + (parseInt(td.innerText) || 0), 0);
-          tdTotal.innerText = total;
-          
-          if (type === "completed" && total > 0) {
-            tdTotal.style.backgroundColor = "#d4f4d4";
-          } else if (type === "failed" && total > 0) {
-            tdTotal.style.backgroundColor = "#f4d4d4";
-          } else {
-            tdTotal.style.backgroundColor = "";
-          }
-          
-          // Calculate Success Rate
-          let completedTotal = 0;
-          let assignedTotal = 0;
-          data.products.forEach(p => {
-            const c = parseInt(r.productCounts[p]?.completed || 0);
-            const a = parseInt(r.productCounts[p]?.current || 0);
-            completedTotal += c;
-            assignedTotal += a;
-          });
-          
-          const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
-          tdSR.innerText = successRate + "%";
-          tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
-        };
-        
-        calculateTotal();
-        row.appendChild(tdTotal);
-
-        if (idx === 0) row.appendChild(tdSR);
-        tbody.appendChild(row);
+    filteredResults.forEach(result => {
+      const row = document.createElement('tr');
+      
+      // Freelancer name
+      const staffCell = document.createElement('td');
+      staffCell.innerText = result.staff;
+      row.appendChild(staffCell);
+      
+      // Area
+      const areaCell = document.createElement('td');
+      areaCell.innerText = result.area || '-';
+      areaCell.contentEditable = true;
+      row.appendChild(areaCell);
+      
+      // Product cells - only show completed values (no color coding)
+      let totalCompleted = 0;
+      data.products.forEach(product => {
+        const td = document.createElement('td');
+        const completedValue = result.productCounts[product]?.completed || 0;
+        td.innerText = completedValue;
+        td.contentEditable = true;
+        totalCompleted += completedValue;
+        row.appendChild(td);
       });
+      
+      // Total cell
+      const totalCell = document.createElement('td');
+      totalCell.innerText = totalCompleted;
+      totalCell.contentEditable = true;
+      row.appendChild(totalCell);
+      
+      tbody.appendChild(row);
     });
 
     // Checked by
@@ -594,6 +538,9 @@ freelancerPrintBtn.addEventListener('click', () => {
     </style>
   `;
   
+  // Clone the table to avoid modifying the original
+  const tableClone = freelancerJobsTable.cloneNode(true);
+  
   const printHTML = `
     <html>
       <head>
@@ -602,7 +549,7 @@ freelancerPrintBtn.addEventListener('click', () => {
       </head>
       <body>
         ${freelancerReportLogoHeader.outerHTML}
-        ${freelancerJobsTable.outerHTML}
+        ${tableClone.outerHTML}
         <div class="checked-by">${freelancerCheckedByContainer.innerText}</div>
       </body>
     </html>
@@ -619,7 +566,6 @@ freelancerPrintBtn.addEventListener('click', () => {
     hideLoading();
   };
 });
-
 // Freelancer Reset Button
 freelancerResetBtn.addEventListener('click', () => {
   if (confirm("Are you sure you want to reset the report?")) {
