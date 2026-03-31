@@ -85,6 +85,7 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
     <option value="">-- Select Report --</option>
     <option value="Operation Morning Report">Operation Morning Report</option>
     <option value="Operation End of Day Report">Operation End of Day Report</option>
+    <option value="Freelancer End of Day Report">Freelancer End of Day Report</option>
   </select>
 </div>
 
@@ -200,6 +201,33 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
   </div>
 </div>
 
+<div id="freelancerEndOfDayReportSection" class="hidden">
+  <div id="freelancerReportContainer">
+    <form id="freelancerEndOfDayForm">
+      <div class="row mb-3">
+        <div class="col-md-3">
+          <label for="freelancerReportDate" class="form-label">Date</label>
+          <input type="date" id="freelancerReportDate" name="freelancerReportDate" class="form-control" required>
+        </div>
+      </div>
+      <div class="mb-3">
+        <button type="button" class="btn btn-primary" id="freelancerGenerateBtn">Generate</button>
+        <button type="button" class="btn btn-success hidden" id="freelancerSaveBtn" disabled>Save</button>
+        <button type="button" class="btn btn-secondary hidden" id="freelancerPrintBtn">Print</button>
+        <button type="button" class="btn btn-danger hidden" id="freelancerResetBtn">Reset</button>
+      </div>
+    </form>
+
+    <!-- Freelancer End of Day Report Parts -->
+    <div id="freelancerReportLogoHeader" class="text-center mb-3"></div>
+    <table id="freelancerJobsTable" class="table table-bordered">
+      <thead id="freelancerJobsHeader"></thead>
+      <tbody></tbody>
+    </table>
+    <div id="freelancerCheckedByContainer"></div>
+  </div>
+</div>
+
 <div id="loadingSpinner" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.7); z-index:9999; justify-content: center; align-items: center;">
   <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
     <span class="visually-hidden"></span>
@@ -245,10 +273,21 @@ function clearReport(){
   reportDateEl.removeAttribute('disabled');
 }
 
-// Update the reportType change event to reset the flag
+// Freelancer End of Day Report Elements
+const freelancerEndOfDaySection = document.getElementById('freelancerEndOfDayReportSection');
+const freelancerGenerateBtn = document.getElementById('freelancerGenerateBtn');
+const freelancerSaveBtn = document.getElementById('freelancerSaveBtn');
+const freelancerPrintBtn = document.getElementById('freelancerPrintBtn');
+const freelancerResetBtn = document.getElementById('freelancerResetBtn');
+const freelancerReportLogoHeader = document.getElementById('freelancerReportLogoHeader');
+const freelancerJobsTable = document.getElementById('freelancerJobsTable');
+const freelancerJobsHeader = document.getElementById('freelancerJobsHeader');
+const freelancerCheckedByContainer = document.getElementById('freelancerCheckedByContainer');
+
+// Update the reportType change event to include freelancer section
 reportTypeEl.addEventListener('change', () => {
   isReportSaved = false;
-  clearReport(); // reset both
+  clearReport();
   generateBtn.classList.remove('hidden');
   saveBtn.classList.add('hidden');
   printBtn.classList.add('hidden');
@@ -257,12 +296,334 @@ reportTypeEl.addEventListener('change', () => {
   if (reportTypeEl.value === 'Operation Morning Report') {
     morningReportSection.classList.remove('hidden');
     endOfDayReportSection.classList.add('hidden');
+    freelancerEndOfDaySection.classList.add('hidden');
   } else if (reportTypeEl.value === 'Operation End of Day Report') {
     morningReportSection.classList.add('hidden');
     endOfDayReportSection.classList.remove('hidden');
+    freelancerEndOfDaySection.classList.add('hidden');
+  } else if (reportTypeEl.value === 'Freelancer End of Day Report') {
+    morningReportSection.classList.add('hidden');
+    endOfDayReportSection.classList.add('hidden');
+    freelancerEndOfDaySection.classList.remove('hidden');
+    // Clear any previous freelancer report data
+    freelancerReportLogoHeader.innerHTML = '';
+    freelancerJobsHeader.innerHTML = '';
+    freelancerJobsTable.querySelector('tbody').innerHTML = '';
+    freelancerCheckedByContainer.innerHTML = '';
   } else {
     morningReportSection.classList.add('hidden');
     endOfDayReportSection.classList.add('hidden');
+    freelancerEndOfDaySection.classList.add('hidden');
+  }
+});
+
+// Freelancer Generate Button
+freelancerGenerateBtn.addEventListener('click', async () => {
+  const reportDate = document.getElementById('freelancerReportDate').value;
+  if (!reportDate) {
+    alert('Please pick a date');
+    return;
+  }
+  
+  showLoading();
+  freelancerGenerateBtn.style.display = "none";
+
+  try {
+    // Fetch delivery result data
+    const res = await fetch(`/api/freelancer-delivery-result-report?date=${reportDate}`);
+    const data = await res.json();
+    
+    if (!data.results || data.results.length === 0) {
+      alert('No data found for the selected date');
+      freelancerGenerateBtn.style.display = "block";
+      hideLoading();
+      return;
+    }
+
+    // Define excluded names (won't be shown)
+    const excludedNames = [
+      "Ghafar", "Sowdeq", "Leo", "Hairol", 
+      "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
+    ];
+
+    // Filter results to exclude the specified names
+    const filteredResults = data.results.filter(result => {
+      // Check if staff name contains any excluded name
+      const staffName = result.staff || '';
+      const isExcluded = excludedNames.some(excluded => 
+        staffName.includes(excluded)
+      );
+      return !isExcluded;
+    });
+
+    if (filteredResults.length === 0) {
+      alert('No freelancer data found for the selected date');
+      freelancerGenerateBtn.style.display = "block";
+      hideLoading();
+      return;
+    }
+
+    const formattedDate = new Date(reportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
+    const reportTitle = `Freelancer End of Day Report ${formattedDate}`;
+    window.currentFreelancerReportName = reportTitle;
+
+    // Logo + Title
+    freelancerReportLogoHeader.innerHTML = `
+      <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
+      <h2>${reportTitle}</h2>
+    `;
+
+    // Table header (Freelancer Jobs) - No Vehicle column
+    const totalColumns = 3 + data.products.length + 2;
+freelancerJobsHeader.innerHTML = `
+  <tr style="background:lightblue;font-weight:bold;">
+    <th colspan="${totalColumns}" style="text-align:left;">Job Result</th>
+  </tr>
+  <tr>
+    <th>Freelancer</th>
+    <th>Area</th>
+    <th>Jobs</th>
+    ${data.products.map(p => `<th>${p}</th>`).join('')}
+    <th>Total</th>
+    <th>Success Rate</th>
+  </tr>
+`;
+
+    // Build table body
+    const tbody = freelancerJobsTable.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    // Display names for job types
+    const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
+    const rowTypes = ["current", "completed", "failed"];
+
+    filteredResults.forEach(r => {
+      const tdSR = document.createElement("td");
+      tdSR.rowSpan = 3;
+      tdSR.contentEditable = false;
+
+      rowTypes.forEach((type, idx) => {
+        const row = document.createElement("tr");
+
+        if (idx === 0) {
+          // Freelancer cell with rowspan
+          const staffCell = document.createElement("td");
+          staffCell.rowSpan = 3;
+          staffCell.innerText = r.staff;
+          row.appendChild(staffCell);
+
+          // Area cell with rowspan
+          const areaCell = document.createElement("td");
+          areaCell.rowSpan = 3;
+          areaCell.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
+          areaCell.contentEditable = true;
+          row.appendChild(areaCell);
+        }
+
+        // Jobs column
+        const tdJobs = document.createElement("td");
+        tdJobs.innerText = displayNames[type];
+        tdJobs.style.fontWeight = "bold";
+        row.appendChild(tdJobs);
+
+        // Product cells
+        const productTds = data.products.map(p => {
+          const td = document.createElement("td");
+          td.contentEditable = true;
+          td.innerText = r.productCounts[p][type];
+          
+          // Highlight completed/failed
+          if (type === "completed" && parseInt(td.innerText) > 0) {
+            td.style.backgroundColor = "#d4f4d4";
+          } else if (type === "failed" && parseInt(td.innerText) > 0) {
+            td.style.backgroundColor = "#f4d4d4";
+          }
+          
+          return td;
+        });
+
+        productTds.forEach(td => row.appendChild(td));
+
+        // Total column
+        const tdTotal = document.createElement("td");
+        const calculateTotal = () => {
+          const total = productTds.reduce((sum, td) => sum + (parseInt(td.innerText) || 0), 0);
+          tdTotal.innerText = total;
+          
+          if (type === "completed" && total > 0) {
+            tdTotal.style.backgroundColor = "#d4f4d4";
+          } else if (type === "failed" && total > 0) {
+            tdTotal.style.backgroundColor = "#f4d4d4";
+          } else {
+            tdTotal.style.backgroundColor = "";
+          }
+          
+          // Calculate Success Rate
+          let completedTotal = 0;
+          let assignedTotal = 0;
+          data.products.forEach(p => {
+            const c = parseInt(r.productCounts[p]?.completed || 0);
+            const a = parseInt(r.productCounts[p]?.current || 0);
+            completedTotal += c;
+            assignedTotal += a;
+          });
+          
+          const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
+          tdSR.innerText = successRate + "%";
+          tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
+        };
+        
+        calculateTotal();
+        row.appendChild(tdTotal);
+
+        if (idx === 0) row.appendChild(tdSR);
+        tbody.appendChild(row);
+      });
+    });
+
+    // Checked by
+    freelancerCheckedByContainer.innerText = `Checked and prepared by: ${userId}`;
+    freelancerCheckedByContainer.style.fontWeight = 'bold';
+    freelancerCheckedByContainer.style.marginTop = '10px';
+
+    // Show save and reset buttons, hide generate
+    freelancerSaveBtn.classList.remove("hidden");
+    freelancerResetBtn.classList.remove("hidden");
+    freelancerPrintBtn.classList.add("hidden");
+    freelancerSaveBtn.removeAttribute("disabled");
+    
+    alert("Freelancer End of Day Report generated successfully.");
+    
+  } catch (err) {
+    console.error('Error generating freelancer report:', err);
+    alert('Error fetching report data');
+  } finally {
+    hideLoading();
+    freelancerGenerateBtn.style.display = "block";
+  }
+});
+
+// Freelancer Save Button
+freelancerSaveBtn.addEventListener('click', async () => {
+  const reportDate = document.getElementById('freelancerReportDate').value;
+  if (!reportDate) {
+    alert('Please select a date first.');
+    return;
+  }
+  
+  showLoading();
+  
+  const formattedDate = new Date(reportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
+  const reportName = `Freelancer End of Day Report ${formattedDate}`;
+  const reportContent = freelancerEndOfDaySection.innerHTML;
+  const reportType = "Freelancer End of Day Report";
+  
+  async function saveReport(forceReplace = false) {
+    try {
+      const res = await fetch('/api/saveReport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportType,
+          reportName,
+          reportContent,
+          createdBy: userId,
+          forceReplace
+        })
+      });
+      
+      const result = await res.json();
+      
+      if (result.success) {
+        alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+        freelancerSaveBtn.classList.add('hidden');
+        freelancerPrintBtn.classList.remove('hidden');
+      } else if (result.duplicate) {
+        const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+        if (confirmReplace) {
+          await saveReport(true);
+        }
+      } else {
+        alert('Failed to save report: ' + result.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error saving report');
+    } finally {
+      hideLoading();
+    }
+  }
+  
+  await saveReport();
+});
+
+// Freelancer Print Button
+freelancerPrintBtn.addEventListener('click', () => {
+  showLoading();
+  
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, "0");
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const yyyy = today.getFullYear();
+  const fileName = `Freelancer End of Day Report ${dd}.${mm}.${yyyy}`;
+  
+  const style = `
+    <style>
+      body { font-family: Arial, sans-serif; padding: 25px; }
+      h2 { text-align: center; margin: 10px 0 20px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+      th, td {
+        border: 1px solid #000;
+        padding: 6px 8px;
+        font-size: 14px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      th { background-color: #e6f2ff; font-weight: bold; }
+      tr:first-child th[colspan] {
+        background-color: lightblue !important;
+        text-align: left;
+        font-size: 15px;
+      }
+      img { display: block; margin: 0 auto; max-height: 80px; }
+      .checked-by { font-weight: bold; margin-top: 10px; }
+      @media print {
+        body { zoom: 90%; }
+      }
+    </style>
+  `;
+  
+  const printHTML = `
+    <html>
+      <head>
+        <title>${fileName}</title>
+        ${style}
+      </head>
+      <body>
+        ${freelancerReportLogoHeader.outerHTML}
+        ${freelancerJobsTable.outerHTML}
+        <div class="checked-by">${freelancerCheckedByContainer.innerText}</div>
+      </body>
+    </html>
+  `;
+  
+  printWindow.document.open();
+  printWindow.document.write(printHTML);
+  printWindow.document.close();
+  
+  printWindow.onload = function () {
+    printWindow.document.title = fileName;
+    printWindow.focus();
+    printWindow.print();
+    hideLoading();
+  };
+});
+
+// Freelancer Reset Button
+freelancerResetBtn.addEventListener('click', () => {
+  if (confirm("Are you sure you want to reset the report?")) {
+    location.reload();
   }
 });
 
