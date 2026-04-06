@@ -2623,13 +2623,7 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
     }
 });
 
-// TEMPORARY: Dashboard disabled for performance optimization
-// Remove this block and uncomment the original route below to restore
 app.get('/', ensureAuthenticated, async (req, res) => {
-    res.render('dashboard_disabled', { user: req.user });
-});
-
-/* app.get('/', ensureAuthenticated, async (req, res) => {
     try {
         const moment = require('moment');
         const now = moment();
@@ -2870,7 +2864,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
     }
-}); */
+});
 
 // Optional: refresh route to clear urgent cache
 app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
