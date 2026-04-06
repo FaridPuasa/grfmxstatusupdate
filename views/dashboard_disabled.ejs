@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Maintenance</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <style>
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        .navbar {
+            background-color: transparent;
+        }
+
+        .container-bg {
+            background-color: #333;
+        }
+
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            max-height: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                height: 30px;
+                max-height: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo {
+                height: 25px;
+                max-height: 25px;
+            }
+        }
+
+        .maintenance-box {
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .maintenance-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+    </style>
+
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+
+<body class="bg-light">
+    <div class="container-bg">
+        <div class="container">
+            <%- include('partials/navbar') %>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="card maintenance-box">
+            <div class="card-body">
+                <div class="maintenance-icon">⏳</div>
+                <h1 class="display-4">Dashboard Under Maintenance</h1>
+                <p class="lead mt-4">The dashboard is currently being optimized for better performance.</p>
+                <p>Please check back in a few minutes.</p>
+                <hr class="my-4">
+                <small class="text-muted">Thank you for your patience.</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
