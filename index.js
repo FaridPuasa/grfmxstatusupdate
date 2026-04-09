@@ -4880,7 +4880,7 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
             consignmentno: consignmentID,
             statuscode: statusCode,
             statusdescription: statusDescription,
-            statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
+            statusdatetime: moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
             reasoncode: reasoncode,
             locationdescription: locationDescription,
             epod: epodArray, // ARRAY of Base64 strings
@@ -5897,7 +5897,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             consignmentno: consignmentID,
             statuscode: statusCode,
             statusdescription: statusDescription,
-            statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
+            statusdatetime: moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
             reasoncode: reasonCode,
             locationdescription: locationDescription,
             epod: epodArray,
@@ -7729,6 +7729,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 if (data.data.status === 'failed') {
                     // ========== UPDATED: Handle failed deliveries with photos for GDEX/GDEXT ==========
 
+                    const failedTimestamp = data.data.updated_at;
+                    const failedformattedTimestamp = moment(failedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+
                     // Check if this is a GDEX/GDEXT product
                     const isGdexProduct = (product == 'GDEX' || product == 'GDEXT');
 
@@ -7831,7 +7834,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                     consignmentno: consignmentID,
                                     statuscode: "DF",
                                     statusdescription: "Delivery Failed",
-                                    statusdatetime: moment().format('YYYY-MM-DDTHH:mm:ss'),
+                                    statusdatetime: failedformattedTimestamp,
                                     reasoncode: reasonCode,
                                     locationdescription: "Go Rush Warehouse",
                                     epod: [],                    // Empty for failed deliveries
