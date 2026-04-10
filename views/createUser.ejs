@@ -7,6 +7,8 @@
     <title>Create User - Go Rush</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <style>
         * {
             margin: 0;
@@ -116,7 +118,6 @@
             object-fit: cover;
             border: 3px solid #2078BE;
             margin-top: 10px;
-            display: none;
         }
 
         .image-upload-area {
@@ -132,10 +133,85 @@
             background: #f0f8ff;
         }
 
+        .remove-image-btn {
+            display: inline-block;
+            margin-left: 10px;
+            background: #BC1F2D;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .remove-image-btn:hover {
+            background: #ff4444;
+        }
+
+        .image-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
         .logo {
             height: 40px;
             width: auto;
             max-height: 40px;
+        }
+
+        /* Cropper Modal Styles */
+        .cropper-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cropper-container-box {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+        }
+
+        .cropper-image {
+            max-width: 100%;
+            max-height: 60vh;
+        }
+
+        .cropper-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .cropper-buttons button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-crop {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #dc3545;
+            color: white;
         }
 
         @media (max-width: 768px) {
@@ -205,11 +281,13 @@
                                 <div class="form-group">
                                     <label class="form-label">Email <span class="text-danger" id="emailRequired">*</span></label>
                                     <input type="email" name="email" class="form-control" id="email" placeholder="Enter email address">
+                                    <small class="text-muted" id="emailHint" style="display: none;">Email is optional for Freelancer/Dispatcher roles</small>
                                 </div>
 
                                 <div class="form-group">
                                     <label class="form-label">Password <span class="text-danger" id="passwordRequired">*</span></label>
                                     <input type="password" name="password" class="form-control" id="password" placeholder="Enter password (min 6 characters)">
+                                    <small class="text-muted" id="passwordHint" style="display: none;">Password is optional for Freelancer/Dispatcher roles</small>
                                 </div>
 
                                 <div class="form-group">
@@ -235,11 +313,11 @@
                                     <div class="image-upload-area" onclick="document.getElementById('profilePictureInput').click()">
                                         <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
                                         <p class="mt-2">Click to upload profile picture</p>
-                                        <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
+                                        <small class="text-muted">Supported formats: JPG, PNG, GIF (Click to crop)</small>
                                     </div>
                                     <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
                                     <input type="hidden" name="profilePicture" id="profilePicture">
-                                    <img id="profilePreview" class="profile-preview" alt="Profile Preview">
+                                    <div id="profileImageContainer"></div>
                                 </div>
                             </div>
 
@@ -255,10 +333,123 @@
         </div>
     </div>
 
+    <!-- Cropper Modal -->
+    <div id="cropperModal" class="cropper-modal">
+        <div class="cropper-container-box">
+            <img id="cropperImage" class="cropper-image" alt="Crop Image">
+            <div class="cropper-buttons">
+                <button class="btn-crop" onclick="cropImage()">Crop & Save</button>
+                <button class="btn-cancel" onclick="closeCropper()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Cropper.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     
     <script>
+        let cropper = null;
+        let currentFile = null;
+
+        // Function to remove profile picture
+        function removeProfilePicture() {
+            document.getElementById('profilePicture').value = '';
+            const container = document.getElementById('profileImageContainer');
+            if (container) {
+                container.innerHTML = '';
+            }
+        }
+
+        // Open cropper modal
+        function openCropper(file) {
+            currentFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const image = document.getElementById('cropperImage');
+                image.src = e.target.result;
+                document.getElementById('cropperModal').style.display = 'flex';
+                
+                if (cropper) {
+                    cropper.destroy();
+                }
+                
+                cropper = new Cropper(image, {
+                    aspectRatio: 1, // Square for profile picture
+                    viewMode: 2,
+                    dragMode: 'move',
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    zoomable: true,
+                    zoomOnWheel: true,
+                    zoomOnTouch: true,
+                    scalable: true,
+                    rotatable: true,
+                    background: true,
+                    guides: true,
+                    center: true,
+                    highlight: true,
+                    autoCrop: true,
+                    autoCropArea: 1,
+                    responsive: true,
+                    restore: true,
+                    checkCrossOrigin: true,
+                    checkOrientation: true,
+                    modal: true
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Crop and save image
+        function cropImage() {
+            if (cropper) {
+                const canvas = cropper.getCroppedCanvas({
+                    width: 200,
+                    height: 200,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
+                });
+                
+                const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
+                document.getElementById('profilePicture').value = croppedImage;
+                
+                // Update preview
+                const container = document.getElementById('profileImageContainer');
+                container.innerHTML = '';
+                
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'image-container';
+                
+                const preview = document.createElement('img');
+                preview.className = 'profile-preview';
+                preview.src = croppedImage;
+                preview.alt = 'Profile Preview';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-image-btn';
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = function() { removeProfilePicture(); };
+                
+                imageContainer.appendChild(preview);
+                imageContainer.appendChild(removeBtn);
+                container.appendChild(imageContainer);
+                
+                closeCropper();
+            }
+        }
+
+        // Close cropper modal
+        function closeCropper() {
+            document.getElementById('cropperModal').style.display = 'none';
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        }
+
         // Show/hide fields based on role
         document.getElementById('role').addEventListener('change', function() {
             const role = this.value;
@@ -267,6 +458,8 @@
             const passwordField = document.getElementById('password');
             const emailRequired = document.getElementById('emailRequired');
             const passwordRequired = document.getElementById('passwordRequired');
+            const emailHint = document.getElementById('emailHint');
+            const passwordHint = document.getElementById('passwordHint');
             
             if (role === 'freelancer' || role === 'dispatcher') {
                 regularFields.style.display = 'block';
@@ -274,45 +467,36 @@
                 passwordField.removeAttribute('required');
                 emailRequired.style.display = 'none';
                 passwordRequired.style.display = 'none';
+                if (emailHint) emailHint.style.display = 'block';
+                if (passwordHint) passwordHint.style.display = 'block';
+                emailField.placeholder = "Email (optional for Freelancer/Dispatcher)";
+                passwordField.placeholder = "Password (optional for Freelancer/Dispatcher)";
             } else if (role && role !== '') {
                 regularFields.style.display = 'block';
                 emailField.setAttribute('required', 'required');
                 passwordField.setAttribute('required', 'required');
                 emailRequired.style.display = 'inline';
                 passwordRequired.style.display = 'inline';
+                if (emailHint) emailHint.style.display = 'none';
+                if (passwordHint) passwordHint.style.display = 'none';
+                emailField.placeholder = "Enter email address";
+                passwordField.placeholder = "Enter password (min 6 characters)";
             } else {
                 regularFields.style.display = 'none';
             }
         });
 
-        // Image upload and compression
-        document.getElementById('profilePictureInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        
-                        // Compress image to 200x200
-                        canvas.width = 200;
-                        canvas.height = 200;
-                        ctx.drawImage(img, 0, 0, 200, 200);
-                        
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                        document.getElementById('profilePicture').value = compressedBase64;
-                        
-                        const preview = document.getElementById('profilePreview');
-                        preview.src = compressedBase64;
-                        preview.style.display = 'block';
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        // Profile Picture upload with cropper
+        const profileInput = document.getElementById('profilePictureInput');
+        if (profileInput) {
+            profileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    openCropper(file);
+                    profileInput.value = ''; // Clear input
+                }
+            });
+        }
 
         // Trigger role change on page load
         if (document.getElementById('role').value) {

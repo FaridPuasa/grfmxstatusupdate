@@ -2915,14 +2915,54 @@ app.get('/createUser', ensureAuthenticated, ensureAdmin, (req, res) => {
 // 👥 User Management Routes
 // ==================================================
 
-// List all users (Admin only)
+// List all users (Admin only) - with role-based sorting
 app.get('/listUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
+        // Define role priority order
+        const rolePriority = {
+            'admin': 1,
+            'manager': 2,
+            'finance': 3,
+            'cs': 4,
+            'warehouse': 5,
+            'dispatcher': 6,
+            'freelancer': 7,
+            'moh': 8
+        };
+        
+        // Get all users and sort by role priority
         const users = await USERS.find({}).sort({ date: -1 });
+        
+        // Sort users by role priority
+        users.sort((a, b) => {
+            const priorityA = rolePriority[a.role] || 999;
+            const priorityB = rolePriority[b.role] || 999;
+            return priorityA - priorityB;
+        });
+        
+        // Only get flash message if it exists and is not empty
+        let success_msg = req.flash('success_msg');
+        let error_msg = req.flash('error_msg');
+        
+        // Check if success_msg is an array and get the first non-empty value
+        if (success_msg && Array.isArray(success_msg)) {
+            success_msg = success_msg.find(msg => msg && msg.trim() !== '') || null;
+        } else if (success_msg === '') {
+            success_msg = null;
+        }
+        
+        // Check if error_msg is an array and get the first non-empty value
+        if (error_msg && Array.isArray(error_msg)) {
+            error_msg = error_msg.find(msg => msg && msg.trim() !== '') || null;
+        } else if (error_msg === '') {
+            error_msg = null;
+        }
+        
         res.render('listUser', { 
             users: users,
             user: req.user,
-            success_msg: req.flash('success_msg')
+            success_msg: success_msg,
+            error_msg: error_msg
         });
     } catch (err) {
         console.error(err);
@@ -2980,11 +3020,14 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
     }
 });
 
-// In updateUser POST route
+// Update user POST route with user ID editing support
 app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
         const identifier = req.params.identifier;
-        const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture, qrcodeVerify } = req.body;
+        const { 
+            role, fullName, name, email, password, icNum, jobPosition, status, 
+            profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode 
+        } = req.body;
         let errors = [];
         
         // Validation
@@ -3021,6 +3064,32 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             return res.redirect('/listUser');
         }
         
+        // Check if userId is being changed and validate uniqueness
+        let finalUserId = existingUser.userId;
+        if (userId && userId !== existingUser.userId) {
+            // Validate userId format (GRxxxxxx or FLxxxxxx)
+            const userIdPattern = /^(GR|FL)\d{6}$/;
+            if (!userIdPattern.test(userId)) {
+                errors.push({ msg: 'User ID must be in format GRxxxxxx or FLxxxxxx (where x is a number)' });
+                req.flash('error', errors);
+                return res.redirect(`/updateUser/${identifier}`);
+            }
+            
+            // Check if userId already exists
+            const userIdExists = await USERS.findOne({ 
+                userId: userId, 
+                _id: { $ne: existingUser._id } 
+            });
+            
+            if (userIdExists) {
+                errors.push({ msg: 'User ID already exists. Please choose a different one.' });
+                req.flash('error', errors);
+                return res.redirect(`/updateUser/${identifier}`);
+            }
+            
+            finalUserId = userId;
+        }
+        
         // Prepare update data
         let updateData = {
             role,
@@ -3029,9 +3098,22 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             icNum: icNum || '',
             jobPosition,
             status,
-            profilePicture: profilePicture || '',
-            qrcodeVerify: qrcodeVerify || ''
+            userId: finalUserId
         };
+        
+        // Handle profile picture
+        if (removeProfilePicture === '1') {
+            updateData.profilePicture = '';
+        } else if (profilePicture && profilePicture !== '') {
+            updateData.profilePicture = profilePicture;
+        }
+        
+        // Handle QR code
+        if (removeQrcode === '1') {
+            updateData.qrcodeVerify = '';
+        } else if (qrcodeVerify && qrcodeVerify !== '') {
+            updateData.qrcodeVerify = qrcodeVerify;
+        }
         
         // Handle email based on role
         if (role !== 'freelancer' && role !== 'dispatcher') {
@@ -3055,7 +3137,6 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             }
         } else {
             // For freelancer/dispatcher, remove email field if it exists
-            // Don't include email in updateData
             updateData.$unset = { email: 1 };
         }
         
@@ -3064,9 +3145,6 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(password, salt);
         }
-        
-        // Keep existing userId
-        updateData.userId = existingUser.userId;
         
         // Perform update
         if (isObjectId) {
@@ -3316,7 +3394,26 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
 
         const newUser = new USERS(userData);
         
-        // Save user - let the pre-save middleware generate userId
+        // Generate userId based on role (before saving)
+        const prefix = (role === 'freelancer') ? 'FL' : 'GR';
+        
+        // Find the highest userId with the same prefix
+        const lastUser = await USERS.findOne({ 
+            userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' } 
+        }).sort({ userId: -1 });
+        
+        let lastNum = 0;
+        if (lastUser && lastUser.userId) {
+            const match = lastUser.userId.match(new RegExp(`${prefix}(\\d+)`));
+            if (match) {
+                lastNum = parseInt(match[1]);
+            }
+        }
+        
+        const newNumber = lastNum + 1;
+        newUser.userId = `${prefix}${String(newNumber).padStart(6, '0')}`;
+        
+        // Save user
         await newUser.save();
         
         console.log('User created successfully:', newUser.userId);

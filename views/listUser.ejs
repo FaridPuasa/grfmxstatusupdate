@@ -184,9 +184,16 @@
                 </div>
             </div>
             <div class="card-body">
-                <% if (typeof success_msg !== 'undefined' && success_msg) { %>
+                <% if (typeof success_msg !== 'undefined' && success_msg && success_msg !== '') { %>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="fas fa-check-circle"></i> <%= success_msg %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
+
+                <% if (typeof error_msg !== 'undefined' && error_msg && error_msg !== '') { %>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i> <%= error_msg %>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <% } %>
@@ -222,7 +229,7 @@
                                             <a href="/verify/<%= user.userId %>" target="_blank" class="btn-digital-id btn-sm">
                                                 <i class="fas fa-id-card"></i> Digital ID
                                             </a>
-                                            <% if (user.qrcodeVerify) { %>
+                                            <% if (user.qrcodeVerify && user.qrcodeVerify !== '') { %>
                                                 <button onclick="showQRCode('<%= user.qrcodeVerify %>', '<%= user.name %>')" class="btn-qrcode btn-sm">
                                                     <i class="fas fa-qrcode"></i> QR Code
                                                 </button>
