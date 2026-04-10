@@ -4,119 +4,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create User</title>
+    <title>Create User - Go Rush</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         .navbar-nav.flex-row {
             flex-direction: row !important;
         }
 
         .navbar {
             background-color: transparent;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
         }
 
         .container-bg {
-            background-color: #333;
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
         }
 
         .navbar-nav.flex-row .nav-item {
             margin-right: 10px;
         }
 
-        .btn-submit {
-            margin-top: 10px;
-        }
-
-        th,
-        td {
-            font-size: 15px;
-            text-align: center;
-        }
-
-        table {
-            width: 100%;
-            margin: 0 auto;
-        }
-
         .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
+            color: white;
+            padding: 20px 30px;
+            border: none;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .form-group {
             margin-bottom: 20px;
         }
 
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #2078BE;
+            box-shadow: 0 0 0 0.2rem rgba(32, 120, 190, 0.25);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .profile-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #2078BE;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .image-upload-area {
+            border: 2px dashed #2078BE;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-upload-area:hover {
+            background: #f0f8ff;
+        }
+
         .logo {
-  height: 40px;
-  width: auto;
-  max-height: 40px;
-}
+            height: 40px;
+            width: auto;
+            max-height: 40px;
+        }
 
-@media (max-width: 768px) {
-  .logo {
-    height: 30px;
-    max-height: 30px;
-  }
-}
-
-@media (max-width: 480px) {
-  .logo {
-    height: 25px;
-    max-height: 25px;
-  }
-}
+        @media (max-width: 768px) {
+            .logo {
+                height: 30px;
+                max-height: 30px;
+            }
+        }
     </style>
-
-    <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
-  <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
-<link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
-<link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
 </head>
 
-<body class="bg-light">
+<body>
     <div class="container-bg">
         <div class="container">
             <%- include('partials/navbar') %>
         </div>
     </div>
 
-    <body>
-        <h1 class="text-center mt-4">Create User</h1>
-        <% if (typeof errors !=='undefined' ) { %>
-            <ul>
-                <% errors.forEach(function(error) { %>
-                    <li>
-                        <%= error.msg %>
-                    </li>
-                    <% }); %>
-            </ul>
-            <% } %>
-                <form action="/createUser" method="post">
-                    <div>
-                        <label for="name">Name:</label>
-                        <input type="text" name="name" required>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-user-plus"></i> Create New User</h2>
                     </div>
-                    <div>
-                        <label for="email">Email:</label>
-                        <input type="email" name="email" required>
-                    </div>
-                    <div>
-                        <label for="password">Password:</label>
-                        <input type="password" name="password" required>
-                    </div>
-                    <div>
-                        <label for="role">Role:</label>
-                        <select name="role" required>
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="cs">CS</option>
-                            <option value="warehouse">Warehouse</option>
-                            <option value="finance">Finance</option>
-                            <option value="moh">MOH</option>
-                        </select>
-                    </div>
-                    <button type="submit">Create User</button>
-                </form>
+                    <div class="card-body">
+                        <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong><i class="fas fa-exclamation-triangle"></i> Errors:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <% errors.forEach(function(error) { %>
+                                        <li><%= error.msg %></li>
+                                    <% }); %>
+                                </ul>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        <% } %>
 
-                <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    </body>
+                        <form action="/createUser" method="post" id="userForm">
+                            <div class="form-group">
+                                <label class="form-label">Role <span class="text-danger">*</span></label>
+                                <select name="role" id="role" class="form-select" required>
+                                    <option value="">Select Role</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="cs">CS</option>
+                                    <option value="warehouse">Warehouse</option>
+                                    <option value="finance">Finance</option>
+                                    <option value="moh">MOH</option>
+                                    <option value="dispatcher">Dispatcher</option>
+                                    <option value="freelancer">Freelancer</option>
+                                </select>
+                            </div>
+
+                            <div id="regularFields" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" name="fullName" class="form-control" placeholder="Enter full name">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Nickname <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control" required placeholder="Enter nickname">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Email <span class="text-danger" id="emailRequired">*</span></label>
+                                    <input type="email" name="email" class="form-control" id="email" placeholder="Enter email address">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Password <span class="text-danger" id="passwordRequired">*</span></label>
+                                    <input type="password" name="password" class="form-control" id="password" placeholder="Enter password (min 6 characters)">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">IC No</label>
+                                    <input type="text" name="icNum" class="form-control" placeholder="Enter IC number">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Job Position <span class="text-danger">*</span></label>
+                                    <input type="text" name="jobPosition" class="form-control" required placeholder="Enter job position">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Status <span class="text-danger">*</span></label>
+                                    <select name="status" class="form-select" required>
+                                        <option value="Active">Active</option>
+                                        <option value="Inactive">Inactive</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Profile Picture</label>
+                                    <div class="image-upload-area" onclick="document.getElementById('profilePictureInput').click()">
+                                        <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
+                                        <p class="mt-2">Click to upload profile picture</p>
+                                        <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
+                                    </div>
+                                    <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
+                                    <input type="hidden" name="profilePicture" id="profilePicture">
+                                    <img id="profilePreview" class="profile-preview" alt="Profile Preview">
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-4">
+                                <button type="submit" class="btn-submit">
+                                    <i class="fas fa-save"></i> Create User
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Show/hide fields based on role
+        document.getElementById('role').addEventListener('change', function() {
+            const role = this.value;
+            const regularFields = document.getElementById('regularFields');
+            const emailField = document.getElementById('email');
+            const passwordField = document.getElementById('password');
+            const emailRequired = document.getElementById('emailRequired');
+            const passwordRequired = document.getElementById('passwordRequired');
+            
+            if (role === 'freelancer' || role === 'dispatcher') {
+                regularFields.style.display = 'block';
+                emailField.removeAttribute('required');
+                passwordField.removeAttribute('required');
+                emailRequired.style.display = 'none';
+                passwordRequired.style.display = 'none';
+            } else if (role && role !== '') {
+                regularFields.style.display = 'block';
+                emailField.setAttribute('required', 'required');
+                passwordField.setAttribute('required', 'required');
+                emailRequired.style.display = 'inline';
+                passwordRequired.style.display = 'inline';
+            } else {
+                regularFields.style.display = 'none';
+            }
+        });
+
+        // Image upload and compression
+        document.getElementById('profilePictureInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Compress image to 200x200
+                        canvas.width = 200;
+                        canvas.height = 200;
+                        ctx.drawImage(img, 0, 0, 200, 200);
+                        
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById('profilePicture').value = compressedBase64;
+                        
+                        const preview = document.getElementById('profilePreview');
+                        preview.src = compressedBase64;
+                        preview.style.display = 'block';
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Trigger role change on page load
+        if (document.getElementById('role').value) {
+            document.getElementById('role').dispatchEvent(new Event('change'));
+        }
+    </script>
+</body>
 
 </html>

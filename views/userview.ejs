@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Digital ID - <%= user.name %></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        .digital-id-card {
+            max-width: 400px;
+            width: 100%;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .card-header {
+            background: white;
+            padding: 30px 30px 20px 30px;  /* Increased top padding */
+            text-align: center;
+        }
+
+        .company-logo {
+            max-width: 200px;
+            height: auto;
+            margin: 0 auto;
+            display: block;
+        }
+
+        /* Added spacer between logo and profile picture */
+        .logo-spacer {
+            height: 0px;  /* Increased spacing */
+        }
+
+        .card-body {
+            padding: 0px 30px 30px 30px;
+            text-align: center;
+        }
+
+        .profile-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #2078BE;
+            margin: 0 auto 20px auto;  /* Changed from negative margin */
+            background: white;
+            display: block;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            position: relative;
+            top: 0;  /* Removed negative positioning */
+        }
+
+        /* Extra spacing after profile picture */
+        .profile-spacer {
+            height: 0px;
+        }
+
+        .name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .nickname {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .timer {
+            font-family: monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: #2078BE;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .status-authorized {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-expired {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .status-unauthorized {
+            background: #dc3545;
+            color: white;
+        }
+
+        .assurance-text {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .contact-info {
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .contact-link {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            background: #2078BE;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .contact-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .qr-code {
+            margin-top: 0px;
+            padding: 0px;
+            background: white;
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .qr-code img {
+            max-width: 150px;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+        }
+
+        @media (max-width: 480px) {
+            .digital-id-card {
+                margin: 10px;
+            }
+            
+            .name {
+                font-size: 20px;
+            }
+            
+            .profile-circle {
+                width: 100px;
+                height: 100px;
+            }
+        }
+    </style>
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+</head>
+
+<body>
+    <div class="digital-id-card">
+        <div class="card-header">
+            <img src="/images/logo.png" alt="Go Rush Logo" class="company-logo">
+        </div>
+        
+        <!-- Spacer between logo and profile picture -->
+        <div class="logo-spacer"></div>
+        
+        <div class="card-body">
+            <% if (user.profilePicture) { %>
+                <img src="<%= user.profilePicture %>" alt="Profile" class="profile-circle">
+            <% } %>
+            
+            <!-- Spacer after profile picture -->
+            <div class="profile-spacer"></div>
+            
+            <div class="name">
+                <%= user.fullName || user.name %>
+            </div>
+            <% if (user.fullName && user.fullName !== user.name) { %>
+                <div class="nickname">
+                    (<%= user.name %>)
+                </div>
+            <% } %>
+            
+            <div class="status-badge status-<%= statusType %>">
+                <i class="fas <%= statusIcon %>"></i> <%= statusText %>
+            </div>
+            
+            <% if (user.icNum && user.icNum.length >= 4) { %>
+                <div class="info-row">
+                    <div class="info-label">
+                        <i class="fas fa-id-card"></i> IC Number
+                    </div>
+                    <div class="info-value">
+                        ****-****-<%= user.icNum.slice(-4) %>
+                    </div>
+                </div>
+            <% } %>
+            
+            <div class="info-row">
+                <div class="info-label">
+                    <i class="fas fa-briefcase"></i> Position
+                </div>
+                <div class="info-value">
+                    <% if (positionHtml) { %>
+                        <%- positionHtml %>
+                    <% } else { %>
+                        <%= position %>
+                    <% } %>
+                </div>
+            </div>
+            
+            <!-- Assurance text above buttons -->
+            <div class="assurance-text">
+                <%= assuranceText %>
+            </div>
+            
+            <div class="contact-info">
+                <% if (contactHtml) { %>
+                    <%- contactHtml %>
+                <% } %>
+            </div>
+            
+            <!-- QR Code Image -->
+            <% if (user.qrcodeVerify) { %>
+                <div class="qr-code">
+                    <img src="<%= user.qrcodeVerify %>" alt="Verification QR Code">
+                </div>
+            <% } %>
+        </div>
+        
+        <div class="footer">
+            <i class="fas fa-shield-alt"></i> Verified Digital ID • Go Rush Express
+        </div>
+    </div>
+    
+    <% if (needTimer) { %>
+    <script>
+        function updateTimer() {
+            const now = new Date();
+            const bruneiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Brunei' }));
+            const tomorrow8am = new Date(bruneiTime);
+            tomorrow8am.setDate(tomorrow8am.getDate() + 1);
+            tomorrow8am.setHours(8, 0, 0, 0);
+            
+            const diff = tomorrow8am - bruneiTime;
+            
+            if (diff <= 0) {
+                document.getElementById('timer').innerHTML = 'Expired';
+                return;
+            }
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (3600000)) / (1000 * 60));
+            const seconds = Math.floor((diff % (60000)) / 1000);
+            
+            document.getElementById('timer').innerHTML = `${hours}h ${minutes}m ${seconds}s`;
+        }
+        
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    </script>
+    <% } %>
+</body>
+
+</html>

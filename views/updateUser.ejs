@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update User - Go Rush</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container-bg {
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
+        }
+
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
+            color: white;
+            padding: 20px 30px;
+            border: none;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #2078BE;
+            box-shadow: 0 0 0 0.2rem rgba(32, 120, 190, 0.25);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .profile-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #2078BE;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .qrcode-preview {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            border: 2px solid #2078BE;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .image-upload-area {
+            border: 2px dashed #2078BE;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-upload-area:hover {
+            background: #f0f8ff;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            max-height: 40px;
+        }
+
+        .user-id-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #2078BE;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                height: 30px;
+                max-height: 30px;
+            }
+        }
+    </style>
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+</head>
+
+<body>
+    <div class="container-bg">
+        <div class="container">
+            <%- include('partials/navbar') %>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-user-edit"></i> Update User</h2>
+                    </div>
+                    <div class="card-body">
+                        <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong><i class="fas fa-exclamation-triangle"></i> Errors:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <% errors.forEach(function(error) { %>
+                                        <li><%= error.msg %></li>
+                                    <% }); %>
+                                </ul>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        <% } %>
+
+                        <!-- User ID Display Box -->
+                        <div class="user-id-box">
+                            <small class="text-muted">User ID (Unique Identifier)</small>
+                            <h5 class="mb-0"><%= editUser.userId || 'Will be generated automatically' %></h5>
+                            <small class="text-muted">User ID is unique and cannot be changed</small>
+                        </div>
+
+                        <form action="/updateUser/<%= editUser.userId || editUser._id %>" method="post" id="userForm">
+                            <div class="form-group">
+                                <label class="form-label">Role <span class="text-danger">*</span></label>
+                                <select name="role" id="role" class="form-select" required>
+                                    <option value="admin" <%= editUser.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                                    <option value="manager" <%= editUser.role === 'manager' ? 'selected' : '' %>>Manager</option>
+                                    <option value="cs" <%= editUser.role === 'cs' ? 'selected' : '' %>>CS</option>
+                                    <option value="warehouse" <%= editUser.role === 'warehouse' ? 'selected' : '' %>>Warehouse</option>
+                                    <option value="finance" <%= editUser.role === 'finance' ? 'selected' : '' %>>Finance</option>
+                                    <option value="moh" <%= editUser.role === 'moh' ? 'selected' : '' %>>MOH</option>
+                                    <option value="dispatcher" <%= editUser.role === 'dispatcher' ? 'selected' : '' %>>Dispatcher</option>
+                                    <option value="freelancer" <%= editUser.role === 'freelancer' ? 'selected' : '' %>>Freelancer</option>
+                                </select>
+                            </div>
+
+                            <div id="regularFields">
+                                <div class="form-group">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" name="fullName" class="form-control" value="<%= editUser.fullName || '' %>" placeholder="Enter full name">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Nickname <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control" required value="<%= editUser.name %>" placeholder="Enter nickname">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Email <span class="text-danger" id="emailRequired">*</span></label>
+                                    <input type="email" name="email" class="form-control" id="email" value="<%= editUser.email || '' %>" placeholder="Enter email address">
+                                    <small class="text-muted" id="emailHint" style="display: none;">Email is optional for Freelancer/Dispatcher roles</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Password <span class="text-danger" id="passwordRequired">*</span></label>
+                                    <input type="password" name="password" class="form-control" id="password" placeholder="Leave blank to keep current password">
+                                    <small class="text-muted">Leave blank to keep current password (min 6 characters if changing)</small>
+                                    <small class="text-muted" id="passwordHint" style="display: none;">Password is optional for Freelancer/Dispatcher roles</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">IC No</label>
+                                    <input type="text" name="icNum" class="form-control" value="<%= editUser.icNum || '' %>" placeholder="Enter IC number">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Job Position <span class="text-danger">*</span></label>
+                                    <input type="text" name="jobPosition" class="form-control" required value="<%= editUser.jobPosition || '' %>" placeholder="Enter job position">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Status <span class="text-danger">*</span></label>
+                                    <select name="status" class="form-select" required>
+                                        <option value="Active" <%= editUser.status === 'Active' ? 'selected' : '' %>>Active</option>
+                                        <option value="Inactive" <%= editUser.status === 'Inactive' ? 'selected' : '' %>>Inactive</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Profile Picture</label>
+                                    <div class="image-upload-area" onclick="document.getElementById('profilePictureInput').click()">
+                                        <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
+                                        <p class="mt-2">Click to upload new profile picture</p>
+                                        <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
+                                    </div>
+                                    <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
+                                    <input type="hidden" name="profilePicture" id="profilePicture" value="<%= editUser.profilePicture || '' %>">
+                                    <% if (editUser.profilePicture) { %>
+                                        <img id="profilePreview" class="profile-preview" src="<%= editUser.profilePicture %>" alt="Profile Preview">
+                                    <% } else { %>
+                                        <img id="profilePreview" class="profile-preview" style="display: none;" alt="Profile Preview">
+                                    <% } %>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">QR Code Image (for verification)</label>
+                                    <div class="image-upload-area" onclick="document.getElementById('qrcodeInput').click()">
+                                        <i class="fas fa-qrcode fa-2x" style="color: #2078BE;"></i>
+                                        <p class="mt-2">Click to upload QR code image</p>
+                                        <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
+                                    </div>
+                                    <input type="file" id="qrcodeInput" accept="image/*" style="display: none;">
+                                    <input type="hidden" name="qrcodeVerify" id="qrcodeVerify" value="<%= editUser.qrcodeVerify || '' %>">
+                                    <% if (editUser.qrcodeVerify) { %>
+                                        <img id="qrcodePreview" class="qrcode-preview" src="<%= editUser.qrcodeVerify %>" alt="QR Code Preview">
+                                    <% } else { %>
+                                        <img id="qrcodePreview" class="qrcode-preview" style="display: none;" alt="QR Code Preview">
+                                    <% } %>
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-4">
+                                <button type="submit" class="btn-submit">
+                                    <i class="fas fa-save"></i> Update User
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Get the current role
+        const currentRole = '<%= editUser.role %>';
+        const emailField = document.getElementById('email');
+        const passwordField = document.getElementById('password');
+        const emailRequired = document.getElementById('emailRequired');
+        const passwordRequired = document.getElementById('passwordRequired');
+        const emailHint = document.getElementById('emailHint');
+        const passwordHint = document.getElementById('passwordHint');
+        
+        // Function to update field requirements based on role
+        function updateFieldRequirements() {
+            const role = document.getElementById('role').value;
+            
+            if (role === 'freelancer' || role === 'dispatcher') {
+                // For Freelancer/Dispatcher - email and password are optional
+                emailField.removeAttribute('required');
+                passwordField.removeAttribute('required');
+                emailRequired.style.display = 'none';
+                passwordRequired.style.display = 'none';
+                if (emailHint) emailHint.style.display = 'block';
+                if (passwordHint) passwordHint.style.display = 'block';
+                
+                // Update placeholder text
+                emailField.placeholder = "Email (optional for Freelancer/Dispatcher)";
+                passwordField.placeholder = "Password (optional for Freelancer/Dispatcher)";
+            } else {
+                // For regular roles - email and password are required
+                emailField.setAttribute('required', 'required');
+                emailRequired.style.display = 'inline';
+                passwordRequired.style.display = 'inline';
+                if (emailHint) emailHint.style.display = 'none';
+                if (passwordHint) passwordHint.style.display = 'none';
+                
+                // Update placeholder text
+                emailField.placeholder = "Enter email address";
+                passwordField.placeholder = "Leave blank to keep current password";
+            }
+        }
+        
+        // Initial setup based on current role
+        updateFieldRequirements();
+        
+        // Listen for role changes
+        document.getElementById('role').addEventListener('change', function() {
+            updateFieldRequirements();
+        });
+
+        // Profile Picture upload and compression
+        document.getElementById('profilePictureInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        canvas.width = 200;
+                        canvas.height = 200;
+                        ctx.drawImage(img, 0, 0, 200, 200);
+                        
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById('profilePicture').value = compressedBase64;
+                        
+                        const preview = document.getElementById('profilePreview');
+                        preview.src = compressedBase64;
+                        preview.style.display = 'block';
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // QR Code upload and compression
+        document.getElementById('qrcodeInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Compress QR code to 300x300 (square)
+                        canvas.width = 300;
+                        canvas.height = 300;
+                        ctx.drawImage(img, 0, 0, 300, 300);
+                        
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                        document.getElementById('qrcodeVerify').value = compressedBase64;
+                        
+                        const preview = document.getElementById('qrcodePreview');
+                        preview.src = compressedBase64;
+                        preview.style.display = 'block';
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+
+</html>

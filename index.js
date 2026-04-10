@@ -2911,47 +2911,398 @@ app.get('/createUser', ensureAuthenticated, ensureAdmin, (req, res) => {
     res.render('createUser', { user: req.user });
 });
 
+// ==================================================
+// 👥 User Management Routes
+// ==================================================
+
+// List all users (Admin only)
+app.get('/listUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    try {
+        const users = await USERS.find({}).sort({ date: -1 });
+        res.render('listUser', { 
+            users: users,
+            user: req.user,
+            success_msg: req.flash('success_msg')
+        });
+    } catch (err) {
+        console.error(err);
+        req.flash('error_msg', 'Error loading users');
+        res.redirect('/');
+    }
+});
+
+// GET route for update user - Handle both userId and MongoDB _id
+app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    try {
+        const identifier = req.params.identifier;
+        console.log('Editing user with identifier:', identifier);
+        
+        let userToEdit;
+        
+        // Check if identifier is MongoDB ObjectId format (24 hex chars)
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+        
+        if (isObjectId) {
+            // Search by MongoDB _id
+            userToEdit = await USERS.findById(identifier);
+        } else {
+            // Search by userId (GR000001 format)
+            userToEdit = await USERS.findOne({ userId: identifier });
+        }
+        
+        if (!userToEdit) {
+            req.flash('error_msg', 'User not found');
+            return res.redirect('/listUser');
+        }
+        
+        // Generate userId if it doesn't exist
+        if (!userToEdit.userId) {
+            const lastUser = await USERS.findOne({ userId: { $exists: true, $ne: null } }).sort({ userId: -1 });
+            let lastNum = 0;
+            if (lastUser && lastUser.userId) {
+                const match = lastUser.userId.match(/GR(\d+)/);
+                if (match) lastNum = parseInt(match[1]);
+            }
+            userToEdit.userId = `GR${String(lastNum + 1).padStart(6, '0')}`;
+            await userToEdit.save();
+            console.log(`Generated userId ${userToEdit.userId} for user ${userToEdit.name}`);
+        }
+        
+        res.render('updateUser', { 
+            editUser: userToEdit,
+            user: req.user,
+            errors: req.flash('error')
+        });
+    } catch (err) {
+        console.error(err);
+        req.flash('error_msg', 'Error loading user: ' + err.message);
+        res.redirect('/listUser');
+    }
+});
+
+// POST route for update user - Handle both userId and MongoDB _id
+app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    try {
+        const identifier = req.params.identifier;
+        console.log('Updating user with identifier:', identifier);
+        
+        const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture, qrcodeVerify } = req.body;
+        let errors = [];
+        
+        // Validation
+        if (!name || !role || !jobPosition || !status) {
+            errors.push({ msg: 'Please fill all required fields' });
+        }
+        
+        if (role !== 'freelancer' && role !== 'dispatcher') {
+            if (!email) {
+                errors.push({ msg: 'Email is required for this role' });
+            }
+            if (password && password.length < 6) {
+                errors.push({ msg: 'Password must be at least 6 characters' });
+            }
+        }
+        
+        if (errors.length > 0) {
+            req.flash('error', errors);
+            return res.redirect(`/updateUser/${identifier}`);
+        }
+        
+        // Find existing user
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+        let existingUser;
+        
+        if (isObjectId) {
+            existingUser = await USERS.findById(identifier);
+        } else {
+            existingUser = await USERS.findOne({ userId: identifier });
+        }
+        
+        if (!existingUser) {
+            req.flash('error_msg', 'User not found');
+            return res.redirect('/listUser');
+        }
+        
+        const updateData = {
+            role,
+            fullName: fullName || '',
+            name,
+            icNum: icNum || '',
+            jobPosition,
+            status,
+            profilePicture: profilePicture || '',
+            qrcodeVerify: qrcodeVerify || ''
+        };
+        
+        // Only update email if provided and role requires it
+        if (email && (role !== 'freelancer' && role !== 'dispatcher')) {
+            // Check if email is taken by another user
+            const emailExists = await USERS.findOne({ 
+                email: email, 
+                _id: { $ne: existingUser._id } 
+            });
+            if (emailExists) {
+                errors.push({ msg: 'Email already exists' });
+                req.flash('error', errors);
+                return res.redirect(`/updateUser/${identifier}`);
+            }
+            updateData.email = email;
+        }
+        
+        // Update password if provided
+        if (password && password.length >= 6) {
+            const salt = await bcrypt.genSalt(10);
+            updateData.password = await bcrypt.hash(password, salt);
+        }
+        
+        // Keep existing userId
+        updateData.userId = existingUser.userId;
+        
+        // Perform update
+        if (isObjectId) {
+            await USERS.findByIdAndUpdate(existingUser._id, updateData);
+        } else {
+            await USERS.findOneAndUpdate({ userId: identifier }, updateData);
+        }
+        
+        req.flash('success_msg', 'User updated successfully');
+        res.redirect('/listUser');
+        
+    } catch (err) {
+        console.error(err);
+        req.flash('error_msg', 'Error updating user: ' + err.message);
+        res.redirect(`/updateUser/${req.params.identifier}`);
+    }
+});
+
+// Updated DELETE route to handle both formats
+app.delete('/deleteUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    try {
+        const identifier = req.params.identifier;
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+        
+        if (isObjectId) {
+            await USERS.findByIdAndDelete(identifier);
+        } else {
+            await USERS.findOneAndDelete({ userId: identifier });
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Error deleting user' });
+    }
+});
+
+// Public digital ID view
+app.get('/verify/:userId', async (req, res) => {
+    try {
+        const user = await USERS.findOne({ userId: req.params.userId });
+        
+        if (!user) {
+            return res.status(404).send('User not found');
+        }
+        
+        let statusType = 'unauthorized';
+        let statusText = 'Not Affiliated with Go Rush';
+        let statusIcon = 'fa-times-circle';
+        let position = user.jobPosition || 'Staff';
+        let positionHtml = null;
+        let contactHtml = null;
+        let needTimer = false;
+        let assuranceText = '';
+        
+        // Check if user is active
+        if (user.status === 'Active') {
+            // Check for freelancer
+            if (user.role === 'freelancer') {
+                // Check if freelancer has job today
+                const today = moment().tz('Asia/Brunei').format('YYYY-MM-DD');
+                const hasJobToday = await ORDERS.findOne({ 
+                    jobDate: today,
+                    $or: [
+                        { assignedTo: user.name },
+                        { lastAssignedTo: user.name }
+                    ]
+                });
+                
+                if (hasJobToday) {
+                    statusType = 'authorized';
+                    statusText = 'Authorized Digital ID';
+                    statusIcon = 'fa-check-circle';
+                    positionHtml = `Freelancer for <span id="timer" class="timer">Loading...</span>`;
+                    needTimer = true;
+                    assuranceText = 'For assurance, please contact Go Rush Manager:';
+                    contactHtml = `
+                        <a href="tel:+6738334988" class="contact-link">
+                            <i class="fas fa-phone"></i> Call
+                        </a>
+                        <a href="sms:+6738334988" class="contact-link">
+                            <i class="fas fa-sms"></i> SMS
+                        </a>
+                        <a href="https://wa.me/6738334988" class="contact-link">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                    `;
+                } else {
+                    statusType = 'expired';
+                    statusText = 'Inactive Freelancer';
+                    statusIcon = 'fa-clock';
+                    position = 'Inactive Freelancer';
+                    assuranceText = 'For assurance, please contact Go Rush Manager:';
+                    contactHtml = `
+                        <a href="tel:+6738334988" class="contact-link">
+                            <i class="fas fa-phone"></i> Call
+                        </a>
+                        <a href="sms:+6738334988" class="contact-link">
+                            <i class="fas fa-sms"></i> SMS
+                        </a>
+                        <a href="https://wa.me/6738334988" class="contact-link">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                    `;
+                }
+            } else if (user.role === 'dispatcher') {
+                statusType = 'authorized';
+                statusText = 'Authorized Digital ID';
+                statusIcon = 'fa-check-circle';
+                assuranceText = 'For assurance, please contact Go Rush Manager:';
+                contactHtml = `
+                    <a href="tel:+6738334988" class="contact-link">
+                        <i class="fas fa-phone"></i> Call
+                    </a>
+                    <a href="sms:+6738334988" class="contact-link">
+                        <i class="fas fa-sms"></i> SMS
+                    </a>
+                    <a href="https://wa.me/6738334988" class="contact-link">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                `;
+            } else {
+                statusType = 'authorized';
+                statusText = 'Authorized Digital ID';
+                statusIcon = 'fa-check-circle';
+                assuranceText = 'For assurance, please contact Go Rush HR:';
+                contactHtml = `
+                    <a href="tel:+6738740189" class="contact-link">
+                        <i class="fas fa-phone"></i> Call
+                    </a>
+                    <a href="sms:+6738740189" class="contact-link">
+                        <i class="fas fa-sms"></i> SMS
+                    </a>
+                    <a href="https://wa.me/6738740189" class="contact-link">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                `;
+            }
+        } else {
+            // Inactive user
+            if (user.role === 'freelancer' || user.role === 'dispatcher') {
+                assuranceText = 'For assurance, please contact Go Rush Manager:';
+                contactHtml = `
+                    <a href="tel:+6738334988" class="contact-link">
+                        <i class="fas fa-phone"></i> Call
+                    </a>
+                    <a href="sms:+6738334988" class="contact-link">
+                        <i class="fas fa-sms"></i> SMS
+                    </a>
+                    <a href="https://wa.me/6738334988" class="contact-link">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                `;
+            } else {
+                assuranceText = 'For assurance, please contact Go Rush HR:';
+                contactHtml = `
+                    <a href="tel:+6738740189" class="contact-link">
+                        <i class="fas fa-phone"></i> Call
+                    </a>
+                    <a href="sms:+6738740189" class="contact-link">
+                        <i class="fas fa-sms"></i> SMS
+                    </a>
+                    <a href="https://wa.me/6738740189" class="contact-link">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                `;
+            }
+        }
+        
+        res.render('userview', {
+            user: user,
+            statusType: statusType,
+            statusText: statusText,
+            statusIcon: statusIcon,
+            position: position,
+            positionHtml: positionHtml,
+            contactHtml: contactHtml,
+            assuranceText: assuranceText,
+            needTimer: needTimer
+        });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error loading digital ID');
+    }
+});
+
+// Update createUser POST route to handle new fields
 app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture } = req.body;
     let errors = [];
 
-    if (!name || !email || !password || !role) {
-        errors.push({ msg: 'Please enter all fields' });
+    if (!name || !role || !jobPosition || !status) {
+        errors.push({ msg: 'Please enter all required fields' });
     }
 
-    if (password.length < 6) {
-        errors.push({ msg: 'Password must be at least 6 characters' });
+    if (role !== 'freelancer' && role !== 'dispatcher') {
+        if (!email) {
+            errors.push({ msg: 'Email is required for this role' });
+        }
+        if (!password || password.length < 6) {
+            errors.push({ msg: 'Password must be at least 6 characters' });
+        }
     }
 
     if (errors.length > 0) {
-        res.render('createUser', { errors, name, email, password, role });
-    } else {
-        try {
-            let user = await USERS.findOne({ email: email });
+        return res.render('createUser', { errors, user: req.user });
+    }
 
-            if (user) {
+    try {
+        // Check if email exists (only for roles that require email)
+        if (email && (role !== 'freelancer' && role !== 'dispatcher')) {
+            let existingUser = await USERS.findOne({ email: email });
+            if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
-                res.render('createUser', { errors, name, email, password, role });
-            } else {
-                const newUser = new USERS({ name, email, password, role });
-
-                bcrypt.genSalt(10, (err, salt) => {
-                    bcrypt.hash(newUser.password, salt, (err, hash) => {
-                        if (err) throw err;
-                        newUser.password = hash;
-                        newUser.save()
-                            .then(user => {
-                                req.flash('success_msg', 'You have now registered!');
-                                res.redirect('/');
-                            })
-                            .catch(err => console.log(err));
-                    });
-                });
+                return res.render('createUser', { errors, user: req.user });
             }
-        } catch (err) {
-            console.error(err);
-            res.status(500).send('Server error');
         }
+
+        const newUser = new USERS({ 
+            fullName: fullName || '',
+            name, 
+            email: (role !== 'freelancer' && role !== 'dispatcher') ? email : '',
+            password: '',
+            role, 
+            icNum: icNum || '',
+            jobPosition,
+            status,
+            profilePicture: profilePicture || ''
+        });
+
+        // Generate userId automatically via pre-save middleware
+        if (password && (role !== 'freelancer' && role !== 'dispatcher')) {
+            const salt = await bcrypt.genSalt(10);
+            newUser.password = await bcrypt.hash(password, salt);
+        }
+
+        await newUser.save();
+        
+        req.flash('success_msg', `User created successfully! User ID: ${newUser.userId}`);
+        res.redirect('/listUser');
+        
+    } catch (err) {
+        console.error(err);
+        errors.push({ msg: 'Server error creating user' });
+        res.render('createUser', { errors, user: req.user });
     }
 });
 
