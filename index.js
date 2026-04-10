@@ -2980,12 +2980,10 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
     }
 });
 
-// POST route for update user - Handle both userId and MongoDB _id
+// In updateUser POST route
 app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
         const identifier = req.params.identifier;
-        console.log('Updating user with identifier:', identifier);
-        
         const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture, qrcodeVerify } = req.body;
         let errors = [];
         
@@ -2995,7 +2993,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
         }
         
         if (role !== 'freelancer' && role !== 'dispatcher') {
-            if (!email) {
+            if (!email || email === '') {
                 errors.push({ msg: 'Email is required for this role' });
             }
             if (password && password.length < 6) {
@@ -3023,7 +3021,8 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             return res.redirect('/listUser');
         }
         
-        const updateData = {
+        // Prepare update data
+        let updateData = {
             role,
             fullName: fullName || '',
             name,
@@ -3034,19 +3033,30 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             qrcodeVerify: qrcodeVerify || ''
         };
         
-        // Only update email if provided and role requires it
-        if (email && (role !== 'freelancer' && role !== 'dispatcher')) {
-            // Check if email is taken by another user
-            const emailExists = await USERS.findOne({ 
-                email: email, 
-                _id: { $ne: existingUser._id } 
-            });
-            if (emailExists) {
-                errors.push({ msg: 'Email already exists' });
+        // Handle email based on role
+        if (role !== 'freelancer' && role !== 'dispatcher') {
+            // For regular roles, email is required
+            if (email && email !== '') {
+                // Check if email is taken by another user
+                const emailExists = await USERS.findOne({ 
+                    email: email, 
+                    _id: { $ne: existingUser._id } 
+                });
+                if (emailExists) {
+                    errors.push({ msg: 'Email already exists' });
+                    req.flash('error', errors);
+                    return res.redirect(`/updateUser/${identifier}`);
+                }
+                updateData.email = email;
+            } else {
+                errors.push({ msg: 'Email is required for this role' });
                 req.flash('error', errors);
                 return res.redirect(`/updateUser/${identifier}`);
             }
-            updateData.email = email;
+        } else {
+            // For freelancer/dispatcher, remove email field if it exists
+            // Don't include email in updateData
+            updateData.$unset = { email: 1 };
         }
         
         // Update password if provided
@@ -3244,17 +3254,20 @@ app.get('/verify/:userId', async (req, res) => {
     }
 });
 
-// Update createUser POST route to handle new fields
+// Update createUser POST route
 app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture } = req.body;
     let errors = [];
 
+    console.log('Create User Request Body:', req.body);
+
+    // Validation
     if (!name || !role || !jobPosition || !status) {
         errors.push({ msg: 'Please enter all required fields' });
     }
 
     if (role !== 'freelancer' && role !== 'dispatcher') {
-        if (!email) {
+        if (!email || email === '') {
             errors.push({ msg: 'Email is required for this role' });
         }
         if (!password || password.length < 6) {
@@ -3267,41 +3280,69 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     }
 
     try {
-        // Check if email exists (only for roles that require email)
-        if (email && (role !== 'freelancer' && role !== 'dispatcher')) {
+        // For freelancer/dispatcher, don't include email field at all
+        let userData = {
+            fullName: fullName || '',
+            name: name,
+            role: role,
+            icNum: icNum || '',
+            jobPosition: jobPosition,
+            status: status,
+            profilePicture: profilePicture || '',
+            qrcodeVerify: ''
+        };
+
+        // Only add email for non-freelancer/dispatcher roles
+        if (role !== 'freelancer' && role !== 'dispatcher') {
+            userData.email = email;
+            
+            // Check if email exists
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
                 return res.render('createUser', { errors, user: req.user });
             }
-        }
-
-        const newUser = new USERS({ 
-            fullName: fullName || '',
-            name, 
-            email: (role !== 'freelancer' && role !== 'dispatcher') ? email : '',
-            password: '',
-            role, 
-            icNum: icNum || '',
-            jobPosition,
-            status,
-            profilePicture: profilePicture || ''
-        });
-
-        // Generate userId automatically via pre-save middleware
-        if (password && (role !== 'freelancer' && role !== 'dispatcher')) {
+            
+            // Add password for regular roles
+            if (password && password.length >= 6) {
+                const salt = await bcrypt.genSalt(10);
+                userData.password = await bcrypt.hash(password, salt);
+            }
+        } else {
+            // For freelancer/dispatcher, set a placeholder password
             const salt = await bcrypt.genSalt(10);
-            newUser.password = await bcrypt.hash(password, salt);
+            userData.password = await bcrypt.hash('changeme123', salt);
         }
 
+        const newUser = new USERS(userData);
+        
+        // Save user - let the pre-save middleware generate userId
         await newUser.save();
         
+        console.log('User created successfully:', newUser.userId);
         req.flash('success_msg', `User created successfully! User ID: ${newUser.userId}`);
         res.redirect('/listUser');
         
     } catch (err) {
-        console.error(err);
-        errors.push({ msg: 'Server error creating user' });
+        console.error('Detailed error creating user:', err);
+        
+        // Check for specific MongoDB errors
+        if (err.code === 11000) {
+            if (err.keyPattern && err.keyPattern.email) {
+                errors.push({ msg: 'Email already exists' });
+            } else if (err.keyPattern && err.keyPattern.userId) {
+                errors.push({ msg: 'User ID conflict. Please try again.' });
+            } else {
+                errors.push({ msg: 'Duplicate entry error' });
+            }
+        } else if (err.name === 'ValidationError') {
+            for (let field in err.errors) {
+                errors.push({ msg: err.errors[field].message });
+            }
+        } else {
+            errors.push({ msg: 'Server error creating user: ' + err.message });
+        }
+        
         res.render('createUser', { errors, user: req.user });
     }
 });

@@ -39,6 +39,16 @@
             border-radius: 5px;
             padding: 15px;
         }
+
+        #trackingNumSingle:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.scan-success-flash {
+    background-color: #d4edda !important;
+    transition: background-color 0.1s ease;
+}
     </style>
 </head>
 
@@ -628,6 +638,30 @@
             }
         }
 
+        // Green flash for success
+function flashSuccess(input) {
+    input.style.backgroundColor = '#d4edda';
+    setTimeout(() => {
+        input.style.backgroundColor = '';
+    }, 150);
+}
+
+// Yellow flash for delayed/warning
+function flashWarning(input) {
+    input.style.backgroundColor = '#fff3cd';
+    setTimeout(() => {
+        input.style.backgroundColor = '';
+    }, 150);
+}
+
+// Red flash for error
+function flashError(input) {
+    input.style.backgroundColor = '#f8d7da';
+    setTimeout(() => {
+        input.style.backgroundColor = '';
+    }, 150);
+}
+
         // Show MAWB alert - Add this function too
         function showMAWBAlert(message, isSuccess) {
             const alertClass = isSuccess ? 'alert-success' : 'alert-danger';
@@ -826,6 +860,8 @@
             const trackingNumber = this.value.trim();
             if (!trackingNumber) return;
 
+            this.value = '';
+
             const updateCode = document.getElementById('updateCode').value;
             const warehouse = document.getElementById('warehouse') ? document.getElementById('warehouse').value : '';
 
@@ -852,9 +888,7 @@
                 scanResults.duplicateCount = (scanResults.duplicateCount || 0) + 1;
                 updateScanResultsDisplayWithDuplicate(trackingNumber, duplicateCheck.count);
 
-                setTimeout(() => {
-                    this.focus();
-                }, 100);
+                this.focus();
                 return;
             }
 
@@ -893,9 +927,7 @@
                             // Show alert
                             showScanAlert(`❌ ${trackingNumber} is not part of MAWB ${mawbNum} group`, 'danger');
 
-                            setTimeout(() => {
-                                this.focus();
-                            }, 100);
+                            this.focus();
                             return;
                         }
 
@@ -915,9 +947,7 @@
 
                             showScanAlert(`⚠️ ${trackingNumber} already scanned`, 'warning');
 
-                            setTimeout(() => {
-                                this.focus();
-                            }, 100);
+                            this.focus();
                             return;
                         }
 
@@ -935,17 +965,13 @@
             // Validation for different update codes
             if (updateCode === 'UAN' && !mawbNum) {
                 alert('Please enter MAWB Number');
-                setTimeout(() => {
-                    this.focus();
-                }, 100);
+                this.focus();
                 return;
             }
 
             if (updateCode === 'IIW' && !warehouse) {
                 alert('Please select a warehouse location');
-                setTimeout(() => {
-                    this.focus();
-                }, 100);
+                this.focus();
                 return;
             }
 
@@ -1001,6 +1027,7 @@
                 if (result.successful && result.successful.length > 0) {
                     scanResults.successful.push(...result.successful);
                     scanResults.updatedCount += result.updatedCount || 0;
+                    flashSuccess(this);
                 }
                 if (result.failed && result.failed.length > 0) {
                     scanResults.failed.push(...result.failed);
@@ -1027,9 +1054,8 @@
                 updateScanResultsDisplay();
             } finally {
                 showSingleLoading(false);
-                setTimeout(() => {
-                    this.focus();
-                }, 100);
+                this.focus();
+                return;
             }
         });
 
