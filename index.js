@@ -20596,7 +20596,8 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
         console.log('Order found:', {
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
-            product: order.product
+            product: order.product,
+            jobmethod: order.jobmethod  // Added jobmethod to log
         });
         
         // Return the order data
@@ -20606,7 +20607,7 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             receiverAddress: order.receiverAddress,
             receiverPhoneNumber: order.receiverPhoneNumber,
             additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobType: order.jobType || '',
+            jobmethod: order.jobmethod || '',  // CHANGED: jobType to jobmethod
             totalPrice: order.totalPrice || '',
             paymentAmount: order.paymentAmount || '',
             paymentMethod: order.paymentMethod || '',
