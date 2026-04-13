@@ -417,6 +417,36 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // --- NEW LOGIC: Set Assign Date to Today's Date and make it read-only/auto-populated ---
+            const assignDateField = document.getElementById('assignDate');
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayFormatted = `${yyyy}-${mm}-${dd}`;
+            
+            // Set the value of the assignDate field to today's date
+            assignDateField.value = todayFormatted;
+            
+            // The field is already disabled by default, but we ensure it remains disabled
+            // and the user cannot change it manually. However, we want it to be submitted with the form.
+            // Disabled inputs are not submitted, so we need to make it readonly but still enabled? 
+            // Actually, disabled fields are NOT sent to server. But original code had it disabled and expected to be enabled for certain status codes.
+            // To maintain functionality while auto-populating today's date when the field becomes required/enabled,
+            // we will override the updateFieldStatus logic to ensure whenever the field is enabled (required),
+            // it always gets today's date and remains non-editable by user (readonly but not disabled to allow submission).
+            // However, note: disabled fields are not submitted; but original design used disabled + required? That's contradictory.
+            // Better approach: make the field readonly when shown, not disabled, to allow submission AND user cannot change.
+            // We'll adjust dynamically in updateFieldStatus to set readonly attribute instead of disabled, but preserve original required logic.
+            
+            // Store original functions and override behaviour for assignDate.
+            // But to keep it simple and robust: we'll patch the updateFieldStatus logic to ensure assignDate is always today and readonly when active.
+            // However we must respect original requirements for assignDate: it should be required for certain status codes.
+            // So we will preserve the required flag, but instead of setting disabled=false, we set readonly=true and remove disabled.
+            // This ensures the value is submitted and user cannot change it.
+            
+            // Let's keep references and modify updateFieldStatus function after its definition.
+            
             $("#assignDateWrapper").hide();
             $("#dispatchersWrapper").hide();
             $("#freelancerNameWrapper").hide();
@@ -437,8 +467,8 @@
             $("#k2rowWrapper").hide();
             $("#fridgeWrapper").hide();
             $("#grRemarkWrapper").hide();
-            // Get references to the "Assign Date" and "Dispatchers" fields
-            const assignDateField = document.getElementById('assignDate');
+            
+            // Get references to the fields
             const dispatchersField = document.getElementById('dispatchers');
             const freelancerNameField = document.getElementById('freelancerName');
             const additionalReasonField = document.getElementById('additionalReason');
@@ -459,46 +489,32 @@
             const fridgeField = document.getElementById('fridge');
             const grRemarkField = document.getElementById('grRemark');
 
-            // Get reference to the "Status Code" select element
             const statusCodeSelect = document.getElementById('statusCode');
-
-            // Get reference to the submit button
             const submitButton = document.getElementById('submitButton');
 
-            // Function to disable the submit button when it's clicked and show the loading animation
             function disableSubmitButton(event) {
                 submitButton.disabled = true;
-                document.getElementById('loading').style.display = 'block'; // Show the loading animation
+                document.getElementById('loading').style.display = 'block';
             }
-
-            // Attach the disableSubmitButton function to the "submit" event of the form
             document.querySelector('form').addEventListener('submit', disableSubmitButton);
 
-            // Function to show/hide the "Freelancer Name" field based on the selected dispatcher
             function updateFreelancerNameField() {
                 const selectedDispatcher = dispatchersField.value;
-
                 if ((selectedDispatcher === 'FL1') || (selectedDispatcher === 'FL2')) {
-                    // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
                     $("#freelancerNameWrapper").fadeIn();
                     freelancerNameField.disabled = false;
                     freelancerNameField.required = true;
                 } else {
-                    // If other options are selected, hide and disable the "Freelancer Name" field
                     $("#freelancerNameWrapper").hide();
                     freelancerNameField.disabled = true;
                     freelancerNameField.required = false;
-                    freelancerNameField.value = ''; // Clear the field's value
+                    freelancerNameField.value = '';
                 }
             }
 
             document.getElementById('weight').addEventListener('input', function (e) {
                 const value = e.target.value;
-
-                // Regular expression to match numbers with up to 3 decimal places
                 const validNumber = /^\d*\.?\d{0,3}$/;
-
-                // If the value does not match the pattern, remove the last character
                 if (!validNumber.test(value)) {
                     e.target.value = value.slice(0, -1);
                 }
@@ -506,11 +522,7 @@
 
             priceField.addEventListener('input', function (e) {
                 const value = e.target.value;
-
-                // Regular expression to match numbers with up to 2 decimal places
                 const validNumber = /^\d*\.?\d{0,2}$/;
-
-                // If the value does not match the pattern, remove the last character
                 if (!validNumber.test(value)) {
                     e.target.value = value.slice(0, -1);
                 }
@@ -522,7 +534,7 @@
                     $("#priceWrapper").hide();
                     priceField.disabled = true;
                     priceField.required = false;
-                    priceField.value = ''; // Clear the field's value
+                    priceField.value = '';
                 } else {
                     $("#priceWrapper").fadeIn();
                     priceField.disabled = false;
@@ -534,49 +546,54 @@
                 if ($(this).val().length == 0) {
                     $("#k2roomWrapper").hide();
                     $("#k2rowWrapper").hide();
-
                     k2roomField.disabled = true;
                     k2roomField.required = false;
-
                     k2rowField.disabled = true;
                     k2rowField.required = false;
                 }
-
                 if ($(this).val() == "Warehouse K1") {
                     $("#k2roomWrapper").hide();
                     $("#k2rowWrapper").hide();
-
                     k2roomField.disabled = true;
                     k2roomField.required = false;
-
                     k2rowField.disabled = true;
                     k2rowField.required = false;
                 }
-
                 if ($(this).val() == "Warehouse K2") {
                     $('#k2room').val("Open Space");
                     $('#k2row').val("N/A");
-
                     $("#k2roomWrapper").fadeIn();
                     $("#k2rowWrapper").fadeIn();
-
                     k2roomField.disabled = false;
                     k2roomField.required = true;
-
                     k2rowField.disabled = false;
                     k2rowField.required = false;
                 }
             })
 
-            // Function to enable/disable fields and set them as required based on the selected status code
+            // Helper to set assign date to today, readonly and ensure value is always today
+            function setAssignDateTodayAndReadonly(makeRequired) {
+                // Always set the value to today's date
+                assignDateField.value = todayFormatted;
+                // Make it readonly so user can't edit but still submits
+                assignDateField.readOnly = true;
+                // Remove disabled attribute so it's submitted with form
+                assignDateField.disabled = false;
+                if (makeRequired) {
+                    assignDateField.required = true;
+                } else {
+                    assignDateField.required = false;
+                }
+            }
+
+            // Modified updateFieldStatus with assign date always today and readonly when visible
             function updateFieldStatus() {
                 const selectedStatusCode = statusCodeSelect.value;
 
-                // Reset the values of "Assign Date" and "Dispatchers"
                 assignDateField.value = '';
                 dispatchersField.value = '';
                 additionalReasonField.value = '';
-                freelancerNameField.value = ''; // Clear the field's value
+                freelancerNameField.value = '';
                 warehouseField.value = '';
                 weightField.value = '';
                 paymentMethodField.value = '';
@@ -616,7 +633,6 @@
                 $("#fridgeWrapper").hide();
 
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
-                    // Enable the fields for "Out for Delivery" or "Self Collect"
                     assignDateField.disabled = false;
                     dispatchersField.disabled = false;
                     additionalReasonField.disabled = true;
@@ -624,1404 +640,204 @@
 
                     $("#assignDateWrapper").fadeIn();
                     $("#dispatchersWrapper").fadeIn();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-                    $("#fridgeWrapper").hide();
-
-                    // Set the fields as required
-                    assignDateField.required = true;
+                    
+                    setAssignDateTodayAndReadonly(true);
+                    
                     dispatchersField.required = true;
                     additionalReasonField.required = false;
                     warehouseField.required = false;
 
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                } else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
-                    // Enable the fields for "Out for Delivery" or "Self Collect"
+                    weightField.disabled = true; weightField.required = false;
+                    paymentMethodField.disabled = true; paymentMethodField.required = false;
+                    priceField.disabled = true; priceField.required = false;
+                    areaField.disabled = true; areaField.required = false;
+                    addressField.disabled = true; addressField.required = false;
+                    phoneNumField.disabled = true; phoneNumField.required = false;
+                    nameField.disabled = true; nameField.required = false;
+                    jobMethodField.disabled = true; jobMethodField.required = false;
+                    postalCodeField.disabled = true; postalCodeField.required = false;
+                    awbNumField.disabled = true; awbNumField.required = false;
+                    paymentStatusField.disabled = true; paymentStatusField.required = false;
+                    k2roomField.disabled = true; k2roomField.required = false;
+                    k2rowField.disabled = true; k2rowField.required = false;
+                    fridgeField.disabled = true; fridgeField.required = false;
+                    grRemarkField.disabled = true; grRemarkField.required = false;
+                } 
+                else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
                     assignDateField.disabled = false;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
                     warehouseField.disabled = true;
-
                     $("#assignDateWrapper").fadeIn();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-                    $("#fridgeWrapper").hide();
-
-                    // Set the fields as required
-                    assignDateField.required = true;
+                    setAssignDateTodayAndReadonly(true);
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
                     warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                } else if (selectedStatusCode === 'UP') {
+                    // reset others disabled
+                    weightField.disabled = true; paymentMethodField.disabled = true; priceField.disabled = true;
+                    areaField.disabled = true; addressField.disabled = true; phoneNumField.disabled = true;
+                    nameField.disabled = true; jobMethodField.disabled = true; postalCodeField.disabled = true;
+                    awbNumField.disabled = true; paymentStatusField.disabled = true; k2roomField.disabled = true;
+                    k2rowField.disabled = true; fridgeField.disabled = true; grRemarkField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UP') {
                     assignDateField.disabled = true;
-                    dispatchersField.disabled = true;
-                    additionalReasonField.disabled = true;
-                    warehouseField.disabled = true;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
                     $("#paymentMethodWrapper").fadeIn();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                    assignDateField.required = false;
-                    dispatchersField.required = false;
-                    additionalReasonField.required = false;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
                     paymentMethodField.disabled = false;
                     paymentMethodField.required = true;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                } else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ') || (selectedStatusCode === 'UWL')) {
-                    assignDateField.disabled = true;
-                    dispatchersField.disabled = true;
-                    additionalReasonField.disabled = true;
-                    warehouseField.disabled = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").fadeIn();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                    // Set the fields as required
+                    // assign date not shown, ensure it's not required and disabled
                     assignDateField.required = false;
-                    dispatchersField.required = false;
-                    additionalReasonField.required = false;
+                    assignDateField.disabled = true;
+                }
+                else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ') || (selectedStatusCode === 'UWL')) {
+                    $("#warehouseWrapper").fadeIn();
+                    warehouseField.disabled = false;
                     warehouseField.required = true;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                } else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
-                    // Enable the "Additional Reason" field and make it required
+                    assignDateField.disabled = true;
+                }
+                else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
                     additionalReasonField.disabled = false;
                     additionalReasonField.required = true;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
-                    assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
                     $("#additionalReasonWrapper").fadeIn();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UW') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UW') {
+                    $("#weightWrapper").fadeIn();
                     weightField.disabled = false;
                     weightField.required = true;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").fadeIn();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UFM') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UFM') {
+                    $("#fridgeWrapper").fadeIn();
                     fridgeField.disabled = false;
                     fridgeField.required = true;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").fadeIn();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UAR') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UAR') {
+                    $("#areaWrapper").fadeIn();
                     areaField.disabled = false;
                     areaField.required = true;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").fadeIn();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UAS') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UAS') {
+                    $("#addressWrapper").fadeIn();
                     addressField.disabled = false;
                     addressField.required = true;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").fadeIn();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UPN') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UPN') {
+                    $("#phoneNumWrapper").fadeIn();
                     phoneNumField.disabled = false;
                     phoneNumField.required = true;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").fadeIn();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'URN') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
+                }
+                else if (selectedStatusCode === 'URN') {
+                    $("#nameWrapper").fadeIn();
                     nameField.disabled = false;
                     nameField.required = true;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").fadeIn();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UJM') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UJM') {
+                    $("#jobMethodWrapper").fadeIn();
                     jobMethodField.disabled = false;
                     jobMethodField.required = true;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").fadeIn();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UPC') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UPC') {
+                    $("#postalCodeWrapper").fadeIn();
                     postalCodeField.disabled = false;
                     postalCodeField.required = true;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").fadeIn();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UPSBT') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = false;
-                    paymentStatusField.required = true;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").fadeIn();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UAB') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
-                    assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UAB') {
+                    $("#awbNumWrapper").fadeIn();
                     awbNumField.disabled = false;
                     awbNumField.required = true;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
-                    grRemarkField.required = false;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").fadeIn();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                } else if (selectedStatusCode === 'UGR') {
-                    // Enable the "Additional Reason" field and make it required
-                    additionalReasonField.disabled = true;
-                    additionalReasonField.required = false;
-
-                    // Disable the "Dispatchers" field
-                    dispatchersField.disabled = true;
-                    dispatchersField.required = false;
-
                     assignDateField.disabled = true;
-                    assignDateField.required = false;
-
-                    warehouseField.disabled = true;
-                    warehouseField.required = false;
-
-                    weightField.disabled = true;
-                    weightField.required = false;
-
-                    paymentMethodField.disabled = true;
-                    paymentMethodField.required = false;
-
-                    priceField.disabled = true;
-                    priceField.required = false;
-
-                    areaField.disabled = true;
-                    areaField.required = false;
-
-                    addressField.disabled = true;
-                    addressField.required = false;
-
-                    phoneNumField.disabled = true;
-                    phoneNumField.required = false;
-
-                    nameField.disabled = true;
-                    nameField.required = false;
-
-                    jobMethodField.disabled = true;
-                    jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
-                    postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
-                    awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
-                    paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
-                    k2roomField.required = false;
-
-                    k2rowField.disabled = true;
-                    k2rowField.required = false;
-
-                    fridgeField.disabled = true;
-                    fridgeField.required = false;
-
+                }
+                else if (selectedStatusCode === 'UGR') {
+                    $("#grRemarkWrapper").fadeIn();
                     grRemarkField.disabled = false;
                     grRemarkField.required = true;
-
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").fadeIn();
-
-                } else {
-                    // Disable the fields for other status codes
+                    assignDateField.disabled = true;
+                }
+                else {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
                     additionalReasonField.disabled = true;
                     warehouseField.disabled = true;
                     weightField.disabled = true;
-
-                    // Remove the "required" attribute from the fields
+                    paymentMethodField.disabled = true;
+                    priceField.disabled = true;
+                    areaField.disabled = true;
+                    addressField.disabled = true;
+                    phoneNumField.disabled = true;
+                    nameField.disabled = true;
+                    jobMethodField.disabled = true;
+                    postalCodeField.disabled = true;
+                    awbNumField.disabled = true;
+                    paymentStatusField.disabled = true;
+                    k2roomField.disabled = true;
+                    k2rowField.disabled = true;
+                    fridgeField.disabled = true;
+                    grRemarkField.disabled = true;
+                    
                     assignDateField.required = false;
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
                     warehouseField.required = false;
                     weightField.required = false;
-
-                    paymentMethodField.disabled = true;
                     paymentMethodField.required = false;
-
-                    priceField.disabled = true;
                     priceField.required = false;
-
-                    areaField.disabled = true;
                     areaField.required = false;
-
-                    addressField.disabled = true;
                     addressField.required = false;
-
-                    phoneNumField.disabled = true;
                     phoneNumField.required = false;
-
-                    nameField.disabled = true;
                     nameField.required = false;
-
-                    jobMethodField.disabled = true;
                     jobMethodField.required = false;
-
-                    postalCodeField.disabled = true;
                     postalCodeField.required = false;
-
-                    awbNumField.disabled = true;
                     awbNumField.required = false;
-
-                    paymentStatusField.disabled = true;
                     paymentStatusField.required = false;
-
-                    k2roomField.disabled = true;
                     k2roomField.required = false;
-
-                    k2rowField.disabled = true;
                     k2rowField.required = false;
-
-                    fridgeField.disabled = true;
                     fridgeField.required = false;
-
-                    grRemarkField.disabled = true;
                     grRemarkField.required = false;
-
-                    // Hide all wrappers
-                    $("#assignDateWrapper").hide();
-                    $("#dispatchersWrapper").hide();
-                    $("#additionalReasonWrapper").hide();
-                    $("#freelancerNameWrapper").hide();
-                    $("#warehouseWrapper").hide();
-                    $("#weightWrapper").hide();
-                    $("#paymentMethodWrapper").hide();
-                    $("#priceWrapper").hide();
-                    $("#areaWrapper").hide();
-                    $("#addressWrapper").hide();
-                    $("#phoneNumWrapper").hide();
-                    $("#nameWrapper").hide();
-                    $("#jobMethodWrapper").hide();
-                    $("#postalCodeWrapper").hide();
-                    $("#awbNumWrapper").hide();
-                    $("#paymentStatusWrapper").hide();
-                    $("#k2roomWrapper").hide();
-                    $("#k2rowWrapper").hide();
-                    $("#fridgeWrapper").hide();
-                    $("#grRemarkWrapper").hide();
-
-                    // Enable all options in the Dispatchers dropdown
-                    const dispatcherOptions = dispatchersField.options;
-                    for (let i = 0; i < dispatcherOptions.length; i++) {
-                        dispatcherOptions[i].disabled = false;
-                    }
+                }
+                // Additional case for 'SD' or '35' already handled but ensure assign date readOnly and today
+                if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD') || (selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
+                    setAssignDateTodayAndReadonly(true);
+                } else {
+                    // if not showing assignDate, we might disable but also reset readonly attribute
+                    assignDateField.readOnly = false;
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
                 }
             }
 
-            // Attach the updateFieldStatus function to the "change" event of the status code select element
             statusCodeSelect.addEventListener('change', updateFieldStatus);
             paymentMethodField.addEventListener('change', updatePriceWrapper);
-
-            // Initialize field status based on the initial selected status code
             updateFieldStatus();
-
-            // Attach the updateFreelancerNameField function to the "change" event of the "Dispatchers" dropdown
             dispatchersField.addEventListener('change', updateFreelancerNameField);
-
-            // Initialize the "Freelancer Name" field based on the initial selected dispatcher
             updateFreelancerNameField();
         });
     </script>
     <script>
         let inputElement1 = document.getElementById('phoneNum');
-
         var patternMask = IMask(inputElement1, {
             mask: '{673}0000000',
         });
 
         let inputElement2 = document.getElementById('postalCode');
-
         var patternMask = IMask(inputElement2, {
             mask: '{aa}0000',
             prepare: function (value, masked) {
                 if (value.length <= 2) {
-                    return value.toUpperCase(); // Convert the 'aa' part to uppercase
+                    return value.toUpperCase();
                 }
                 return value;
             },
         });
 
         let inputElement3 = document.getElementById('awbNum');
-
         var patternMask = IMask(inputElement3, {
             mask: '000{-}00000000',
         });

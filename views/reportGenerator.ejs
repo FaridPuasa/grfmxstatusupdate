@@ -5,8 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Report Generator</title>
-  <!-- Add your custom CSS here -->
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
 <style>
 #formSection { margin-top: 20px; }
 .hidden { display: none; }
@@ -18,46 +17,29 @@ td { white-space: pre-line; text-align: center; }
 #reportLogoHeader img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
 #assignedByContainer { margin-top: 10px; font-weight: bold; }
 button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
-/* Custom CSS for your page */
-    .navbar-nav.flex-row {
-      flex-direction: row !important;
-    }
-
-    /* Make the navbar background transparent */
-    .navbar {
-      background-color: transparent;
-    }
-
-    /* Add background color to the container */
-    .container-bg {
-      background-color: #333;
-      /* You can use your desired background color here */
-    }
-
-    /* Add margin to the navigation links */
-    .navbar-nav.flex-row .nav-item {
-      margin-right: 10px;
-    }
-
-    /* Add any custom styles specific to your form here */
-    .container-bg {
-      background-color: #333;
-      /* You can use your desired background color here */
-    }
-
-    .logo {
+.navbar-nav.flex-row {
+  flex-direction: row !important;
+}
+.navbar {
+  background-color: transparent;
+}
+.container-bg {
+  background-color: #333;
+}
+.navbar-nav.flex-row .nav-item {
+  margin-right: 10px;
+}
+.logo {
   height: 40px;
   width: auto;
   max-height: 40px;
 }
-
 @media (max-width: 768px) {
   .logo {
     height: 30px;
     max-height: 30px;
   }
 }
-
 @media (max-width: 480px) {
   .logo {
     height: 25px;
@@ -129,19 +111,7 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
             <option value="Qui">Qui</option>
             <option value="Tommy">Tommy</option>
             <option value="Zuran">Zuran</option>
-            <!-- <option value="Yui">Yui</option> -->
-            <!-- <option value="Faruk">Faruk</option> -->
-            <!-- <option value="Fesal">Fesal</option> -->
           </optgroup>
-          <!-- <optgroup label="Belts"> -->
-            <!-- <option value="Adiwardi">Adiwardi</option> -->
-            <!-- <option value="Aiedil">Aiedil</option> -->
-            <!-- <option value="Hardy">Hardy</option> -->
-            <!-- <option value="Hazif">Hazif</option> -->
-            <!-- <option value="Rizal">Rizal</option> -->
-            <!-- <option value="Zainul">Zainul</option> -->
-             <!-- <option value="Zakwan">Zakwan</option> -->
-          <!-- </optgroup> -->
           <optgroup label="Others">
             <option value="Agung">Agung</option>
             <!-- <option value="Syahmi">Syahmi</option> -->
@@ -162,7 +132,6 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
     </div>
   </form>
 
-  <!-- Report Parts -->
   <div id="reportLogoHeader" class="text-center mb-3"></div>
   <table id="dispatcherJobsTable" class="table table-bordered">
     <thead id="dispatcherJobsHeader"></thead>
@@ -192,7 +161,6 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
       </div>
     </form>
 
-    <!-- End of Day Report Parts -->
     <div id="endReportLogoHeader" class="text-center mb-3"></div>
     <table id="endStaffJobsTable" class="table table-bordered">
       <thead id="endStaffJobsHeader"></thead>
@@ -204,10 +172,9 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
       <tbody></tbody>
     </table>
 
-    <!-- COD/BT Tables -->
     <div id="codBtCollectedContainer" style="margin-top:30px;"></div>
     <div id="warehouseReportContainer"></div>
-<div id="checkedByContainer"></div>
+    <div id="checkedByContainer"></div>
   </div>
 </div>
 
@@ -228,7 +195,6 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
       </div>
     </form>
 
-    <!-- Freelancer End of Day Report Parts -->
     <div id="freelancerReportLogoHeader" class="text-center mb-3"></div>
     <table id="freelancerJobsTable" class="table table-bordered">
       <thead id="freelancerJobsHeader"></thead>
@@ -246,408 +212,670 @@ button.removeRow { font-size: 0.8rem; padding: 2px 6px; }
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const reportTypeEl = document.getElementById('reportType');
-const formSection = document.getElementById('formSection');
-const reportDateEl = document.getElementById('reportDate');
-const generateBtn = document.getElementById('generateBtn');
-const saveBtn = document.getElementById('saveBtn');
-const printBtn = document.getElementById('printBtn');
-const resetBtn = document.getElementById('resetBtn');
-const dispatcherJobsTable = document.getElementById('dispatcherJobsTable');
-const dispatcherJobsHeader = document.getElementById('dispatcherJobsHeader');
-const dispatcherJobsBody = dispatcherJobsTable.querySelector('tbody');
-const morningMileageTable = document.getElementById('morningMileageTable');
-const morningMileageHeader = document.getElementById('morningMileageHeader');
-const morningMileageBody = morningMileageTable.querySelector('tbody');
-const reportLogoHeader = document.getElementById('reportLogoHeader');
-const assignedByContainer = document.getElementById('assignedByContainer');
-const userId = "<%= user.name %>";
-const loadingSpinner = document.getElementById('loadingSpinner');
-
-let isReportSaved = false;
-
-function showLoading(){ loadingSpinner.style.display='flex'; }
-function hideLoading(){ loadingSpinner.style.display='none'; }
-
-function clearReport(){
-  reportLogoHeader.innerHTML='';
-  dispatcherJobsHeader.innerHTML='';
-  dispatcherJobsBody.innerHTML='';
-  morningMileageHeader.innerHTML='';
-  morningMileageBody.innerHTML='';
-  assignedByContainer.innerHTML='';
-  reportDateEl.removeAttribute('disabled');
-}
-
-// Freelancer End of Day Report Elements
-const freelancerEndOfDaySection = document.getElementById('freelancerEndOfDayReportSection');
-const freelancerGenerateBtn = document.getElementById('freelancerGenerateBtn');
-const freelancerSaveBtn = document.getElementById('freelancerSaveBtn');
-const freelancerPrintBtn = document.getElementById('freelancerPrintBtn');
-const freelancerResetBtn = document.getElementById('freelancerResetBtn');
-const freelancerReportLogoHeader = document.getElementById('freelancerReportLogoHeader');
-const freelancerJobsTable = document.getElementById('freelancerJobsTable');
-const freelancerJobsHeader = document.getElementById('freelancerJobsHeader');
-const freelancerCheckedByContainer = document.getElementById('freelancerCheckedByContainer');
-
-// Update the reportType change event to include freelancer section
-reportTypeEl.addEventListener('change', () => {
-  isReportSaved = false;
-  clearReport();
-  generateBtn.classList.remove('hidden');
-  saveBtn.classList.add('hidden');
-  printBtn.classList.add('hidden');
-  resetBtn.classList.add('hidden');
-  
-  if (reportTypeEl.value === 'Operation Morning Report') {
-    morningReportSection.classList.remove('hidden');
-    endOfDayReportSection.classList.add('hidden');
-    freelancerEndOfDaySection.classList.add('hidden');
-  } else if (reportTypeEl.value === 'Operation End of Day Report') {
-    morningReportSection.classList.add('hidden');
-    endOfDayReportSection.classList.remove('hidden');
-    freelancerEndOfDaySection.classList.add('hidden');
-  } else if (reportTypeEl.value === 'Freelancer End of Day Report') {
-    morningReportSection.classList.add('hidden');
-    endOfDayReportSection.classList.add('hidden');
-    freelancerEndOfDaySection.classList.remove('hidden');
-    // Clear any previous freelancer report data
-    freelancerReportLogoHeader.innerHTML = '';
-    freelancerJobsHeader.innerHTML = '';
-    freelancerJobsTable.querySelector('tbody').innerHTML = '';
-    freelancerCheckedByContainer.innerHTML = '';
-  } else {
-    morningReportSection.classList.add('hidden');
-    endOfDayReportSection.classList.add('hidden');
-    freelancerEndOfDaySection.classList.add('hidden');
-  }
-});
-
-// Freelancer Generate Button
-freelancerGenerateBtn.addEventListener('click', async () => {
-  const reportDate = document.getElementById('freelancerReportDate').value;
-  if (!reportDate) {
-    alert('Please pick a date');
-    return;
-  }
-  
-  showLoading();
-  freelancerGenerateBtn.style.display = "none";
-
-  try {
-    // Fetch delivery result data from freelancer endpoint
-    const res = await fetch(`/api/freelancer-delivery-result-report?date=${reportDate}`);
-    const data = await res.json();
+    // ======================= PRODUCT DISPLAY NAMES MAPPING =======================
+    const productDisplayNames = {
+        'ewe': 'EWE',
+        'pdu': 'PDU',
+        'mglobal': 'MGLOBAL',
+        'gdex': 'GDEX',
+        'gdext': 'GDEX',
+        'pure51': 'PURE51',
+        'localdelivery': 'LD',
+        'cbsl': 'CBSL',
+        'pharmacymoh': 'MOH',
+        'pharmacyjpmc': 'JPMC',
+        'pharmacyphc': 'PHC',
+        'kptdp': 'KPT',
+        'icarus': 'ICARUS'
+    };
     
-    console.log('Freelancer report data:', data); // Debug log
-    
-    if (!data.results || data.results.length === 0) {
-      alert('No completed jobs found for freelancers on this date');
-      freelancerGenerateBtn.style.display = "block";
-      hideLoading();
-      return;
+    function getProductDisplayName(productKey) {
+        return productDisplayNames[productKey] || productKey.toUpperCase();
     }
-
-    const formattedDate = new Date(reportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
-    const reportTitle = `Freelancer End of Day Report ${formattedDate}`;
-    window.currentFreelancerReportName = reportTitle;
-
-    // Logo + Title
-    freelancerReportLogoHeader.innerHTML = `
-      <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
-      <h2>${reportTitle}</h2>
-    `;
-
-    // Table header - No Jobs column, No Success Rate column
-    const totalColumns = 2 + data.products.length + 1;
-    freelancerJobsHeader.innerHTML = `
-      <tr style="background:lightblue;font-weight:bold;">
-        <th colspan="${totalColumns}" style="text-align:left;">Job Result</th>
-      </tr>
-      <tr>
-        <th>Freelancer</th>
-        <th>Area</th>
-        ${data.products.map(p => `<th>${p}</th>`).join('')}
-        <th>Total</th>
-      </tr>
-    `;
-
-    // Build table body
-    const tbody = freelancerJobsTable.querySelector('tbody');
-    tbody.innerHTML = '';
-
-    data.results.forEach(result => {
-      const row = document.createElement('tr');
-      
-      // Freelancer name
-      const staffCell = document.createElement('td');
-      staffCell.innerText = result.staff;
-      row.appendChild(staffCell);
-      
-      // Area
-      const areaCell = document.createElement('td');
-      areaCell.innerText = result.area || '-';
-      areaCell.contentEditable = true;
-      row.appendChild(areaCell);
-      
-      // Product cells - show values (these should now have numbers > 0)
-      data.products.forEach(product => {
-        const td = document.createElement('td');
-        const value = result.productCounts[product] || 0;
-        td.innerText = value;
-        td.contentEditable = true;
-        row.appendChild(td);
-      });
-      
-      // Total cell
-      const totalCell = document.createElement('td');
-      totalCell.innerText = result.totalCompleted || 0;
-      totalCell.contentEditable = true;
-      row.appendChild(totalCell);
-      
-      tbody.appendChild(row);
-    });
-
-    // Checked by
-    freelancerCheckedByContainer.innerText = `Checked and prepared by: ${userId}`;
-    freelancerCheckedByContainer.style.fontWeight = 'bold';
-    freelancerCheckedByContainer.style.marginTop = '10px';
-
-    // Show save and reset buttons
-    freelancerSaveBtn.classList.remove("hidden");
-    freelancerResetBtn.classList.remove("hidden");
-    freelancerPrintBtn.classList.add("hidden");
-    freelancerSaveBtn.removeAttribute("disabled");
     
-    alert(`Freelancer report generated with ${data.results.length} freelancers`);
-    
-  } catch (err) {
-    console.error('Error generating freelancer report:', err);
-    alert('Error fetching report data: ' + err.message);
-  } finally {
-    hideLoading();
-    freelancerGenerateBtn.style.display = "block";
-  }
-});
-// Freelancer Save Button
-freelancerSaveBtn.addEventListener('click', async () => {
-  const reportDate = document.getElementById('freelancerReportDate').value;
-  if (!reportDate) {
-    alert('Please select a date first.');
-    return;
-  }
-  
-  showLoading();
-  
-  const formattedDate = new Date(reportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
-  const reportName = `Freelancer End of Day Report ${formattedDate}`;
-  const reportContent = freelancerEndOfDaySection.innerHTML;
-  const reportType = "Freelancer End of Day Report";
-  
-  async function saveReport(forceReplace = false) {
-    try {
-      const res = await fetch('/api/saveReport', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reportType,
-          reportName,
-          reportContent,
-          createdBy: userId,
-          forceReplace
-        })
-      });
+    // Function to apply product mapping to any table that contains product names
+    function applyProductMappingToTable(tableElement) {
+      if (!tableElement) return;
       
-      const result = await res.json();
-      
-      if (result.success) {
-        alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
-        freelancerSaveBtn.classList.add('hidden');
-        freelancerPrintBtn.classList.remove('hidden');
-      } else if (result.duplicate) {
-        const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
-        if (confirmReplace) {
-          await saveReport(true);
+      // Find all table headers (th) that might contain product names
+      const headers = tableElement.querySelectorAll('th');
+      headers.forEach(header => {
+        const originalText = header.innerText.trim().toLowerCase();
+        // Check if the header text matches any product key
+        for (const [key, displayName] of Object.entries(productDisplayNames)) {
+          if (originalText === key || originalText === key.toUpperCase()) {
+            header.innerText = displayName;
+            break;
+          }
         }
-      } else {
-        alert('Failed to save report: ' + result.message);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error saving report');
-    } finally {
-      hideLoading();
-    }
-  }
-  
-  await saveReport();
-});
-
-// Freelancer Print Button
-freelancerPrintBtn.addEventListener('click', () => {
-  showLoading();
-  
-  const printWindow = window.open('', '_blank', 'width=900,height=700');
-  const today = new Date();
-  const dd = String(today.getDate()).padStart(2, "0");
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy = today.getFullYear();
-  const fileName = `Freelancer End of Day Report ${dd}.${mm}.${yyyy}`;
-  
-  const style = `
-    <style>
-      body { font-family: Arial, sans-serif; padding: 25px; }
-      h2 { text-align: center; margin: 10px 0 20px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-      th, td {
-        border: 1px solid #000;
-        padding: 6px 8px;
-        font-size: 14px;
-        text-align: center;
-        vertical-align: middle;
-      }
-      th { background-color: #e6f2ff; font-weight: bold; }
-      tr:first-child th[colspan] {
-        background-color: lightblue !important;
-        text-align: left;
-        font-size: 15px;
-      }
-      img { display: block; margin: 0 auto; max-height: 80px; }
-      .checked-by { font-weight: bold; margin-top: 10px; }
-      @media print {
-        body { zoom: 90%; }
-      }
-    </style>
-  `;
-  
-  // Clone the table to avoid modifying the original
-  const tableClone = freelancerJobsTable.cloneNode(true);
-  
-  const printHTML = `
-    <html>
-      <head>
-        <title>${fileName}</title>
-        ${style}
-      </head>
-      <body>
-        ${freelancerReportLogoHeader.outerHTML}
-        ${tableClone.outerHTML}
-        <div class="checked-by">${freelancerCheckedByContainer.innerText}</div>
-      </body>
-    </html>
-  `;
-  
-  printWindow.document.open();
-  printWindow.document.write(printHTML);
-  printWindow.document.close();
-  
-  printWindow.onload = function () {
-    printWindow.document.title = fileName;
-    printWindow.focus();
-    printWindow.print();
-    hideLoading();
-  };
-});
-// Freelancer Reset Button
-freelancerResetBtn.addEventListener('click', () => {
-  if (confirm("Are you sure you want to reset the report?")) {
-    location.reload();
-  }
-});
-
-generateBtn.addEventListener('click', async () => {
-  isReportSaved = false;
-  const date = reportDateEl.value;
-  const vehicle = document.getElementById('vehicle').value || 'N/A';
-  const dispatcher = document.getElementById('dispatcher').value;
-  const assignedJob = document.getElementById('assignedJob').value;
-  if (!date || !dispatcher) { alert('Please pick a date and dispatcher'); return; }
-  reportDateEl.setAttribute('disabled', 'true');
-  showLoading();
-
-  try {
-    const res = await fetch('/api/getDispatcherJobSummary', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dispatcher, date })
-    });
-
-    const data = await res.json();
-
-    const day = new Date(date).toLocaleDateString('en-GB', { weekday: 'long' });
-    const formattedDate = new Date(date).toLocaleDateString('en-GB').replace(/\//g, '.');
-    const reportName = `Operation Morning Report ${day} ${formattedDate}`;
-    window.currentReportName = reportName;
-
-    // Logo + Header
-    reportLogoHeader.innerHTML = `<img src="https://portal.gorushbn.com/images/logo.png" alt="Logo"><h2>${reportName}</h2>`;
-
-    // Dispatcher Assigned Jobs Header
-    dispatcherJobsHeader.innerHTML = `
-      <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="6">Dispatcher Assigned Tasks</th></tr>
-      <tr>
-        <th>Vehicle No.</th>
-        <th>Dispatcher</th>
-        <th>Assigned Task</th>
-        <th>Area</th>
-        <th>Total Delivery</th>
-        <th>Action</th>
-      </tr>
-    `;
-
-    // Remove previous grand total row if exists
-    const existingFooter = dispatcherJobsBody.querySelector('tr.grandTotal');
-    if (existingFooter) existingFooter.remove();
-
-    // Dispatcher Assigned Jobs Row
-    let assignedJobContent = '';
-    if (data.totalOrders > 0) {
-      assignedJobContent = Object.entries(data.productCounts)
-        .map(([p, c]) => `- Deliver ${p} (${c})`)
-        .join('\n');
-    }
-    if (assignedJob) {
-      const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0).map(l => `- ${l}`).join('\n');
-      assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines}`;
-    }
-
-    const areaContent = data.totalOrders > 0 ? (data.areas.join(',') || '') : '';
-
-    // Total delivery count for this dispatcher
-    const totalJobsCount = data.totalOrders || 0;
-
-    // Only add row if there is at least one assigned job
-    if (assignedJobContent || totalJobsCount > 0) {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td contenteditable="true">${vehicle}</td>
-        <td contenteditable="true">${dispatcher}</td>
-        <td contenteditable="true" style="white-space: pre-line;">${assignedJobContent || ''}</td>
-        <td contenteditable="true">${areaContent}</td>
-        <td>${totalJobsCount}</td>
-        <td><button type="button" class="btn btn-danger btn-sm removeRow">Remove</button></td>
-      `;
-      row.querySelector('td:last-child').removeAttribute('contenteditable');
-      dispatcherJobsBody.appendChild(row);
-
-      row.querySelector('.removeRow').addEventListener('click', () => {
-        row.remove();
-        updateGrandTotal();
-        if (dispatcherJobsBody.children.length === 0) clearReport();
+      });
+      
+      // Also check for product names in first column of tbody (sometimes products are listed as rows)
+      const rows = tableElement.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const firstCell = row.querySelector('td:first-child');
+        if (firstCell) {
+          const cellText = firstCell.innerText.trim().toLowerCase();
+          for (const [key, displayName] of Object.entries(productDisplayNames)) {
+            if (cellText === key || cellText === key.toUpperCase() || cellText.includes(key)) {
+              firstCell.innerText = displayName;
+              break;
+            }
+          }
+        }
       });
     }
+    // ======================= END PRODUCT MAPPING =======================
 
-    // Grand total function
-    function updateGrandTotal() {
-      const existingFooter = dispatcherJobsBody.querySelector('tr.grandTotal');
-      if (existingFooter) existingFooter.remove();
+    // ======================= DATE PICKER RESTRICTION LOGIC =======================
+    function configureDatePicker(dateInputElement) {
+      if (!dateInputElement) return;
+      
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayFormatted = `${yyyy}-${mm}-${dd}`;
+      
+      dateInputElement.setAttribute('max', todayFormatted);
+      
+      if (!dateInputElement.value) {
+        dateInputElement.value = todayFormatted;
+      }
+      
+      dateInputElement.addEventListener('change', function() {
+        if (this.value > todayFormatted) {
+          alert('Cannot select a future date. Date has been set to today.');
+          this.value = todayFormatted;
+        }
+      });
+    }
+    
+    const morningReportDate = document.getElementById('reportDate');
+    const endOfDayReportDate = document.getElementById('endReportDate');
+    const freelancerReportDate = document.getElementById('freelancerReportDate');
+    
+    configureDatePicker(morningReportDate);
+    configureDatePicker(endOfDayReportDate);
+    configureDatePicker(freelancerReportDate);
+    // ======================= END DATE PICKER RESTRICTION =======================
 
-      const grandTotal = Array.from(dispatcherJobsBody.querySelectorAll('tr'))
-        .filter(tr => !tr.classList.contains('grandTotal'))
-        .reduce((sum, tr) => sum + (parseInt(tr.children[4].innerText || 0, 10) || 0), 0);
+    const reportTypeEl = document.getElementById('reportType');
+    const reportDateEl = document.getElementById('reportDate');
+    const generateBtn = document.getElementById('generateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const printBtn = document.getElementById('printBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const dispatcherJobsTable = document.getElementById('dispatcherJobsTable');
+    const dispatcherJobsHeader = document.getElementById('dispatcherJobsHeader');
+    const dispatcherJobsBody = dispatcherJobsTable.querySelector('tbody');
+    const morningMileageTable = document.getElementById('morningMileageTable');
+    const morningMileageHeader = document.getElementById('morningMileageHeader');
+    const morningMileageBody = morningMileageTable.querySelector('tbody');
+    const reportLogoHeader = document.getElementById('reportLogoHeader');
+    const assignedByContainer = document.getElementById('assignedByContainer');
+    const userId = "<%= user.name %>";
+    const loadingSpinner = document.getElementById('loadingSpinner');
+
+    let isReportSaved = false;
+
+    function showLoading(){ loadingSpinner.style.display='flex'; }
+    function hideLoading(){ loadingSpinner.style.display='none'; }
+
+    function clearReport(){
+      reportLogoHeader.innerHTML='';
+      dispatcherJobsHeader.innerHTML='';
+      dispatcherJobsBody.innerHTML='';
+      morningMileageHeader.innerHTML='';
+      morningMileageBody.innerHTML='';
+      assignedByContainer.innerHTML='';
+      reportDateEl.removeAttribute('disabled');
+    }
+
+    const freelancerEndOfDaySection = document.getElementById('freelancerEndOfDayReportSection');
+    const freelancerGenerateBtn = document.getElementById('freelancerGenerateBtn');
+    const freelancerSaveBtn = document.getElementById('freelancerSaveBtn');
+    const freelancerPrintBtn = document.getElementById('freelancerPrintBtn');
+    const freelancerResetBtn = document.getElementById('freelancerResetBtn');
+    const freelancerReportLogoHeader = document.getElementById('freelancerReportLogoHeader');
+    const freelancerJobsTable = document.getElementById('freelancerJobsTable');
+    const freelancerJobsHeader = document.getElementById('freelancerJobsHeader');
+    const freelancerCheckedByContainer = document.getElementById('freelancerCheckedByContainer');
+
+    reportTypeEl.addEventListener('change', () => {
+      isReportSaved = false;
+      clearReport();
+      generateBtn.classList.remove('hidden');
+      saveBtn.classList.add('hidden');
+      printBtn.classList.add('hidden');
+      resetBtn.classList.add('hidden');
+      
+      if (reportTypeEl.value === 'Operation Morning Report') {
+        morningReportSection.classList.remove('hidden');
+        endOfDayReportSection.classList.add('hidden');
+        freelancerEndOfDaySection.classList.add('hidden');
+      } else if (reportTypeEl.value === 'Operation End of Day Report') {
+        morningReportSection.classList.add('hidden');
+        endOfDayReportSection.classList.remove('hidden');
+        freelancerEndOfDaySection.classList.add('hidden');
+      } else if (reportTypeEl.value === 'Freelancer End of Day Report') {
+        morningReportSection.classList.add('hidden');
+        endOfDayReportSection.classList.add('hidden');
+        freelancerEndOfDaySection.classList.remove('hidden');
+        freelancerReportLogoHeader.innerHTML = '';
+        freelancerJobsHeader.innerHTML = '';
+        freelancerJobsTable.querySelector('tbody').innerHTML = '';
+        freelancerCheckedByContainer.innerHTML = '';
+      } else {
+        morningReportSection.classList.add('hidden');
+        endOfDayReportSection.classList.add('hidden');
+        freelancerEndOfDaySection.classList.add('hidden');
+      }
+    });
+
+    // Freelancer Generate Button
+    freelancerGenerateBtn.addEventListener('click', async () => {
+      const reportDate = document.getElementById('freelancerReportDate').value;
+      if (!reportDate) {
+        alert('Please pick a date');
+        return;
+      }
+      
+      showLoading();
+      freelancerGenerateBtn.style.display = "none";
+
+      try {
+        const res = await fetch(`/api/freelancer-delivery-result-report?date=${reportDate}`);
+        const data = await res.json();
+        
+        if (!data.results || data.results.length === 0) {
+          alert('No completed jobs found for freelancers on this date');
+          freelancerGenerateBtn.style.display = "block";
+          hideLoading();
+          return;
+        }
+
+        const mappedProducts = data.products.map(p => getProductDisplayName(p));
+
+        const formattedDate = new Date(reportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
+        const reportTitle = `Freelancer End of Day Report ${formattedDate}`;
+        window.currentFreelancerReportName = reportTitle;
+
+        freelancerReportLogoHeader.innerHTML = `
+          <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
+          <h2>${reportTitle}</h2>
+        `;
+
+        const totalColumns = 2 + mappedProducts.length + 1;
+        freelancerJobsHeader.innerHTML = `
+          <tr style="background:lightblue;font-weight:bold;">
+            <th colspan="${totalColumns}" style="text-align:left;">Job Result</th>
+          </tr>
+          <tr>
+            <th>Freelancer</th>
+            <th>Area</th>
+            ${mappedProducts.map(p => `<th>${p}</th>`).join('')}
+            <th>Total</th>
+          </tr>
+        `;
+
+        const tbody = freelancerJobsTable.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        data.results.forEach(result => {
+          const row = document.createElement('tr');
+          
+          const staffCell = document.createElement('td');
+          staffCell.innerText = result.staff;
+          row.appendChild(staffCell);
+          
+          const areaCell = document.createElement('td');
+          areaCell.innerText = result.area || '-';
+          areaCell.contentEditable = true;
+          row.appendChild(areaCell);
+          
+          data.products.forEach(originalProduct => {
+            const td = document.createElement('td');
+            const value = result.productCounts[originalProduct] || 0;
+            td.innerText = value;
+            td.contentEditable = true;
+            row.appendChild(td);
+          });
+          
+          const totalCell = document.createElement('td');
+          totalCell.innerText = result.totalCompleted || 0;
+          totalCell.contentEditable = true;
+          row.appendChild(totalCell);
+          
+          tbody.appendChild(row);
+        });
+
+        freelancerCheckedByContainer.innerText = `Checked and prepared by: ${userId}`;
+        freelancerCheckedByContainer.style.fontWeight = 'bold';
+        freelancerCheckedByContainer.style.marginTop = '10px';
+
+        freelancerSaveBtn.classList.remove("hidden");
+        freelancerResetBtn.classList.remove("hidden");
+        freelancerPrintBtn.classList.add("hidden");
+        freelancerSaveBtn.removeAttribute("disabled");
+        
+        alert(`Freelancer report generated with ${data.results.length} freelancers`);
+        
+      } catch (err) {
+        console.error('Error generating freelancer report:', err);
+        alert('Error fetching report data: ' + err.message);
+      } finally {
+        hideLoading();
+        freelancerGenerateBtn.style.display = "block";
+      }
+    });
+
+    freelancerSaveBtn.addEventListener('click', async () => {
+      const reportDate = document.getElementById('freelancerReportDate').value;
+      if (!reportDate) {
+        alert('Please select a date first.');
+        return;
+      }
+      
+      showLoading();
+      
+      const formattedDate = new Date(reportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
+      const reportName = `Freelancer End of Day Report ${formattedDate}`;
+      const reportContent = freelancerEndOfDaySection.innerHTML;
+      const reportType = "Freelancer End of Day Report";
+      
+      async function saveReport(forceReplace = false) {
+        try {
+          const res = await fetch('/api/saveReport', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reportType,
+              reportName,
+              reportContent,
+              createdBy: userId,
+              forceReplace
+            })
+          });
+          
+          const result = await res.json();
+          
+          if (result.success) {
+            alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+            freelancerSaveBtn.classList.add('hidden');
+            freelancerPrintBtn.classList.remove('hidden');
+          } else if (result.duplicate) {
+            const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+            if (confirmReplace) {
+              await saveReport(true);
+            }
+          } else {
+            alert('Failed to save report: ' + result.message);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error saving report');
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      await saveReport();
+    });
+
+    freelancerPrintBtn.addEventListener('click', () => {
+      showLoading();
+      
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const yyyy = today.getFullYear();
+      const fileName = `Freelancer End of Day Report ${dd}.${mm}.${yyyy}`;
+      
+      const style = `
+        <style>
+          body { font-family: Arial, sans-serif; padding: 25px; }
+          h2 { text-align: center; margin: 10px 0 20px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+          th, td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 14px;
+            text-align: center;
+            vertical-align: middle;
+          }
+          th { background-color: #e6f2ff; font-weight: bold; }
+          tr:first-child th[colspan] {
+            background-color: lightblue !important;
+            text-align: left;
+            font-size: 15px;
+          }
+          img { display: block; margin: 0 auto; max-height: 80px; }
+          .checked-by { font-weight: bold; margin-top: 10px; }
+          @media print {
+            body { zoom: 90%; }
+          }
+        </style>
+      `;
+      
+      const tableClone = freelancerJobsTable.cloneNode(true);
+      
+      const printHTML = `
+        <html>
+          <head>
+            <title>${fileName}</title>
+            ${style}
+          </head>
+          <body>
+            ${freelancerReportLogoHeader.outerHTML}
+            ${tableClone.outerHTML}
+            <div class="checked-by">${freelancerCheckedByContainer.innerText}</div>
+          </body>
+        </html>
+      `;
+      
+      printWindow.document.open();
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+      
+      printWindow.onload = function () {
+        printWindow.document.title = fileName;
+        printWindow.focus();
+        printWindow.print();
+        hideLoading();
+      };
+    });
+
+    freelancerResetBtn.addEventListener('click', () => {
+      if (confirm("Are you sure you want to reset the report?")) {
+        location.reload();
+      }
+    });
+
+    // Morning Report Generate Button
+    generateBtn.addEventListener('click', async () => {
+      isReportSaved = false;
+      const date = reportDateEl.value;
+      const vehicle = document.getElementById('vehicle').value || 'N/A';
+      const dispatcher = document.getElementById('dispatcher').value;
+      const assignedJob = document.getElementById('assignedJob').value;
+      if (!date || !dispatcher) { alert('Please pick a date and dispatcher'); return; }
+      reportDateEl.setAttribute('disabled', 'true');
+      showLoading();
+
+      try {
+        const res = await fetch('/api/getDispatcherJobSummary', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dispatcher, date })
+        });
+
+        const data = await res.json();
+
+        const day = new Date(date).toLocaleDateString('en-GB', { weekday: 'long' });
+        const formattedDate = new Date(date).toLocaleDateString('en-GB').replace(/\//g, '.');
+        const reportName = `Operation Morning Report ${day} ${formattedDate}`;
+        window.currentReportName = reportName;
+
+        reportLogoHeader.innerHTML = `<img src="https://portal.gorushbn.com/images/logo.png" alt="Logo"><h2>${reportName}</h2>`;
+
+        dispatcherJobsHeader.innerHTML = `
+          <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="6">Dispatcher Assigned Tasks</th></tr>
+          <tr>
+            <th>Vehicle No.</th>
+            <th>Dispatcher</th>
+            <th>Assigned Task</th>
+            <th>Area</th>
+            <th>Total Delivery</th>
+            <th>Action</th>
+          </tr>
+        `;
+
+        const existingFooter = dispatcherJobsBody.querySelector('tr.grandTotal');
+        if (existingFooter) existingFooter.remove();
+
+        let assignedJobContent = '';
+        if (data.totalOrders > 0) {
+          assignedJobContent = Object.entries(data.productCounts)
+            .map(([p, c]) => `- Deliver ${getProductDisplayName(p)} (${c})`)
+            .join('\n');
+        }
+        if (assignedJob) {
+          const jobLines = assignedJob.split('\n').map(l => l.trim()).filter(l => l.length > 0).map(l => `- ${l}`).join('\n');
+          assignedJobContent += `${assignedJobContent ? '\n' : ''}${jobLines}`;
+        }
+
+        const areaContent = data.totalOrders > 0 ? (data.areas.join(',') || '') : '';
+        const totalJobsCount = data.totalOrders || 0;
+
+        if (assignedJobContent || totalJobsCount > 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td contenteditable="true">${vehicle}</td>
+            <td contenteditable="true">${dispatcher}</td>
+            <td contenteditable="true" style="white-space: pre-line;">${assignedJobContent || ''}</td>
+            <td contenteditable="true">${areaContent}</td>
+            <td>${totalJobsCount}</td>
+            <td><button type="button" class="btn btn-danger btn-sm removeRow">Remove</button></td>
+          `;
+          row.querySelector('td:last-child').removeAttribute('contenteditable');
+          dispatcherJobsBody.appendChild(row);
+
+          row.querySelector('.removeRow').addEventListener('click', () => {
+            row.remove();
+            updateGrandTotal();
+            if (dispatcherJobsBody.children.length === 0) clearReport();
+          });
+        }
+
+        function updateGrandTotal() {
+          const existingFooter = dispatcherJobsBody.querySelector('tr.grandTotal');
+          if (existingFooter) existingFooter.remove();
+
+          const grandTotal = Array.from(dispatcherJobsBody.querySelectorAll('tr'))
+            .filter(tr => !tr.classList.contains('grandTotal'))
+            .reduce((sum, tr) => sum + (parseInt(tr.children[4].innerText || 0, 10) || 0), 0);
+
+          const footerRow = document.createElement('tr');
+          footerRow.classList.add('grandTotal');
+          footerRow.style.fontWeight = 'bold';
+          footerRow.innerHTML = `
+            <td colspan="4" style="text-align:right">Grand Total:</td>
+            <td>${grandTotal}</td>
+            <td></td>
+          `;
+          dispatcherJobsBody.appendChild(footerRow);
+        }
+
+        updateGrandTotal();
+
+        morningMileageHeader.innerHTML = `
+          <tr style="background:yellow;font-weight:bold;text-align:center;">
+            <th colspan="5">Morning Mileage</th>
+          </tr>
+          <tr>
+            <th>Vehicle No.</th>
+            <th colspan="4">Latest Mileage</th>
+          </tr>
+        `;
+
+        try {
+          const resM = await fetch('/api/getMorningMileage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date })
+          });
+          const mileageData = await resM.json();
+
+          const validMileage = mileageData.filter(m => m.mileage !== 'N/A');
+          validMileage.sort((a, b) => b.mileage - a.mileage);
+
+          morningMileageBody.innerHTML = validMileage
+            .map(m => `<tr><td>${m.plate}</td><td colspan="4">${m.mileage}</td></tr>`)
+            .join('');
+        } catch (e) {
+          morningMileageBody.innerHTML = '<tr><td colspan="5">Error loading mileage</td></tr>';
+        }
+
+        assignedByContainer.innerText = `Assigned and checked by: ${userId}`;
+
+        document.getElementById('vehicle').value = '';
+        document.getElementById('dispatcher').value = '';
+        document.getElementById('assignedJob').value = '';
+
+        saveBtn.classList.remove('hidden');
+        resetBtn.classList.remove('hidden');
+        printBtn.classList.add('hidden');
+
+      } catch (err) {
+        console.error(err);
+        alert('Failed to fetch job summary');
+      } finally { hideLoading(); }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      if (dispatcherJobsBody.children.length === 0) {
+        alert('No report to save');
+        return;
+      }
+      showLoading();
+
+      const dateStr = reportDateEl.value;
+      const dateObj = new Date(dateStr);
+      const formattedDate = dateObj.toLocaleDateString('en-GB').replace(/\//g, '.');
+      const reportName = `Operation Morning Report ${formattedDate}`;
+
+      const rows = Array.from(morningMileageBody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const aVal = a.children[1].innerText === 'N/A' ? -1 : parseInt(a.children[1].innerText, 10);
+        const bVal = b.children[1].innerText === 'N/A' ? -1 : parseInt(b.children[1].innerText, 10);
+        if (aVal === -1) return 1;
+        if (bVal === -1) return -1;
+        return bVal - aVal;
+      });
+      morningMileageBody.innerHTML = '';
+      rows.forEach(r => morningMileageBody.appendChild(r));
+
+      const mileageMap = {};
+      Array.from(morningMileageBody.querySelectorAll('tr')).forEach(row => {
+        const vehicle = row.children[0]?.innerText.trim();
+        const mileageText = row.children[1]?.innerText.trim();
+        let mileage = null;
+        if (mileageText && mileageText !== 'N/A') {
+          mileage = parseInt(mileageText, 10);
+        }
+        if (vehicle) mileageMap[vehicle] = mileage;
+      });
+
+      const assignedDispatchers = [];
+      Array.from(dispatcherJobsBody.querySelectorAll('tr')).forEach(row => {
+        const vehicle = row.children[0]?.innerText.trim();
+        const dispatcherName = row.children[1]?.innerText.trim();
+        const assignedJobText = row.children[2]?.innerText.trim();
+        const area = row.children[3]?.innerText.trim();
+
+        if (vehicle && dispatcherName) {
+          assignedDispatchers.push({
+            vehicle,
+            dispatcherName,
+            assignedJob: assignedJobText || '',
+            area: area || "",
+            mileage: mileageMap[vehicle] || null
+          });
+        }
+      });
+
+      const reportHTML = `
+        <div>${reportLogoHeader.outerHTML}</div>
+        <div>${dispatcherJobsTable.outerHTML}</div>
+        <div>${morningMileageTable.outerHTML}</div>
+        <div>${assignedByContainer.outerHTML}</div>
+      `;
+
+      const reportType = reportTypeEl.value;
+
+      async function saveReport(forceReplace = false) {
+        try {
+          const res = await fetch('/api/saveReport', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reportType,
+              reportContent: reportHTML,
+              reportName,
+              createdBy: userId,
+              assignedDispatchers,
+              forceReplace
+            })
+          });
+          const result = await res.json();
+
+          if (result.success) {
+            alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+            printBtn.classList.remove('hidden');
+          } else if (result.duplicate) {
+            const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+            if (confirmReplace) {
+              await saveReport(true);
+            }
+          } else {
+            alert('Failed to save report: ' + result.message);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error saving report');
+        } finally {
+          isReportSaved = true;
+          generateBtn.classList.add('hidden');
+          saveBtn.classList.add('hidden');
+          printBtn.classList.remove('hidden');
+          hideLoading();
+        }
+      }
+
+      await saveReport();
+    });
+
+    printBtn.addEventListener('click', () => {
+      showLoading();
+
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).replace(/\//g, '.');
+      
+      const defaultFileName = `Morning Report ${formattedDate}`;
+
+      const dispatcherClone = dispatcherJobsTable.cloneNode(true);
+      const morningClone = morningMileageTable.cloneNode(true);
+
+      Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
+        const cells = tr.children;
+        if (cells.length > 1) {
+          const lastCell = cells[cells.length - 1];
+          tr.removeChild(lastCell);
+        }
+      });
+
+      const bodyRows = Array.from(dispatcherClone.querySelectorAll('tbody tr'))
+        .filter(tr => !tr.classList.contains('grandTotal'));
+
+      let grandTotal = 0;
+      bodyRows.forEach(tr => {
+        const td = tr.children[4];
+        if(td) grandTotal += parseInt(td.innerText || 0, 10) || 0;
+      });
+
+      const oldFooter = dispatcherClone.querySelector('tr.grandTotal');
+      if(oldFooter) oldFooter.remove();
 
       const footerRow = document.createElement('tr');
       footerRow.classList.add('grandTotal');
@@ -655,1077 +883,729 @@ generateBtn.addEventListener('click', async () => {
       footerRow.innerHTML = `
         <td colspan="4" style="text-align:right">Grand Total:</td>
         <td>${grandTotal}</td>
-        <td></td>
       `;
-      dispatcherJobsBody.appendChild(footerRow);
-    }
+      dispatcherClone.querySelector('tbody').appendChild(footerRow);
 
-    updateGrandTotal();
-
-    // Morning Mileage Header
-    morningMileageHeader.innerHTML = `
-      <tr style="background:yellow;font-weight:bold;text-align:center;">
-        <th colspan="5">Morning Mileage</th>
-      </tr>
-      <tr>
-        <th>Vehicle No.</th>
-        <th colspan="4">Latest Mileage</th>
-      </tr>
-    `;
-
-    // Morning Mileage Rows
-    try {
-      const resM = await fetch('/api/getMorningMileage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date })
-      });
-      const mileageData = await resM.json();
-
-      // Filter out N/A and sort descending
-      const validMileage = mileageData.filter(m => m.mileage !== 'N/A');
-      validMileage.sort((a, b) => b.mileage - a.mileage);
-
-      morningMileageBody.innerHTML = validMileage
-        .map(m => `<tr><td>${m.plate}</td><td colspan="4">${m.mileage}</td></tr>`)
-        .join('');
-    } catch (e) {
-      morningMileageBody.innerHTML = '<tr><td colspan="5">Error loading mileage</td></tr>';
-    }
-
-    // Assigned by
-    assignedByContainer.innerText = `Assigned and checked by: ${userId}`;
-
-    document.getElementById('vehicle').value = '';
-    document.getElementById('dispatcher').value = '';
-    document.getElementById('assignedJob').value = '';
-
-    // Show buttons after generate
-    saveBtn.classList.remove('hidden');
-    resetBtn.classList.remove('hidden');
-    printBtn.classList.add('hidden'); // hide until saved
-
-  } catch (err) {
-    console.error(err);
-    alert('Failed to fetch job summary');
-  } finally { hideLoading(); }
-});
-
-// --- Save Button ---
-saveBtn.addEventListener('click', async () => {
-  if (dispatcherJobsBody.children.length === 0) {
-    alert('No report to save');
-    return;
-  }
-  showLoading();
-
-  // 🔹 Format date for reportName (dd.mm.yyyy, no day)
-  const dateStr = reportDateEl.value;
-  const dateObj = new Date(dateStr);
-  const formattedDate = dateObj.toLocaleDateString('en-GB').replace(/\//g, '.');
-  const reportName = `Operation Morning Report ${formattedDate}`;
-
-  // 🔹 Sort morning mileage rows: largest to smallest, N/A last
-  const rows = Array.from(morningMileageBody.querySelectorAll('tr'));
-  rows.sort((a, b) => {
-    const aVal = a.children[1].innerText === 'N/A' ? -1 : parseInt(a.children[1].innerText, 10);
-    const bVal = b.children[1].innerText === 'N/A' ? -1 : parseInt(b.children[1].innerText, 10);
-    if (aVal === -1) return 1;
-    if (bVal === -1) return -1;
-    return bVal - aVal;
-  });
-  morningMileageBody.innerHTML = '';
-  rows.forEach(r => morningMileageBody.appendChild(r));
-
-  // 🔹 Build mileage lookup map
-  const mileageMap = {};
-  Array.from(morningMileageBody.querySelectorAll('tr')).forEach(row => {
-    const vehicle = row.children[0]?.innerText.trim();
-    const mileageText = row.children[1]?.innerText.trim();
-    let mileage = null;
-    if (mileageText && mileageText !== 'N/A') {
-      mileage = parseInt(mileageText, 10);
-    }
-    if (vehicle) mileageMap[vehicle] = mileage;
-  });
-
-  // 🔹 Build assignedDispatchers array (include assignedJob)
-const assignedDispatchers = [];
-Array.from(dispatcherJobsBody.querySelectorAll('tr')).forEach(row => {
-  const vehicle = row.children[0]?.innerText.trim();
-  const dispatcherName = row.children[1]?.innerText.trim();
-  const assignedJobText = row.children[2]?.innerText.trim(); // 🔹 Assigned Job column
-  const area = row.children[3]?.innerText.trim();
-
-  if (vehicle && dispatcherName) {
-    assignedDispatchers.push({
-      vehicle,
-      dispatcherName,
-      assignedJob: assignedJobText || '',   // 🔹 new field
-      area: area || "",
-      mileage: mileageMap[vehicle] || null
-    });
-  }
-});
-
-  // 🔹 Build report HTML
-  const reportHTML = `
-    <div>${reportLogoHeader.outerHTML}</div>
-    <div>${dispatcherJobsTable.outerHTML}</div>
-    <div>${morningMileageTable.outerHTML}</div>
-    <div>${assignedByContainer.outerHTML}</div>
-  `;
-
-  const reportType = reportTypeEl.value;
-
-  // 🔹 Function to save with optional forceReplace flag
-  async function saveReport(forceReplace = false) {
-    try {
-      const res = await fetch('/api/saveReport', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reportType,
-          reportContent: reportHTML,
-          reportName,
-          createdBy: userId,
-          assignedDispatchers,
-          forceReplace
-        })
-      });
-      const result = await res.json();
-
-      if (result.success) {
-        alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
-        printBtn.classList.remove('hidden'); // show only after save
-      } else if (result.duplicate) {
-        const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
-        if (confirmReplace) {
-          await saveReport(true); // retry with forceReplace
-        }
-      } else {
-        alert('Failed to save report: ' + result.message);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error saving report');
-    } finally {
-      isReportSaved = true;
-  generateBtn.classList.add('hidden');
-  saveBtn.classList.add('hidden');
-  printBtn.classList.remove('hidden');
-      hideLoading();
-    }
-  }
-
-  // 🔹 Initial save attempt
-  await saveReport();
-});
-
-printBtn.addEventListener('click', () => {
-  showLoading();
-
-  const printWindow = window.open('', '_blank', 'width=900,height=700');
-  
-  // Get current date and format it as DD.MM.YYYY
-  const currentDate = new Date();
-  const formattedDate = currentDate.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).replace(/\//g, '.');
-  
-  const defaultFileName = `Morning Report ${formattedDate}`;
-
-  const dispatcherClone = dispatcherJobsTable.cloneNode(true);
-  const morningClone = morningMileageTable.cloneNode(true);
-
-  // Remove Action column from all rows (header + body + footer)
-  Array.from(dispatcherClone.querySelectorAll('tr')).forEach(tr => {
-    const cells = tr.children;
-    if (cells.length > 1) { // 🔹 Only remove if more than 1 cell
-      const lastCell = cells[cells.length - 1];
-      tr.removeChild(lastCell);
-    }
-  });
-
-  // Recalculate grand total for cloned table
-  const bodyRows = Array.from(dispatcherClone.querySelectorAll('tbody tr'))
-    .filter(tr => !tr.classList.contains('grandTotal'));
-
-  let grandTotal = 0;
-  bodyRows.forEach(tr => {
-    const td = tr.children[4]; // Total Delivery column
-    if(td) grandTotal += parseInt(td.innerText || 0, 10) || 0;
-  });
-
-  // Remove old grand total if exists
-  const oldFooter = dispatcherClone.querySelector('tr.grandTotal');
-  if(oldFooter) oldFooter.remove();
-
-  // Append recalculated grand total row WITHOUT extra Action column
-  const footerRow = document.createElement('tr');
-  footerRow.classList.add('grandTotal');
-  footerRow.style.fontWeight = 'bold';
-  footerRow.innerHTML = `
-    <td colspan="4" style="text-align:right">Grand Total:</td>
-    <td>${grandTotal}</td>
-  `;
-  dispatcherClone.querySelector('tbody').appendChild(footerRow);
-
-  // Print style
-  const style = `
-    <style>
-      body { font-family: Arial, sans-serif; padding: 20px; }
-      h2 { text-align: center; margin-bottom: 20px; }
-      table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-      th, td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; white-space: pre-line; }
-      th { font-weight: bold; text-align: center; }
-      #dispatcherJobsTable thead tr:first-child th,
-      #morningMileageTable thead tr:first-child th { background: yellow; }
-      #dispatcherJobsTable thead tr:nth-child(2) th,
-      #morningMileageTable thead tr:nth-child(2) th { background: white; }
-      img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
-    </style>
-  `;
-
-  // Force the title to be exactly "Morning Report DD.MM.YYYY"
-  const titleText = defaultFileName; // Always use the default filename
-  
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>${titleText}</title>
-        ${style}
-      </head>
-      <body>
-        <div id="logoHeader">
-          <img id="printLogo" src="${reportLogoHeader.querySelector('img')?.src || ''}" alt="Logo">
-          <h2>${window.currentReportName || defaultFileName}</h2>
-        </div>
-        ${dispatcherClone.outerHTML}
-        ${morningClone.outerHTML}
-        <div style="font-weight:bold; margin-top:10px;">${assignedByContainer.innerText}</div>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-
-  // Override any existing title before print
-  printWindow.document.title = defaultFileName;
-
-  const logoImg = printWindow.document.getElementById('printLogo');
-  if(logoImg){
-    logoImg.onload = () => { 
-      // Ensure title is set right before printing
-      printWindow.document.title = defaultFileName;
-      printWindow.focus(); 
-      printWindow.print(); 
-      hideLoading(); 
-    };
-    logoImg.onerror = () => { 
-      // Ensure title is set right before printing
-      printWindow.document.title = defaultFileName;
-      printWindow.focus(); 
-      printWindow.print(); 
-      hideLoading(); 
-    };
-  } else {
-    // Ensure title is set right before printing
-    printWindow.document.title = defaultFileName;
-    printWindow.focus();
-    printWindow.print();
-    hideLoading();
-  }
-});
-
-resetBtn.addEventListener('click', () => {
-  if (confirm("Are you sure you want to reset the report?")) {
-    location.reload();
-  }
-});
-
-// --- Reusable Save Function ---
-  async function saveReportToServer({ reportType, reportName, reportContent, assignedDispatchers, forceReplace = false }) {
-    const res = await fetch("/api/saveReport", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reportType,
-        reportName,
-        reportContent,
-        assignedDispatchers,
-        forceReplace,
-      }),
-    });
-    return await res.json();
-  }
-
-// --- Universal Save Handler ---
-async function handleSave({ reportType, reportName, reportDate, reportContent, saveBtn, printBtn, resetBtn }) {
-  if (!reportDate) return alert("Please select a date first.");
-
-  // Remove this line since reportName is now passed correctly
-  // const reportName = `${reportType} ${reportDate}`;
-  
-  let response = await saveReportToServer({
-    reportType,
-    reportName, // Use the passed reportName which already has formatted date
-    reportContent,
-    // assignedDispatchers removed from here
-  });
-
-  // Rest of your code remains the same...
-  if (response.duplicate) {
-    if (confirm(`A ${reportType} already exists for ${reportDate}. Replace it?`)) {
-      response = await saveReportToServer({
-        reportType,
-        reportName,
-        reportContent,
-        // assignedDispatchers removed from here
-        forceReplace: true,
-      });
-      if (response.success) alert("Report replaced successfully.");
-      else alert(response.message || "Failed to replace report.");
-    } else return;
-  } else if (response.success) {
-    alert("Report saved successfully.");
-  } else {
-    return alert(response.message || "Failed to save report.");
-  }
-
-  // After save success
-  saveBtn.classList.add("hidden");
-  printBtn.classList.remove("hidden");
-  resetBtn.classList.remove("hidden");
-}
-
-const endGenerateBtn = document.getElementById('endGenerateBtn');
-const endSaveBtn = document.getElementById('endSaveBtn');
-const endPrintBtn = document.getElementById('endPrintBtn');
-const endResetBtn = document.getElementById('endResetBtn');
-
-const endReportLogoHeader = document.getElementById('endReportLogoHeader');
-const endStaffJobsTable = document.getElementById('endStaffJobsTable');
-const endStaffJobsHeader = document.getElementById('endStaffJobsHeader');
-const checkedByContainer = document.getElementById('checkedByContainer');
-
-endResetBtn.addEventListener('click', () => {
-  if (confirm("Are you sure you want to reset the report?")) {
-    location.reload();
-  }
-});
-
-endGenerateBtn.addEventListener('click', async () => {
-  endGenerateBtn.style.display = "none";
-  showLoading()
-  const endReportDate = document.getElementById('endReportDate').value;
-  if (!endReportDate) { alert('Please pick a date'); return; }
-
-  try {
-    const res = await fetch('/api/getEndOfDaySummary', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: endReportDate })
-    });
-
-    const data = await res.json();
-    if (!data.success) { alert('Failed to fetch report'); return; }
-
-    const formattedDate = new Date(endReportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
-    const reportTitle = `Operation End of Day Report ${formattedDate}`;
-
-    // Logo + Title
-    endReportLogoHeader.innerHTML = `
-      <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
-      <h2>${reportTitle}</h2>
-    `;
-
-    // Table header (Staff's Tasks)
-    endStaffJobsHeader.innerHTML = `
-      <tr style="background:lightblue;font-weight:bold;">
-        <th colspan="3" style="text-align:left;">1. Staff's Tasks</th>
-      </tr>
-      <tr>
-        <th>Staff Name</th>
-        <th>Assigned Task</th>
-        <th>Action</th>
-      </tr>
-    `;
-
-    // Table body
-    const tbody = endStaffJobsTable.querySelector('tbody');
-    tbody.innerHTML = '';
-
-    data.reports.forEach(report => {
-      // Staff row (currently logged-in user)
-      const staffRow = document.createElement('tr');
-      staffRow.innerHTML = `
-        <td contenteditable="true">${userId}</td>
-        <td contenteditable="true" style="white-space: pre-line;">- Assigned dispatchers and prepare for delivery
-- Count COD from dispatchers
-</td>
-        <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+      const style = `
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h2 { text-align: center; margin-bottom: 20px; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+          th, td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; white-space: pre-line; }
+          th { font-weight: bold; text-align: center; }
+          #dispatcherJobsTable thead tr:first-child th,
+          #morningMileageTable thead tr:first-child th { background: yellow; }
+          #dispatcherJobsTable thead tr:nth-child(2) th,
+          #morningMileageTable thead tr:nth-child(2) th { background: white; }
+          img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
+        </style>
       `;
-      tbody.appendChild(staffRow);
 
-      // Dispatcher rows
-      report.assignedDispatchers.forEach(d => {
-        const filteredJobs = d.assignedJob
-          .split('\n')
-          .filter(line => !line.startsWith('- Deliver '))
-          .join('\n');
+      const titleText = defaultFileName;
+      
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${titleText}</title>
+            ${style}
+          </head>
+          <body>
+            <div id="logoHeader">
+              <img id="printLogo" src="${reportLogoHeader.querySelector('img')?.src || ''}" alt="Logo">
+              <h2>${window.currentReportName || defaultFileName}</h2>
+            </div>
+            ${dispatcherClone.outerHTML}
+            ${morningClone.outerHTML}
+            <div style="font-weight:bold; margin-top:10px;">${assignedByContainer.innerText}</div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
 
-        if (filteredJobs.trim().length === 0) return;
+      printWindow.document.title = defaultFileName;
 
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td contenteditable="true">${d.dispatcherName}</td>
-          <td contenteditable="true" style="white-space: pre-line;">${filteredJobs}</td>
-          <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
-        `;
-        tbody.appendChild(row);
-      });
-    });
-
-    // Attach remove button to all rows
-    tbody.querySelectorAll('tr').forEach(row => {
-      const delBtn = row.querySelector('.removeRowBtn');
-      if (delBtn) delBtn.addEventListener('click', () => row.remove());
-    });
-
-    // Add "Add Row" button below table
-    let addBtn = document.getElementById('addStaffRowBtn');
-    if (!addBtn) {
-      addBtn = document.createElement('button');
-      addBtn.id = 'addStaffRowBtn';
-      addBtn.className = 'btn btn-primary btn-sm mt-2';
-      addBtn.textContent = '➕ Add Row';
-      endStaffJobsTable.parentNode.appendChild(addBtn);
-
-      addBtn.addEventListener('click', () => {
-        const newRow = document.createElement('tr');
-        newRow.innerHTML = `
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
-        `;
-        tbody.appendChild(newRow);
-        newRow.querySelector('.removeRowBtn').addEventListener('click', () => newRow.remove());
-      });
-    }
-
-    // Load other tables
-    await loadDeliveryResult(endReportDate);
-    await loadCodBtCollected(endReportDate);
-    await loadWarehouseTable(endReportDate);
-
-// Insert Pure51 Inventory Stock table
-const pure51Container = document.createElement('div');
-pure51Container.style.marginTop = "30px";
-pure51Container.innerHTML = `
-  <table class="table table-bordered" id="pure51StockTable">
-    <thead>
-      <tr style="background:lightblue;font-weight:bold;">
-        <th colspan="2" style="text-align:left;">4.1. Pure51 Inventory Stock</th>
-      </tr>
-      <tr>
-        <th>Item</th>
-        <th>Balance</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Feminine Wash 200ml</td>
-        <td contenteditable="true"></td>
-      </tr>
-      <tr>
-        <td>Feminine Wash 75ml</td>
-        <td contenteditable="true"></td>
-      </tr>
-      <tr>
-        <td>Lingerie Wash 100ml</td>
-        <td contenteditable="true"></td>
-      </tr>
-    </tbody>
-  </table>
-`;
-reportContainer.appendChild(pure51Container);
-
-    await loadVehicleReport(endReportDate);
-
-    // Remove any existing checkedByContainer
-const existingCheckedBy = document.getElementById('vehicleReportCheckedBy');
-if (existingCheckedBy) existingCheckedBy.remove();
-
-// Create new checkedBy container specifically for Vehicle Report
-const vehicleReportCheckedBy = document.createElement('div');
-vehicleReportCheckedBy.id = 'vehicleReportCheckedBy';
-vehicleReportCheckedBy.style.fontWeight = 'bold';
-vehicleReportCheckedBy.style.marginTop = '10px';
-vehicleReportCheckedBy.innerText = `Checked and prepared by: ${userId}`;
-
-// Append it after the vehicle report container
-const vehicleContainer = document.querySelector('#vehicleReportTable').closest('div');
-if (vehicleContainer) {
-    vehicleContainer.appendChild(vehicleReportCheckedBy);
-}
-
-updateCheckedByPosition();
-
-    // (Assume your existing logic builds the report tables here)
-    alert("End of Day Report generated successfully.");
-
-    hideLoading();
-
-    endSaveBtn.classList.remove("hidden");
-    endResetBtn.classList.remove("hidden");
-    endPrintBtn.classList.add("hidden");
-    endSaveBtn.removeAttribute("disabled");
-  } catch (err) {
-    console.error(err);
-    alert('Error fetching report');
-  }
-});
-
-async function loadDeliveryResult(date) {
-  const reportContainer = document.getElementById('reportContainer');
-  if (!reportContainer) return console.error('reportContainer element not found in DOM.');
-
-  try {
-    const res = await fetch(`/api/delivery-result-report?date=${date}`);
-    const { products, results } = await res.json();
-
-    // 1. Use DocumentFragment for batch DOM updates
-    const fragment = document.createDocumentFragment();
-    
-    // Spacer
-    const spacer = document.createElement("div");
-    spacer.style.marginTop = "30px";
-    fragment.appendChild(spacer);
-
-    // 2. Create table structure more efficiently
-    const table = document.createElement("table");
-    table.className = "table table-bordered";
-
-    // Table header
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-    headerRow.style.cssText = "background-color: lightblue; font-weight: bold;";
-    
-    const headerCell = document.createElement("th");
-    headerCell.colSpan = 2 + products.length + 4;
-    headerCell.style.textAlign = "left";
-    headerCell.innerText = "2. Job Result";
-    headerRow.appendChild(headerCell);
-    thead.appendChild(headerRow);
-
-    const colRow = document.createElement("tr");
-    const headers = ["Staff", "Area", "Vehicle", "Jobs", ...products, "Total", "Success Rate"];
-    
-    // 3. Use innerHTML for multiple header cells (faster than individual appends)
-    colRow.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
-    thead.appendChild(colRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-
-    // 4. Filter and sort results
-    const filteredResults = results
-      .filter(r => r.staff !== "N/A" && r.staff !== "Unassigned")
-      .sort((a, b) => (a.staff === "Selfcollect" ? 1 : b.staff === "Selfcollect" ? -1 : 0));
-
-    // 5. Pre-calculate reusable values
-    const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
-    const rowTypes = ["current", "completed", "failed"];
-
-    filteredResults.forEach(r => {
-      const rowCells = {};
-      const tdSR = document.createElement("td");
-      tdSR.rowSpan = 3;
-      tdSR.contentEditable = false;
-
-      rowTypes.forEach((type, idx) => {
-        const row = document.createElement("tr");
-
-        if (idx === 0) {
-          // 6. Create rowspan cells only once
-          const staffCell = document.createElement("td");
-          staffCell.rowSpan = 3;
-          staffCell.innerText = r.staff;
-          row.appendChild(staffCell);
-
-          const areaCell = document.createElement("td");
-          areaCell.rowSpan = 3;
-          areaCell.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
-          areaCell.contentEditable = true;
-          row.appendChild(areaCell);
-
-          const vehicleCell = document.createElement("td");
-          vehicleCell.rowSpan = 3;
-          vehicleCell.innerText = r.vehicle || "-";
-          vehicleCell.contentEditable = true;
-          row.appendChild(vehicleCell);
-        }
-
-        // Jobs column
-        const tdJobs = document.createElement("td");
-        tdJobs.innerText = displayNames[type];
-        tdJobs.style.fontWeight = "bold";
-        row.appendChild(tdJobs);
-
-        // Product cells
-        const productTds = products.map(p => {
-          const td = document.createElement("td");
-          td.contentEditable = true;
-          td.innerText = r.productCounts[p][type];
-
-          if (!rowCells[p]) rowCells[p] = {};
-          rowCells[p][type] = td;
-
-          // Initial highlighting
-          if (type === "completed" && parseInt(td.innerText) > 0) {
-            td.style.backgroundColor = "#d4f4d4";
-          } else if (type === "failed" && parseInt(td.innerText) > 0) {
-            td.style.backgroundColor = "#f4d4d4";
-          }
-
-          // 7. Debounce input events for better performance
-          let inputTimeout;
-          td.addEventListener("input", () => {
-            clearTimeout(inputTimeout);
-            inputTimeout = setTimeout(() => handleCellInput(td, type, rowCells[p]), 50);
-          });
-
-          return td;
-        });
-
-        productTds.forEach(td => row.appendChild(td));
-
-        // Total column
-        const tdTotal = document.createElement("td");
-        const calculateTotal = () => {
-          const total = productTds.reduce((sum, td) => sum + (parseInt(td.innerText) || 0), 0);
-          tdTotal.innerText = total;
-
-          if (type === "completed" && total > 0) {
-            tdTotal.style.backgroundColor = "#d4f4d4";
-          } else if (type === "failed" && total > 0) {
-            tdTotal.style.backgroundColor = "#f4d4d4";
-          } else {
-            tdTotal.style.backgroundColor = "";
-          }
-
-          // Calculate Success Rate
-          let completedTotal = 0;
-          let assignedTotal = 0;
-          products.forEach(p => {
-            const c = parseInt(rowCells[p]?.completed?.innerText || 0);
-            const a = parseInt(rowCells[p]?.current?.innerText || 0);
-            completedTotal += c;
-            assignedTotal += a;
-          });
-          
-          const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
-          tdSR.innerText = successRate + "%";
-          tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
+      const logoImg = printWindow.document.getElementById('printLogo');
+      if(logoImg){
+        logoImg.onload = () => { 
+          printWindow.document.title = defaultFileName;
+          printWindow.focus(); 
+          printWindow.print(); 
+          hideLoading(); 
         };
-
-        calculateTotal();
-        row.appendChild(tdTotal);
-
-        if (idx === 0) row.appendChild(tdSR);
-        tbody.appendChild(row);
-      });
+        logoImg.onerror = () => { 
+          printWindow.document.title = defaultFileName;
+          printWindow.focus(); 
+          printWindow.print(); 
+          hideLoading(); 
+        };
+      } else {
+        printWindow.document.title = defaultFileName;
+        printWindow.focus();
+        printWindow.print();
+        hideLoading();
+      }
     });
 
-    table.appendChild(tbody);
-    fragment.appendChild(table);
-    
-    // 8. Single DOM update at the end
-    reportContainer.appendChild(fragment);
-    
-  } catch (err) {
-    console.error('Error loading delivery results:', err);
-  }
-}
+    resetBtn.addEventListener('click', () => {
+      if (confirm("Are you sure you want to reset the report?")) {
+        location.reload();
+      }
+    });
 
-// 9. Separate input handler function
-function handleCellInput(td, type, rowData) {
-  const val = parseInt(td.innerText) || 0;
-  
-  if (type === "completed") {
-    td.style.backgroundColor = val > 0 ? "#d4f4d4" : "";
-  } else if (type === "failed") {
-    td.style.backgroundColor = val > 0 ? "#f4d4d4" : "";
-  }
+    // End of Day Report Functions
+    const endGenerateBtn = document.getElementById('endGenerateBtn');
+    const endSaveBtn = document.getElementById('endSaveBtn');
+    const endPrintBtn = document.getElementById('endPrintBtn');
+    const endResetBtn = document.getElementById('endResetBtn');
+    const endReportLogoHeader = document.getElementById('endReportLogoHeader');
+    const endStaffJobsTable = document.getElementById('endStaffJobsTable');
+    const endStaffJobsHeader = document.getElementById('endStaffJobsHeader');
+    const reportContainer = document.getElementById('reportContainer');
 
-  // Assigned row constraint
-  if (type === "current") {
-    const completedVal = parseInt(rowData.completed?.innerText || 0);
-    const failedVal = parseInt(rowData.failed?.innerText || 0);
-    if (val < completedVal + failedVal) {
-      td.innerText = completedVal + failedVal;
+    endResetBtn.addEventListener('click', () => {
+      if (confirm("Are you sure you want to reset the report?")) {
+        location.reload();
+      }
+    });
+
+    // Updated loadCodBtCollected with product mapping
+    async function loadCodBtCollected(date) {
+      if (!reportContainer) return console.error('reportContainer not found');
+
+      try {
+        const res = await fetch('/api/cod-bt-collected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date })
+        });
+        const html = await res.text();
+
+        const spacer = document.createElement("div");
+        spacer.style.marginTop = "30px";
+        reportContainer.appendChild(spacer);
+
+        const codContainer = document.createElement("div");
+        codContainer.innerHTML = html;
+        reportContainer.appendChild(codContainer);
+        
+        // Apply product mapping to COD/BT tables
+        const codTables = codContainer.querySelectorAll('table');
+        codTables.forEach(table => applyProductMappingToTable(table));
+
+      } catch (err) {
+        console.error('Error loading COD/BT Collected:', err);
+      }
     }
-  }
 
-  // Recalculate totals (you'll need to make calculateTotal accessible)
-  // This would require some refactoring to make the function available
-}
+    // Updated loadWarehouseTable with product mapping
+    async function loadWarehouseTable(date) {
+      if (!reportContainer) return console.error('reportContainer not found');
 
-async function loadCodBtCollected(date) {
-  const reportContainer = document.getElementById('reportContainer');
-  if (!reportContainer) return console.error('reportContainer not found');
+      try {
+        const res = await fetch('/api/warehouseTableGenerate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date })
+        });
+        const html = await res.text();
 
-  try {
-    const res = await fetch('/api/cod-bt-collected', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date })
+        const spacer = document.createElement("div");
+        spacer.style.marginTop = "30px";
+        reportContainer.appendChild(spacer);
+
+        const whContainer = document.createElement("div");
+        whContainer.innerHTML = html;
+        reportContainer.appendChild(whContainer);
+        
+        // Apply product mapping to Warehouse tables
+        const warehouseTables = whContainer.querySelectorAll('table');
+        warehouseTables.forEach(table => applyProductMappingToTable(table));
+
+      } catch (err) {
+        console.error('Error loading Warehouse table:', err);
+      }
+    }
+
+    async function loadDeliveryResult(date) {
+      if (!reportContainer) return console.error('reportContainer element not found in DOM.');
+
+      try {
+        const res = await fetch(`/api/delivery-result-report?date=${date}`);
+        const { products, results } = await res.json();
+        
+        const mappedProducts = products.map(p => getProductDisplayName(p));
+
+        const fragment = document.createDocumentFragment();
+        
+        const spacer = document.createElement("div");
+        spacer.style.marginTop = "30px";
+        fragment.appendChild(spacer);
+
+        const table = document.createElement("table");
+        table.className = "table table-bordered";
+
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        headerRow.style.cssText = "background-color: lightblue; font-weight: bold;";
+        
+        const headerCell = document.createElement("th");
+        headerCell.colSpan = 2 + mappedProducts.length + 4;
+        headerCell.style.textAlign = "left";
+        headerCell.innerText = "2. Job Result";
+        headerRow.appendChild(headerCell);
+        thead.appendChild(headerRow);
+
+        const colRow = document.createElement("tr");
+        const headers = ["Staff", "Area", "Vehicle", "Jobs", ...mappedProducts, "Total", "Success Rate"];
+        
+        colRow.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+        thead.appendChild(colRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+
+        const filteredResults = results
+          .filter(r => r.staff !== "N/A" && r.staff !== "Unassigned")
+          .sort((a, b) => (a.staff === "Selfcollect" ? 1 : b.staff === "Selfcollect" ? -1 : 0));
+
+        const displayNames = { current: "Assigned", completed: "Completed", failed: "Failed" };
+        const rowTypes = ["current", "completed", "failed"];
+
+        filteredResults.forEach(r => {
+          const rowCells = {};
+          const tdSR = document.createElement("td");
+          tdSR.rowSpan = 3;
+          tdSR.contentEditable = false;
+
+          rowTypes.forEach((type, idx) => {
+            const row = document.createElement("tr");
+
+            if (idx === 0) {
+              const staffCell = document.createElement("td");
+              staffCell.rowSpan = 3;
+              staffCell.innerText = r.staff;
+              row.appendChild(staffCell);
+
+              const areaCell = document.createElement("td");
+              areaCell.rowSpan = 3;
+              areaCell.innerText = r.staff === "Selfcollect" ? "-" : r.area || "-";
+              areaCell.contentEditable = true;
+              row.appendChild(areaCell);
+
+              const vehicleCell = document.createElement("td");
+              vehicleCell.rowSpan = 3;
+              vehicleCell.innerText = r.vehicle || "-";
+              vehicleCell.contentEditable = true;
+              row.appendChild(vehicleCell);
+            }
+
+            const tdJobs = document.createElement("td");
+            tdJobs.innerText = displayNames[type];
+            tdJobs.style.fontWeight = "bold";
+            row.appendChild(tdJobs);
+
+            const productTds = products.map((originalProduct) => {
+              const td = document.createElement("td");
+              td.contentEditable = true;
+              td.innerText = r.productCounts[originalProduct][type];
+
+              if (!rowCells[originalProduct]) rowCells[originalProduct] = {};
+              rowCells[originalProduct][type] = td;
+
+              if (type === "completed" && parseInt(td.innerText) > 0) {
+                td.style.backgroundColor = "#d4f4d4";
+              } else if (type === "failed" && parseInt(td.innerText) > 0) {
+                td.style.backgroundColor = "#f4d4d4";
+              }
+
+              let inputTimeout;
+              td.addEventListener("input", () => {
+                clearTimeout(inputTimeout);
+                inputTimeout = setTimeout(() => {
+                  const val = parseInt(td.innerText) || 0;
+                  if (type === "completed") {
+                    td.style.backgroundColor = val > 0 ? "#d4f4d4" : "";
+                  } else if (type === "failed") {
+                    td.style.backgroundColor = val > 0 ? "#f4d4d4" : "";
+                  }
+                  if (type === "current") {
+                    const completedVal = parseInt(rowCells[originalProduct].completed?.innerText || 0);
+                    const failedVal = parseInt(rowCells[originalProduct].failed?.innerText || 0);
+                    if (val < completedVal + failedVal) {
+                      td.innerText = completedVal + failedVal;
+                    }
+                  }
+                  let completedTotal = 0;
+                  let assignedTotal = 0;
+                  products.forEach(p => {
+                    const c = parseInt(rowCells[p]?.completed?.innerText || 0);
+                    const a = parseInt(rowCells[p]?.current?.innerText || 0);
+                    completedTotal += c;
+                    assignedTotal += a;
+                  });
+                  const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
+                  tdSR.innerText = successRate + "%";
+                  tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
+                }, 50);
+              });
+
+              return td;
+            });
+
+            productTds.forEach(td => row.appendChild(td));
+
+            const tdTotal = document.createElement("td");
+            const calculateTotal = () => {
+              const total = productTds.reduce((sum, td) => sum + (parseInt(td.innerText) || 0), 0);
+              tdTotal.innerText = total;
+              if (type === "completed" && total > 0) {
+                tdTotal.style.backgroundColor = "#d4f4d4";
+              } else if (type === "failed" && total > 0) {
+                tdTotal.style.backgroundColor = "#f4d4d4";
+              } else {
+                tdTotal.style.backgroundColor = "";
+              }
+              let completedTotal = 0;
+              let assignedTotal = 0;
+              products.forEach(p => {
+                const c = parseInt(rowCells[p]?.completed?.innerText || 0);
+                const a = parseInt(rowCells[p]?.current?.innerText || 0);
+                completedTotal += c;
+                assignedTotal += a;
+              });
+              const successRate = assignedTotal === 0 ? 100 : Math.round((completedTotal / assignedTotal) * 100);
+              tdSR.innerText = successRate + "%";
+              tdSR.style.backgroundColor = successRate < 100 ? "lightyellow" : "";
+            };
+            calculateTotal();
+            row.appendChild(tdTotal);
+
+            if (idx === 0) row.appendChild(tdSR);
+            tbody.appendChild(row);
+          });
+        });
+
+        table.appendChild(tbody);
+        fragment.appendChild(table);
+        
+        reportContainer.appendChild(fragment);
+        
+      } catch (err) {
+        console.error('Error loading delivery results:', err);
+      }
+    }
+
+    async function loadVehicleReport(date) {
+      if (!reportContainer) return console.error('reportContainer not found');
+
+      try {
+        const res = await fetch('/api/vehicle-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date })
+        });
+        const html = await res.text();
+
+        const spacer = document.createElement("div");
+        spacer.style.marginTop = "30px";
+        reportContainer.appendChild(spacer);
+
+        const vehicleContainer = document.createElement("div");
+        vehicleContainer.innerHTML = html;
+        reportContainer.appendChild(vehicleContainer);
+
+        const table = vehicleContainer.querySelector('#vehicleReportTable');
+        const tbody = table.querySelector('tbody');
+        const addRowBtn = vehicleContainer.querySelector('#addVehicleRowBtn');
+
+        function attachRowEvents(row) {
+          const delBtn = row.querySelector('.removeRowBtn');
+          if (delBtn) delBtn.addEventListener('click', () => row.remove());
+
+          const morningInput = row.querySelector('.morningMileage');
+          const eodInput = row.querySelector('.eodMileage');
+          const usedInput = row.querySelector('.mileageUsed');
+
+          function recalc() {
+            const morningVal = parseFloat(morningInput.value) || 0;
+            const eodVal = parseFloat(eodInput.value) || 0;
+            usedInput.value = isNaN(eodVal - morningVal) ? '' : (eodVal - morningVal);
+          }
+
+          if (morningInput && eodInput) {
+            morningInput.addEventListener('input', recalc);
+            eodInput.addEventListener('input', recalc);
+          }
+
+          const paidCell = row.querySelector('td:nth-child(8)');
+          if (paidCell) {
+            paidCell.addEventListener('input', () => {
+              let val = paidCell.innerText.replace(/[^\d.]/g, '');
+              if (val === '') {
+                paidCell.innerText = '';
+                return;
+              }
+              val = parseFloat(val);
+              if (isNaN(val)) {
+                paidCell.innerText = '';
+                return;
+              }
+              paidCell.innerText = `$${val.toFixed(2)}`;
+            });
+          }
+        }
+
+        tbody.querySelectorAll('tr').forEach(row => attachRowEvents(row));
+
+        if (addRowBtn) {
+          addRowBtn.addEventListener('click', () => {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td><input type="number" class="morningMileage" value="0" readonly></td>
+              <td><input type="number" class="eodMileage"></td>
+              <td><input type="number" class="mileageUsed" value="0" readonly></td>
+              <td contenteditable="true">No</td>
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+            `;
+            tbody.appendChild(newRow);
+            attachRowEvents(newRow);
+          });
+        }
+
+      } catch (err) {
+        console.error('Error loading Vehicle Report:', err);
+      }
+    }
+
+    // End Generate Button
+    endGenerateBtn.addEventListener('click', async () => {
+      endGenerateBtn.style.display = "none";
+      showLoading();
+      const endReportDate = document.getElementById('endReportDate').value;
+      if (!endReportDate) { alert('Please pick a date'); return; }
+
+      try {
+        const res = await fetch('/api/getEndOfDaySummary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: endReportDate })
+        });
+
+        const data = await res.json();
+        if (!data.success) { alert('Failed to fetch report'); return; }
+
+        const formattedDate = new Date(endReportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
+        const reportTitle = `Operation End of Day Report ${formattedDate}`;
+
+        endReportLogoHeader.innerHTML = `
+          <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
+          <h2>${reportTitle}</h2>
+        `;
+
+        endStaffJobsHeader.innerHTML = `
+          <tr style="background:lightblue;font-weight:bold;">
+            <th colspan="3" style="text-align:left;">1. Staff's Tasks</th>
+          </tr>
+          <tr>
+            <th>Staff Name</th>
+            <th>Assigned Task</th>
+            <th>Action</th>
+          </tr>
+        `;
+
+        const tbody = endStaffJobsTable.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        data.reports.forEach(report => {
+          const staffRow = document.createElement('tr');
+          staffRow.innerHTML = `
+            <td contenteditable="true">${userId}</td>
+            <td contenteditable="true" style="white-space: pre-line;">- Assigned dispatchers and prepare for delivery\n- Count COD from dispatchers</td>
+            <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+          `;
+          tbody.appendChild(staffRow);
+
+          report.assignedDispatchers.forEach(d => {
+            const filteredJobs = d.assignedJob
+              .split('\n')
+              .filter(line => !line.startsWith('- Deliver '))
+              .join('\n');
+
+            if (filteredJobs.trim().length === 0) return;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td contenteditable="true">${d.dispatcherName}</td>
+              <td contenteditable="true" style="white-space: pre-line;">${filteredJobs}</td>
+              <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+            `;
+            tbody.appendChild(row);
+          });
+        });
+
+        tbody.querySelectorAll('tr').forEach(row => {
+          const delBtn = row.querySelector('.removeRowBtn');
+          if (delBtn) delBtn.addEventListener('click', () => row.remove());
+        });
+
+        let addBtn = document.getElementById('addStaffRowBtn');
+        if (!addBtn) {
+          addBtn = document.createElement('button');
+          addBtn.id = 'addStaffRowBtn';
+          addBtn.className = 'btn btn-primary btn-sm mt-2';
+          addBtn.textContent = '➕ Add Row';
+          endStaffJobsTable.parentNode.appendChild(addBtn);
+
+          addBtn.addEventListener('click', () => {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+            `;
+            tbody.appendChild(newRow);
+            newRow.querySelector('.removeRowBtn').addEventListener('click', () => newRow.remove());
+          });
+        }
+
+        await loadDeliveryResult(endReportDate);
+        await loadCodBtCollected(endReportDate);
+        await loadWarehouseTable(endReportDate);
+
+        const pure51Container = document.createElement('div');
+        pure51Container.style.marginTop = "30px";
+        pure51Container.innerHTML = `
+          <table class="table table-bordered" id="pure51StockTable">
+            <thead>
+              <tr style="background:lightblue;font-weight:bold;">
+                <th colspan="2" style="text-align:left;">4.1. Pure51 Inventory Stock</th>
+              </tr>
+              <tr>
+                <th>Item</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Feminine Wash 200ml</td>
+                <td contenteditable="true"></td>
+              </tr>
+              <tr>
+                <td>Feminine Wash 75ml</td>
+                <td contenteditable="true"></td>
+              </tr>
+              <tr>
+                <td>Lingerie Wash 100ml</td>
+                <td contenteditable="true"></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        reportContainer.appendChild(pure51Container);
+
+        await loadVehicleReport(endReportDate);
+
+        const existingCheckedBy = document.getElementById('vehicleReportCheckedBy');
+        if (existingCheckedBy) existingCheckedBy.remove();
+
+        const vehicleReportCheckedBy = document.createElement('div');
+        vehicleReportCheckedBy.id = 'vehicleReportCheckedBy';
+        vehicleReportCheckedBy.style.fontWeight = 'bold';
+        vehicleReportCheckedBy.style.marginTop = '10px';
+        vehicleReportCheckedBy.innerText = `Checked and prepared by: ${userId}`;
+
+        const vehicleContainerElem = document.querySelector('#vehicleReportTable');
+        if (vehicleContainerElem) {
+            const vehicleContainerDiv = vehicleContainerElem.closest('div');
+            if (vehicleContainerDiv) {
+                vehicleContainerDiv.appendChild(vehicleReportCheckedBy);
+            }
+        }
+
+        alert("End of Day Report generated successfully.");
+
+        hideLoading();
+
+        endSaveBtn.classList.remove("hidden");
+        endResetBtn.classList.remove("hidden");
+        endPrintBtn.classList.add("hidden");
+        endSaveBtn.removeAttribute("disabled");
+      } catch (err) {
+        console.error(err);
+        alert('Error fetching report');
+        hideLoading();
+        endGenerateBtn.style.display = "block";
+      }
     });
-    const html = await res.text();
 
-    // Spacer
-    const spacer = document.createElement("div");
-    spacer.style.marginTop = "30px";
-    reportContainer.appendChild(spacer);
+    endSaveBtn?.addEventListener("click", async () => {
+      const reportDate = document.getElementById("endReportDate").value;
+      const reportContent = document.getElementById("endOfDayReportSection").innerHTML;
 
-    // Container for COD/BT table
-    const codContainer = document.createElement("div");
-    codContainer.innerHTML = html;
-    reportContainer.appendChild(codContainer);
+      const [year, month, day] = reportDate.split("-");
+      const formattedDate = `${day}.${month}.${year}`;
 
-  } catch (err) {
-    console.error('Error loading COD/BT Collected:', err);
-  }
-}
-
-async function loadWarehouseTable(date) {
-  const reportContainer = document.getElementById('reportContainer');
-  if (!reportContainer) return console.error('reportContainer not found');
-
-  try {
-    const res = await fetch('/api/warehouseTableGenerate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date })
-    });
-    const html = await res.text();
-
-    // Spacer
-    const spacer = document.createElement("div");
-    spacer.style.marginTop = "30px";
-    reportContainer.appendChild(spacer);
-
-    // Container for Warehouse table
-    const whContainer = document.createElement("div");
-    whContainer.innerHTML = html;
-    reportContainer.appendChild(whContainer);
-
-  } catch (err) {
-    console.error('Error loading Warehouse table:', err);
-  }
-}
-
-async function loadVehicleReport(date) {
-  const reportContainer = document.getElementById('reportContainer');
-  if (!reportContainer) return console.error('reportContainer not found');
-
-  try {
-    const res = await fetch('/api/vehicle-report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date })
-    });
-    const html = await res.text();
-
-    const spacer = document.createElement("div");
-    spacer.style.marginTop = "30px";
-    reportContainer.appendChild(spacer);
-
-    const vehicleContainer = document.createElement("div");
-    vehicleContainer.innerHTML = html;
-    reportContainer.appendChild(vehicleContainer);
-
-    const table = vehicleContainer.querySelector('#vehicleReportTable');
-    const tbody = table.querySelector('tbody');
-    const addRowBtn = vehicleContainer.querySelector('#addVehicleRowBtn');
-
-    // Function to attach events to a row
-    function attachRowEvents(row) {
-      // Delete row
-      const delBtn = row.querySelector('.removeRowBtn');
-      if (delBtn) delBtn.addEventListener('click', () => row.remove());
-
-      // Mileage calculation
-      const morningInput = row.querySelector('.morningMileage');
-      const eodInput = row.querySelector('.eodMileage');
-      const usedInput = row.querySelector('.mileageUsed');
-
-      function recalc() {
-        const morningVal = parseFloat(morningInput.value) || 0;
-        const eodVal = parseFloat(eodInput.value) || 0;
-        usedInput.value = isNaN(eodVal - morningVal) ? '' : (eodVal - morningVal);
+      async function saveReportToServer({ reportType, reportName, reportContent, forceReplace = false }) {
+        const res = await fetch("/api/saveReport", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reportType,
+            reportName,
+            reportContent,
+            forceReplace,
+          }),
+        });
+        return await res.json();
       }
 
-      if (morningInput && eodInput) {
-        morningInput.addEventListener('input', recalc);
-        eodInput.addEventListener('input', recalc);
+      async function handleSave() {
+        if (!reportDate) return alert("Please select a date first.");
+
+        let response = await saveReportToServer({
+          reportType: "Operation End of Day Report",
+          reportName: `Operation End of Day Report ${formattedDate}`,
+          reportContent,
+        });
+
+        if (response.duplicate) {
+          if (confirm(`A Operation End of Day Report already exists for ${formattedDate}. Replace it?`)) {
+            response = await saveReportToServer({
+              reportType: "Operation End of Day Report",
+              reportName: `Operation End of Day Report ${formattedDate}`,
+              reportContent,
+              forceReplace: true,
+            });
+            if (response.success) alert("Report replaced successfully.");
+            else alert(response.message || "Failed to replace report.");
+          } else return;
+        } else if (response.success) {
+          alert("Report saved successfully.");
+        } else {
+          return alert(response.message || "Failed to save report.");
+        }
+
+        endSaveBtn.classList.add("hidden");
+        endPrintBtn.classList.remove("hidden");
+        endResetBtn.classList.remove("hidden");
       }
 
-      // Paid Amount formatting
-      const paidCell = row.querySelector('td:nth-child(8)'); // 8th column
-      if (paidCell) {
-        paidCell.addEventListener('input', () => {
-          let val = paidCell.innerText.replace(/[^\d.]/g, ''); // remove anything except digits & dot
-          if (val === '') {
-            paidCell.innerText = '';
-            return;
-          }
-          val = parseFloat(val);
-          if (isNaN(val)) {
-            paidCell.innerText = '';
-            return;
-          }
-          paidCell.innerText = `$${val.toFixed(2)}`;
+      await handleSave();
+    });
+
+    document.getElementById("endPrintBtn").addEventListener("click", function () {
+      showLoading();
+
+      const hiddenElements = [
+        document.querySelector("#endOfDayForm"),
+        document.querySelector("#addStaffRowBtn"),
+        document.querySelector("#addVehicleRowBtn"),
+      ];
+      hiddenElements.forEach(el => el && (el.style.display = "none"));
+
+      const hiddenCols = document.querySelectorAll(
+        "#endStaffJobsTable thead tr:not(:first-child) th:last-child, " +
+        "#endStaffJobsTable tbody td:last-child, " +
+        "#vehicleReportTable thead tr:not(:first-child) th:last-child, " +
+        "#vehicleReportTable tbody td:last-child"
+      );
+      hiddenCols.forEach(el => (el.style.display = "none"));
+
+      const sectionClone = document.querySelector("#endOfDayReportSection").cloneNode(true);
+
+      const warehouseTable = sectionClone.querySelector("#warehouseTable");
+      if (warehouseTable) {
+        warehouseTable.querySelectorAll("thead tr").forEach(tr => {
+          const lastTh = tr.lastElementChild;
+          if (lastTh && lastTh.textContent.trim() === "Action") lastTh.style.display = "none";
+        });
+        warehouseTable.querySelectorAll("tbody tr").forEach(tr => {
+          const lastTd = tr.lastElementChild;
+          if (lastTd) lastTd.style.display = "none";
         });
       }
-    }
 
-    // Attach events to existing rows
-    tbody.querySelectorAll('tr').forEach(row => attachRowEvents(row));
+      const vehicleHeader = sectionClone.querySelector("#vehicleReportTable thead tr:first-child th");
+      if (vehicleHeader) vehicleHeader.style.display = "table-cell";
 
-    // Add new row
-    addRowBtn.addEventListener('click', () => {
-      const newRow = document.createElement('tr');
-      newRow.innerHTML = `
-        <td contenteditable="true"></td>
-        <td contenteditable="true"></td>
-        <td><input type="number" class="morningMileage" value="0" readonly></td>
-        <td><input type="number" class="eodMileage"></td>
-        <td><input type="number" class="mileageUsed" value="0" readonly></td>
-        <td contenteditable="true">No</td>
-        <td contenteditable="true"></td>
-        <td contenteditable="true"></td>
-        <td contenteditable="true"></td>
-        <td contenteditable="true"></td> <!-- NEW: Refilled Fuel Mileage -->
-        <td contenteditable="true"></td>
-        <td><button class="btn btn-sm btn-danger removeRowBtn">🗑️</button></td>
+      sectionClone.querySelectorAll("input").forEach(input => {
+        const span = document.createElement("span");
+        span.textContent = input.value || "";
+        span.style.whiteSpace = "pre-wrap";
+        input.parentNode.replaceChild(span, input);
+      });
+
+      sectionClone.querySelectorAll("select").forEach(sel => {
+        const span = document.createElement("span");
+        const selectedText = sel.options[sel.selectedIndex]?.text || "-";
+        span.textContent = selectedText;
+        span.style.whiteSpace = "pre-wrap";
+        sel.parentNode.replaceChild(span, sel);
+      });
+
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const yyyy = today.getFullYear();
+      const fileName = `End of Day Report ${dd}.${mm}.${yyyy}`;
+
+      const printHTML = `
+        <html>
+          <head>
+            <title>${fileName}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 25px; }
+              h2 { text-align: center; margin: 10px 0 20px; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+              th, td {
+                border: 1px solid #000;
+                padding: 6px 8px;
+                font-size: 14px;
+                text-align: center;
+                vertical-align: middle;
+              }
+              th { background-color: #e6f2ff; font-weight: bold; }
+              tr:first-child th[colspan] {
+                background-color: lightblue !important;
+                text-align: left;
+                font-size: 15px;
+              }
+              img { display: block; margin: 0 auto; max-height: 80px; }
+              .checked-by { font-weight: bold; margin-top: 10px; }
+              @media print {
+                body { zoom: 90%; }
+              }
+            </style>
+          </head>
+          <body>
+            ${sectionClone.innerHTML}
+          </body>
+        </html>
       `;
-      tbody.appendChild(newRow);
-      attachRowEvents(newRow);
+
+      const printWindow = window.open("", "_blank", "width=900,height=700");
+      printWindow.document.open();
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+
+      printWindow.onload = function () {
+        printWindow.document.title = fileName;
+        printWindow.focus();
+        printWindow.print();
+        hideLoading();
+      };
+
+      hiddenElements.forEach(el => el && (el.style.display = ""));
+      hiddenCols.forEach(el => (el.style.display = ""));
     });
-
-  } catch (err) {
-    console.error('Error loading Vehicle Report:', err);
-  }
-}
-
-document.addEventListener('click', function(e) {
-  if (!e.target.classList.contains('removeWarehouseRowBtn')) return;
-
-  const row = e.target.closest('tr');
-  const table = row.closest('table');
-
-  // Find if this row has the Product cell with rowspan
-  const productCell = row.querySelector('td[rowspan]');
-
-  if (productCell) {
-    // This is the first row of a merged product
-    let rowspan = parseInt(productCell.getAttribute('rowspan'));
-
-    if (rowspan > 1) {
-      // Move the productCell to the next row and reduce rowspan
-      const nextRow = row.nextElementSibling;
-      nextRow.insertBefore(productCell, nextRow.firstChild);
-      productCell.setAttribute('rowspan', rowspan - 1);
-    }
-    // else rowspan = 1, just remove row
-  } else {
-    // Middle or last row of merged product
-    // Find the first row of this merged product
-    let prevRow = row.previousElementSibling;
-    while(prevRow && !prevRow.querySelector('td[rowspan]')) {
-      prevRow = prevRow.previousElementSibling;
-    }
-
-    if (prevRow) {
-      const firstProductCell = prevRow.querySelector('td[rowspan]');
-      if (firstProductCell) {
-        // Decrease rowspan by 1
-        let rowspan = parseInt(firstProductCell.getAttribute('rowspan'));
-        firstProductCell.setAttribute('rowspan', rowspan - 1);
-      }
-    }
-  }
-
-  // Remove the row
-  row.remove();
-});
-
-endSaveBtn?.addEventListener("click", async () => {
-  const reportDate = document.getElementById("endReportDate").value; // e.g., "2025-10-28"
-  const reportContent = document.getElementById("endOfDayReportSection").innerHTML;
-
-  // Reformat date to dd.mm.yyyy
-  const [year, month, day] = reportDate.split("-");
-  const formattedDate = `${day}.${month}.${year}`;
-
-  await handleSave({
-    reportType: "Operation End of Day Report",
-    reportName: `Operation End of Day Report ${formattedDate}`, // Use formatted date
-    reportDate: formattedDate, // Pass formatted date instead of original
-    reportContent,
-    saveBtn: endSaveBtn,
-    printBtn: endPrintBtn,
-    resetBtn: endResetBtn,
   });
-});
-
- document.getElementById("endPrintBtn").addEventListener("click", function () {
-  showLoading();
-
-  // --- 1️⃣ Hide elements not needed in print ---
-  const hiddenElements = [
-    document.querySelector("#endOfDayForm"),
-    document.querySelector("#addStaffRowBtn"),
-    document.querySelector("#addVehicleRowBtn"),
-  ];
-  hiddenElements.forEach(el => el && (el.style.display = "none"));
-
-  // In the print button event listener, update the hiddenCols selector:
-const hiddenCols = document.querySelectorAll(
-  "#endStaffJobsTable thead tr:not(:first-child) th:last-child, " +
-  "#endStaffJobsTable tbody td:last-child, " +
-  "#vehicleReportTable thead tr:not(:first-child) th:last-child, " +
-  "#vehicleReportTable tbody td:last-child"
-);
-  hiddenCols.forEach(el => (el.style.display = "none"));
-
-  // --- 2️⃣ Clone section for printing ---
-const sectionClone = document.querySelector("#endOfDayReportSection").cloneNode(true);
-
-// --- Hide "Action" column in 4. Warehouse table in the cloned section ---
-const warehouseTable = sectionClone.querySelector("#warehouseTable");
-if (warehouseTable) {
-  // hide last th in header rows
-  warehouseTable.querySelectorAll("thead tr").forEach(tr => {
-    const lastTh = tr.lastElementChild;
-    if (lastTh && lastTh.textContent.trim() === "Action") lastTh.style.display = "none";
-  });
-  // hide last td in body rows
-  warehouseTable.querySelectorAll("tbody tr").forEach(tr => {
-    const lastTd = tr.lastElementChild;
-    if (lastTd) lastTd.style.display = "none";
-  });
-}
-
-// --- 3️⃣ Restore the "5. Vehicle Report" header visibility ---
-const vehicleHeader = sectionClone.querySelector("#vehicleReportTable thead tr:first-child th");
-if (vehicleHeader) vehicleHeader.style.display = "table-cell";
-
-
-  // --- 4️⃣ Replace inputs with their values ---
-  sectionClone.querySelectorAll("input").forEach(input => {
-    const span = document.createElement("span");
-    span.textContent = input.value || "";
-    span.style.whiteSpace = "pre-wrap";
-    input.parentNode.replaceChild(span, input);
-  });
-
-  sectionClone.querySelectorAll("select").forEach(sel => {
-  const span = document.createElement("span");
-  const selectedText = sel.options[sel.selectedIndex]?.text || "-";
-  span.textContent = selectedText;
-  span.style.whiteSpace = "pre-wrap";
-  sel.parentNode.replaceChild(span, sel);
-});
-
-
-  // --- 6️⃣ Generate dynamic filename ---
-  const today = new Date();
-  const dd = String(today.getDate()).padStart(2, "0");
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy = today.getFullYear();
-  const fileName = `End of Day Report ${dd}.${mm}.${yyyy}`;
-
-  // --- 7️⃣ Prepare printable HTML ---
-const printHTML = `
-  <html>
-    <head>
-      <title>${fileName}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 25px; }
-        h2 { text-align: center; margin: 10px 0 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-        th, td {
-          border: 1px solid #000;
-          padding: 6px 8px;
-          font-size: 14px;
-          text-align: center;
-          vertical-align: middle;
-        }
-        th { background-color: #e6f2ff; font-weight: bold; }
-        tr:first-child th[colspan] {
-          background-color: lightblue !important;
-          text-align: left;
-          font-size: 15px;
-        }
-        img { display: block; margin: 0 auto; max-height: 80px; }
-        .checked-by { font-weight: bold; margin-top: 10px; }
-        @media print {
-          body { zoom: 90%; }
-        }
-      </style>
-    </head>
-    <body>
-      ${sectionClone.innerHTML}
-    </body>
-  </html>
-`;
-
-updateCheckedByPosition();
-
-  // --- 8️⃣ Open print window ---
-  const printWindow = window.open("", "_blank", "width=900,height=700");
-  printWindow.document.open();
-  printWindow.document.write(printHTML);
-  printWindow.document.close();
-
-  printWindow.onload = function () {
-    printWindow.document.title = fileName;
-    printWindow.focus();
-    printWindow.print();
-    hideLoading();
-  };
-
-  // --- 9️⃣ Restore hidden elements after print ---
-  hiddenElements.forEach(el => el && (el.style.display = ""));
-  hiddenCols.forEach(el => (el.style.display = ""));
-});
-
-function updateCheckedByPosition() {
-    // Remove any existing checkedBy containers
-    const existingCheckedBys = document.querySelectorAll('[id*="CheckedBy"]');
-    existingCheckedBys.forEach(el => el.remove());
-    
-    // Create new checkedBy container
-    const checkedByDiv = document.createElement('div');
-    checkedByDiv.id = 'vehicleReportCheckedBy';
-    checkedByDiv.style.fontWeight = 'bold';
-    checkedByDiv.style.marginTop = '10px';
-    checkedByDiv.innerText = `Checked and prepared by: ${userId}`;
-    
-    // Find the Vehicle Report table and append after it
-    const vehicleReportTable = document.getElementById('vehicleReportTable');
-    if (vehicleReportTable) {
-        const vehicleContainer = vehicleReportTable.closest('div');
-        if (vehicleContainer) {
-            vehicleContainer.appendChild(checkedByDiv);
-        }
-    }
-}
-    });
 </script>
 </body>
 </html>
