@@ -20597,7 +20597,7 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
             product: order.product,
-            jobMethod: order.jobMeethod  // Log to verify
+            jobMethod: order.jobMethod  // Log to verify
         });
         
         // Return the order data with jobmethod
@@ -20607,7 +20607,7 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             receiverAddress: order.receiverAddress,
             receiverPhoneNumber: order.receiverPhoneNumber,
             additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobmethod: order.jobMeethod || '',  // Make sure this field is included
+            jobmethod: order.jobMethod || '',  // Make sure this field is included
             totalPrice: order.totalPrice || '',
             paymentAmount: order.paymentAmount || '',
             paymentMethod: order.paymentMethod || '',

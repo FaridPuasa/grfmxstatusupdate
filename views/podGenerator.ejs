@@ -637,6 +637,8 @@ async function scanTrackingNumber(trackingNumber) {
         const response = await axios.get(`/api/order-details/${trackingNumber}`);
         const order = response.data;
         
+        console.log('Raw order data from API:', order); // Debug log
+        
         if (!order) {
             throw new Error('Order not found in database');
         }
@@ -647,13 +649,15 @@ async function scanTrackingNumber(trackingNumber) {
         // Get total price - use totalPrice or paymentAmount, default to 0
         const totalPrice = order.totalPrice || order.paymentAmount || 0;
         
+        console.log('jobmethod value:', order.jobmethod); // Debug log specifically for jobmethod
+        
         const newItem = {
             trackingNumber: order.doTrackingNumber || trackingNumber,
             deliverToCollectFrom: order.receiverName || '',
             address: order.receiverAddress || '',
             phoneNumber: order.receiverPhoneNumber || '',
             additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobType: order.jobMeethod || '',
+            jobType: order.jobmethod || '',  // Using jobmethod from MongoDB
             totalPrice: totalPrice,
             paymentMode: order.paymentMethod || '',
             remarks: order.remarks || '',
@@ -661,7 +665,7 @@ async function scanTrackingNumber(trackingNumber) {
             fridge: ''
         };
         
-        console.log('Order found:', newItem);
+        console.log('New item being added:', newItem); // Debug log
         
         podData.trackingNumbers.push(newItem);
         podData.products.add(product);
