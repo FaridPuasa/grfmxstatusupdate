@@ -20597,17 +20597,17 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
             product: order.product,
-            jobmethod: order.jobmethod  // Added jobmethod to log
+            jobMethod: order.jobMeethod  // Log to verify
         });
         
-        // Return the order data
+        // Return the order data with jobmethod
         res.json({
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
             receiverAddress: order.receiverAddress,
             receiverPhoneNumber: order.receiverPhoneNumber,
             additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobmethod: order.jobmethod || '',  // CHANGED: jobType to jobmethod
+            jobmethod: order.jobMeethod || '',  // Make sure this field is included
             totalPrice: order.totalPrice || '',
             paymentAmount: order.paymentAmount || '',
             paymentMethod: order.paymentMethod || '',
