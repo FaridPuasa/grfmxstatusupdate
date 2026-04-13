@@ -5,35 +5,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>POD / POC Generator</title>
-  <!-- Add Bootstrap CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
-  <!-- Add your custom CSS here -->
   <style>
-    /* Custom CSS for your page */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     .navbar-nav.flex-row {
       flex-direction: row !important;
     }
 
-    /* Make the navbar background transparent */
     .navbar {
       background-color: transparent;
     }
 
-    /* Add background color to the container */
     .container-bg {
       background-color: #333;
-      /* You can use your desired background color here */
     }
 
-    /* Add margin to the navigation links */
     .navbar-nav.flex-row .nav-item {
       margin-right: 10px;
-    }
-
-    /* Add any custom styles specific to your form here */
-    .container-bg {
-      background-color: #333;
-      /* You can use your desired background color here */
     }
 
     .logo {
@@ -55,29 +48,150 @@
         max-height: 25px;
       }
     }
-  </style>
 
-  <script>
-    function validateForm() {
-      const checkboxes = document.querySelectorAll('input[name="areas"]');
-      let atLeastOneSelected = false;
-      checkboxes.forEach((checkbox) => {
-        if (checkbox.checked) {
-          atLeastOneSelected = true;
-        }
-      });
+    .full-width-container {
+      width: 100%;
+      margin-left: calc(-50vw + 50%);
+      margin-right: calc(-50vw + 50%);
+      background: white;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow-x: auto;
+    }
 
-      if (!atLeastOneSelected) {
-        alert('Please select at least one area.');
-        return false;
+    .pod-table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 30px;
+    }
+
+    .pod-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1600px;
+    }
+
+    .pod-table th,
+    .pod-table td {
+      border: 1px solid black;
+      padding: 6px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 12px;
+      word-wrap: break-word;
+    }
+
+    .pod-table th {
+      background-color: #6e9e9e;
+      font-weight: bold;
+      color: white;
+    }
+
+    .logo-cell img {
+      width: 120px;
+      height: auto;
+    }
+
+    .barcode-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .barcode-container svg {
+      margin-bottom: 5px;
+      max-width: 150px;
+      height: auto;
+    }
+
+    .tracking-number {
+      user-select: text;
+      font-size: 11px;
+      word-break: break-all;
+    }
+
+    .delete-row-btn {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .delete-row-btn:hover {
+      background-color: #c82333;
+    }
+
+    .scan-input {
+      font-size: 16px;
+      padding: 10px;
+    }
+
+    .info-section {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    #printButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+    @media print {
+      #printButton,
+      #saveButton,
+      #backButton,
+      #backToListBtn,
+      .form-container,
+      .button-container,
+      .scan-section,
+      .action-buttons,
+      .container-bg,
+      .navbar,
+      .full-width-container > .button-container {
+        display: none !important;
       }
 
-      // Continue with the form submission if at least one area is selected
-      return true;
-    }
-  </script>
+      .full-width-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        overflow-x: visible !important;
+        background: white !important;
+        box-shadow: none !important;
+      }
 
-  <!-- Favicon -->
+      .pod-table-container {
+        overflow-x: visible !important;
+      }
+
+      .pod-table {
+        width: 100% !important;
+        page-break-inside: avoid !important;
+      }
+
+      .pod-table th,
+      .pod-table td {
+        border: 1px solid black !important;
+        padding: 4px !important;
+      }
+
+      .delete-row-btn {
+        display: none !important;
+      }
+
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+    }
+  </style>
+
   <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
   <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
   <link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
@@ -95,163 +209,624 @@
     </div>
   </div>
 
-  <main class="container mt-4">
-    <h1 class="text-center mt-4">POD Generator</h1>
-    <form action="/generatePOD" method="post" onsubmit="return validateForm()">
-      <div class="mb-3">
-        <label for="product" class="form-label">Product:</label>
-        <select class="form-select" name="product" id="product" required>
-          <option value="Pharmacy">Pharmacy</option>
-          <option value="EWE/PDU/MGLOBAL/GDEX">EWE/PDU/MGLOBAL/GDEX</option>
-          <option value="Local Delivery">Local Delivery/Pure51/KPT/ICARUS</option>
-          <option value="CBSL">Cross Border Service (Limbang)</option>
-        </select>
+  <main>
+    <div class="container mt-4">
+      <div class="form-container">
+        <h1 class="text-center mt-4">POD Generator</h1>
+        
+        <div class="info-section">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="deliveryDate" class="form-label">Delivery Date (DD.MM.YY):</label>
+                <input type="date" class="form-control" name="deliveryDate" id="deliveryDate" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Area (Select at least one):</label>
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaB" value="B">
+                      <label class="form-check-label" for="areaB">B</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaG" value="G">
+                      <label class="form-check-label" for="areaG">G</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaJT" value="JT">
+                      <label class="form-check-label" for="areaJT">JT</label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaTTG" value="TUT">
+                      <label class="form-check-label" for="areaTTG">TUT</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaKB" value="KB">
+                      <label class="form-check-label" for="areaKB">KB</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaTEMB" value="TEMB">
+                      <label class="form-check-label" for="areaTEMB">TEMBURONG</label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="areas" id="areaHQ" value="HQ">
+                      <label class="form-check-label" for="areaHQ">HQ</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="dispatchers" class="form-label">Dispatchers:</label>
+                <select class="form-select" name="dispatchers" id="dispatchers" required>
+                  <optgroup label="Dispatchers">
+                    <option value="Edey">Edey</option>
+                    <option value="Ghafar">Ghafar</option>
+                    <option value="Hairol">Hairol</option>
+                    <option value="Hamidin">Hamidin</option>
+                    <option value="Leo">Leo</option>
+                    <option value="Sowdeq">Sowdeq</option>
+                    <option value="Wafi">Wafi</option>
+                    <option value="Zura">Zura</option>
+                  </optgroup>
+                  <optgroup label="Freelancers">
+                    <option value="Azreena">Azreena</option>
+                    <option value="Bob">Bob</option>
+                    <option value="Ermi">Ermi</option>
+                    <option value="Feeza">Feeza</option>
+                    <option value="Hjjul">Hjjul</option>
+                    <option value="Jon">Jon</option>
+                    <option value="Qui">Qui</option>
+                    <option value="Tommy">Tommy</option>
+                    <option value="Zuran">Zuran</option>
+                  </optgroup>
+                  <optgroup label="Others">
+                    <option value="Selfcollect">Selfcollect</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <div class="field-wrapper" id="freelancerNameWrapper" style="display: none;">
+                  <label for="freelancerName" class="form-label">Freelancer Name:</label>
+                  <input type="text" id="freelancerName" name="freelancerName" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center">
+            <button id="confirmDetailsBtn" class="btn btn-primary btn-lg">Confirm Details & Start Scanning</button>
+          </div>
+        </div>
       </div>
-      <div class="mb-3">
-        <label for="deliveryDate" class="form-label">Delivery Date (DD.MM.YY):</label>
-        <input type="date" class="form-control" name="deliveryDate" id="deliveryDate" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Area (Select at least one):</label>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaB" value="B">
-          <label class="form-check-label" for="areaB">B</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaG" value="G">
-          <label class="form-check-label" for="areaG">G</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaJT" value="JT">
-          <label class="form-check-label" for="areaJT">JT</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaTTG" value="TUT">
-          <label class="form-check-label" for="areaTTG">TUT</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaKB" value="KB">
-          <label class="form-check-label" for="areaKB">KB</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaTEMB" value="TEMB">
-          <label class="form-check-label" for="areaTEMB">TEMBURONG</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="areas" id="areaHQ" value="HQ">
-          <label class="form-check-label" for="areaHQ">HQ</label>
+    </div>
+
+    <div class="container mt-4" id="scanSection" style="display: none;">
+      <div class="scan-section info-section">
+        <h4>Scan Tracking Numbers</h4>
+        <input type="text" id="scanInput" class="form-control scan-input" placeholder="Scan or paste tracking number here..." autocomplete="off">
+        <div id="scanMessage" class="mt-2"></div>
+        <div class="mt-2">
+          <strong>Products in this POD:</strong> <span id="productList">-</span>
         </div>
       </div>
-      <div class="mb-3">
-        <label for="dispatchers" class="form-label">Dispatchers:</label>
-        <select class="form-select" name="dispatchers" id="dispatchers" required>
-          <optgroup label="Dispatchers">
-            <option value="Edey">Edey</option>
-            <option value="Ghafar">Ghafar</option>
-            <option value="Hairol">Hairol</option>
-            <option value="Hamidin">Hamidin</option>
-            <option value="Leo">Leo</option>
-            <option value="Sowdeq">Sowdeq</option>
-            <option value="Wafi">Wafi</option>
-            <option value="Zura">Zura</option>
-          </optgroup>
-          <optgroup label="Freelancers">
-            <option value="Azreena">Azreena</option>
-            <option value="Bob">Bob</option>
-            <option value="Ermi">Ermi</option>
-            <option value="Feeza">Feeza</option>
-            <option value="Hjjul">Hjjul</option>
-            <option value="Jon">Jon</option>
-            <option value="Qui">Qui</option>
-            <option value="Tommy">Tommy</option>
-            <option value="Zuran">Zuran</option>
-            <!-- <option value="Yui">Yui</option> -->
-            <!-- <option value="Faruk">Faruk</option> -->
-            <!-- <option value="Fesal">Fesal</option> -->
-          </optgroup>
-          <!-- <optgroup label="Belts"> -->
-            <!-- <option value="Adiwardi">Adiwardi</option> -->
-            <!-- <option value="Aiedil">Aiedil</option> -->
-            <!-- <option value="Hardy">Hardy</option> -->
-            <!-- <option value="Hazif">Hazif</option> -->
-            <!-- <option value="Rizal">Rizal</option> -->
-            <!-- <option value="Zainul">Zainul</option> -->
-             <!-- <option value="Zakwan">Zakwan</option> -->
-          <!-- </optgroup> -->
-          <optgroup label="Others">
-            <option value="Selfcollect">Selfcollect</option>
-            <!-- <option value="Syahmi">Syahmi</option> -->
-          </optgroup>
-        </select>
+    </div>
+
+    <div id="podTableContainer" class="full-width-container" style="display: none;">
+      <div class="pod-table-container">
+        <table class="pod-table" id="podTable">
+          <thead id="podHeader"></thead>
+          <tbody id="podTableBody"></tbody>
+        </table>
       </div>
-      <div class="mb-3">
-        <div class="field-wrapper" id="freelancerNameWrapper">
-          <label for="freelancerName" class="form-label">Freelancer Name:</label>
-          <input type="text" id="freelancerName" name="freelancerName" class="form-control" disabled>
-        </div>
-      </div>
-      <div class="mb-3">
-        <label for="trackingNumbers" class="form-label">Tracking Number(s) (One per line):</label>
-        <textarea class="form-control" name="trackingNumbers" id="trackingNumbers" rows="5" required></textarea>
-      </div>
-      <input type="hidden" name="podCreatedDate" id="podCreatedDate" value="">
-      <input type="hidden" name="dispatcherAndDate" id="dispatcherAndDate" value="">
-      <button type="submit" id="submitButton" class="btn btn-primary">Generate POD</button>
-    </form>
-    <div id="loading" class="text-center" style="display: none;">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
-      <p>Loading...</p>
+      <div class="button-container text-center mt-3" id="actionButtons">
+  <button id="saveButton" class="btn btn-success">Save POD</button>
+  <button id="printButton" class="btn btn-primary" disabled>Print</button>
+  <button id="backButton" class="btn btn-primary" onclick="window.location.reload()">New POD</button>
+  <button id="backToListBtn" class="btn btn-secondary" onclick="window.location.href = '/listPOD'">Back to POD List</button>
+</div>
     </div>
   </main>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      // Get references to the "Dispatchers" and "Freelancer Name" fields
-      const dispatchersField = document.getElementById('dispatchers');
-      const freelancerNameField = document.getElementById('freelancerName');
+    let podData = {
+      trackingNumbers: [],
+      products: new Set(),
+      areas: [],
+      dispatcher: '',
+      deliveryDate: '',
+      freelancerName: '',
+      isSaved: false,
+      podCreator: '<%= user ? user.name.toUpperCase() : "USER" %>',
+      podCreatedDate: ''
+    };
 
-      // Function to show/hide the "Freelancer Name" field based on the selected dispatcher
-      function updateFreelancerNameField() {
-        const selectedDispatcher = dispatchersField.value;
+    let selectedAreas = [];
+    let scanBuffer = '';
+    let lastKeyTime = 0;
 
-        if ((selectedDispatcher === 'FL1') || (selectedDispatcher === 'FL2')) {
-          // If FL1, FL2, or FL3 is selected, show and enable the "Freelancer Name" field
-          $("#freelancerNameWrapper").fadeIn();
-          freelancerNameField.disabled = false;
-          freelancerNameField.required = true;
-        } else {
-          // If other options are selected, hide and disable the "Freelancer Name" field
-          $("#freelancerNameWrapper").hide();
-          freelancerNameField.disabled = true;
-          freelancerNameField.required = false;
-          freelancerNameField.value = ''; // Clear the field's value
-        }
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('deliveryDate').min = today;
+    document.getElementById('deliveryDate').value = today;
+    
+    podData.podCreatedDate = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit', month: '2-digit', year: '2-digit'
+    }).replace(/\//g, '.');
+
+    const dispatchersField = document.getElementById('dispatchers');
+    const freelancerNameField = document.getElementById('freelancerName');
+    const freelancerNameWrapper = document.getElementById('freelancerNameWrapper');
+
+    function updateFreelancerNameField() {
+      const selectedDispatcher = dispatchersField.value;
+      const freelancers = ['Azreena', 'Bob', 'Ermi', 'Feeza', 'Hjjul', 'Jon', 'Qui', 'Tommy', 'Zuran'];
+      
+      if (freelancers.includes(selectedDispatcher)) {
+        freelancerNameWrapper.style.display = 'block';
+        freelancerNameField.required = true;
+      } else {
+        freelancerNameWrapper.style.display = 'none';
+        freelancerNameField.required = false;
+        freelancerNameField.value = '';
       }
-
-      // Attach the updateFreelancerNameField function to the "change" event of the "Dispatchers" dropdown
-      dispatchersField.addEventListener('change', updateFreelancerNameField);
-
-      // Initialize the "Freelancer Name" field based on the initial selected dispatcher
-      updateFreelancerNameField();
-    });
-  </script>
-
-  <script>
-    // Get reference to the submit button
-    const submitButton = document.getElementById('submitButton');
-    // Function to disable the submit button when it's clicked and show the loading animation
-    function disableSubmitButton(event) {
-      submitButton.disabled = true;
-      document.getElementById('loading').style.display = 'block'; // Show the loading animation
     }
 
-    // Attach the disableSubmitButton function to the "submit" event of the form
-    document.querySelector('form').addEventListener('submit', disableSubmitButton);
+    dispatchersField.addEventListener('change', updateFreelancerNameField);
+    updateFreelancerNameField();
+
+    document.querySelectorAll('input[name="areas"]').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        if (this.checked) {
+          if (!selectedAreas.includes(this.value)) {
+            selectedAreas.push(this.value);
+          }
+        } else {
+          selectedAreas = selectedAreas.filter(area => area !== this.value);
+        }
+      });
+    });
+
+    document.getElementById('confirmDetailsBtn').addEventListener('click', function() {
+      const deliveryDate = document.getElementById('deliveryDate').value;
+      if (!deliveryDate) {
+        alert('Please select a delivery date');
+        return;
+      }
+
+      if (selectedAreas.length === 0) {
+        alert('Please select at least one area');
+        return;
+      }
+
+      const dispatcher = dispatchersField.value;
+      if (!dispatcher) {
+        alert('Please select a dispatcher');
+        return;
+      }
+
+      const freelancers = ['Azreena', 'Bob', 'Ermi', 'Feeza', 'Hjjul', 'Jon', 'Qui', 'Tommy', 'Zuran'];
+      if (freelancers.includes(dispatcher) && !freelancerNameField.value) {
+        alert('Please enter freelancer name');
+        return;
+      }
+
+      podData.dispatcher = freelancers.includes(dispatcher) ? `${dispatcher} ${freelancerNameField.value}` : dispatcher;
+      podData.deliveryDate = deliveryDate;
+      podData.areas = [...selectedAreas];
+
+      document.querySelector('.form-container').style.display = 'none';
+      document.getElementById('scanSection').style.display = 'block';
+      document.getElementById('podTableContainer').style.display = 'block';
+      
+      generateTableHeader();
+      document.getElementById('scanInput').focus();
+    });
+
+    function generateTableHeader() {
+      const thead = document.getElementById('podHeader');
+      const dispatcherDisplay = podData.dispatcher;
+      const areasDisplay = podData.areas.join(', ');
+      const deliveryDateFormatted = new Date(podData.deliveryDate).toLocaleDateString('en-GB', {
+        day: '2-digit', month: '2-digit', year: '2-digit'
+      }).replace(/\//g, '.');
+      
+      thead.innerHTML = `
+        <tr id="headerRow1">
+          <td colspan="3" rowspan="2" class="logo-cell"><img src="/images/logo.png" alt="Logo"></td>
+          <th>Product:</th>
+          <td colspan="1" id="productCell">-</td>
+          <th>POD Date Created:</th>
+          <td colspan="4">${podData.podCreatedDate}</td>
+          <th>Made By:</th>
+          <td colspan="3">${podData.podCreator}</td>
+          <th style="display: none;">Hidden</th>
+        </tr>
+        <tr id="headerRow2">
+          <th>Job Date:</th>
+          <td colspan="1">${deliveryDateFormatted}</td>
+          <th>Area:</th>
+          <td colspan="4">${areasDisplay}</td>
+          <th>Dispatcher:</th>
+          <td colspan="3">${dispatcherDisplay.toUpperCase()}</td>
+          <th style="display: none;">Hidden</th>
+        </tr>
+        <tr id="columnHeaders">
+          <th>No.</th>
+          <th>Fridge</th>
+          <th>Tracking No.</th>
+          <th>Name</th>
+          <th>Address</th>
+          <th>Phone No.</th>
+          <th>Additional Phone No.</th>
+          <th>Delivery Type</th>
+          <th>Price</th>
+          <th>Payment Method</th>
+          <th>Remarks (Customer)</th>
+          <th>Remarks (Office Use)</th>
+          <th>Checked and Received By Finance</th>
+          <th>Task Completed</th>
+          <th>Action</th>
+        </tr>
+      `;
+    }
+
+    function addRowToTable(item, index) {
+      const tbody = document.getElementById('podTableBody');
+      
+      const row = tbody.insertRow();
+      row.setAttribute('data-tracking', item.trackingNumber);
+      
+      row.insertCell(0).textContent = index + 1;
+      row.insertCell(1).textContent = item.fridge || '';
+      
+      const trackingCell = row.insertCell(2);
+      trackingCell.innerHTML = `
+        <div class="barcode-container">
+          <svg id="barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}"></svg>
+          <div class="tracking-number">${item.trackingNumber}</div>
+        </div>
+      `;
+      
+      row.insertCell(3).textContent = item.deliverToCollectFrom || '';
+      row.insertCell(4).textContent = item.address || '';
+      row.insertCell(5).textContent = item.phoneNumber || '';
+      row.insertCell(6).textContent = item.additionalPhoneNumber || '';
+      row.insertCell(7).textContent = item.jobType || '';
+      row.insertCell(8).textContent = item.totalPrice || '';
+      row.insertCell(9).textContent = item.paymentMode || '';
+      row.insertCell(10).textContent = item.remarks || '';
+      
+      const remarksOffice = row.insertCell(11);
+      remarksOffice.setAttribute('contenteditable', 'true');
+      remarksOffice.textContent = '';
+      
+      const financeCell = row.insertCell(12);
+      financeCell.setAttribute('contenteditable', 'true');
+      financeCell.textContent = '';
+      
+      row.insertCell(13).textContent = '';
+      
+      const actionCell = row.insertCell(14);
+      if (!podData.isSaved) {
+        actionCell.innerHTML = '<button class="delete-row-btn" onclick="deleteRow(this)">Delete</button>';
+      }
+      
+      setTimeout(() => {
+        JsBarcode(`#barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}`, item.trackingNumber, {
+          format: "CODE128",
+          lineColor: "#000",
+          width: 1.5,
+          height: 35,
+          displayValue: false
+        });
+      }, 10);
+      
+      updateRowNumbers();
+    }
+
+    window.deleteRow = function(button) {
+      if (podData.isSaved) return;
+      
+      const row = button.closest('tr');
+      const trackingNumber = row.getAttribute('data-tracking');
+      
+      const index = podData.trackingNumbers.findIndex(item => item.trackingNumber === trackingNumber);
+      if (index !== -1) {
+        podData.trackingNumbers.splice(index, 1);
+        
+        podData.products.clear();
+        podData.trackingNumbers.forEach(item => {
+          if (item.product) podData.products.add(item.product);
+        });
+        
+        updateProductDisplay();
+      }
+      
+      row.remove();
+      updateRowNumbers();
+    };
+
+    function updateRowNumbers() {
+      const tbody = document.getElementById('podTableBody');
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach((row, idx) => {
+        row.cells[0].textContent = idx + 1;
+      });
+    }
+
+    function updateProductDisplay() {
+      const productArray = Array.from(podData.products);
+      const productCell = document.getElementById('productCell');
+      if (productCell) {
+        productCell.textContent = productArray.length > 0 ? productArray.join(', ') : '-';
+      }
+      const productListSpan = document.getElementById('productList');
+      if (productListSpan) {
+        productListSpan.textContent = productArray.length > 0 ? productArray.join(', ') : '-';
+      }
+    }
+
+    function getProductFromGroup(groupName) {
+      const productMap = {
+        'EWE': 'EWE', 'PDU': 'PDU', 'MGLOBAL': 'MGLOBAL',
+        'GDEX': 'GDEX', 'GDEXT': 'GDEX', 'PURE51': 'PURE51',
+        'LD': 'LD', 'CBSL': 'CBSL', 'MOH': 'MOH', 'JPMC': 'JPMC', 'PHC': 'PHC'
+      };
+      return productMap[groupName] || groupName;
+    }
+
+    // Determine product from the product field in MongoDB
+function getProductFromMongoDB(productField) {
+    const productMap = {
+        'ewe': 'EWE',
+        'pdu': 'PDU',
+        'mglobal': 'MGLOBAL',
+        'gdex': 'GDEX',
+        'gdext': 'GDEX',
+        'pure51': 'PURE51',
+        'localdelivery': 'LD',
+        'cbsl': 'CBSL',
+        'pharmacymoh': 'MOH',
+        'pharmacyjpmc': 'JPMC',
+        'pharmacyphc': 'PHC'
+    };
+    return productMap[productField?.toLowerCase()] || productField || 'Unknown';
+}
+
+// Scan tracking number - Check from MongoDB Orders
+async function scanTrackingNumber(trackingNumber) {
+    const scanInput = document.getElementById('scanInput');
+    const scanMessage = document.getElementById('scanMessage');
+    
+    if (!trackingNumber || trackingNumber.length < 5) {
+        scanInput.value = '';
+        scanInput.focus();
+        return;
+    }
+    
+    if (podData.trackingNumbers.some(item => item.trackingNumber === trackingNumber)) {
+        scanMessage.innerHTML = '<div class="alert alert-warning">Duplicate tracking number!</div>';
+        scanInput.value = '';
+        setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
+        scanInput.focus();
+        return;
+    }
+    
+    scanMessage.innerHTML = '<div class="alert alert-info">Fetching data from database...</div>';
+    
+    try {
+        // Call the backend to get order from MongoDB
+        const response = await axios.get(`/api/order-details/${trackingNumber}`);
+        const order = response.data;
+        
+        if (!order) {
+            throw new Error('Order not found in database');
+        }
+        
+        // Determine product from the product field
+        const product = getProductFromMongoDB(order.product);
+        
+        // Get total price - use totalPrice or paymentAmount, default to 0
+        const totalPrice = order.totalPrice || order.paymentAmount || 0;
+        
+        const newItem = {
+            trackingNumber: order.doTrackingNumber || trackingNumber,
+            deliverToCollectFrom: order.receiverName || '',
+            address: order.receiverAddress || '',
+            phoneNumber: order.receiverPhoneNumber || '',
+            additionalPhoneNumber: order.additionalPhoneNumber || '',
+            jobType: order.jobType || '',
+            totalPrice: totalPrice,
+            paymentMode: order.paymentMethod || '',
+            remarks: order.remarks || '',
+            product: product,
+            fridge: ''
+        };
+        
+        console.log('Order found:', newItem);
+        
+        podData.trackingNumbers.push(newItem);
+        podData.products.add(product);
+        
+        addRowToTable(newItem, podData.trackingNumbers.length - 1);
+        updateProductDisplay();
+        
+        scanMessage.innerHTML = '<div class="alert alert-success">✓ Order added successfully!</div>';
+        scanInput.value = '';
+        setTimeout(() => { scanMessage.innerHTML = ''; }, 1500);
+        
+    } catch (error) {
+        console.error('Error fetching order:', error);
+        scanMessage.innerHTML = '<div class="alert alert-danger">✗ Order not found in database. Please check tracking number.</div>';
+        scanInput.value = '';
+        setTimeout(() => { scanMessage.innerHTML = ''; }, 3000);
+    }
+    
+    scanInput.focus();
+}
+    const scanInput = document.getElementById('scanInput');
+    
+    scanInput.addEventListener('keydown', function(e) {
+      const now = Date.now();
+      
+      if (e.key === 'Enter') {
+        if (scanBuffer.length > 0) {
+          scanTrackingNumber(scanBuffer.trim().toUpperCase());
+          scanBuffer = '';
+          e.preventDefault();
+        } else {
+          const value = this.value.trim().toUpperCase();
+          if (value) {
+            scanTrackingNumber(value);
+            this.value = '';
+          }
+        }
+        e.preventDefault();
+        return;
+      }
+      
+      if (now - lastKeyTime > 50) scanBuffer = '';
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) scanBuffer += e.key;
+      lastKeyTime = now;
+    });
+
+    // Save POD - Remove action column properly and enable print button
+document.getElementById('saveButton').addEventListener('click', async function() {
+    if (podData.trackingNumbers.length === 0) {
+        alert('No tracking numbers to save!');
+        return;
+    }
+    
+    if (confirm('Save this POD?')) {
+        const saveBtn = document.getElementById('saveButton');
+        const printBtn = document.getElementById('printButton');
+        const originalText = saveBtn.textContent;
+        
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+        
+        try {
+            podData.isSaved = true;
+            
+            document.querySelectorAll('.delete-row-btn').forEach(btn => btn.remove());
+            document.getElementById('scanInput').disabled = true;
+            
+            const tableElement = document.getElementById('podTable');
+            const tableClone = tableElement.cloneNode(true);
+            
+            // Remove the Action column (last column) from all rows
+            const allRows = tableClone.querySelectorAll('tr');
+            allRows.forEach(row => {
+                if (row.cells.length > 0) {
+                    row.removeChild(row.cells[row.cells.length - 1]);
+                }
+            });
+            
+            const tableHTML = tableClone.outerHTML;
+            
+            const deliveryDateFormatted = new Date(podData.deliveryDate).toLocaleDateString('en-GB', {
+                day: '2-digit', month: '2-digit', year: '2-digit'
+            }).replace(/\//g, '.');
+            
+            const podName = `${podData.dispatcher} ${podData.areas.join(', ')} ${deliveryDateFormatted}`;
+            const productList = Array.from(podData.products).join(', ');
+            
+            const saveData = {
+                podName: podName,
+                product: productList,
+                podDate: podData.podCreatedDate,
+                podCreator: podData.podCreator,
+                deliveryDate: deliveryDateFormatted,
+                area: podData.areas.join(', '),
+                dispatcher: podData.dispatcher.toUpperCase(),
+                htmlContent: tableHTML,
+                rowCount: podData.trackingNumbers.length.toString()
+            };
+            
+            const response = await fetch('/save-pod', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(saveData)
+            });
+            
+            if (response.ok) {
+                alert('POD saved successfully!');
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saved!';
+                // Enable print button after successful save
+                printBtn.disabled = false;
+            } else {
+                alert('Failed to save POD');
+                podData.isSaved = false;
+                document.getElementById('scanInput').disabled = false;
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            alert('Error saving POD: ' + error.message);
+            podData.isSaved = false;
+            document.getElementById('scanInput').disabled = false;
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+        }
+    }
+});
+    // Print - Remove action column properly
+    document.getElementById('printButton').addEventListener('click', function() {
+      const originalTable = document.getElementById('podTable');
+      const tableClone = originalTable.cloneNode(true);
+      
+      // Remove the Action column (last column) from all rows
+      const allRows = tableClone.querySelectorAll('tr');
+      allRows.forEach(row => {
+        if (row.cells.length > 0) {
+          row.removeChild(row.cells[row.cells.length - 1]);
+        }
+      });
+      
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Print POD</title>
+          <style>
+            body { margin: 20px; padding: 0; font-family: Arial, sans-serif; }
+            .pod-table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+            .pod-table th, .pod-table td { border: 1px solid black; padding: 6px; text-align: center; vertical-align: middle; font-size: 12px; }
+            .pod-table th { background-color: #6e9e9e; font-weight: bold; }
+            .logo-cell img { width: 120px; height: auto; }
+            .barcode-container { display: flex; flex-direction: column; align-items: center; }
+            .barcode-container svg { margin-bottom: 5px; max-width: 150px; height: auto; }
+            .tracking-number { font-size: 11px; word-break: break-all; }
+            @media print { body { margin: 0; padding: 0; } .pod-table { width: 100%; } }
+          </style>
+        </head>
+        <body>${tableClone.outerHTML}<script>
+          window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+        <\/script></body></html>
+      `);
+      printWindow.document.close();
+    });
   </script>
 </body>
 

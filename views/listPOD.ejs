@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>List of PODs</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <style>
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+        .navbar {
+            background-color: transparent;
+        }
+        .container-bg {
+            background-color: #333;
+        }
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-size: 15px;
+            text-align: center;
+        }
+        td {
+            font-size: 15px;
+            text-align: center;
+        }
+        table {
+            width: 80%;
+            margin: 0 auto;
+            vertical-align: middle;
+        }
+        .logo {
+            height: 40px;
+            width: auto;
+            max-height: 40px;
+        }
+        @media (max-width: 768px) {
+            .logo {
+                height: 30px;
+                max-height: 30px;
+            }
+        }
+        @media (max-width: 480px) {
+            .logo {
+                height: 25px;
+                max-height: 25px;
+            }
+        }
+        
+        /* Custom Modal Styles - No Bootstrap JS dependency */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .custom-modal-content {
+            background-color: #fff;
+            margin: 2% auto;
+            padding: 0;
+            width: 95%;
+            max-width: 95%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            animation: modalopen 0.3s;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes modalopen {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .custom-modal-header {
+            padding: 15px 20px;
+            background-color: #6e9e9e;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .custom-modal-header h5 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .custom-modal-close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+        
+        .custom-modal-close:hover {
+            color: #ddd;
+        }
+        
+        .custom-modal-body {
+            padding: 20px;
+            overflow-x: auto;
+            flex: 1;
+        }
+        
+        .custom-modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #ddd;
+            text-align: right;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .custom-modal-footer button {
+            margin-left: 10px;
+        }
+        
+        .custom-modal-body .pod-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1400px;
+        }
+        .custom-modal-body .pod-table th,
+        .custom-modal-body .pod-table td {
+            border: 1px solid black;
+            padding: 6px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 12px;
+        }
+        .custom-modal-body .pod-table th {
+            background-color: #6e9e9e;
+            font-weight: bold;
+        }
+        .custom-modal-body .logo-cell img {
+            width: 120px;
+            height: auto;
+        }
+        .custom-modal-body .barcode-container svg {
+            max-width: 150px;
+            height: auto;
+        }
+    </style>
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+
+<body class="bg-light">
+    <div class="container-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <%- include('partials/navbar') %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="container mt-4">
+        <h1 class="text-center mt-4">List of PODs</h1>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped" id="podTable">
+                <thead class="table-primary">
+                    <tr>
+                        <th>POD Name</th>
+                        <th>Product</th>
+                        <th>Dispatcher</th>
+                        <th>Area</th>
+                        <th>Delivery Date</th>
+                        <th>No. of Deliveries</th>
+                        <th>POD Creator</th>
+                        <th>POD Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </main>
+
+    <!-- Custom Modal (No Bootstrap JS) -->
+    <div id="viewPODModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5>POD Details</h5>
+                <span class="custom-modal-close" id="modalCloseBtn">&times;</span>
+            </div>
+            <div class="custom-modal-body" id="modalPODContent">
+                <div id="podHtmlContainer"></div>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-primary" id="modalPrintBtn">Print</button>
+                <button type="button" class="btn btn-secondary" id="modalCloseFooterBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <script>
+    $(document).ready(function () {
+        $('#podTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "ajax": {
+                "url": "/api/listPOD",
+                "type": "GET"
+            },
+            "columns": [
+                { "data": "podName" },
+                { "data": "product" },
+                { "data": "dispatcher" },
+                { "data": "area" },
+                { "data": "deliveryDate" },
+                { "data": "rowCount" },
+                { "data": "podCreator" },
+                { "data": "podDate" },
+                {
+                    "data": "_id",
+                    "orderable": false,
+                    "searchable": false,
+                    "render": function (data, type, row) {
+                        return `
+                            <button class="btn btn-info btn-sm view-btn" data-id="${data}">View</button>
+                            <button class="btn btn-secondary btn-sm copy-tracking-btn" data-id="${data}" data-podname="${row.podName}">Copy Tracking No</button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${data}">Delete</button>
+                        `;
+                    }
+                }
+            ],
+            "order": [[0, "desc"]]
+        });
+    });
+
+    // Get modal elements
+    const modal = document.getElementById('viewPODModal');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalCloseFooterBtn = document.getElementById('modalCloseFooterBtn');
+    const modalPrintBtn = document.getElementById('modalPrintBtn');
+
+    // Close modal function
+    function closeModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // Open modal function
+    function openModal() {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close modal when clicking X
+    modalCloseBtn.onclick = function() {
+        closeModal();
+    }
+
+    // Close modal when clicking Close button
+    modalCloseFooterBtn.onclick = function() {
+        closeModal();
+    }
+
+    // Close modal when clicking outside the modal content
+    window.onclick = function(event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+
+    // Print modal content
+    modalPrintBtn.onclick = function() {
+        const printContent = document.getElementById('podHtmlContainer').innerHTML;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Print POD</title>
+                <style>
+                    body { margin: 20px; padding: 0; font-family: Arial, sans-serif; }
+                    .pod-table { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+                    .pod-table th, .pod-table td { border: 1px solid black; padding: 6px; text-align: center; vertical-align: middle; font-size: 12px; }
+                    .pod-table th { background-color: #6e9e9e; font-weight: bold; }
+                    .logo-cell img { width: 120px; height: auto; }
+                    .barcode-container { display: flex; flex-direction: column; align-items: center; }
+                    .barcode-container svg { margin-bottom: 5px; max-width: 150px; height: auto; }
+                    .tracking-number { font-size: 11px; word-break: break-all; }
+                    @media print { body { margin: 0; padding: 0; } }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        };
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+
+    // View button handler
+    $(document).on('click', '.view-btn', async function() {
+        const podId = $(this).data('id');
+        
+        if (!podId || podId.length !== 24) {
+            alert('Invalid POD ID format');
+            return;
+        }
+        
+        try {
+            console.log('Fetching POD:', podId);
+            const response = await axios.get(`/api/view-pod/${podId}`);
+            const htmlContent = response.data.htmlContent;
+            
+            document.getElementById('podHtmlContainer').innerHTML = htmlContent;
+            openModal();
+            
+        } catch (error) {
+            console.error('Error fetching POD:', error);
+            alert('Failed to load POD details: ' + (error.response?.data?.error || error.message));
+            $('#podTable').DataTable().ajax.reload();
+        }
+    });
+
+    // Copy Tracking Numbers button handler
+    $(document).on('click', '.copy-tracking-btn', async function() {
+        const podId = $(this).data('id');
+        const podName = $(this).data('podname');
+        
+        try {
+            console.log('Fetching tracking numbers for POD:', podName);
+            const response = await axios.get(`/api/view-pod/${podId}`);
+            const htmlContent = response.data.htmlContent;
+            
+            // Parse the HTML to extract tracking numbers
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+            
+            // Find all tracking numbers from the barcode container
+            const trackingElements = doc.querySelectorAll('.tracking-number');
+            const trackingNumbers = Array.from(trackingElements).map(el => el.textContent.trim());
+            
+            if (trackingNumbers.length === 0) {
+                alert('No tracking numbers found in this POD');
+                return;
+            }
+            
+            // Join tracking numbers with new line
+            const trackingText = trackingNumbers.join('\n');
+            
+            // Copy to clipboard
+            await navigator.clipboard.writeText(trackingText);
+            
+            // Show success message
+            alert(`✅ ${trackingNumbers.length} tracking number(s) copied to clipboard!\n\n${trackingNumbers.join('\n')}`);
+            
+        } catch (error) {
+            console.error('Error copying tracking numbers:', error);
+            alert('Failed to copy tracking numbers. Please try again.');
+        }
+    });
+
+    // Delete button handler
+    $(document).on('click', '.delete-btn', function() {
+        const podId = $(this).data('id');
+        if (confirm("Are you sure you want to delete this POD? This action cannot be undone.")) {
+            window.location.href = "/deletePOD/" + podId;
+        }
+    });
+    </script>
+</body>
+
+</html>

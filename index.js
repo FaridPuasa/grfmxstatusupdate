@@ -124,6 +124,7 @@ const WAORDERS = mainConn.model('WAORDERS', require('./models/WAORDERS'));
 const PharmacyFORM = mainConn.model('PharmacyFORM', require('./models/PharmacyFORM'));
 const ORDERCOUNTER = mainConn.model('ORDERCOUNTER', require('./models/ORDERCOUNTER'));
 const REPORTS = mainConn.model('REPORTS', require('./models/REPORTS'));
+const UnifiedPOD = mainConn.model('UnifiedPOD', require('./models/UnifiedPOD'));
 
 // Vehicle DB
 const VEHICLE = vehicleConn.model('VEHICLE', require('./models/VEHICLE'));
@@ -4760,51 +4761,48 @@ function updateOrdersCollection(trackingNumbers) {
     return Promise.all(promises);
 }
 
-// Route to save POD data
+// Route to save POD data - Make sure this is in your index.js
 app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
-
-    // Choose the appropriate model based on the collection
-    let PodModel;
-    switch (product) {
-        case 'Pharmacy POD':
-            PodModel = PharmacyPOD;
-            break;
-        case 'LD POD':
-            PodModel = LDPOD;
-            break;
-        case 'CBSL POD':
-            PodModel = CBSLPOD;
-            break;
-        case 'NONCOD POD':
-            PodModel = NONCODPOD;
-            break;
-        default:
-            return res.status(400).send('Invalid collection');
-    }
-
-    // Create a new document and save it to the MongoDB collection
-    const newPod = new PodModel({
-        podName: podName,
-        product: product,
-        podDate: podDate,
-        podCreator: podCreator,
-        deliveryDate: deliveryDate,
-        area: area,
-        dispatcher: dispatcher,
-        rowCount: rowCount, // Add the rowCount here
-        htmlContent: htmlContent,
-        creationDate: moment().format()
-    });
-
-    newPod.save()
-        .then(() => {
-            res.status(200).send('POD data saved successfully');
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to save POD data');
+    try {
+        const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
+        
+        console.log('Received save request:', { podName, product, rowCount });
+        
+        // Validate required fields
+        if (!podName || !product || !podDate || !podCreator || !deliveryDate || !area || !dispatcher || !htmlContent || !rowCount) {
+            console.log('Missing fields:', { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, rowCount });
+            return res.status(400).send('Missing required fields');
+        }
+        
+        // Use UnifiedPOD model
+        const UnifiedPOD = mainConn.model('UnifiedPOD', require('./models/UnifiedPOD'));
+        
+        const newPod = new UnifiedPOD({
+            podName: podName,
+            product: product,
+            podDate: podDate,
+            podCreator: podCreator,
+            deliveryDate: deliveryDate,
+            area: area,
+            dispatcher: dispatcher,
+            rowCount: rowCount,
+            htmlContent: htmlContent,
+            creationDate: moment().format()
         });
+        
+        newPod.save()
+            .then(() => {
+                console.log('POD saved successfully:', podName);
+                res.status(200).send('POD data saved successfully');
+            })
+            .catch((err) => {
+                console.error('Error saving POD:', err);
+                res.status(500).send('Failed to save POD data: ' + err.message);
+            });
+    } catch (error) {
+        console.error('Error in save-pod route:', error);
+        res.status(500).send('Internal server error: ' + error.message);
+    }
 });
 
 app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
@@ -20371,6 +20369,256 @@ async function downloadAvailablePODsForGDEXFailed(consignmentID, detrackData, ex
     console.log(`\n🎉 SUCCESS: Downloaded ${podImages.length}/${imagesToDownload.length} available PODs (minimum requirement met!)`);
     return podImages;
 }
+
+// ==================================================
+// 📦 New Unified POD Routes
+// ==================================================
+
+// API endpoint to get job details from Detrack
+app.get('/api/job-details/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+  try {
+    const trackingNumber = req.params.trackingNumber.toUpperCase();
+    const apiKey = process.env.API_KEY;
+    
+    const response = await axios.get(
+      `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': apiKey,
+        },
+      }
+    );
+    
+    // Log the response to see what fields are available
+    console.log('Detrack API response for', trackingNumber, ':', {
+      other_phone_numbers: response.data.data?.other_phone_numbers,
+      phone_number: response.data.data?.phone_number,
+      deliver_to_collect_from: response.data.data?.deliver_to_collect_from
+    });
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching job details:', error);
+    res.status(404).json({ error: 'Tracking number not found' });
+  }
+});
+
+// Render the list POD page
+app.get('/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        res.render('listPOD', { user: req.user });
+    } catch (error) {
+        console.error('Error loading listPOD page:', error);
+        res.status(500).send('Failed to load POD list');
+    }
+});
+
+// API endpoint for unified POD list with server-side processing
+app.get('/api/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { podName: regex },
+                { product: regex },
+                { dispatcher: regex },
+                { area: regex },
+                { deliveryDate: regex },
+                { podCreator: regex },
+                { podDate: regex },
+                { htmlContent: regex }
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await UnifiedPOD.countDocuments({});
+        const filtered = await UnifiedPOD.countDocuments(query);
+
+        const pods = await UnifiedPOD.find(query)
+            .select([
+                '_id',
+                'podName',
+                'product',
+                'podDate',
+                'podCreator',
+                'deliveryDate',
+                'area',
+                'dispatcher',
+                'creationDate',
+                'rowCount'
+            ])
+            .sort(sort)
+            .skip(start)
+            .limit(length);
+
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: pods
+        });
+
+    } catch (error) {
+        console.error("Error loading POD list:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ==================================================
+// 📦 POD VIEW ROUTE - Add this BEFORE any other routes with :podId
+// ==================================================
+
+app.get('/api/view-pod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    console.log('🔥🔥🔥 /api/view-pod/:podId route was called! 🔥🔥🔥');
+    console.log('Pod ID received:', req.params.podId);
+    
+    try {
+        const podId = req.params.podId;
+        
+        // Validate MongoDB ObjectId format (24 hex chars)
+        if (!podId || podId.length !== 24) {
+            console.log('❌ Invalid ID format:', podId);
+            return res.status(400).json({ error: 'Invalid POD ID format. ID must be 24 characters.' });
+        }
+        
+        console.log('🔍 Searching for POD with ID:', podId);
+        const pod = await UnifiedPOD.findById(podId);
+        
+        if (!pod) {
+            console.log('❌ POD not found for ID:', podId);
+            return res.status(404).json({ error: 'POD not found' });
+        }
+        
+        console.log('✅ POD found:', pod.podName);
+        console.log('✅ HTML content length:', pod.htmlContent?.length || 0);
+        
+        res.json({ htmlContent: pod.htmlContent });
+    } catch (error) {
+        console.error('❌ Error fetching POD:', error);
+        res.status(500).json({ error: 'Failed to fetch POD: ' + error.message });
+    }
+});
+
+// Test route to verify the API is working
+app.get('/api/test-view', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+    console.log('🔥 /api/test-view route was called');
+    res.json({ message: 'Test view route is working', user: req.user?.name });
+});
+
+// Delete POD route
+app.get('/deletePOD/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const podId = req.params.podId;
+        console.log('Deleting POD with ID:', podId);
+        
+        const deletedPod = await UnifiedPOD.findByIdAndDelete(podId);
+        
+        if (deletedPod) {
+            console.log('POD deleted:', deletedPod.podName);
+            res.redirect('/listPOD');
+        } else {
+            res.status(404).send('POD not found');
+        }
+    } catch (error) {
+        console.error('Error deleting POD:', error);
+        res.status(500).send('Failed to delete POD: ' + error.message);
+    }
+});
+
+// Save POD route
+app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
+        
+        console.log('Received save request for POD:', podName);
+        
+        // Validate required fields
+        if (!podName || !product || !podDate || !podCreator || !deliveryDate || !area || !dispatcher || !htmlContent || !rowCount) {
+            console.log('Missing required fields');
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        const newPod = new UnifiedPOD({
+            podName: podName,
+            product: product,
+            podDate: podDate,
+            podCreator: podCreator,
+            deliveryDate: deliveryDate,
+            area: area,
+            dispatcher: dispatcher,
+            rowCount: rowCount,
+            htmlContent: htmlContent,
+            creationDate: moment().format()
+        });
+        
+        const savedPod = await newPod.save();
+        console.log('POD saved successfully:', savedPod.podName, 'ID:', savedPod._id);
+        
+        res.status(200).json({ message: 'POD data saved successfully', id: savedPod._id });
+    } catch (error) {
+        console.error('Error saving POD:', error);
+        res.status(500).json({ error: 'Failed to save POD data: ' + error.message });
+    }
+});
+
+// API endpoint to get order details from MongoDB
+app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const trackingNumber = req.params.trackingNumber.toUpperCase();
+        console.log('Searching for order with tracking number:', trackingNumber);
+        
+        // Search in ORDERS collection
+        const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+        
+        if (!order) {
+            console.log('Order not found for tracking number:', trackingNumber);
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        
+        console.log('Order found:', {
+            doTrackingNumber: order.doTrackingNumber,
+            receiverName: order.receiverName,
+            product: order.product
+        });
+        
+        // Return the order data
+        res.json({
+            doTrackingNumber: order.doTrackingNumber,
+            receiverName: order.receiverName,
+            receiverAddress: order.receiverAddress,
+            receiverPhoneNumber: order.receiverPhoneNumber,
+            additionalPhoneNumber: order.additionalPhoneNumber || '',
+            jobType: order.jobType || '',
+            totalPrice: order.totalPrice || '',
+            paymentAmount: order.paymentAmount || '',
+            paymentMethod: order.paymentMethod || '',
+            remarks: order.remarks || '',
+            product: order.product || ''
+        });
+        
+    } catch (error) {
+        console.error('Error fetching order details:', error);
+        res.status(500).json({ error: 'Internal server error: ' + error.message });
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
