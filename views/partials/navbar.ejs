@@ -62,12 +62,6 @@
                   <% if (['cs','warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
                   <% } %>
-                  <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                  <% } %>
-                  <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/listPOD">Saved POD</a>
-                    <% } %>
                   <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
@@ -76,6 +70,14 @@
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
                   <% } %>
                   <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-header">POD (New)</div>
+                    <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                  <% } %>
+                  <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <a class="dropdown-item" href="/listPOD">Saved POD</a>
+                    <% } %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD (Legacy)</div>
                     <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
@@ -155,12 +157,6 @@
                   <% if (['cs' ,'warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
                   <% } %>
-                  <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                  <% } %>
-                  <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
-                  <a class="dropdown-item" href="/listPOD">Saved POD</a>
-                  <% } %>
                   <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
@@ -169,6 +165,14 @@
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
                   <% } %>
                   <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-header">POD (New)</div>
+                    <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <a class="dropdown-item" href="/podGenerator">POD Generator</a>
+                    <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                  <a class="dropdown-item" href="/listPOD">Saved POD</a>
+                  <% } %>
+                  <% } %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD (Legacy)</div>
                     <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>

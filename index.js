@@ -20585,7 +20585,6 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
         const trackingNumber = req.params.trackingNumber.toUpperCase();
         console.log('Searching for order with tracking number:', trackingNumber);
         
-        // Search in ORDERS collection
         const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
         
         if (!order) {
@@ -20597,22 +20596,23 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
             product: order.product,
-            jobMethod: order.jobMethod  // Log to verify
+            jobmethod: order.jobMethod,
+            grRemark: order.grRemark  // Add this to log
         });
         
-        // Return the order data with jobmethod
         res.json({
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
             receiverAddress: order.receiverAddress,
             receiverPhoneNumber: order.receiverPhoneNumber,
             additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobmethod: order.jobMethod || '',  // Make sure this field is included
+            jobMethod: order.jobMethod || '',
             totalPrice: order.totalPrice || '',
             paymentAmount: order.paymentAmount || '',
             paymentMethod: order.paymentMethod || '',
             remarks: order.remarks || '',
-            product: order.product || ''
+            product: order.product || '',
+            grRemark: order.grRemark || ''  // Add grRemark field
         });
         
     } catch (error) {

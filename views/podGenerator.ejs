@@ -314,7 +314,15 @@
       </div>
     </div>
 
-    <div class="container mt-4" id="scanSection" style="display: none;">
+    <div id="podTableContainer" class="full-width-container" style="display: none;">
+      <div class="pod-table-container">
+        <table class="pod-table" id="podTable">
+          <thead id="podHeader"></thead>
+          <tbody id="podTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="container mt-4" id="scanSection" style="display: none;">
       <div class="scan-section info-section">
         <h4>Scan Tracking Numbers</h4>
         <input type="text" id="scanInput" class="form-control scan-input" placeholder="Scan or paste tracking number here..." autocomplete="off">
@@ -324,14 +332,7 @@
         </div>
       </div>
     </div>
-
-    <div id="podTableContainer" class="full-width-container" style="display: none;">
-      <div class="pod-table-container">
-        <table class="pod-table" id="podTable">
-          <thead id="podHeader"></thead>
-          <tbody id="podTableBody"></tbody>
-        </table>
-      </div>
+    
       <div class="button-container text-center mt-3" id="actionButtons">
   <button id="saveButton" class="btn btn-success">Save POD</button>
   <button id="printButton" class="btn btn-primary" disabled>Print</button>
@@ -404,41 +405,43 @@
       });
     });
 
-    document.getElementById('confirmDetailsBtn').addEventListener('click', function() {
-      const deliveryDate = document.getElementById('deliveryDate').value;
-      if (!deliveryDate) {
+document.getElementById('confirmDetailsBtn').addEventListener('click', function() {
+    const deliveryDate = document.getElementById('deliveryDate').value;
+    if (!deliveryDate) {
         alert('Please select a delivery date');
         return;
-      }
+    }
 
-      if (selectedAreas.length === 0) {
+    if (selectedAreas.length === 0) {
         alert('Please select at least one area');
         return;
-      }
+    }
 
-      const dispatcher = dispatchersField.value;
-      if (!dispatcher) {
+    const dispatcher = dispatchersField.value;
+    if (!dispatcher) {
         alert('Please select a dispatcher');
         return;
-      }
+    }
 
-      const freelancers = ['Azreena', 'Bob', 'Ermi', 'Feeza', 'Hjjul', 'Jon', 'Qui', 'Tommy', 'Zuran'];
-      if (freelancers.includes(dispatcher) && !freelancerNameField.value) {
+    const freelancers = ['Azreena', 'Bob', 'Ermi', 'Feeza', 'Hjjul', 'Jon', 'Qui', 'Tommy', 'Zuran'];
+    if (freelancers.includes(dispatcher) && !freelancerNameField.value) {
         alert('Please enter freelancer name');
         return;
-      }
+    }
 
-      podData.dispatcher = freelancers.includes(dispatcher) ? `${dispatcher} ${freelancerNameField.value}` : dispatcher;
-      podData.deliveryDate = deliveryDate;
-      podData.areas = [...selectedAreas];
+    podData.dispatcher = freelancers.includes(dispatcher) ? `${dispatcher} ${freelancerNameField.value}` : dispatcher;
+    podData.deliveryDate = deliveryDate;
+    podData.areas = [...selectedAreas];
 
-      document.querySelector('.form-container').style.display = 'none';
-      document.getElementById('scanSection').style.display = 'block';
-      document.getElementById('podTableContainer').style.display = 'block';
-      
-      generateTableHeader();
-      document.getElementById('scanInput').focus();
-    });
+    document.querySelector('.form-container').style.display = 'none';
+    document.getElementById('podTableContainer').style.display = 'block';
+    
+    // Show scan section (now inside podTableContainer)
+    document.getElementById('scanSection').style.display = 'block';
+    
+    generateTableHeader();
+    document.getElementById('scanInput').focus();
+});
 
     function generateTableHeader() {
       const thead = document.getElementById('podHeader');
@@ -489,58 +492,59 @@
     }
 
     function addRowToTable(item, index) {
-      const tbody = document.getElementById('podTableBody');
-      
-      const row = tbody.insertRow();
-      row.setAttribute('data-tracking', item.trackingNumber);
-      
-      row.insertCell(0).textContent = index + 1;
-      row.insertCell(1).textContent = item.fridge || '';
-      
-      const trackingCell = row.insertCell(2);
-      trackingCell.innerHTML = `
+    const tbody = document.getElementById('podTableBody');
+    
+    const row = tbody.insertRow();
+    row.setAttribute('data-tracking', item.trackingNumber);
+    
+    row.insertCell(0).textContent = index + 1;
+    row.insertCell(1).textContent = item.fridge || '';
+    
+    const trackingCell = row.insertCell(2);
+    trackingCell.innerHTML = `
         <div class="barcode-container">
-          <svg id="barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}"></svg>
-          <div class="tracking-number">${item.trackingNumber}</div>
+            <svg id="barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}"></svg>
+            <div class="tracking-number">${item.trackingNumber}</div>
         </div>
-      `;
-      
-      row.insertCell(3).textContent = item.deliverToCollectFrom || '';
-      row.insertCell(4).textContent = item.address || '';
-      row.insertCell(5).textContent = item.phoneNumber || '';
-      row.insertCell(6).textContent = item.additionalPhoneNumber || '';
-      row.insertCell(7).textContent = item.jobType || '';
-      row.insertCell(8).textContent = item.totalPrice || '';
-      row.insertCell(9).textContent = item.paymentMode || '';
-      row.insertCell(10).textContent = item.remarks || '';
-      
-      const remarksOffice = row.insertCell(11);
-      remarksOffice.setAttribute('contenteditable', 'true');
-      remarksOffice.textContent = '';
-      
-      const financeCell = row.insertCell(12);
-      financeCell.setAttribute('contenteditable', 'true');
-      financeCell.textContent = '';
-      
-      row.insertCell(13).textContent = '';
-      
-      const actionCell = row.insertCell(14);
-      if (!podData.isSaved) {
+    `;
+    
+    row.insertCell(3).textContent = item.deliverToCollectFrom || '';
+    row.insertCell(4).textContent = item.address || '';
+    row.insertCell(5).textContent = item.phoneNumber || '';
+    row.insertCell(6).textContent = item.additionalPhoneNumber || '';
+    row.insertCell(7).textContent = item.jobType || '';
+    row.insertCell(8).textContent = item.totalPrice || '';
+    row.insertCell(9).textContent = item.paymentMode || '';
+    row.insertCell(10).textContent = item.remarks || '';
+    
+    // Remarks (Office Use) - Now shows grRemark from MongoDB
+    const remarksOffice = row.insertCell(11);
+    remarksOffice.setAttribute('contenteditable', 'true');
+    remarksOffice.textContent = item.grRemark || '';  // grRemark goes here
+    
+    const financeCell = row.insertCell(12);
+    financeCell.setAttribute('contenteditable', 'true');
+    financeCell.textContent = '';
+    
+    row.insertCell(13).textContent = '';
+    
+    const actionCell = row.insertCell(14);
+    if (!podData.isSaved) {
         actionCell.innerHTML = '<button class="delete-row-btn" onclick="deleteRow(this)">Delete</button>';
-      }
-      
-      setTimeout(() => {
-        JsBarcode(`#barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}`, item.trackingNumber, {
-          format: "CODE128",
-          lineColor: "#000",
-          width: 1.5,
-          height: 35,
-          displayValue: false
-        });
-      }, 10);
-      
-      updateRowNumbers();
     }
+    
+    setTimeout(() => {
+        JsBarcode(`#barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}`, item.trackingNumber, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 1.5,
+            height: 35,
+            displayValue: false
+        });
+    }, 10);
+    
+    updateRowNumbers();
+}
 
     window.deleteRow = function(button) {
       if (podData.isSaved) return;
@@ -606,7 +610,9 @@ function getProductFromMongoDB(productField) {
         'cbsl': 'CBSL',
         'pharmacymoh': 'MOH',
         'pharmacyjpmc': 'JPMC',
-        'pharmacyphc': 'PHC'
+        'pharmacyphc': 'PHC',
+        'kptdp': 'KPT',
+        'icarus': 'ICARUS'
     };
     return productMap[productField?.toLowerCase()] || productField || 'Unknown';
 }
@@ -633,23 +639,17 @@ async function scanTrackingNumber(trackingNumber) {
     scanMessage.innerHTML = '<div class="alert alert-info">Fetching data from database...</div>';
     
     try {
-        // Call the backend to get order from MongoDB
         const response = await axios.get(`/api/order-details/${trackingNumber}`);
         const order = response.data;
         
-        console.log('Raw order data from API:', order); // Debug log
+        console.log('Raw order data from API:', order);
         
         if (!order) {
             throw new Error('Order not found in database');
         }
         
-        // Determine product from the product field
         const product = getProductFromMongoDB(order.product);
-        
-        // Get total price - use totalPrice or paymentAmount, default to 0
         const totalPrice = order.totalPrice || order.paymentAmount || 0;
-        
-        console.log('jobmethod value:', order.jobmethod); // Debug log specifically for jobmethod
         
         const newItem = {
             trackingNumber: order.doTrackingNumber || trackingNumber,
@@ -657,15 +657,16 @@ async function scanTrackingNumber(trackingNumber) {
             address: order.receiverAddress || '',
             phoneNumber: order.receiverPhoneNumber || '',
             additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobType: order.jobmethod || '',  // Using jobmethod from MongoDB
+            jobType: order.jobMethod || '',
             totalPrice: totalPrice,
             paymentMode: order.paymentMethod || '',
             remarks: order.remarks || '',
+            grRemark: order.grRemark || '',  // ADD THIS LINE - grRemark field
             product: product,
             fridge: ''
         };
         
-        console.log('New item being added:', newItem); // Debug log
+        console.log('New item being added:', newItem);
         
         podData.trackingNumbers.push(newItem);
         podData.products.add(product);
@@ -686,6 +687,7 @@ async function scanTrackingNumber(trackingNumber) {
     
     scanInput.focus();
 }
+
     const scanInput = document.getElementById('scanInput');
     
     scanInput.addEventListener('keydown', function(e) {
@@ -712,7 +714,7 @@ async function scanTrackingNumber(trackingNumber) {
       lastKeyTime = now;
     });
 
-    // Save POD - Remove action column properly and enable print button
+// Save POD - Remove action column properly and enable print button
 document.getElementById('saveButton').addEventListener('click', async function() {
     if (podData.trackingNumbers.length === 0) {
         alert('No tracking numbers to save!');
@@ -750,7 +752,10 @@ document.getElementById('saveButton').addEventListener('click', async function()
                 day: '2-digit', month: '2-digit', year: '2-digit'
             }).replace(/\//g, '.');
             
-            const podName = `${podData.dispatcher} ${podData.areas.join(', ')} ${deliveryDateFormatted}`;
+            // Convert pod name to UPPERCASE
+            const dispatcherUpper = podData.dispatcher.toUpperCase();
+            const areasUpper = podData.areas.join(', ').toUpperCase();
+            const podName = `${dispatcherUpper} ${areasUpper} ${deliveryDateFormatted}`;
             const productList = Array.from(podData.products).join(', ');
             
             const saveData = {
@@ -794,6 +799,7 @@ document.getElementById('saveButton').addEventListener('click', async function()
         }
     }
 });
+
     // Print - Remove action column properly
     document.getElementById('printButton').addEventListener('click', function() {
       const originalTable = document.getElementById('podTable');
