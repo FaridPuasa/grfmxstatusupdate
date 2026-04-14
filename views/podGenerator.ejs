@@ -386,25 +386,6 @@
     }).replace(/\//g, '.');
 
     const dispatchersField = document.getElementById('dispatchers');
-    const freelancerNameField = document.getElementById('freelancerName');
-    const freelancerNameWrapper = document.getElementById('freelancerNameWrapper');
-
-    function updateFreelancerNameField() {
-      const selectedDispatcher = dispatchersField.value;
-      const freelancers = ['Azreena', 'Bob', 'Ermi', 'Feeza', 'Hjjul', 'Jon', 'Qui', 'Tommy', 'Zuran'];
-      
-      if (freelancers.includes(selectedDispatcher)) {
-        freelancerNameWrapper.style.display = 'block';
-        freelancerNameField.required = true;
-      } else {
-        freelancerNameWrapper.style.display = 'none';
-        freelancerNameField.required = false;
-        freelancerNameField.value = '';
-      }
-    }
-
-    dispatchersField.addEventListener('change', updateFreelancerNameField);
-    updateFreelancerNameField();
 
     document.querySelectorAll('input[name="areas"]').forEach(checkbox => {
       checkbox.addEventListener('change', function() {
@@ -436,13 +417,7 @@ document.getElementById('confirmDetailsBtn').addEventListener('click', function(
         return;
     }
 
-    const freelancers = ['Azreena', 'Bob', 'Ermi', 'Feeza', 'Hjjul', 'Jon', 'Qui', 'Tommy', 'Zuran'];
-    if (freelancers.includes(dispatcher) && !freelancerNameField.value) {
-        alert('Please enter freelancer name');
-        return;
-    }
-
-    podData.dispatcher = freelancers.includes(dispatcher) ? `${dispatcher} ${freelancerNameField.value}` : dispatcher;
+    podData.dispatcher = dispatcher;
     podData.deliveryDate = deliveryDate;
     podData.areas = [...selectedAreas];
 

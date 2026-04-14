@@ -51,18 +51,18 @@
         <div class="collapse navbar-collapse w-100" id="navbarResponsive">
           <!-- Desktop left menus -->
           <ul class="navbar-nav d-none d-lg-flex">
-            <% if (['finance','warehouse','cs','dispatcher','manager','admin'].includes(user.role)) { %>
+            <% if (['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopOperationDropdown" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
                 <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                  <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
                   <% } %>
-                  <% if (['cs','warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['cs','warehouse', 'manager', 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
                   <% } %>
-                  <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                   <% } %>
@@ -88,7 +88,7 @@
                 </div>
               </li>
             <% } %>
-            <% if (['moh','cs','manager','admin','warehouse'].includes(user.role)) { %>
+            <% if (['moh','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopMohDropdown" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
@@ -96,7 +96,7 @@
                   <% if (['moh'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
-                  <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
                     <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
@@ -105,8 +105,6 @@
                     <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms</a>
                     <div class="dropdown-divider"></div>
-                  <% } %>
-                  <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Warga Emas</div>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
                   <% } %>
@@ -146,25 +144,25 @@
 
           <!-- Mobile menus -->
           <ul class="navbar-nav d-lg-none mt-2">
-            <% if (['finance','warehouse','cs','dispatcher','manager','admin'].includes(user.role)) { %>
+            <% if (['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileOperationDropdown" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
                 <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
-                  <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
                   <% } %>
-                  <% if (['cs' ,'warehouse', 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['cs' ,'warehouse', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
                   <% } %>
-                  <% if (['finance', 'warehouse', 'cs' , 'dispatcher' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                     <% } %>
                     <% if (['manager' , 'finance', 'admin'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
                   <% } %>
-                  <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                  <% if (['cs', 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD (New)</div>
                     <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
@@ -183,7 +181,7 @@
                 </div>
               </li>
             <% } %>
-            <% if (['moh','cs','manager','admin','warehouse'].includes(user.role)) { %>
+            <% if (['moh','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileMohDropdown" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
@@ -191,7 +189,7 @@
                   <% if (['moh'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
-                  <% if (['warehouse', 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
                     <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
@@ -200,8 +198,6 @@
                     <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms</a>
                     <div class="dropdown-divider"></div>
-                  <% } %>
-                  <% if (['cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Warga Emas</div>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
                   <% } %>

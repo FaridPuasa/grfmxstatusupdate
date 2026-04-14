@@ -1054,7 +1054,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
-            "Ghafar", "Sowdeq", "Leo", "Hairol", 
+            "Ghafar", "Sowdeq", "Leo", "Hairol",
             "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
         ];
 
@@ -1131,17 +1131,17 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     if (!h) return;
 
                     const staff = h.lastAssignedTo || "Unassigned";
-                    
+
                     // ========== FILTER: Only include operation staff ==========
                     // Check if staff name (or any part of compound name) is in operationStaff list
                     const staffNames = staff.split('/').map(n => n.trim());
-                    const hasAllowedStaff = staffNames.some(name => 
+                    const hasAllowedStaff = staffNames.some(name =>
                         operationStaff.includes(name)
                     );
-                    
+
                     // Skip if not an operation staff member
                     if (!hasAllowedStaff) return;
-                    
+
                     if (!staffMap[staff]) {
                         staffMap[staff] = {
                             products: {},
@@ -2325,14 +2325,14 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
 
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
-            "Ghafar", "Sowdeq", "Leo", "Hairol", 
+            "Ghafar", "Sowdeq", "Leo", "Hairol",
             "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
         ];
 
         // Fetch completed orders for the selected date directly
-        const orders = await ORDERS.find({ 
-            jobDate: date, 
-            currentStatus: "Completed" 
+        const orders = await ORDERS.find({
+            jobDate: date,
+            currentStatus: "Completed"
         }).lean();
 
         console.log(`Found ${orders.length} completed orders for date ${date}`);
@@ -2379,29 +2379,29 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         for (const order of orders) {
             const product = order.product || "N/A";
             allProducts.add(product);
-            
+
             // Get the assigned freelancer
             let freelancer = order.assignedTo || "Unassigned";
-            
+
             console.log(`Processing order - Freelancer: ${freelancer}, Product: ${product}`);
-            
+
             // Check if this order should be excluded (operation staff)
-            const isExcluded = excludedNames.some(excluded => 
+            const isExcluded = excludedNames.some(excluded =>
                 freelancer.includes(excluded)
             );
-            
+
             // Skip excluded freelancers
             if (isExcluded) {
                 console.log(`Skipping excluded freelancer: ${freelancer}`);
                 continue;
             }
-            
+
             // Skip if freelancer is "Unassigned" or empty
             if (freelancer === "Unassigned" || !freelancer || freelancer.trim() === "") {
                 console.log(`Skipping unassigned order`);
                 continue;
             }
-            
+
             // Initialize freelancer in map
             if (!freelancerMap[freelancer]) {
                 freelancerMap[freelancer] = {
@@ -2409,16 +2409,16 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
                     totalCompleted: 0
                 };
             }
-            
+
             // Initialize product count
             if (!freelancerMap[freelancer].products[product]) {
                 freelancerMap[freelancer].products[product] = 0;
             }
-            
+
             // Increment count
             freelancerMap[freelancer].products[product]++;
             freelancerMap[freelancer].totalCompleted++;
-            
+
             console.log(`Added to ${freelancer} - ${product} count: ${freelancerMap[freelancer].products[product]}`);
         }
 
@@ -2426,7 +2426,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
 
         // Get list of products that actually have data
         const products = Array.from(allProducts).filter(p =>
-            Object.values(freelancerMap).some(data => 
+            Object.values(freelancerMap).some(data =>
                 data.products[p] > 0
             )
         ).sort();
@@ -2441,21 +2441,21 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
                 products.forEach(p => {
                     productCounts[p] = data.products[p] || 0;
                 });
-                
+
                 // Get area from dispatcher map
                 let area = "-";
                 if (freelancer !== "Selfcollect" && dispatcherMap[freelancer]) {
                     area = dispatcherMap[freelancer].area;
                 } else if (freelancer !== "Selfcollect") {
                     // Try to find if this freelancer exists in dispatcher map as part of compound name
-                    const dispatcherEntry = Object.entries(dispatcherMap).find(([name]) => 
+                    const dispatcherEntry = Object.entries(dispatcherMap).find(([name]) =>
                         name.includes(freelancer) || freelancer.includes(name)
                     );
                     if (dispatcherEntry) {
                         area = dispatcherEntry[1].area;
                     }
                 }
-                
+
                 return {
                     staff: freelancer,
                     area: area,
@@ -2469,7 +2469,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         console.log(`Returning ${results.length} freelancers with completed jobs`);
 
         res.json({ products, results });
-        
+
     } catch (err) {
         console.error('Freelancer delivery result report error:', err);
         res.status(500).json({ error: "Server error: " + err.message });
@@ -2930,36 +2930,36 @@ app.get('/listUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             'freelancer': 7,
             'moh': 8
         };
-        
+
         // Get all users and sort by role priority
         const users = await USERS.find({}).sort({ date: -1 });
-        
+
         // Sort users by role priority
         users.sort((a, b) => {
             const priorityA = rolePriority[a.role] || 999;
             const priorityB = rolePriority[b.role] || 999;
             return priorityA - priorityB;
         });
-        
+
         // Only get flash message if it exists and is not empty
         let success_msg = req.flash('success_msg');
         let error_msg = req.flash('error_msg');
-        
+
         // Check if success_msg is an array and get the first non-empty value
         if (success_msg && Array.isArray(success_msg)) {
             success_msg = success_msg.find(msg => msg && msg.trim() !== '') || null;
         } else if (success_msg === '') {
             success_msg = null;
         }
-        
+
         // Check if error_msg is an array and get the first non-empty value
         if (error_msg && Array.isArray(error_msg)) {
             error_msg = error_msg.find(msg => msg && msg.trim() !== '') || null;
         } else if (error_msg === '') {
             error_msg = null;
         }
-        
-        res.render('listUser', { 
+
+        res.render('listUser', {
             users: users,
             user: req.user,
             success_msg: success_msg,
@@ -2977,12 +2977,12 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
     try {
         const identifier = req.params.identifier;
         console.log('Editing user with identifier:', identifier);
-        
+
         let userToEdit;
-        
+
         // Check if identifier is MongoDB ObjectId format (24 hex chars)
         const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-        
+
         if (isObjectId) {
             // Search by MongoDB _id
             userToEdit = await USERS.findById(identifier);
@@ -2990,12 +2990,12 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
             // Search by userId (GR000001 format)
             userToEdit = await USERS.findOne({ userId: identifier });
         }
-        
+
         if (!userToEdit) {
             req.flash('error_msg', 'User not found');
             return res.redirect('/listUser');
         }
-        
+
         // Generate userId if it doesn't exist
         if (!userToEdit.userId) {
             const lastUser = await USERS.findOne({ userId: { $exists: true, $ne: null } }).sort({ userId: -1 });
@@ -3008,8 +3008,8 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
             await userToEdit.save();
             console.log(`Generated userId ${userToEdit.userId} for user ${userToEdit.name}`);
         }
-        
-        res.render('updateUser', { 
+
+        res.render('updateUser', {
             editUser: userToEdit,
             user: req.user,
             errors: req.flash('error')
@@ -3025,17 +3025,17 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
 app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
         const identifier = req.params.identifier;
-        const { 
-            role, fullName, name, email, password, icNum, jobPosition, status, 
-            profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode 
+        const {
+            role, fullName, name, email, password, icNum, jobPosition, status,
+            profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode
         } = req.body;
         let errors = [];
-        
+
         // Validation
         if (!name || !role || !jobPosition || !status) {
             errors.push({ msg: 'Please fill all required fields' });
         }
-        
+
         if (role !== 'freelancer' && role !== 'dispatcher') {
             if (!email || email === '') {
                 errors.push({ msg: 'Email is required for this role' });
@@ -3044,27 +3044,27 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                 errors.push({ msg: 'Password must be at least 6 characters' });
             }
         }
-        
+
         if (errors.length > 0) {
             req.flash('error', errors);
             return res.redirect(`/updateUser/${identifier}`);
         }
-        
+
         // Find existing user
         const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
         let existingUser;
-        
+
         if (isObjectId) {
             existingUser = await USERS.findById(identifier);
         } else {
             existingUser = await USERS.findOne({ userId: identifier });
         }
-        
+
         if (!existingUser) {
             req.flash('error_msg', 'User not found');
             return res.redirect('/listUser');
         }
-        
+
         // Check if userId is being changed and validate uniqueness
         let finalUserId = existingUser.userId;
         if (userId && userId !== existingUser.userId) {
@@ -3075,22 +3075,22 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                 req.flash('error', errors);
                 return res.redirect(`/updateUser/${identifier}`);
             }
-            
+
             // Check if userId already exists
-            const userIdExists = await USERS.findOne({ 
-                userId: userId, 
-                _id: { $ne: existingUser._id } 
+            const userIdExists = await USERS.findOne({
+                userId: userId,
+                _id: { $ne: existingUser._id }
             });
-            
+
             if (userIdExists) {
                 errors.push({ msg: 'User ID already exists. Please choose a different one.' });
                 req.flash('error', errors);
                 return res.redirect(`/updateUser/${identifier}`);
             }
-            
+
             finalUserId = userId;
         }
-        
+
         // Prepare update data
         let updateData = {
             role,
@@ -3101,29 +3101,29 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             status,
             userId: finalUserId
         };
-        
+
         // Handle profile picture
         if (removeProfilePicture === '1') {
             updateData.profilePicture = '';
         } else if (profilePicture && profilePicture !== '') {
             updateData.profilePicture = profilePicture;
         }
-        
+
         // Handle QR code
         if (removeQrcode === '1') {
             updateData.qrcodeVerify = '';
         } else if (qrcodeVerify && qrcodeVerify !== '') {
             updateData.qrcodeVerify = qrcodeVerify;
         }
-        
+
         // Handle email based on role
         if (role !== 'freelancer' && role !== 'dispatcher') {
             // For regular roles, email is required
             if (email && email !== '') {
                 // Check if email is taken by another user
-                const emailExists = await USERS.findOne({ 
-                    email: email, 
-                    _id: { $ne: existingUser._id } 
+                const emailExists = await USERS.findOne({
+                    email: email,
+                    _id: { $ne: existingUser._id }
                 });
                 if (emailExists) {
                     errors.push({ msg: 'Email already exists' });
@@ -3140,23 +3140,23 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             // For freelancer/dispatcher, remove email field if it exists
             updateData.$unset = { email: 1 };
         }
-        
+
         // Update password if provided
         if (password && password.length >= 6) {
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(password, salt);
         }
-        
+
         // Perform update
         if (isObjectId) {
             await USERS.findByIdAndUpdate(existingUser._id, updateData);
         } else {
             await USERS.findOneAndUpdate({ userId: identifier }, updateData);
         }
-        
+
         req.flash('success_msg', 'User updated successfully');
         res.redirect('/listUser');
-        
+
     } catch (err) {
         console.error(err);
         req.flash('error_msg', 'Error updating user: ' + err.message);
@@ -3169,13 +3169,13 @@ app.delete('/deleteUser/:identifier', ensureAuthenticated, ensureAdmin, async (r
     try {
         const identifier = req.params.identifier;
         const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-        
+
         if (isObjectId) {
             await USERS.findByIdAndDelete(identifier);
         } else {
             await USERS.findOneAndDelete({ userId: identifier });
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error(err);
@@ -3187,11 +3187,11 @@ app.delete('/deleteUser/:identifier', ensureAuthenticated, ensureAdmin, async (r
 app.get('/verify/:userId', async (req, res) => {
     try {
         const user = await USERS.findOne({ userId: req.params.userId });
-        
+
         if (!user) {
             return res.status(404).send('User not found');
         }
-        
+
         let statusType = 'unauthorized';
         let statusText = 'Not Affiliated with Go Rush';
         let statusIcon = 'fa-times-circle';
@@ -3200,21 +3200,21 @@ app.get('/verify/:userId', async (req, res) => {
         let contactHtml = null;
         let needTimer = false;
         let assuranceText = '';
-        
+
         // Check if user is active
         if (user.status === 'Active') {
             // Check for freelancer
             if (user.role === 'freelancer') {
                 // Check if freelancer has job today
                 const today = moment().tz('Asia/Brunei').format('YYYY-MM-DD');
-                const hasJobToday = await ORDERS.findOne({ 
+                const hasJobToday = await ORDERS.findOne({
                     jobDate: today,
                     $or: [
                         { assignedTo: user.name },
                         { lastAssignedTo: user.name }
                     ]
                 });
-                
+
                 if (hasJobToday) {
                     statusType = 'authorized';
                     statusText = 'Authorized Digital ID';
@@ -3314,7 +3314,7 @@ app.get('/verify/:userId', async (req, res) => {
                 `;
             }
         }
-        
+
         res.render('userview', {
             user: user,
             statusType: statusType,
@@ -3326,7 +3326,7 @@ app.get('/verify/:userId', async (req, res) => {
             assuranceText: assuranceText,
             needTimer: needTimer
         });
-        
+
     } catch (err) {
         console.error(err);
         res.status(500).send('Error loading digital ID');
@@ -3374,14 +3374,14 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         // Only add email for non-freelancer/dispatcher roles
         if (role !== 'freelancer' && role !== 'dispatcher') {
             userData.email = email;
-            
+
             // Check if email exists
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
                 return res.render('createUser', { errors, user: req.user });
             }
-            
+
             // Add password for regular roles
             if (password && password.length >= 6) {
                 const salt = await bcrypt.genSalt(10);
@@ -3394,15 +3394,15 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         }
 
         const newUser = new USERS(userData);
-        
+
         // Generate userId based on role (before saving)
         const prefix = (role === 'freelancer') ? 'FL' : 'GR';
-        
+
         // Find the highest userId with the same prefix
-        const lastUser = await USERS.findOne({ 
-            userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' } 
+        const lastUser = await USERS.findOne({
+            userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' }
         }).sort({ userId: -1 });
-        
+
         let lastNum = 0;
         if (lastUser && lastUser.userId) {
             const match = lastUser.userId.match(new RegExp(`${prefix}(\\d+)`));
@@ -3410,20 +3410,20 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
                 lastNum = parseInt(match[1]);
             }
         }
-        
+
         const newNumber = lastNum + 1;
         newUser.userId = `${prefix}${String(newNumber).padStart(6, '0')}`;
-        
+
         // Save user
         await newUser.save();
-        
+
         console.log('User created successfully:', newUser.userId);
         req.flash('success_msg', `User created successfully! User ID: ${newUser.userId}`);
         res.redirect('/listUser');
-        
+
     } catch (err) {
         console.error('Detailed error creating user:', err);
-        
+
         // Check for specific MongoDB errors
         if (err.code === 11000) {
             if (err.keyPattern && err.keyPattern.email) {
@@ -3440,7 +3440,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         } else {
             errors.push({ msg: 'Server error creating user: ' + err.message });
         }
-        
+
         res.render('createUser', { errors, user: req.user });
     }
 });
@@ -4760,50 +4760,6 @@ function updateOrdersCollection(trackingNumbers) {
     // Return a Promise that resolves when all updates are complete.
     return Promise.all(promises);
 }
-
-// Route to save POD data - Make sure this is in your index.js
-app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    try {
-        const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
-        
-        console.log('Received save request:', { podName, product, rowCount });
-        
-        // Validate required fields
-        if (!podName || !product || !podDate || !podCreator || !deliveryDate || !area || !dispatcher || !htmlContent || !rowCount) {
-            console.log('Missing fields:', { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, rowCount });
-            return res.status(400).send('Missing required fields');
-        }
-        
-        // Use UnifiedPOD model
-        const UnifiedPOD = mainConn.model('UnifiedPOD', require('./models/UnifiedPOD'));
-        
-        const newPod = new UnifiedPOD({
-            podName: podName,
-            product: product,
-            podDate: podDate,
-            podCreator: podCreator,
-            deliveryDate: deliveryDate,
-            area: area,
-            dispatcher: dispatcher,
-            rowCount: rowCount,
-            htmlContent: htmlContent,
-            creationDate: moment().format()
-        });
-        
-        newPod.save()
-            .then(() => {
-                console.log('POD saved successfully:', podName);
-                res.status(200).send('POD data saved successfully');
-            })
-            .catch((err) => {
-                console.error('Error saving POD:', err);
-                res.status(500).send('Failed to save POD data: ' + err.message);
-            });
-    } catch (error) {
-        console.error('Error in save-pod route:', error);
-        res.status(500).send('Internal server error: ' + error.message);
-    }
-});
 
 app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
@@ -6929,6 +6885,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Clear Job"
             }
 
+            if (req.body.statusCode == 'FSJ') {
+                appliedStatus = "Fix Stuck Job"
+            }
+
             else if (req.body.statusCode == 'FAR') {
                 appliedStatus = "Update Fail due to Customer not available / cannot be contacted"
                 failReasonDescription = "Customer not available / cannot be contacted"
@@ -6992,7 +6952,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
                 || (req.body.statusCode == 'RSAL2') || (req.body.statusCode == 'H3') || (req.body.statusCode == 'H10')
                 || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32') || (req.body.statusCode == 'SFJA')
-                || (req.body.statusCode == 'FAR')) {
+                || (req.body.statusCode == 'FAR') || (req.body.statusCode == 'FSJ')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -8186,6 +8146,229 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         DetrackAPIrun = 1;
                         completeRun = 1;
                     }
+                }
+            }
+
+            // ==================================================
+            // 🚨 FIX STUCK JOBS HANDLER - FSJ
+            // ==================================================
+            if (req.body.statusCode == 'FSJ') {
+                console.log(`\n🔄 === FIX STUCK JOB (FSJ) for ${consignmentID} ===`);
+                console.log(`Current Detrack Status: ${data.data.status}`);
+                console.log(`Job Owner: ${data.data.job_owner}`);
+
+                let shouldProcess = false;
+                let updateReason = '';
+                let updateDetrackOnly = false; // For dispatched jobs, only update date, not status
+
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayFormatted = `${yyyy}-${mm}-${dd}`;
+
+                // Check conditions based on current status
+                if (data.data.status === 'failed') {
+                    // Check if job_owner is GDEX or GDEXT
+                    const jobOwner = data.data.job_owner || '';
+                    const isValidJobOwner = (jobOwner === 'GDEX' || jobOwner === 'GDEXT');
+
+                    if (!isValidJobOwner) {
+                        console.log(`❌ Condition NOT met: Job owner is "${jobOwner}", must be GDEX or GDEXT for failed jobs`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: Failed job requires job_owner to be GDEX or GDEXT. Current job_owner: ${jobOwner}`,
+                        });
+                        continue;
+                    }
+
+                    // Count available photos
+                    const photo1 = data.data.photo_1_file_url;
+                    const photo2 = data.data.photo_2_file_url;
+                    const photo3 = data.data.photo_3_file_url;
+                    const availablePhotos = [photo1, photo2, photo3].filter(url => url && url.startsWith('http'));
+                    const photoCount = availablePhotos.length;
+
+                    console.log(`📸 Failed job - Available photos: ${photoCount}/3`);
+                    console.log(`✅ Job owner check passed: ${jobOwner}`);
+
+                    // FIX: If there are 0 photos, apply the fix (reset to dispatched)
+                    if (photoCount === 0) {
+                        shouldProcess = true;
+                        updateDetrackOnly = false;
+                        updateReason = `Failed job with 0 photos - reset to Out for Delivery (Job Owner: ${jobOwner})`;
+                        console.log(`✅ Condition met: Has 0 photos - applying fix to reset to dispatched`);
+                    } else {
+                        console.log(`ℹ️ Job has ${photoCount} photo(s) - no fix needed (already has photos)`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Info: Failed job already has ${photoCount} photo(s). No fix needed.`,
+                        });
+                        continue;
+                    }
+
+                } else if (data.data.status === 'completed') {
+                    // Check if job_owner is GDEX or GDEXT
+                    const jobOwner = data.data.job_owner || '';
+                    const isValidJobOwner = (jobOwner === 'GDEX' || jobOwner === 'GDEXT');
+
+                    if (!isValidJobOwner) {
+                        console.log(`❌ Condition NOT met: Job owner is "${jobOwner}", must be GDEX or GDEXT for completed jobs`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: Completed job requires job_owner to be GDEX or GDEXT. Current job_owner: ${jobOwner}`,
+                        });
+                        continue;
+                    }
+
+                    // Count available photos
+                    const photo1 = data.data.photo_1_file_url;
+                    const photo2 = data.data.photo_2_file_url;
+                    const photo3 = data.data.photo_3_file_url;
+                    const availablePhotos = [photo1, photo2, photo3].filter(url => url && url.startsWith('http'));
+                    const photoCount = availablePhotos.length;
+
+                    console.log(`📸 Completed job - Available photos: ${photoCount}/3`);
+                    console.log(`✅ Job owner check passed: ${jobOwner}`);
+
+                    // FIX: If NOT all 3 photos (missing any), apply the fix (reset to dispatched)
+                    if (photoCount !== 3) {
+                        shouldProcess = true;
+                        updateDetrackOnly = false;
+                        updateReason = `Completed job with only ${photoCount}/3 photos - reset to Out for Delivery (Job Owner: ${jobOwner})`;
+                        console.log(`✅ Condition met: Missing photos (${photoCount}/3) - applying fix to reset to dispatched`);
+                    } else {
+                        console.log(`ℹ️ Job has all 3 photos - no fix needed`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Info: Completed job already has all 3 photos. No fix needed.`,
+                        });
+                        continue;
+                    }
+
+                } else if (data.data.status === 'dispatched') {
+                    // Dispatched jobs - ANY job_owner is allowed
+                    const jobOwner = data.data.job_owner || 'Unknown';
+
+                    // Check if job date is before today (stuck from yesterday or earlier)
+                    const jobDate = data.data.date;
+                    console.log(`📅 Dispatched job - Current job date: ${jobDate}, Today: ${todayFormatted}`);
+                    console.log(`ℹ️ Job owner: ${jobOwner} (any owner allowed for dispatched jobs)`);
+
+                    // FIX: If job date is before today, update just the date (not status)
+                    if (jobDate && jobDate < todayFormatted) {
+                        shouldProcess = true;
+                        updateDetrackOnly = true; // Only update date, keep status as dispatched
+                        updateReason = `Dispatched job with date ${jobDate} (before today) - updated date to today (Job Owner: ${jobOwner})`;
+                        console.log(`✅ Condition met: Job date ${jobDate} is before today - updating date only`);
+                    } else {
+                        console.log(`❌ Condition NOT met: Job date ${jobDate} is today or in the future. Cannot fix stuck job.`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: Dispatched job date (${jobDate}) is not before today. Cannot fix stuck job.`,
+                        });
+                        continue;
+                    }
+
+                } else {
+                    console.log(`❌ Status ${data.data.status} is not eligible for FSJ fix`);
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: FSJ only works for 'failed', 'completed', or 'dispatched' status. Current status: ${data.data.status}`,
+                    });
+                    continue;
+                }
+
+                // Process the fix if conditions are met
+                if (shouldProcess) {
+                    try {
+                        console.log(`📤 Processing FSJ fix for ${consignmentID}...`);
+
+                        // Prepare Detrack update data
+                        let detrackUpdateData;
+                        if (updateDetrackOnly) {
+                            // For dispatched jobs: only update date, keep status as dispatched
+                            detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: todayFormatted,
+                                }
+                            };
+                            console.log(`📝 Detrack update: Only updating date to ${todayFormatted} (status remains dispatched)`);
+                        } else {
+                            // For failed/completed jobs: update date AND status to dispatched
+                            detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    date: todayFormatted,
+                                    status: "dispatched",
+                                }
+                            };
+                            console.log(`📝 Detrack update: Updating date to ${todayFormatted} AND status to dispatched`);
+                        }
+
+                        // Prepare MongoDB update data
+                        const update = {
+                            lastUpdateDateTime: moment().format(),
+                            jobDate: todayFormatted,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    statusHistory: "Out for Delivery",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastAssignedTo: data.data.assign_to || "Unassigned",
+                                    lastLocation: data.data.assign_to || "Unknown",
+                                    reason: updateReason,
+                                }
+                            }
+                        };
+
+                        // Update MongoDB
+                        const filter = { doTrackingNumber: consignmentID };
+                        const option = { upsert: false, new: false };
+
+                        const mongoResult = await ORDERS.findOneAndUpdate(filter, update, option);
+                        if (mongoResult) {
+                            console.log(`✅ MongoDB updated for ${consignmentID} - Job date set to ${todayFormatted}`);
+                            mongoDBrun = 2;
+                        } else {
+                            console.error(`❌ MongoDB update failed for ${consignmentID}`);
+                        }
+
+                        // Update Detrack
+                        const detrackSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+                        if (detrackSuccess) {
+                            if (updateDetrackOnly) {
+                                console.log(`✅ Detrack updated for ${consignmentID} - Date updated to ${todayFormatted}`);
+                            } else {
+                                console.log(`✅ Detrack updated for ${consignmentID} - Status: dispatched, Date: ${todayFormatted}`);
+                            }
+                            DetrackAPIrun = 1;
+                        } else {
+                            console.error(`❌ Detrack update failed for ${consignmentID}`);
+                        }
+
+                        completeRun = 1;
+
+                        // Add success message
+                        processingResults.push({
+                            consignmentID,
+                            status: `✅ Fix Stuck Job successful! ${updateReason}`,
+                        });
+
+                        console.log(`🎉 FSJ fix completed for ${consignmentID}`);
+
+                    } catch (error) {
+                        console.error(`🔥 FSJ fix error for ${consignmentID}:`, error.message);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: FSJ fix failed - ${error.message}`,
+                        });
+                    }
+
+                    continue; // Skip the rest of the update delivery logic
                 }
             }
 
@@ -20376,32 +20559,32 @@ async function downloadAvailablePODsForGDEXFailed(consignmentID, detrackData, ex
 
 // API endpoint to get job details from Detrack
 app.get('/api/job-details/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-  try {
-    const trackingNumber = req.params.trackingNumber.toUpperCase();
-    const apiKey = process.env.API_KEY;
-    
-    const response = await axios.get(
-      `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': apiKey,
-        },
-      }
-    );
-    
-    // Log the response to see what fields are available
-    console.log('Detrack API response for', trackingNumber, ':', {
-      other_phone_numbers: response.data.data?.other_phone_numbers,
-      phone_number: response.data.data?.phone_number,
-      deliver_to_collect_from: response.data.data?.deliver_to_collect_from
-    });
-    
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error fetching job details:', error);
-    res.status(404).json({ error: 'Tracking number not found' });
-  }
+    try {
+        const trackingNumber = req.params.trackingNumber.toUpperCase();
+        const apiKey = process.env.API_KEY;
+
+        const response = await axios.get(
+            `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey,
+                },
+            }
+        );
+
+        // Log the response to see what fields are available
+        console.log('Detrack API response for', trackingNumber, ':', {
+            other_phone_numbers: response.data.data?.other_phone_numbers,
+            phone_number: response.data.data?.phone_number,
+            deliver_to_collect_from: response.data.data?.deliver_to_collect_from
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching job details:', error);
+        res.status(404).json({ error: 'Tracking number not found' });
+    }
 });
 
 // Render the list POD page
@@ -20489,27 +20672,27 @@ app.get('/api/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery,
 app.get('/api/view-pod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     console.log('🔥🔥🔥 /api/view-pod/:podId route was called! 🔥🔥🔥');
     console.log('Pod ID received:', req.params.podId);
-    
+
     try {
         const podId = req.params.podId;
-        
+
         // Validate MongoDB ObjectId format (24 hex chars)
         if (!podId || podId.length !== 24) {
             console.log('❌ Invalid ID format:', podId);
             return res.status(400).json({ error: 'Invalid POD ID format. ID must be 24 characters.' });
         }
-        
+
         console.log('🔍 Searching for POD with ID:', podId);
         const pod = await UnifiedPOD.findById(podId);
-        
+
         if (!pod) {
             console.log('❌ POD not found for ID:', podId);
             return res.status(404).json({ error: 'POD not found' });
         }
-        
+
         console.log('✅ POD found:', pod.podName);
         console.log('✅ HTML content length:', pod.htmlContent?.length || 0);
-        
+
         res.json({ htmlContent: pod.htmlContent });
     } catch (error) {
         console.error('❌ Error fetching POD:', error);
@@ -20528,9 +20711,9 @@ app.get('/deletePOD/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDeli
     try {
         const podId = req.params.podId;
         console.log('Deleting POD with ID:', podId);
-        
+
         const deletedPod = await UnifiedPOD.findByIdAndDelete(podId);
-        
+
         if (deletedPod) {
             console.log('POD deleted:', deletedPod.podName);
             res.redirect('/listPOD');
@@ -20543,35 +20726,73 @@ app.get('/deletePOD/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDeli
     }
 });
 
-// Save POD route
+// Save POD route - handle DD.MM.YY format
 app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
         const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
-        
+
         console.log('Received save request for POD:', podName);
-        
+        console.log('Raw deliveryDate received:', deliveryDate);
+
+        // Normalize deliveryDate to YYYY-MM-DD format
+        let normalizedDeliveryDate = deliveryDate;
+
+        // Handle format: "14.04.26" (DD.MM.YY)
+        if (deliveryDate && deliveryDate.match(/^\d{2}\.\d{2}\.\d{2}$/)) {
+            const parts = deliveryDate.split('.');
+            const day = parts[0];
+            const month = parts[1];
+            const year = 2000 + parseInt(parts[2]);
+            normalizedDeliveryDate = `${year}-${month}-${day}`;
+            console.log('Converted DD.MM.YY to YYYY-MM-DD:', normalizedDeliveryDate);
+        }
+        // Handle format: "DD.MM.YYYY"
+        else if (deliveryDate && deliveryDate.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+            const parts = deliveryDate.split('.');
+            normalizedDeliveryDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            console.log('Converted DD.MM.YYYY to YYYY-MM-DD:', normalizedDeliveryDate);
+        }
+        // Handle format: "DD/MM/YY"
+        else if (deliveryDate && deliveryDate.match(/^\d{2}\/\d{2}\/\d{2}$/)) {
+            const parts = deliveryDate.split('/');
+            const day = parts[0];
+            const month = parts[1];
+            const year = 2000 + parseInt(parts[2]);
+            normalizedDeliveryDate = `${year}-${month}-${day}`;
+            console.log('Converted DD/MM/YY to YYYY-MM-DD:', normalizedDeliveryDate);
+        }
+        // Handle format: "DD-MM-YY"
+        else if (deliveryDate && deliveryDate.match(/^\d{2}-\d{2}-\d{2}$/)) {
+            const parts = deliveryDate.split('-');
+            const day = parts[0];
+            const month = parts[1];
+            const year = 2000 + parseInt(parts[2]);
+            normalizedDeliveryDate = `${year}-${month}-${day}`;
+            console.log('Converted DD-MM-YY to YYYY-MM-DD:', normalizedDeliveryDate);
+        }
+
         // Validate required fields
-        if (!podName || !product || !podDate || !podCreator || !deliveryDate || !area || !dispatcher || !htmlContent || !rowCount) {
+        if (!podName || !product || !podDate || !podCreator || !normalizedDeliveryDate || !area || !dispatcher || !htmlContent || !rowCount) {
             console.log('Missing required fields');
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        
+
         const newPod = new UnifiedPOD({
             podName: podName,
             product: product,
             podDate: podDate,
             podCreator: podCreator,
-            deliveryDate: deliveryDate,
+            deliveryDate: normalizedDeliveryDate, // Store as YYYY-MM-DD
             area: area,
             dispatcher: dispatcher,
             rowCount: rowCount,
             htmlContent: htmlContent,
             creationDate: moment().format()
         });
-        
+
         const savedPod = await newPod.save();
-        console.log('POD saved successfully:', savedPod.podName, 'ID:', savedPod._id);
-        
+        console.log('POD saved successfully:', savedPod.podName, 'ID:', savedPod._id, 'Delivery Date:', savedPod.deliveryDate);
+
         res.status(200).json({ message: 'POD data saved successfully', id: savedPod._id });
     } catch (error) {
         console.error('Error saving POD:', error);
@@ -20584,14 +20805,14 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
     try {
         const trackingNumber = req.params.trackingNumber.toUpperCase();
         console.log('Searching for order with tracking number:', trackingNumber);
-        
+
         const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
-        
+
         if (!order) {
             console.log('Order not found for tracking number:', trackingNumber);
             return res.status(404).json({ error: 'Order not found' });
         }
-        
+
         console.log('Order found:', {
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
@@ -20599,7 +20820,7 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             jobmethod: order.jobMethod,
             grRemark: order.grRemark  // Add this to log
         });
-        
+
         res.json({
             doTrackingNumber: order.doTrackingNumber,
             receiverName: order.receiverName,
@@ -20614,11 +20835,197 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
             product: order.product || '',
             grRemark: order.grRemark || ''  // Add grRemark field
         });
-        
+
     } catch (error) {
         console.error('Error fetching order details:', error);
         res.status(500).json({ error: 'Internal server error: ' + error.message });
     }
+});
+
+// ==================================================
+// 📦 ASSIGN POD JOBS TO OUT FOR DELIVERY
+// ==================================================
+
+app.post('/api/assign-pod-jobs', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    const { podId, podName, trackingNumbers, dispatcher, assignDate } = req.body;
+
+    console.log(`=== Assigning POD Jobs: ${podName} ===`);
+    console.log(`Dispatcher: ${dispatcher}`);
+    console.log(`Assign Date: ${assignDate}`);
+    console.log(`Tracking Numbers: ${trackingNumbers.length} jobs`);
+
+    const results = [];
+
+    // Process each tracking number sequentially
+    for (let i = 0; i < trackingNumbers.length; i++) {
+        const consignmentID = trackingNumbers[i];
+        console.log(`\n[${i + 1}/${trackingNumbers.length}] Processing: ${consignmentID}`);
+
+        try {
+            // Step 1: Fetch data from Detrack
+            const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                }
+            });
+
+            const data = response.data.data;
+            const product = data.group_name;
+            let currentProduct = '';
+
+            // Determine product type
+            if (product === 'GDEX') currentProduct = 'gdex';
+            else if (product === 'GDEXT') currentProduct = 'gdext';
+            else if (product === 'EWE') currentProduct = 'ewe';
+            else currentProduct = product.toLowerCase();
+
+            // Check if job can be assigned to Out for Delivery
+            const canAssignOutForDelivery = (
+                (data.type === 'Delivery' && (data.status === 'at_warehouse' || data.status === 'in_sorting_area')) ||
+                (data.type === 'Delivery' && data.status === 'on_hold' && (currentProduct === 'gdex' || currentProduct === 'gdext'))
+            );
+
+            if (!canAssignOutForDelivery) {
+                let errorMsg = `Cannot assign - Current status: ${data.status}`;
+                if (data.type !== 'Delivery') errorMsg = `Cannot assign - Job type is ${data.type}, not Delivery`;
+                if (data.status === 'dispatched') errorMsg = `Job already assigned to a dispatcher`;
+                if (data.status === 'completed') errorMsg = `Job already completed`;
+                if (data.status === 'failed') errorMsg = `Job has failed delivery`;
+                if (data.status === 'cancelled') errorMsg = `Job has been cancelled`;
+
+                results.push({
+                    trackingNumber: consignmentID,
+                    success: false,
+                    error: errorMsg
+                });
+                continue;
+            }
+
+            // Get area from address
+            let area = data.zone || 'N/A';
+            let finalArea = area;
+
+            // Prepare update data for MongoDB
+            let update = {
+                area: finalArea,
+                currentStatus: "Out for Delivery",
+                lastUpdateDateTime: moment().format(),
+                instructions: data.remarks || '',
+                assignedTo: dispatcher,
+                attempt: data.attempt || 0,
+                jobDate: assignDate,
+                latestLocation: dispatcher,
+                lastUpdatedBy: req.user.name,
+                $push: {
+                    history: {
+                        statusHistory: "Out for Delivery",
+                        dateUpdated: moment().format(),
+                        updatedBy: req.user.name,
+                        lastAssignedTo: dispatcher,
+                        reason: "N/A",
+                        lastLocation: dispatcher,
+                    }
+                }
+            };
+
+            // Handle COD for EWE products
+            let detrackUpdateData = {
+                do_number: consignmentID,
+                data: {
+                    date: assignDate,
+                    assign_to: dispatcher,
+                    status: "dispatched",
+                    zone: finalArea,
+                }
+            };
+
+            if ((data.payment_mode === "COD") && (currentProduct === "ewe")) {
+                update.paymentMethod = "Cash";
+                update.totalPrice = data.payment_amount;
+                update.paymentAmount = data.payment_amount;
+                detrackUpdateData.data.total_price = data.payment_amount;
+                detrackUpdateData.data.payment_mode = "Cash";
+            }
+
+            // Step 2: Update MongoDB
+            const filter = { doTrackingNumber: consignmentID };
+            const mongoResult = await ORDERS.findOneAndUpdate(filter, update, { upsert: false, new: false });
+
+            if (!mongoResult) {
+                results.push({
+                    trackingNumber: consignmentID,
+                    success: false,
+                    error: 'Order not found in MongoDB'
+                });
+                continue;
+            }
+
+            console.log(`✅ MongoDB updated for ${consignmentID}`);
+
+            // Step 3: Update Detrack
+            const detrackSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+            if (!detrackSuccess) {
+                results.push({
+                    trackingNumber: consignmentID,
+                    success: false,
+                    error: 'Failed to update Detrack status'
+                });
+                continue;
+            }
+
+            console.log(`✅ Detrack updated for ${consignmentID}`);
+
+            // Step 4: Update GDEX if applicable
+            let gdexSuccess = true;
+            if (product === 'GDEX' || product === 'GDEXT') {
+                console.log(`🔄 Sending GDEX Out for Delivery for ${consignmentID}`);
+                gdexSuccess = await updateGDEXStatus(consignmentID, 'out_for_delivery');
+
+                if (gdexSuccess) {
+                    console.log(`✅ GDEX updated for ${consignmentID}`);
+                } else {
+                    console.log(`⚠️ GDEX update failed for ${consignmentID} (non-critical)`);
+                }
+            }
+
+            results.push({
+                trackingNumber: consignmentID,
+                success: true,
+                product: product,
+                gdexUpdated: (product === 'GDEX' || product === 'GDEXT') ? gdexSuccess : 'N/A'
+            });
+
+            console.log(`✅ Successfully assigned ${consignmentID} to ${dispatcher}`);
+
+            // Small delay to avoid API rate limiting
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (error) {
+            console.error(`❌ Error processing ${consignmentID}:`, error.message);
+            results.push({
+                trackingNumber: consignmentID,
+                success: false,
+                error: error.message.includes('404') ? 'Tracking number not found in Detrack' : error.message
+            });
+        }
+    }
+
+    // Log summary
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+    console.log(`\n=== Assignment Complete for ${podName} ===`);
+    console.log(`Success: ${successCount}, Failed: ${failCount}`);
+
+    res.json({
+        success: true,
+        podName: podName,
+        totalJobs: trackingNumbers.length,
+        successCount: successCount,
+        failCount: failCount,
+        results: results
+    });
 });
 
 app.listen(port, () => {
