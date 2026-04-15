@@ -5485,7 +5485,6 @@ async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, toke
     }
 }
 
-// Add these new status types to the existing updateGDEXStatus function
 async function updateGDEXStatus(consignmentID, statusType, detrackData = null, statusCode = null, statusDescription = null, locationDescription = null, reasonCode = null, epod = null, returnflag = false) {
     console.log(`=== Updating GDEX status (${statusType}) for: ${consignmentID} ===`);
 
@@ -5499,7 +5498,7 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
     if (statusType === 'warehouse') {
         return await sendGDEXTrackingWebhook(
             consignmentID,
-            "DT1", // First step of warehouse update
+            "DT1",
             "Hub Inbound",
             "Go Rush Warehouse",
             token,
@@ -5508,21 +5507,7 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
             returnflag
         );
     }
-    // ========== NEW: Hub Outbound (DT2) ==========
-    else if (statusType === 'hub_outbound') {
-        return await sendGDEXTrackingWebhook(
-            consignmentID,
-            "DT2",
-            "Hub Outbound",
-            "Go Rush Warehouse",
-            token,
-            "",
-            "",
-            returnflag
-        );
-    }
-    // ========== NEW: Received by Branch (AL1) ==========
-    else if (statusType === 'branch_received') {
+    else if (statusType === 'branch_received') {  // AL1 only - keep this
         return await sendGDEXTrackingWebhook(
             consignmentID,
             "AL1",
@@ -5534,12 +5519,25 @@ async function updateGDEXStatus(consignmentID, statusType, detrackData = null, s
             returnflag
         );
     }
+    // ========== COMMENT OUT OR REMOVE DT2 ==========
+    // else if (statusType === 'hub_outbound') {
+    //     return await sendGDEXTrackingWebhook(
+    //         consignmentID,
+    //         "DT2",
+    //         "Hub Outbound",
+    //         "Go Rush Warehouse",
+    //         token,
+    //         "",
+    //         "",
+    //         returnflag
+    //     );
+    // }
+    // ========== END REMOVAL ==========
     else if (statusType === 'custom') {
         if (!statusCode || !statusDescription || !locationDescription) {
             console.error('Missing required parameters for custom GDEX update');
             return false;
         }
-
         return await sendGDEXTrackingWebhook(
             consignmentID,
             statusCode,
@@ -7444,7 +7442,19 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             // (Skips completed status - send separately via SFJ)
             // ==================================================
             if (req.body.statusCode == 'FA') {
-                console.log(`\n🔄 === FIX JOB: Reprocessing ALL milestones for ${consignmentID} ===`);
+                // MongoDB Updatedata.data.assign_to
+                update = {
+                    paymentMethod: data.data.payment_mode,
+                    totalPrice: data.data.total_price,
+                    paymentAmount: data.data.payment_amount,
+                };
+
+                // GDEX API Update (will be handled by GDEXAPIrun = 7)
+                portalUpdate = `Fix wrong updated jobs `;
+
+                mongoDBrun = 2;
+                completeRun = 1;
+                /* console.log(`\n🔄 === FIX JOB: Reprocessing ALL milestones for ${consignmentID} ===`);
                 console.log(`Product: ${product}, Current Detrack Status: ${data.data.status}`);
 
                 // Only process GDEX/GDEXT products
@@ -7693,7 +7703,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     });
                 }
 
-                continue; // Skip rest of the update delivery logic for this tracking number
+                continue; // Skip rest of the update delivery logic for this tracking number */
             }
 
             // ==================================================
@@ -8161,12 +8171,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 let updateReason = '';
                 let updateDetrackOnly = false; // For dispatched jobs, only update date, not status
 
-                // Get today's date in YYYY-MM-DD format
-                const today = new Date();
-                const yyyy = today.getFullYear();
-                const mm = String(today.getMonth() + 1).padStart(2, '0');
-                const dd = String(today.getDate()).padStart(2, '0');
-                const todayFormatted = `${yyyy}-${mm}-${dd}`;
+                // Get today's date in Brunei timezone (UTC+8)
+                const todayBrunei = moment().utcOffset(8);
+                const todayFormatted = todayBrunei.format('YYYY-MM-DD');
+
+                console.log(`📅 Today's date (Brunei timezone UTC+8): ${todayFormatted}`);
 
                 // Check conditions based on current status
                 if (data.data.status === 'failed') {
@@ -8251,22 +8260,41 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     // Dispatched jobs - ANY job_owner is allowed
                     const jobOwner = data.data.job_owner || 'Unknown';
 
-                    // Check if job date is before today (stuck from yesterday or earlier)
+                    // Get the job date from Detrack (format: YYYY-MM-DD)
                     const jobDate = data.data.date;
-                    console.log(`📅 Dispatched job - Current job date: ${jobDate}, Today: ${todayFormatted}`);
+
+                    // Parse dates for comparison (using Brunei timezone for consistency)
+                    const jobDateObj = moment.tz(jobDate, 'YYYY-MM-DD', 'Asia/Brunei');
+                    const todayObj = moment.tz('Asia/Brunei').startOf('day');
+
+                    console.log(`📅 Dispatched job - Job date: ${jobDate}, Today (Brunei): ${todayFormatted}`);
                     console.log(`ℹ️ Job owner: ${jobOwner} (any owner allowed for dispatched jobs)`);
 
-                    // FIX: If job date is before today, update just the date (not status)
-                    if (jobDate && jobDate < todayFormatted) {
+                    // Check if job date exists and is before today (Brunei timezone)
+                    if (jobDate && jobDateObj.isBefore(todayObj, 'day')) {
                         shouldProcess = true;
                         updateDetrackOnly = true; // Only update date, keep status as dispatched
-                        updateReason = `Dispatched job with date ${jobDate} (before today) - updated date to today (Job Owner: ${jobOwner})`;
+                        updateReason = `Dispatched job with date ${jobDate} (before today) - updated date to ${todayFormatted} (Job Owner: ${jobOwner})`;
                         console.log(`✅ Condition met: Job date ${jobDate} is before today - updating date only`);
-                    } else {
-                        console.log(`❌ Condition NOT met: Job date ${jobDate} is today or in the future. Cannot fix stuck job.`);
+                    } else if (jobDate && jobDateObj.isSame(todayObj, 'day')) {
+                        console.log(`ℹ️ Job date ${jobDate} is today - no fix needed`);
                         processingResults.push({
                             consignmentID,
-                            status: `Error: Dispatched job date (${jobDate}) is not before today. Cannot fix stuck job.`,
+                            status: `Info: Dispatched job date is today (${jobDate}). No fix needed.`,
+                        });
+                        continue;
+                    } else if (jobDate && jobDateObj.isAfter(todayObj, 'day')) {
+                        console.log(`ℹ️ Job date ${jobDate} is in the future - no fix needed`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Info: Dispatched job date (${jobDate}) is in the future. No fix needed.`,
+                        });
+                        continue;
+                    } else {
+                        console.log(`❌ No valid job date found or date format issue`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: No valid job date found for dispatched job.`,
                         });
                         continue;
                     }
@@ -8308,15 +8336,15 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             console.log(`📝 Detrack update: Updating date to ${todayFormatted} AND status to dispatched`);
                         }
 
-                        // Prepare MongoDB update data
+                        // Prepare MongoDB update data (using Brunei timezone)
                         const update = {
-                            lastUpdateDateTime: moment().format(),
+                            lastUpdateDateTime: moment().utcOffset(8).format(),
                             jobDate: todayFormatted,
                             lastUpdatedBy: req.user.name,
                             $push: {
                                 history: {
                                     statusHistory: "Out for Delivery",
-                                    dateUpdated: moment().format(),
+                                    dateUpdated: moment().utcOffset(8).format(),
                                     updatedBy: req.user.name,
                                     lastAssignedTo: data.data.assign_to || "Unassigned",
                                     lastLocation: data.data.assign_to || "Unknown",
@@ -15980,25 +16008,79 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
         const finalAdditionalPhoneNum = processPhoneNumber(jobData.other_phone_numbers);
         const postalCode = jobData.postal_code ? jobData.postal_code.toUpperCase() : '';
 
-        // Determine sender name based on product
+        // ========== UPDATED: PAYMENT LOGIC FOR PURE51, ICARUS, KPTDP ==========
+        let paymentMethod = "NON COD";
+        let totalPrice = 0;
+        let paymentAmount = 0;
         let senderName = product.toUpperCase();
-        if (product === 'pdu') {
-            senderName = jobData.job_owner || "PDU";
-        } else if (product === 'mglobal') {
-            senderName = "MGLOBAL";
-        } else if (product === 'gdex' || product === 'gdext') {
-            senderName = jobData.job_owner || product.toUpperCase();
-        } else if (product === 'ewe') {
-            senderName = jobData.job_owner || "EWE";
-        } else if (product === 'kptdp') {
-            senderName = "KPTDP";
-        } else if (product === 'icarus') {
-            senderName = "ICARUS";
-        } else if (product === 'pure51') {
-            senderName = "PURE51";
+
+        // Category B products: pure51, icarus, kptdp
+        const categoryBProducts = ['pure51', 'icarus', 'kptdp'];
+        
+        if (categoryBProducts.includes(product.toLowerCase())) {
+            // Use payment_mode from Detrack (if available)
+            if (jobData.payment_mode) {
+                paymentMethod = jobData.payment_mode;
+                console.log(`   💰 Using payment_mode from Detrack: ${paymentMethod}`);
+            }
+            
+            // Priority: total_price first, then payment_amount, then 0
+            if (jobData.total_price && parseFloat(jobData.total_price) > 0) {
+                totalPrice = parseFloat(jobData.total_price);
+                paymentAmount = parseFloat(jobData.total_price);
+                console.log(`   💰 Using total_price: ${totalPrice}`);
+            } else if (jobData.payment_amount && parseFloat(jobData.payment_amount) > 0) {
+                totalPrice = parseFloat(jobData.payment_amount);
+                paymentAmount = parseFloat(jobData.payment_amount);
+                console.log(`   💰 Using payment_amount: ${paymentAmount}`);
+            } else {
+                totalPrice = 0;
+                paymentAmount = 0;
+                console.log(`   💰 No payment amount found, using 0`);
+            }
+        } else {
+            // Original logic for other products (PDU, EWE, MGLOBAL, GDEX, etc.)
+            if (product === 'pdu') {
+                senderName = jobData.job_owner || "PDU";
+                totalPrice = jobData.total_price || 0;
+                paymentAmount = jobData.payment_amount || 0;
+                paymentMethod = jobData.payment_mode || 'NON COD';
+            } else if (product === 'mglobal') {
+                senderName = "MGLOBAL";
+                totalPrice = 0;
+                paymentAmount = 0;
+                paymentMethod = "NON COD";
+            } else if (product === 'ewe') {
+                senderName = jobData.job_owner || "EWE";
+                if (jobData.payment_mode === "COD") {
+                    paymentMethod = "Cash";
+                    totalPrice = jobData.payment_amount || 0;
+                    paymentAmount = jobData.payment_amount || 0;
+                } else {
+                    paymentMethod = "NON COD";
+                    totalPrice = 0;
+                    paymentAmount = 0;
+                }
+            } else if (product === 'gdex' || product === 'gdext') {
+                senderName = jobData.job_owner || product.toUpperCase();
+                totalPrice = jobData.total_price || 0;
+                paymentAmount = jobData.payment_amount || 0;
+                paymentMethod = jobData.payment_mode || 'NON COD';
+            } else {
+                // Default for other products
+                totalPrice = 0;
+                paymentAmount = 0;
+                paymentMethod = "NON COD";
+            }
         }
 
-        // Create MongoDB order for IIW
+        console.log(`💰 FINAL PAYMENT DETAILS FOR ${product.toUpperCase()}:`);
+        console.log(`   ├── Method: ${paymentMethod}`);
+        console.log(`   ├── Total Price: ${totalPrice}`);
+        console.log(`   ├── Payment Amount: ${paymentAmount}`);
+        console.log(`   └── Sender: ${senderName}`);
+
+        // Create MongoDB order (NO changes to Detrack updates)
         const mongoOrder = new ORDERS({
             area: finalArea,
             items: itemsArray,
@@ -16012,12 +16094,12 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
             latestLocation: warehouse,
             product: product,
             senderName: senderName,
-            totalPrice: 0,
-            paymentAmount: 0,
+            totalPrice: totalPrice,
+            paymentAmount: paymentAmount,
             receiverName: jobData.deliver_to_collect_from || '',
             trackingLink: jobData.tracking_link || '',
             currentStatus: "At Warehouse",
-            paymentMethod: "NON COD",
+            paymentMethod: paymentMethod,
             warehouseEntry: "Yes",
             warehouseEntryDateTime: moment().format(),
             receiverAddress: jobData.address || '',
@@ -16039,19 +16121,18 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
         // Save to MongoDB
         console.log(`💾 SAVING IIW ORDER TO MONGODB...`);
         await mongoOrder.save();
-        console.log(`✅ MongoDB IIW order created`);
+        console.log(`✅ MongoDB IIW order created for ${product.toUpperCase()}`);
 
-        // ========== FIX: DIFFERENT DETRACK UPDATE LOGIC BASED ON PRODUCT CATEGORY ==========
-
-        // Category b: KPTDP, ICARUS, PURE51 - need simple status updates
-        const categoryBProducts = ['kptdp', 'icarus', 'pure51'];
-
-        if (categoryBProducts.includes(product)) {
-            console.log(`\n🔄 CATEGORY B PRODUCT (${product.toUpperCase()}) - SIMPLE DETRACK STATUS UPDATES`);
-
+        // ========== KEEP DETRACK UPDATES EXACTLY THE SAME ==========
+        // Category B products: pure51, icarus, kptdp - use same simple status updates
+        const categoryBProductsForDetrack = ['pure51', 'icarus', 'kptdp'];
+        
+        if (categoryBProductsForDetrack.includes(product.toLowerCase())) {
+            console.log(`\n🔄 CATEGORY B PRODUCT (${product.toUpperCase()}) - SIMPLE DETRACK STATUS UPDATES (UNCHANGED)`);
+            
             let allUpdatesSuccessful = true;
 
-            // Step 1: Update to at_warehouse
+            // Step 1: Update to at_warehouse (SAME AS BEFORE)
             console.log(`📤 Step 1: Updating Detrack to "at_warehouse"...`);
             const updateData1 = {
                 do_number: trackingNumber,
@@ -16087,9 +16168,6 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
                 }
             } catch (error) {
                 console.error(`❌ Step 1 API error:`, error.message);
-                if (error.response) {
-                    console.error(`Response data:`, error.response.data);
-                }
                 allUpdatesSuccessful = false;
             }
 
@@ -16097,7 +16175,7 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
             console.log(`⏳ Waiting 1 second before second update...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Step 2: Update to in_sorting_area
+            // Step 2: Update to in_sorting_area (SAME AS BEFORE)
             console.log(`📤 Step 2: Updating Detrack to "in_sorting_area"...`);
             const updateData2 = {
                 do_number: trackingNumber,
@@ -16133,23 +16211,22 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
                 }
             } catch (error) {
                 console.error(`❌ Step 2 API error:`, error.message);
-                if (error.response) {
-                    console.error(`Response data:`, error.response.data);
-                }
                 allUpdatesSuccessful = false;
             }
 
             console.log(`\n📊 DETRACK UPDATE SUMMARY FOR ${product.toUpperCase()}:`);
-            console.log(`   MongoDB: ✅ Created successfully`);
+            console.log(`   MongoDB: ✅ Created successfully with payment: ${paymentMethod} ${paymentAmount}`);
             console.log(`   Detrack: ${allUpdatesSuccessful ? '✅ Both updates successful' : '⚠️ Some updates failed'}`);
 
             if (allUpdatesSuccessful) {
                 return {
                     success: true,
-                    message: `KPTDP item scanned at ${warehouse}`,
+                    message: `${product.toUpperCase()} item scanned at ${warehouse}`,
                     isNewOrder: true,
                     customerName: jobData.deliver_to_collect_from || 'Unknown',
-                    area: finalArea
+                    area: finalArea,
+                    paymentMethod: paymentMethod,
+                    paymentAmount: paymentAmount
                 };
             } else {
                 return {
@@ -16159,19 +16236,17 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
                 };
             }
 
-
         } else {
-            // For categories a, c, d: Use existing createDetrackUpdateData logic
+            // For other products (PDU, EWE, etc.) use original logic (UNCHANGED)
             console.log(`\n🔄 PREPARING DETRACK UPDATE FOR ${product.toUpperCase()}:`);
             const updateData = createDetrackUpdateData(trackingNumber, jobData.run_number || '', product, jobData, true);
-
+            
             console.log('📤 Detrack Payload:', JSON.stringify(updateData, null, 2));
-
-            // Send Detrack update
+            
             const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, jobData.run_number || '');
-
+            
             console.log(`📊 DETRACK UPDATE RESULT: ${detrackResult ? '✅ Success' : '❌ Failed'}`);
-
+            
             if (detrackResult) {
                 return {
                     success: true,
@@ -16191,7 +16266,10 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
 
     } catch (error) {
         console.error(`\n🔥 ERROR creating IIW order:`, error);
-        return false;
+        return {
+            success: false,
+            message: 'Error creating order: ' + error.message
+        };
     }
 }
 
@@ -17568,69 +17646,63 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
         const isGDEX = (product === 'gdex' || product === 'gdext');
 
         // Execute immediate updates with GDEX integration
-        for (const status of sequence.immediate) {
-            // 1. Update Detrack
-            const success = await updateDetrackStatusSingle(
-                trackingNumber,
-                status,
-                product,
-                req,
-                warehouse,
-                false, // isCBSL
-                null   // cbslTrackingNumber
-            );
-            results.push({ status: status, success: success, immediate: true });
+for (const status of sequence.immediate) {
+    // 1. Update Detrack
+    const success = await updateDetrackStatusSingle(
+        trackingNumber,
+        status,
+        product,
+        req,
+        warehouse,
+        false, // isCBSL
+        null   // cbslTrackingNumber
+    );
+    results.push({ status: status, success: success, immediate: true });
 
-            if (success) {
-                console.log(`✅ Immediate Detrack update to ${status} for ${trackingNumber}`);
+    if (success) {
+        console.log(`✅ Immediate Detrack update to ${status} for ${trackingNumber}`);
 
-                // 2. If GDEX product and this is 'at_warehouse' status, send AL1 only
-                if (isGDEX && status === 'at_warehouse') {
-                    // Send AL1 - Received by Branch (only once)
-                    console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
-                    const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
-                    results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
+        // 2. If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
+        if (isGDEX) {
+            console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
+            const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
+            results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
+            
+            // Small delay after GDEX update
+            await new Promise(resolve => setTimeout(resolve, 500));
+            break; // Exit loop after sending AL1 (only send once)
+        }
+    }
+}
 
-                    // REMOVED: DT2 is no longer sent
-                }
+// Execute final updates (only if we're doing delayed execution or no delay needed)
+if (sequence.final.length > 0 && (isDelayedExecution || !sequence.delayed)) {
+    for (const status of sequence.final) {
+        const success = await updateDetrackStatusSingle(
+            trackingNumber,
+            status,
+            product,
+            req,
+            warehouse,
+            false, // isCBSL
+            null   // cbslTrackingNumber
+        );
+        results.push({ status: status, success: success, final: true });
 
-                // Small delay between Detrack and GDEX updates
-                if (isGDEX && status === 'at_warehouse') {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
+        if (success) {
+            console.log(`✅ Final Detrack update to ${status} for ${trackingNumber}`);
+
+            // If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
+            if (isGDEX) {
+                console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
+                const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
+                results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
+                
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
-
-        // Execute final updates (only if we're doing delayed execution or no delay needed)
-        if (sequence.final.length > 0 && (isDelayedExecution || !sequence.delayed)) {
-            for (const status of sequence.final) {
-                const success = await updateDetrackStatusSingle(
-                    trackingNumber,
-                    status,
-                    product,
-                    req,
-                    warehouse,
-                    false, // isCBSL
-                    null   // cbslTrackingNumber
-                );
-                results.push({ status: status, success: success, final: true });
-
-                if (success) {
-                    console.log(`✅ Final Detrack update to ${status} for ${trackingNumber}`);
-
-                    // 2. If GDEX product and this is 'at_warehouse' status, send AL1 only
-                    if (isGDEX && status === 'at_warehouse') {
-                        console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
-                        const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
-                        results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
-
-                        // REMOVED: DT2 is no longer sent
-
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                    }
-                }
-            }
-        }
+    }
+}
 
         // FIX: Always return an array, even if empty
         return results || [];

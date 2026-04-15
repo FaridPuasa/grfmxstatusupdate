@@ -236,12 +236,81 @@
 
     <script>
         // --- Get user role from server-side injected variable ---
-        // This assumes `user` object is available in the template context
-        // with a `role` property (e.g., 'cs', 'manager', 'admin', or others).
-        // For security, we also check on the client side, but server-side checks are essential.
         const currentUserRole = '<%= user ? user.role : "" %>';
         const allowedRolesForAssign = ['cs', 'manager', 'admin'];
         const canAssignJobs = allowedRolesForAssign.includes(currentUserRole);
+
+        // --- Helper function to get current date in Brunei timezone (UTC+8) ---
+        function getBruneiCurrentDate() {
+            try {
+                // Use Brunei timezone (Asia/Brunei is UTC+8)
+                const now = new Date();
+                const bruneiDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Brunei' }));
+                const year = bruneiDate.getFullYear();
+                const month = String(bruneiDate.getMonth() + 1).padStart(2, '0');
+                const day = String(bruneiDate.getDate()).padStart(2, '0');
+                const bruneiDateString = `${year}-${month}-${day}`;
+                console.log('Brunei current date (YYYY-MM-DD):', bruneiDateString);
+                console.log('Raw UTC date:', now.toISOString().split('T')[0]);
+                return bruneiDateString;
+            } catch (error) {
+                // Fallback to UTC if timezone detection fails
+                console.warn('Timezone detection failed, falling back to UTC:', error);
+                const now = new Date();
+                return now.toISOString().split('T')[0];
+            }
+        }
+
+        // --- Helper function to normalize POD delivery date to YYYY-MM-DD ---
+        function normalizeDeliveryDate(deliveryDate) {
+            if (!deliveryDate) return null;
+            
+            // Handle format: "15.04.26" (DD.MM.YY)
+            if (deliveryDate.match(/^\d{2}\.\d{2}\.\d{2}$/)) {
+                const parts = deliveryDate.split('.');
+                const day = parts[0];
+                const month = parts[1];
+                let year = parts[2];
+                const fullYear = 2000 + parseInt(year);
+                return `${fullYear}-${month}-${day}`;
+            }
+            // Handle format: "15.04.2026" (DD.MM.YYYY)
+            else if (deliveryDate.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+                const parts = deliveryDate.split('.');
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            // Handle format: "15/04/26" (DD/MM/YY)
+            else if (deliveryDate.match(/^\d{2}\/\d{2}\/\d{2}$/)) {
+                const parts = deliveryDate.split('/');
+                const day = parts[0];
+                const month = parts[1];
+                const year = 2000 + parseInt(parts[2]);
+                return `${year}-${month}-${day}`;
+            }
+            // Handle format: "15-04-26" (DD-MM-YY)
+            else if (deliveryDate.match(/^\d{2}-\d{2}-\d{2}$/)) {
+                const parts = deliveryDate.split('-');
+                const day = parts[0];
+                const month = parts[1];
+                const year = 2000 + parseInt(parts[2]);
+                return `${year}-${month}-${day}`;
+            }
+            // Handle if it's already in YYYY-MM-DD format
+            else if (deliveryDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return deliveryDate;
+            }
+            // Try parsing as Date object as last resort
+            else {
+                const parsedDate = new Date(deliveryDate);
+                if (!isNaN(parsedDate.getTime())) {
+                    const year = parsedDate.getFullYear();
+                    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(parsedDate.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            return null;
+        }
 
         $(document).ready(function () {
             // --- Column definition for DataTable, conditionally render Assign button ---
@@ -272,7 +341,7 @@
                             `;
                         }
                         
-                        // Delete button (visible to all? adjust if needed)
+                        // Delete button (visible to all)
                         buttons += `<button class="btn btn-danger btn-sm delete-btn" data-id="${data}">Delete</button>`;
                         
                         return buttons;
@@ -434,10 +503,9 @@
             }
         });
 
-        // Assign Job(s) button handler - only if user has permission (client-side guard)
-        // Additionally, we check canAssignJobs again for safety
+        // Assign Job(s) button handler with Brunei timezone support
         $(document).on('click', '.assign-jobs-btn', async function() {
-            // Extra runtime permission check in case DOM was manipulated
+            // Extra runtime permission check
             if (!canAssignJobs) {
                 alert("You do not have permission to assign jobs. Only CS, Manager, and Admin roles can perform this action.");
                 return;
@@ -448,90 +516,32 @@
             let deliveryDate = $(this).data('deliverydate');
             const dispatcher = $(this).data('dispatcher');
             
-            // Debug: Log the raw delivery date
-            console.log('Raw deliveryDate from POD:', deliveryDate, 'Type:', typeof deliveryDate);
+            console.log('Raw deliveryDate from POD:', deliveryDate);
             
-            // Format dispatcher name: First letter uppercase, rest lowercase
+            // Format dispatcher name
             const formattedDispatcher = dispatcher.charAt(0).toUpperCase() + dispatcher.slice(1).toLowerCase();
             
-            // Get today's date in YYYY-MM-DD format
-            const today = new Date();
-            const todayFormatted = today.toISOString().split('T')[0];
-            console.log('Today formatted (YYYY-MM-DD):', todayFormatted);
+            // Get today's date in Brunei timezone (UTC+8)
+            const todayFormatted = getBruneiCurrentDate();
+            console.log('Brunei today (YYYY-MM-DD):', todayFormatted);
             
-            // NORMALIZE the delivery date from "DD.MM.YY" to YYYY-MM-DD format
-            let normalizedDeliveryDate = null;
+            // Normalize the delivery date from the POD
+            const normalizedDeliveryDate = normalizeDeliveryDate(deliveryDate);
             
-            if (deliveryDate) {
-                // Handle format: "14.04.26" (DD.MM.YY)
-                if (deliveryDate.match(/^\d{2}\.\d{2}\.\d{2}$/)) {
-                    const parts = deliveryDate.split('.');
-                    const day = parts[0];
-                    const month = parts[1];
-                    let year = parts[2];
-                    
-                    // Convert 2-digit year to 4-digit year
-                    // Assuming 26 = 2026, 25 = 2025, etc.
-                    const fullYear = 2000 + parseInt(year);
-                    normalizedDeliveryDate = `${fullYear}-${month}-${day}`;
-                    console.log('Converted DD.MM.YY to YYYY-MM-DD:', normalizedDeliveryDate);
-                }
-                // Handle format: "DD.MM.YYYY" 
-                else if (deliveryDate.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
-                    const parts = deliveryDate.split('.');
-                    normalizedDeliveryDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                    console.log('Converted DD.MM.YYYY to YYYY-MM-DD:', normalizedDeliveryDate);
-                }
-                // Handle format: "DD/MM/YY"
-                else if (deliveryDate.match(/^\d{2}\/\d{2}\/\d{2}$/)) {
-                    const parts = deliveryDate.split('/');
-                    const day = parts[0];
-                    const month = parts[1];
-                    const year = 2000 + parseInt(parts[2]);
-                    normalizedDeliveryDate = `${year}-${month}-${day}`;
-                    console.log('Converted DD/MM/YY to YYYY-MM-DD:', normalizedDeliveryDate);
-                }
-                // Handle format: "DD-MM-YY"
-                else if (deliveryDate.match(/^\d{2}-\d{2}-\d{2}$/)) {
-                    const parts = deliveryDate.split('-');
-                    const day = parts[0];
-                    const month = parts[1];
-                    const year = 2000 + parseInt(parts[2]);
-                    normalizedDeliveryDate = `${year}-${month}-${day}`;
-                    console.log('Converted DD-MM-YY to YYYY-MM-DD:', normalizedDeliveryDate);
-                }
-                // Handle if it's already in YYYY-MM-DD format
-                else if (deliveryDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    normalizedDeliveryDate = deliveryDate;
-                    console.log('Date already in YYYY-MM-DD format:', normalizedDeliveryDate);
-                }
-                // Try parsing as Date object as last resort
-                else {
-                    const parsedDate = new Date(deliveryDate);
-                    if (!isNaN(parsedDate.getTime())) {
-                        const year = parsedDate.getFullYear();
-                        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(parsedDate.getDate()).padStart(2, '0');
-                        normalizedDeliveryDate = `${year}-${month}-${day}`;
-                        console.log('Parsed from Date object:', normalizedDeliveryDate);
-                    }
-                }
-            }
-            
-            // If still no valid date, show error
             if (!normalizedDeliveryDate) {
-                alert(`❌ Cannot parse Delivery Date: "${deliveryDate}". Expected format like "14.04.26"\n\nPlease check the POD data.`);
+                alert(`❌ Cannot parse Delivery Date: "${deliveryDate}". Expected format like "15.04.26"\n\nPlease check the POD data.`);
                 return;
             }
             
             console.log('Normalized delivery date:', normalizedDeliveryDate);
-            console.log('Today\'s date:', todayFormatted);
+            console.log('Brunei current date:', todayFormatted);
             console.log('Dates match?', normalizedDeliveryDate === todayFormatted);
             
-            // Compare dates (as strings since they're now both YYYY-MM-DD)
+            // Compare dates (both in YYYY-MM-DD format using Brunei timezone)
             if (normalizedDeliveryDate !== todayFormatted) {
-                // For user message, format the normalized date back to DD.MM.YYYY for readability
-                const displayDate = normalizedDeliveryDate.split('-').reverse().join('.');
+                // Format dates for display (DD.MM.YYYY)
+                const displayDeliveryDate = normalizedDeliveryDate.split('-').reverse().join('.');
+                const displayTodayDate = todayFormatted.split('-').reverse().join('.');
                 
                 // Check if date is in the past or future
                 const deliveryDateObj = new Date(normalizedDeliveryDate);
@@ -540,9 +550,9 @@
                 todayObj.setHours(0, 0, 0, 0);
                 
                 if (deliveryDateObj < todayObj) {
-                    alert(`❌ Cannot assign jobs: Delivery Date (${displayDate}) has already passed.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date: ${todayFormatted}`);
+                    alert(`❌ Cannot assign jobs: Delivery Date (${displayDeliveryDate}) has already passed.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date (Brunei): ${displayTodayDate}\n\nNote: Only same-day deliveries can be assigned.`);
                 } else {
-                    alert(`❌ Cannot assign jobs: Delivery Date (${displayDate}) is in the future.\n\nPlease wait until ${displayDate} to assign these jobs.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date: ${todayFormatted}`);
+                    alert(`❌ Cannot assign jobs: Delivery Date (${displayDeliveryDate}) is in the future.\n\nPlease wait until ${displayDeliveryDate} (Brunei time) to assign these jobs.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date (Brunei): ${displayTodayDate}`);
                 }
                 return;
             }
@@ -550,29 +560,33 @@
             // Confirm with user
             const confirmMessage = `⚠️ CONFIRM ASSIGNMENT\n\n` +
                 `Pod: ${podName}\n` +
-                `Delivery Date: ${deliveryDate} (Today)\n` +
+                `Delivery Date: ${deliveryDate} (Today - Brunei Time)\n` +
                 `Dispatcher: ${formattedDispatcher}\n\n` +
                 `All tracking numbers in this POD will be updated to "Out for Delivery" status.\n\n` +
+                `This will:\n` +
+                `• Update Detrack status to "dispatched"\n` +
+                `• Update MongoDB with assignment details\n` +
+                `• Send GDEX webhook for GDEX/GDEXT products\n\n` +
                 `Proceed?`;
             
             if (!confirm(confirmMessage)) {
                 return;
             }
             
-            // Show loading modal/indicator
+            // Show loading modal
             showAssignJobsModal(podName, formattedDispatcher, deliveryDate);
             
             try {
-                // First, get all tracking numbers from the POD
+                // Get all tracking numbers from the POD
                 console.log('Fetching tracking numbers for POD:', podName);
                 const response = await axios.get(`/api/view-pod/${podId}`);
                 const htmlContent = response.data.htmlContent;
                 
-                // Parse the HTML to extract tracking numbers
+                // Parse HTML to extract tracking numbers
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlContent, 'text/html');
                 
-                // Find all tracking numbers from the barcode container
+                // Find all tracking numbers
                 const trackingElements = doc.querySelectorAll('.tracking-number');
                 const trackingNumbers = Array.from(trackingElements).map(el => el.textContent.trim());
                 
@@ -587,13 +601,13 @@
                 // Update modal with tracking count
                 updateAssignJobsStatus(`Processing ${trackingNumbers.length} job(s)...`);
                 
-                // Send to backend for processing - use normalized date (YYYY-MM-DD)
+                // Send to backend - use normalized date (already in YYYY-MM-DD)
                 const assignResponse = await axios.post('/api/assign-pod-jobs', {
                     podId: podId,
                     podName: podName,
                     trackingNumbers: trackingNumbers,
                     dispatcher: formattedDispatcher,
-                    assignDate: normalizedDeliveryDate  // Send YYYY-MM-DD to backend
+                    assignDate: normalizedDeliveryDate
                 });
                 
                 if (assignResponse.data.success) {
@@ -631,7 +645,6 @@
 
         // Modal functions for showing progress
         function showAssignJobsModal(podName, dispatcher, deliveryDate) {
-            // Create modal if it doesn't exist
             if (!$('#assignJobsModal').length) {
                 $('body').append(`
             <div id="assignJobsModal" class="custom-modal" style="display: none;">
@@ -667,7 +680,7 @@
 
             $('#assignJobsModal').css('display', 'block');
             $('#assignJobsStatus').text(`Assigning jobs for POD: ${podName}`);
-            $('#assignJobsDetails').text(`Dispatcher: ${dispatcher} | Delivery Date: ${deliveryDate}`);
+            $('#assignJobsDetails').text(`Dispatcher: ${dispatcher} | Delivery Date: ${deliveryDate} (Brunei Time)`);
         }
 
         function updateAssignJobsStatus(message, details = '') {
