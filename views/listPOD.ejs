@@ -312,54 +312,72 @@
             return null;
         }
 
-        $(document).ready(function () {
-            // --- Column definition for DataTable, conditionally render Assign button ---
-            let columnDefs = [
-                { "data": "podName" },
-                { "data": "product" },
-                { "data": "dispatcher" },
-                { "data": "area" },
-                { "data": "deliveryDate" },
-                { "data": "rowCount" },
-                { "data": "podCreator" },
-                { "data": "podDate" },
-                {
-                    "data": "_id",
-                    "orderable": false,
-                    "searchable": false,
-                    "render": function (data, type, row) {
-                        // Base buttons: View, Copy Tracking No, Delete
-                        let buttons = `
-                            <button class="btn btn-info btn-sm view-btn" data-id="${data}">View</button>
-                            <button class="btn btn-secondary btn-sm copy-tracking-btn" data-id="${data}" data-podname="${row.podName}">Copy Tracking No</button>
-                        `;
-                        
-                        // Conditionally add the Assign Job(s) button based on user role
-                        if (canAssignJobs) {
-                            buttons += `
-                                <button class="btn btn-success btn-sm assign-jobs-btn" data-id="${data}" data-podname="${row.podName}" data-deliverydate="${row.deliveryDate}" data-dispatcher="${row.dispatcher}">Assign Job(s)</button>
-                            `;
-                        }
-                        
-                        // Delete button (visible to all)
-                        buttons += `<button class="btn btn-danger btn-sm delete-btn" data-id="${data}">Delete</button>`;
-                        
-                        return buttons;
-                    }
-                }
-            ];
+        // Helper function to format date from YYYY-MM-DD to DD.MM.YY
+function formatDeliveryDate(dateString) {
+    if (!dateString) return '';
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const parts = dateString.split('-');
+        const year = parts[0].slice(-2); // Get last 2 digits of year
+        return `${parts[2]}.${parts[1]}.${year}`;
+    }
+    return dateString;
+}
 
-            $('#podTable').DataTable({
-                "processing": true,
-                "serverSide": true,
-                "ajax": {
-                    "url": "/api/listPOD",
-                    "type": "GET"
-                },
-                "columns": columnDefs,
-                "order": [[0, "desc"]]
-            });
-        });
+$(document).ready(function () {
+    let columnDefs = [
+        { "data": "podName" },
+        { "data": "product" },
+        { "data": "dispatcher" },
+        { "data": "area" },
+        { 
+            "data": "deliveryDate",
+            "render": function(data, type, row) {
+                if (type === 'display') {
+                    return formatDeliveryDate(data);
+                }
+                return data;
+            }
+        },
+        { "data": "rowCount" },
+        { "data": "podCreator" },
+        { "data": "podDate" },
+        {
+            "data": "_id",
+            "orderable": false,
+            "searchable": false,
+            "render": function (data, type, row) {
+                // Use original deliveryDate for assign button logic (backend expects YYYY-MM-DD)
+                let deliveryDateForAssign = row.deliveryDate;
+                
+                let buttons = `
+                    <button class="btn btn-info btn-sm view-btn" data-id="${data}">View</button>
+                    <button class="btn btn-secondary btn-sm copy-tracking-btn" data-id="${data}" data-podname="${row.podName}">Copy Tracking No</button>
+                `;
+                
+                if (canAssignJobs) {
+                    buttons += `
+                        <button class="btn btn-success btn-sm assign-jobs-btn" data-id="${data}" data-podname="${row.podName}" data-deliverydate="${deliveryDateForAssign}" data-dispatcher="${row.dispatcher}">Assign Job(s)</button>
+                    `;
+                }
+                
+                buttons += `<button class="btn btn-danger btn-sm delete-btn" data-id="${data}">Delete</button>`;
+                
+                return buttons;
+            }
+        }
+    ];
+
+    $('#podTable').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "/api/listPOD",
+            "type": "GET"
+        },
+        "columns": columnDefs,
+        "order": [[0, "desc"]]
+    });
+});
 
         // Get modal elements
         const modal = document.getElementById('viewPODModal');

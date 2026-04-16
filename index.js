@@ -57,6 +57,11 @@ const sharp = require('sharp');
 const csv = require('csv-parser');
 
 // ==================================================
+// 📧 Email Configuration & Functions
+// ==================================================
+const nodemailer = require('nodemailer');
+
+// ==================================================
 // ⚡ Cache
 // ==================================================
 const NodeCache = require('node-cache');
@@ -16016,14 +16021,14 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
 
         // Category B products: pure51, icarus, kptdp
         const categoryBProducts = ['pure51', 'icarus', 'kptdp'];
-        
+
         if (categoryBProducts.includes(product.toLowerCase())) {
             // Use payment_mode from Detrack (if available)
             if (jobData.payment_mode) {
                 paymentMethod = jobData.payment_mode;
                 console.log(`   💰 Using payment_mode from Detrack: ${paymentMethod}`);
             }
-            
+
             // Priority: total_price first, then payment_amount, then 0
             if (jobData.total_price && parseFloat(jobData.total_price) > 0) {
                 totalPrice = parseFloat(jobData.total_price);
@@ -16126,10 +16131,10 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
         // ========== KEEP DETRACK UPDATES EXACTLY THE SAME ==========
         // Category B products: pure51, icarus, kptdp - use same simple status updates
         const categoryBProductsForDetrack = ['pure51', 'icarus', 'kptdp'];
-        
+
         if (categoryBProductsForDetrack.includes(product.toLowerCase())) {
             console.log(`\n🔄 CATEGORY B PRODUCT (${product.toUpperCase()}) - SIMPLE DETRACK STATUS UPDATES (UNCHANGED)`);
-            
+
             let allUpdatesSuccessful = true;
 
             // Step 1: Update to at_warehouse (SAME AS BEFORE)
@@ -16240,13 +16245,13 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
             // For other products (PDU, EWE, etc.) use original logic (UNCHANGED)
             console.log(`\n🔄 PREPARING DETRACK UPDATE FOR ${product.toUpperCase()}:`);
             const updateData = createDetrackUpdateData(trackingNumber, jobData.run_number || '', product, jobData, true);
-            
+
             console.log('📤 Detrack Payload:', JSON.stringify(updateData, null, 2));
-            
+
             const detrackResult = await sendDetrackUpdate(trackingNumber, updateData, jobData.run_number || '');
-            
+
             console.log(`📊 DETRACK UPDATE RESULT: ${detrackResult ? '✅ Success' : '❌ Failed'}`);
-            
+
             if (detrackResult) {
                 return {
                     success: true,
@@ -17646,63 +17651,63 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
         const isGDEX = (product === 'gdex' || product === 'gdext');
 
         // Execute immediate updates with GDEX integration
-for (const status of sequence.immediate) {
-    // 1. Update Detrack
-    const success = await updateDetrackStatusSingle(
-        trackingNumber,
-        status,
-        product,
-        req,
-        warehouse,
-        false, // isCBSL
-        null   // cbslTrackingNumber
-    );
-    results.push({ status: status, success: success, immediate: true });
+        for (const status of sequence.immediate) {
+            // 1. Update Detrack
+            const success = await updateDetrackStatusSingle(
+                trackingNumber,
+                status,
+                product,
+                req,
+                warehouse,
+                false, // isCBSL
+                null   // cbslTrackingNumber
+            );
+            results.push({ status: status, success: success, immediate: true });
 
-    if (success) {
-        console.log(`✅ Immediate Detrack update to ${status} for ${trackingNumber}`);
+            if (success) {
+                console.log(`✅ Immediate Detrack update to ${status} for ${trackingNumber}`);
 
-        // 2. If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
-        if (isGDEX) {
-            console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
-            const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
-            results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
-            
-            // Small delay after GDEX update
-            await new Promise(resolve => setTimeout(resolve, 500));
-            break; // Exit loop after sending AL1 (only send once)
-        }
-    }
-}
+                // 2. If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
+                if (isGDEX) {
+                    console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
+                    const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
+                    results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
 
-// Execute final updates (only if we're doing delayed execution or no delay needed)
-if (sequence.final.length > 0 && (isDelayedExecution || !sequence.delayed)) {
-    for (const status of sequence.final) {
-        const success = await updateDetrackStatusSingle(
-            trackingNumber,
-            status,
-            product,
-            req,
-            warehouse,
-            false, // isCBSL
-            null   // cbslTrackingNumber
-        );
-        results.push({ status: status, success: success, final: true });
-
-        if (success) {
-            console.log(`✅ Final Detrack update to ${status} for ${trackingNumber}`);
-
-            // If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
-            if (isGDEX) {
-                console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
-                const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
-                results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
-                
-                await new Promise(resolve => setTimeout(resolve, 500));
+                    // Small delay after GDEX update
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    break; // Exit loop after sending AL1 (only send once)
+                }
             }
         }
-    }
-}
+
+        // Execute final updates (only if we're doing delayed execution or no delay needed)
+        if (sequence.final.length > 0 && (isDelayedExecution || !sequence.delayed)) {
+            for (const status of sequence.final) {
+                const success = await updateDetrackStatusSingle(
+                    trackingNumber,
+                    status,
+                    product,
+                    req,
+                    warehouse,
+                    false, // isCBSL
+                    null   // cbslTrackingNumber
+                );
+                results.push({ status: status, success: success, final: true });
+
+                if (success) {
+                    console.log(`✅ Final Detrack update to ${status} for ${trackingNumber}`);
+
+                    // If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
+                    if (isGDEX) {
+                        console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
+                        const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
+                        results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
+
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+            }
+        }
 
         // FIX: Always return an array, even if empty
         return results || [];
@@ -20696,13 +20701,14 @@ app.get('/api/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery,
         }
 
         let sort = {};
-        if (order && columns) {
-            const colName = columns[order.column].data;
-            const dir = order.dir === 'desc' ? -1 : 1;
-            sort[colName] = dir;
-        } else {
-            sort = { _id: -1 };
-        }
+if (order && columns) {
+    const colName = columns[order.column].data;
+    const dir = order.dir === 'desc' ? -1 : 1;
+    sort[colName] = dir;
+} else {
+    // Sort by creationDate from newest to oldest (descending)
+    sort = { creationDate: -1 };
+}
 
         const total = await UnifiedPOD.countDocuments({});
         const filtered = await UnifiedPOD.countDocuments(query);
@@ -21099,6 +21105,407 @@ app.post('/api/assign-pod-jobs', ensureAuthenticated, ensureGeneratePODandUpdate
         results: results
     });
 });
+
+// Product Mapping for Display Names
+const PRODUCT_MAPPING = {
+    'ewe': 'EWE',
+    'pdu': 'PDU',
+    'mglobal': 'MGLOBAL',
+    'gdex': 'GDEX',
+    'gdext': 'GDEX',
+    'pure51': 'PURE51',
+    'localdelivery': 'LD',
+    'cbsl': 'CBSL',
+    'pharmacymoh': 'MOH',
+    'pharmacyjpmc': 'JPMC',
+    'pharmacyphc': 'PHC',
+    'kptdp': 'KPT',
+    'icarus': 'ICARUS'
+};
+
+// Products that need grouping by MAWB number
+const MAWB_PRODUCTS = ['ewe', 'pdu', 'mglobal', 'gdex', 'gdext'];
+
+// Email Transporter (SMTP)
+const emailTransporter = nodemailer.createTransport({
+    host: 'smtp.office365.com',
+    port: 587,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER || 'it.support@globex.com.bn',
+        pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: true
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
+});
+
+// Verify email connection on startup
+emailTransporter.verify((error, success) => {
+    if (error) {
+        console.error('❌ Email transporter error:', error);
+    } else {
+        console.log('✅ Email transporter ready');
+    }
+});
+
+// Helper: Get display name for product
+function getProductDisplayName(productKey) {
+    return PRODUCT_MAPPING[productKey] || productKey.toUpperCase();
+}
+
+// Helper: Calculate aging in days
+function calculateAging(warehouseEntryDateTime) {
+    const now = moment().tz("Asia/Brunei");
+    const entryDate = moment(warehouseEntryDateTime).tz("Asia/Brunei");
+    return Math.floor(now.diff(entryDate, 'days', true));
+}
+
+// Helper: Format date for display
+function formatDateTime(dateTimeString) {
+    if (!dateTimeString) return '-';
+    return moment(dateTimeString).tz("Asia/Brunei").format('DD.MM.YY HH:mm:ss');
+}
+
+// Helper: Escape HTML
+function escapeHtml(text) {
+    if (!text) return '-';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\n/g, '<br>');
+}
+
+// Generate HTML email content
+function generateEmailContent(productGroups, reportDate) {
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Go Rush Pending Jobs Notification ${reportDate}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f4f4f4; padding: 15px; border-bottom: 3px solid #007bff; margin-bottom: 20px; }
+        .header h2 { margin: 0; }
+        .product-section { margin-bottom: 30px; page-break-inside: avoid; }
+        .product-title { background-color: #007bff; color: white; padding: 10px 15px; margin: 0 0 10px 0; font-size: 18px; font-weight: bold; }
+        .subgroup-title { background-color: #28a745; color: white; padding: 8px 15px; margin: 15px 0 10px 0; font-size: 14px; font-weight: bold; }
+        .job-count { font-size: 14px; font-weight: normal; margin-left: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+        th { background-color: #e9ecef; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold; }
+        td { border: 1px solid #dee2e6; padding: 8px; vertical-align: top; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .footer { margin-top: 30px; padding: 15px; background-color: #f4f4f4; text-align: center; font-size: 11px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Go Rush Pending Jobs Notification - ${reportDate}</h2>
+        </div>`;
+
+    for (const group of productGroups) {
+        if (group.type === 'mawb_group') {
+            html += `<div class="product-section">
+                <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.totalJobs} jobs)</span></div>`;
+            for (const subgroup of group.subgroups) {
+                html += `<div class="subgroup-title">MAWB: ${escapeHtml(subgroup.mawbNo)} <span class="job-count">(${subgroup.count} jobs)</span></div>
+                <table><thead><tr>
+                    <th>Tracking No.</th><th>Aging (days)</th><th>First in Warehouse</th><th>Location</th><th>Attempt</th>
+                    <th>Latest Reason</th><th>Area</th><th>Name</th><th>Main Phone</th>
+                    <th>Additional Phone</th><th>Customer Remark</th><th>GR Remark</th>
+                </tr></thead><tbody>`;
+                for (const job of subgroup.jobs) {
+                    const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
+                    html += `<tr>
+                        <td>${escapeHtml(job.doTrackingNumber)}</td>
+                        <td style="text-align: center; ${agingStyle}">${job.aging}</td>
+                        <td>${escapeHtml(job.warehouseEntryDateTime)}</td>
+                        <td>${escapeHtml(job.latestLocation)}</td>
+                        <td style="text-align: center;">${escapeHtml(job.attempt)}</td>
+                        <td>${escapeHtml(job.latestReason)}</td>
+                        <td>${escapeHtml(job.area)}</td>
+                        <td>${escapeHtml(job.receiverName)}</td>
+                        <td>${escapeHtml(job.receiverPhoneNumber)}</td>
+                        <td>${escapeHtml(job.additionalPhoneNumber)}</td>
+                        <td>${escapeHtml(job.remarks)}</td>
+                        <td>${escapeHtml(job.grRemark)}</td>
+                    </tr>`;
+                }
+                html += `</tbody></table>`;
+            }
+            html += `</div>`;
+        } else {
+            html += `<div class="product-section">
+                <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.count} jobs)</span></div>
+                <table><thead><tr>
+                    <th>Tracking No.</th><th>Aging (days)</th><th>First in Warehouse</th><th>Location</th><th>Attempt</th>
+                    <th>Latest Reason</th><th>Area</th><th>Name</th><th>Main Phone</th>
+                    <th>Additional Phone</th><th>Customer Remark</th><th>GR Remark</th>
+                </tr></thead><tbody>`;
+            for (const job of group.jobs) {
+                const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
+                html += `<tr>
+                    <td>${escapeHtml(job.doTrackingNumber)}</td>
+                    <td style="text-align: center; ${agingStyle}">${job.aging}</td>
+                    <td>${escapeHtml(job.warehouseEntryDateTime)}</td>
+                    <td>${escapeHtml(job.latestLocation)}</td>
+                    <td style="text-align: center;">${escapeHtml(job.attempt)}</td>
+                    <td>${escapeHtml(job.latestReason)}</td>
+                    <td>${escapeHtml(job.area)}</td>
+                    <td>${escapeHtml(job.receiverName)}</td>
+                    <td>${escapeHtml(job.receiverPhoneNumber)}</td>
+                    <td>${escapeHtml(job.additionalPhoneNumber)}</td>
+                    <td>${escapeHtml(job.remarks)}</td>
+                    <td>${escapeHtml(job.grRemark)}</td>
+                </tr>`;
+            }
+            html += `</tbody></table></div>`;
+        }
+    }
+
+    html += `<div class="footer"><p>This is an automated report. Please contact IT Support for any issues.</p><p>Generated by Go Rush System</p></div></div></body></html>`;
+    return html;
+}
+
+// Generate Excel file
+function generateExcelAttachment(productGroups) {
+    const XLSX = require('xlsx');
+    const workbook = XLSX.utils.book_new();
+    
+    for (const group of productGroups) {
+        if (group.type === 'mawb_group') {
+            for (const subgroup of group.subgroups) {
+                const sheetName = `${group.productName}_${subgroup.mawbNo}`.substring(0, 31);
+                const data = [
+                    [`${group.productName} - MAWB: ${subgroup.mawbNo} (${subgroup.count} jobs)`],
+                    [],
+                    ['Tracking No.', 'Aging (days)', 'First in Warehouse', 'Location', 'Attempt', 'Latest Reason', 'Area', 'Name', 'Main Phone', 'Additional Phone', 'Customer Remark', 'GR Remark']
+                ];
+                for (const job of subgroup.jobs) {
+                    data.push([job.doTrackingNumber, job.aging, job.warehouseEntryDateTime, job.latestLocation, job.attempt, job.latestReason, job.area, job.receiverName, job.receiverPhoneNumber, job.additionalPhoneNumber, job.remarks, job.grRemark]);
+                }
+                const worksheet = XLSX.utils.aoa_to_sheet(data);
+                worksheet['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 35 }, { wch: 35 }];
+                XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+            }
+        } else {
+            const sheetName = group.productName.substring(0, 31);
+            const data = [
+                [`${group.productName} (${group.count} jobs)`],
+                [],
+                ['Tracking No.', 'Aging (days)', 'First in Warehouse', 'Location', 'Attempt', 'Latest Reason', 'Area', 'Name', 'Main Phone', 'Additional Phone', 'Customer Remark', 'GR Remark']
+            ];
+            for (const job of group.jobs) {
+                data.push([job.doTrackingNumber, job.aging, job.warehouseEntryDateTime, job.latestLocation, job.attempt, job.latestReason, job.area, job.receiverName, job.receiverPhoneNumber, job.additionalPhoneNumber, job.remarks, job.grRemark]);
+            }
+            const worksheet = XLSX.utils.aoa_to_sheet(data);
+            worksheet['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 35 }, { wch: 35 }];
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        }
+    }
+    
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+}
+
+// Main function to send email
+async function sendPendingJobsEmail(isTest = true) {
+    const bruneiNow = moment().tz("Asia/Brunei");
+    const reportDate = bruneiNow.format('DD.MM.YYYY');
+    const emailSubject = `Go Rush Pending Jobs Notification ${reportDate}`;
+    
+    console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate}...`);
+    
+    try {
+        // Fetch jobs
+        const pendingJobs = await ORDERS.find({
+            warehouseEntry: "Yes",
+            currentStatus: { $ne: "Completed" }
+        }).lean();
+        
+        console.log(`📊 Found ${pendingJobs.length} pending jobs`);
+        
+        if (pendingJobs.length === 0) {
+            return { success: false, message: 'No pending jobs found' };
+        }
+        
+        // Filter: age ≤ 30 days, not cancelled
+        const filteredJobs = pendingJobs.filter(job => {
+            const aging = calculateAging(job.warehouseEntryDateTime);
+            return aging <= 30 && job.currentStatus !== "Cancelled";
+        });
+        
+        const cancelledCount = pendingJobs.filter(job => job.currentStatus === "Cancelled").length;
+        const oldCount = pendingJobs.length - filteredJobs.length - cancelledCount;
+        
+        if (cancelledCount > 0) console.log(`🗑️ Excluding ${cancelledCount} cancelled jobs`);
+        if (oldCount > 0) console.log(`🗑️ Excluding ${oldCount} jobs > 30 days`);
+        console.log(`📊 Processing ${filteredJobs.length} jobs`);
+        
+        if (filteredJobs.length === 0) {
+            return { success: false, message: 'No jobs after filtering' };
+        }
+        
+        // Group by product and MAWB
+        const mawbData = {};
+        const regularData = {};
+        
+        for (const job of filteredJobs) {
+            const productKey = job.product || 'Unknown';
+            
+            if (MAWB_PRODUCTS.includes(productKey)) {
+                if (!mawbData[productKey]) {
+                    mawbData[productKey] = { productName: getProductDisplayName(productKey), groups: {} };
+                }
+                const mawbNo = job.mawbNo;
+                if (!mawbNo || mawbNo === 'No MAWB') continue; // Skip empty MAWB
+                
+                if (!mawbData[productKey].groups[mawbNo]) mawbData[productKey].groups[mawbNo] = [];
+                
+                mawbData[productKey].groups[mawbNo].push({
+                    doTrackingNumber: job.doTrackingNumber || '-',
+                    aging: calculateAging(job.warehouseEntryDateTime),
+                    warehouseEntryDateTime: formatDateTime(job.warehouseEntryDateTime),
+                    latestLocation: job.latestLocation || '-',
+                    attempt: job.attempt || '0',
+                    latestReason: job.latestReason || '-',
+                    area: job.area || '-',
+                    receiverName: job.receiverName || '-',
+                    receiverPhoneNumber: job.receiverPhoneNumber || '-',
+                    additionalPhoneNumber: job.additionalPhoneNumber || '-',
+                    remarks: job.remarks || '-',
+                    grRemark: job.grRemark || '-'
+                });
+            } else {
+                if (!regularData[productKey]) regularData[productKey] = [];
+                regularData[productKey].push({
+                    doTrackingNumber: job.doTrackingNumber || '-',
+                    aging: calculateAging(job.warehouseEntryDateTime),
+                    warehouseEntryDateTime: formatDateTime(job.warehouseEntryDateTime),
+                    latestLocation: job.latestLocation || '-',
+                    attempt: job.attempt || '0',
+                    latestReason: job.latestReason || '-',
+                    area: job.area || '-',
+                    receiverName: job.receiverName || '-',
+                    receiverPhoneNumber: job.receiverPhoneNumber || '-',
+                    additionalPhoneNumber: job.additionalPhoneNumber || '-',
+                    remarks: job.remarks || '-',
+                    grRemark: job.grRemark || '-'
+                });
+            }
+        }
+        
+        // Build product groups
+        const productGroups = [];
+        
+        for (const [key, data] of Object.entries(mawbData)) {
+            const subgroups = [];
+            let totalJobs = 0;
+            for (const [mawbNo, jobs] of Object.entries(data.groups)) {
+                jobs.sort((a, b) => b.aging - a.aging);
+                subgroups.push({ mawbNo, count: jobs.length, jobs, maxAging: Math.max(...jobs.map(j => j.aging)) });
+                totalJobs += jobs.length;
+            }
+            subgroups.sort((a, b) => b.maxAging - a.maxAging);
+            productGroups.push({ type: 'mawb_group', productName: data.productName, totalJobs, subgroups, maxAging: Math.max(...subgroups.map(s => s.maxAging)) });
+        }
+        
+        for (const [key, jobs] of Object.entries(regularData)) {
+            jobs.sort((a, b) => b.aging - a.aging);
+            productGroups.push({ type: 'regular', productName: getProductDisplayName(key), count: jobs.length, jobs, maxAging: jobs[0]?.aging || 0 });
+        }
+        
+        productGroups.sort((a, b) => b.maxAging - a.maxAging);
+        
+        // Generate email content
+        const emailHtml = generateEmailContent(productGroups, reportDate);
+        const excelBuffer = generateExcelAttachment(productGroups);
+        
+        // Set recipients
+        const recipients = isTest 
+            ? ['syahmi.ghafar@globex.com.bn']
+            : ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn', 'customer.care@globex.com.bn'];
+        
+        console.log(`📧 Sending to: ${recipients.join(', ')}`);
+        
+        // Send email
+        const info = await emailTransporter.sendMail({
+            from: `"Go Rush System" <${process.env.EMAIL_USER || 'it.support@globex.com.bn'}>`,
+            to: recipients.join(', '),
+            subject: emailSubject,
+            html: emailHtml,
+            attachments: [{ filename: `pending_jobs_${reportDate}.xlsx`, content: excelBuffer, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }]
+        });
+        
+        console.log(`✅ Email sent! Message ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+        
+    } catch (error) {
+        console.error('❌ Email error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Scheduled job: Every day at 7am Brunei time (Monday to Saturday)
+function scheduleDailyEmail() {
+    const scheduleNext = () => {
+        const now = moment().tz("Asia/Brunei");
+        let nextRun = moment().tz("Asia/Brunei").set({ hour: 7, minute: 0, second: 0 });
+        
+        if (now.isAfter(nextRun)) nextRun.add(1, 'day');
+        if (nextRun.day() === 7) nextRun.add(1, 'day'); // Skip Sunday
+        
+        const delayMs = nextRun.diff(now);
+        console.log(`📅 Next email scheduled: ${nextRun.format('YYYY-MM-DD HH:mm:ss')} (Brunei Time)`);
+        
+        setTimeout(() => {
+            sendPendingJobsEmail(false).then(result => {
+                if (result.success) console.log(`✅ Scheduled email sent`);
+                else console.error(`❌ Scheduled email failed: ${result.error}`);
+                scheduleNext();
+            });
+        }, delayMs);
+    };
+    scheduleNext();
+}
+
+// ==================================================
+// 📧 Test Endpoints
+// ==================================================
+
+// Test email (always sends to test recipient)
+app.get('/test-email', async (req, res) => {
+    console.log('🧪 Test email triggered');
+    const result = await sendPendingJobsEmail(true);
+    res.json(result);
+});
+
+app.get('/test-prod-email', async (req, res) => {
+    console.log('🚀 PRODUCTION test triggered');
+    const result = await sendPendingJobsEmail(false);  // false = PRODUCTION
+    res.json(result);
+});
+
+// Health check
+app.get('/email-health', async (req, res) => {
+    try {
+        await emailTransporter.verify();
+        res.json({ status: 'ok', message: 'Email transporter is ready' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// Start the scheduled email job
+scheduleDailyEmail();
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
