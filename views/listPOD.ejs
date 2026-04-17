@@ -368,15 +368,15 @@ $(document).ready(function () {
     ];
 
     $('#podTable').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "ajax": {
-            "url": "/api/listPOD",
-            "type": "GET"
-        },
-        "columns": columnDefs,
-        "order": [[0, "desc"]]
-    });
+    "processing": true,
+    "serverSide": true,
+    "ajax": {
+        "url": "/api/listPOD",
+        "type": "GET"
+    },
+    "columns": columnDefs,
+    "order": []  // Empty array = no default sorting, let backend handle it
+});
 });
 
         // Get modal elements

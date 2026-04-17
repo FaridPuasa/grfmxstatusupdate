@@ -21219,9 +21219,19 @@ function generateEmailContent(productGroups, reportDate) {
             for (const subgroup of group.subgroups) {
                 html += `<div class="subgroup-title">MAWB: ${escapeHtml(subgroup.mawbNo)} <span class="job-count">(${subgroup.count} jobs)</span></div>
                 <table><thead><tr>
-                    <th>Tracking No.</th><th>Aging (days)</th><th>First in Warehouse</th><th>Location</th><th>Attempt</th>
-                    <th>Latest Reason</th><th>Area</th><th>Name</th><th>Main Phone</th>
-                    <th>Additional Phone</th><th>Customer Remark</th><th>GR Remark</th>
+                    <th>Tracking No.</th>
+                    <th>Aging (days)</th>
+                    <th>First in Warehouse</th>
+                    <th>Location</th>
+                    <th>Attempt</th>
+                    <th>Latest Reason</th>
+                    <th>Area</th>
+                    <th>Address</th>
+                    <th>Name</th>
+                    <th>Main Phone</th>
+                    <th>Additional Phone</th>
+                    <th>Customer Remark</th>
+                    <th>GR Remark</th>
                 </tr></thead><tbody>`;
                 for (const job of subgroup.jobs) {
                     const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
@@ -21233,6 +21243,7 @@ function generateEmailContent(productGroups, reportDate) {
                         <td style="text-align: center;">${escapeHtml(job.attempt)}</td>
                         <td>${escapeHtml(job.latestReason)}</td>
                         <td>${escapeHtml(job.area)}</td>
+                        <td>${escapeHtml(job.receiverAddress)}</td>
                         <td>${escapeHtml(job.receiverName)}</td>
                         <td>${escapeHtml(job.receiverPhoneNumber)}</td>
                         <td>${escapeHtml(job.additionalPhoneNumber)}</td>
@@ -21247,9 +21258,19 @@ function generateEmailContent(productGroups, reportDate) {
             html += `<div class="product-section">
                 <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.count} jobs)</span></div>
                 <table><thead><tr>
-                    <th>Tracking No.</th><th>Aging (days)</th><th>First in Warehouse</th><th>Location</th><th>Attempt</th>
-                    <th>Latest Reason</th><th>Area</th><th>Name</th><th>Main Phone</th>
-                    <th>Additional Phone</th><th>Customer Remark</th><th>GR Remark</th>
+                    <th>Tracking No.</th>
+                    <th>Aging (days)</th>
+                    <th>First in Warehouse</th>
+                    <th>Location</th>
+                    <th>Attempt</th>
+                    <th>Latest Reason</th>
+                    <th>Area</th>
+                    <th>Address</th>
+                    <th>Name</th>
+                    <th>Main Phone</th>
+                    <th>Additional Phone</th>
+                    <th>Customer Remark</th>
+                    <th>GR Remark</th>
                 </tr></thead><tbody>`;
             for (const job of group.jobs) {
                 const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
@@ -21261,6 +21282,7 @@ function generateEmailContent(productGroups, reportDate) {
                     <td style="text-align: center;">${escapeHtml(job.attempt)}</td>
                     <td>${escapeHtml(job.latestReason)}</td>
                     <td>${escapeHtml(job.area)}</td>
+                    <td>${escapeHtml(job.receiverAddress)}</td>
                     <td>${escapeHtml(job.receiverName)}</td>
                     <td>${escapeHtml(job.receiverPhoneNumber)}</td>
                     <td>${escapeHtml(job.additionalPhoneNumber)}</td>
@@ -21288,13 +21310,31 @@ function generateExcelAttachment(productGroups) {
                 const data = [
                     [`${group.productName} - MAWB: ${subgroup.mawbNo} (${subgroup.count} jobs)`],
                     [],
-                    ['Tracking No.', 'Aging (days)', 'First in Warehouse', 'Location', 'Attempt', 'Latest Reason', 'Area', 'Name', 'Main Phone', 'Additional Phone', 'Customer Remark', 'GR Remark']
+                    ['Tracking No.', 'Aging (days)', 'First in Warehouse', 'Location', 'Attempt', 'Latest Reason', 'Area', 'Address', 'Name', 'Main Phone', 'Additional Phone', 'Customer Remark', 'GR Remark']
                 ];
                 for (const job of subgroup.jobs) {
-                    data.push([job.doTrackingNumber, job.aging, job.warehouseEntryDateTime, job.latestLocation, job.attempt, job.latestReason, job.area, job.receiverName, job.receiverPhoneNumber, job.additionalPhoneNumber, job.remarks, job.grRemark]);
+                    data.push([
+                        job.doTrackingNumber, 
+                        job.aging, 
+                        job.warehouseEntryDateTime, 
+                        job.latestLocation, 
+                        job.attempt, 
+                        job.latestReason, 
+                        job.area, 
+                        job.receiverAddress,
+                        job.receiverName, 
+                        job.receiverPhoneNumber, 
+                        job.additionalPhoneNumber, 
+                        job.remarks, 
+                        job.grRemark
+                    ]);
                 }
                 const worksheet = XLSX.utils.aoa_to_sheet(data);
-                worksheet['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 35 }, { wch: 35 }];
+                worksheet['!cols'] = [
+                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
+                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
+                    { wch: 15 }, { wch: 35 }, { wch: 35 }
+                ];
                 XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
             }
         } else {
@@ -21302,13 +21342,31 @@ function generateExcelAttachment(productGroups) {
             const data = [
                 [`${group.productName} (${group.count} jobs)`],
                 [],
-                ['Tracking No.', 'Aging (days)', 'First in Warehouse', 'Location', 'Attempt', 'Latest Reason', 'Area', 'Name', 'Main Phone', 'Additional Phone', 'Customer Remark', 'GR Remark']
+                ['Tracking No.', 'Aging (days)', 'First in Warehouse', 'Location', 'Attempt', 'Latest Reason', 'Area', 'Address', 'Name', 'Main Phone', 'Additional Phone', 'Customer Remark', 'GR Remark']
             ];
             for (const job of group.jobs) {
-                data.push([job.doTrackingNumber, job.aging, job.warehouseEntryDateTime, job.latestLocation, job.attempt, job.latestReason, job.area, job.receiverName, job.receiverPhoneNumber, job.additionalPhoneNumber, job.remarks, job.grRemark]);
+                data.push([
+                    job.doTrackingNumber, 
+                    job.aging, 
+                    job.warehouseEntryDateTime, 
+                    job.latestLocation, 
+                    job.attempt, 
+                    job.latestReason, 
+                    job.area, 
+                    job.receiverAddress,
+                    job.receiverName, 
+                    job.receiverPhoneNumber, 
+                    job.additionalPhoneNumber, 
+                    job.remarks, 
+                    job.grRemark
+                ]);
             }
             const worksheet = XLSX.utils.aoa_to_sheet(data);
-            worksheet['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 35 }, { wch: 35 }];
+            worksheet['!cols'] = [
+                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
+                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
+                { wch: 15 }, { wch: 35 }, { wch: 35 }
+            ];
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         }
     }
@@ -21378,6 +21436,7 @@ async function sendPendingJobsEmail(isTest = true) {
                     attempt: job.attempt || '0',
                     latestReason: job.latestReason || '-',
                     area: job.area || '-',
+                    receiverAddress: job.receiverAddress || '-',
                     receiverName: job.receiverName || '-',
                     receiverPhoneNumber: job.receiverPhoneNumber || '-',
                     additionalPhoneNumber: job.additionalPhoneNumber || '-',
@@ -21394,6 +21453,7 @@ async function sendPendingJobsEmail(isTest = true) {
                     attempt: job.attempt || '0',
                     latestReason: job.latestReason || '-',
                     area: job.area || '-',
+                    receiverAddress: job.receiverAddress || '-',
                     receiverName: job.receiverName || '-',
                     receiverPhoneNumber: job.receiverPhoneNumber || '-',
                     additionalPhoneNumber: job.additionalPhoneNumber || '-',
