@@ -6944,6 +6944,36 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 gdexHoldReason = "H32";
             }
 
+            if (req.body.statusCode == 'H9') {
+                appliedStatus = "On Hold - Reject By Airport"
+                holdReasonDescription = "Reject By Airport"
+                gdexHoldReason = "H9";
+            }
+
+            if (req.body.statusCode == 'H18') {
+                appliedStatus = "On Hold - DG Shipment"
+                holdReasonDescription = "DG Shipment"
+                gdexHoldReason = "H18";
+            }
+
+            if (req.body.statusCode == 'H19') {
+                appliedStatus = "On Hold - Prohibited Shipment"
+                holdReasonDescription = "Prohibited Shipment"
+                gdexHoldReason = "H19";
+            }
+
+            if (req.body.statusCode == 'H27') {
+                appliedStatus = "On Hold - Pending Custom Declaration"
+                holdReasonDescription = "Pending Custom Declaration"
+                gdexHoldReason = "H27";
+            }
+
+            if (req.body.statusCode == 'H31') {
+                appliedStatus = "On Hold - Shipment rejected/confiscated by customs"
+                holdReasonDescription = "Shipment rejected/confiscated by customs"
+                gdexHoldReason = "H31";
+            }
+
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
                 || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
@@ -6955,7 +6985,8 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
                 || (req.body.statusCode == 'RSAL2') || (req.body.statusCode == 'H3') || (req.body.statusCode == 'H10')
                 || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32') || (req.body.statusCode == 'SFJA')
-                || (req.body.statusCode == 'FAR') || (req.body.statusCode == 'FSJ')) {
+                || (req.body.statusCode == 'FAR') || (req.body.statusCode == 'FSJ')
+                || (req.body.statusCode == 'H18') || (req.body.statusCode == 'H19') || (req.body.statusCode == 'H27') || (req.body.statusCode == 'H31')) {
 
                 filter = { doTrackingNumber: consignmentID };
                 // Determine if there's an existing document in MongoDB
@@ -7882,7 +7913,9 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 continue; // Skip rest of the update delivery logic for this tracking number
             }
 
-            if ((req.body.statusCode == 'H3' || req.body.statusCode == 'H10' || req.body.statusCode == 'H17' || req.body.statusCode == 'H32')
+            if ((req.body.statusCode == 'H3' || req.body.statusCode == 'H9' || req.body.statusCode == 'H10' ||
+                req.body.statusCode == 'H17' || req.body.statusCode == 'H18' || req.body.statusCode == 'H19' ||
+                req.body.statusCode == 'H27' || req.body.statusCode == 'H31' || req.body.statusCode == 'H32')
                 && (product == 'GDEX' || product == 'GDEXT')) {
 
                 console.log(`🚨 Processing GDEX On Hold: ${consignmentID} - Reason: ${holdReasonDescription}`);
@@ -7913,12 +7946,11 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     }
                 };
 
-                // GDEX API Update (will be handled by GDEXAPIrun = 7)
                 portalUpdate = `Portal status updated to On Hold (${holdReasonDescription}). Detrack status updated to on_hold. `;
 
                 mongoDBrun = 2;
                 DetrackAPIrun = 1;
-                GDEXAPIrun = 7; // New GDEX API run code for Hold updates
+                GDEXAPIrun = 7; // GDEX API run code for Hold updates
                 completeRun = 1;
             }
 
@@ -20701,14 +20733,14 @@ app.get('/api/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery,
         }
 
         let sort = {};
-if (order && columns) {
-    const colName = columns[order.column].data;
-    const dir = order.dir === 'desc' ? -1 : 1;
-    sort[colName] = dir;
-} else {
-    // Sort by creationDate from newest to oldest (descending)
-    sort = { creationDate: -1 };
-}
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            // Sort by creationDate from newest to oldest (descending)
+            sort = { creationDate: -1 };
+        }
 
         const total = await UnifiedPOD.countDocuments({});
         const filtered = await UnifiedPOD.countDocuments(query);
@@ -21302,7 +21334,7 @@ function generateEmailContent(productGroups, reportDate) {
 function generateExcelAttachment(productGroups) {
     const XLSX = require('xlsx');
     const workbook = XLSX.utils.book_new();
-    
+
     for (const group of productGroups) {
         if (group.type === 'mawb_group') {
             for (const subgroup of group.subgroups) {
@@ -21314,25 +21346,25 @@ function generateExcelAttachment(productGroups) {
                 ];
                 for (const job of subgroup.jobs) {
                     data.push([
-                        job.doTrackingNumber, 
-                        job.aging, 
-                        job.warehouseEntryDateTime, 
-                        job.latestLocation, 
-                        job.attempt, 
-                        job.latestReason, 
-                        job.area, 
+                        job.doTrackingNumber,
+                        job.aging,
+                        job.warehouseEntryDateTime,
+                        job.latestLocation,
+                        job.attempt,
+                        job.latestReason,
+                        job.area,
                         job.receiverAddress,
-                        job.receiverName, 
-                        job.receiverPhoneNumber, 
-                        job.additionalPhoneNumber, 
-                        job.remarks, 
+                        job.receiverName,
+                        job.receiverPhoneNumber,
+                        job.additionalPhoneNumber,
+                        job.remarks,
                         job.grRemark
                     ]);
                 }
                 const worksheet = XLSX.utils.aoa_to_sheet(data);
                 worksheet['!cols'] = [
-                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
-                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
+                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 },
+                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 },
                     { wch: 15 }, { wch: 35 }, { wch: 35 }
                 ];
                 XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
@@ -21346,31 +21378,31 @@ function generateExcelAttachment(productGroups) {
             ];
             for (const job of group.jobs) {
                 data.push([
-                    job.doTrackingNumber, 
-                    job.aging, 
-                    job.warehouseEntryDateTime, 
-                    job.latestLocation, 
-                    job.attempt, 
-                    job.latestReason, 
-                    job.area, 
+                    job.doTrackingNumber,
+                    job.aging,
+                    job.warehouseEntryDateTime,
+                    job.latestLocation,
+                    job.attempt,
+                    job.latestReason,
+                    job.area,
                     job.receiverAddress,
-                    job.receiverName, 
-                    job.receiverPhoneNumber, 
-                    job.additionalPhoneNumber, 
-                    job.remarks, 
+                    job.receiverName,
+                    job.receiverPhoneNumber,
+                    job.additionalPhoneNumber,
+                    job.remarks,
                     job.grRemark
                 ]);
             }
             const worksheet = XLSX.utils.aoa_to_sheet(data);
             worksheet['!cols'] = [
-                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
-                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
+                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 },
+                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 },
                 { wch: 15 }, { wch: 35 }, { wch: 35 }
             ];
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         }
     }
-    
+
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
@@ -21379,55 +21411,55 @@ async function sendPendingJobsEmail(isTest = true) {
     const bruneiNow = moment().tz("Asia/Brunei");
     const reportDate = bruneiNow.format('DD.MM.YYYY');
     const emailSubject = `Go Rush Pending Jobs Notification ${reportDate}`;
-    
+
     console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate}...`);
-    
+
     try {
         // Fetch jobs
         const pendingJobs = await ORDERS.find({
             warehouseEntry: "Yes",
             currentStatus: { $ne: "Completed" }
         }).lean();
-        
+
         console.log(`📊 Found ${pendingJobs.length} pending jobs`);
-        
+
         if (pendingJobs.length === 0) {
             return { success: false, message: 'No pending jobs found' };
         }
-        
+
         // Filter: age ≤ 30 days, not cancelled
         const filteredJobs = pendingJobs.filter(job => {
             const aging = calculateAging(job.warehouseEntryDateTime);
             return aging <= 30 && job.currentStatus !== "Cancelled";
         });
-        
+
         const cancelledCount = pendingJobs.filter(job => job.currentStatus === "Cancelled").length;
         const oldCount = pendingJobs.length - filteredJobs.length - cancelledCount;
-        
+
         if (cancelledCount > 0) console.log(`🗑️ Excluding ${cancelledCount} cancelled jobs`);
         if (oldCount > 0) console.log(`🗑️ Excluding ${oldCount} jobs > 30 days`);
         console.log(`📊 Processing ${filteredJobs.length} jobs`);
-        
+
         if (filteredJobs.length === 0) {
             return { success: false, message: 'No jobs after filtering' };
         }
-        
+
         // Group by product and MAWB
         const mawbData = {};
         const regularData = {};
-        
+
         for (const job of filteredJobs) {
             const productKey = job.product || 'Unknown';
-            
+
             if (MAWB_PRODUCTS.includes(productKey)) {
                 if (!mawbData[productKey]) {
                     mawbData[productKey] = { productName: getProductDisplayName(productKey), groups: {} };
                 }
                 const mawbNo = job.mawbNo;
                 if (!mawbNo || mawbNo === 'No MAWB') continue; // Skip empty MAWB
-                
+
                 if (!mawbData[productKey].groups[mawbNo]) mawbData[productKey].groups[mawbNo] = [];
-                
+
                 mawbData[productKey].groups[mawbNo].push({
                     doTrackingNumber: job.doTrackingNumber || '-',
                     aging: calculateAging(job.warehouseEntryDateTime),
@@ -21462,10 +21494,10 @@ async function sendPendingJobsEmail(isTest = true) {
                 });
             }
         }
-        
+
         // Build product groups
         const productGroups = [];
-        
+
         for (const [key, data] of Object.entries(mawbData)) {
             const subgroups = [];
             let totalJobs = 0;
@@ -21477,25 +21509,25 @@ async function sendPendingJobsEmail(isTest = true) {
             subgroups.sort((a, b) => b.maxAging - a.maxAging);
             productGroups.push({ type: 'mawb_group', productName: data.productName, totalJobs, subgroups, maxAging: Math.max(...subgroups.map(s => s.maxAging)) });
         }
-        
+
         for (const [key, jobs] of Object.entries(regularData)) {
             jobs.sort((a, b) => b.aging - a.aging);
             productGroups.push({ type: 'regular', productName: getProductDisplayName(key), count: jobs.length, jobs, maxAging: jobs[0]?.aging || 0 });
         }
-        
+
         productGroups.sort((a, b) => b.maxAging - a.maxAging);
-        
+
         // Generate email content
         const emailHtml = generateEmailContent(productGroups, reportDate);
         const excelBuffer = generateExcelAttachment(productGroups);
-        
+
         // Set recipients
-        const recipients = isTest 
+        const recipients = isTest
             ? ['syahmi.ghafar@globex.com.bn']
             : ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn', 'customer.care@globex.com.bn'];
-        
+
         console.log(`📧 Sending to: ${recipients.join(', ')}`);
-        
+
         // Send email
         const info = await emailTransporter.sendMail({
             from: `"Go Rush System" <${process.env.EMAIL_USER || 'it.support@globex.com.bn'}>`,
@@ -21504,10 +21536,10 @@ async function sendPendingJobsEmail(isTest = true) {
             html: emailHtml,
             attachments: [{ filename: `pending_jobs_${reportDate}.xlsx`, content: excelBuffer, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }]
         });
-        
+
         console.log(`✅ Email sent! Message ID: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
-        
+
     } catch (error) {
         console.error('❌ Email error:', error);
         return { success: false, error: error.message };
@@ -21519,13 +21551,13 @@ function scheduleDailyEmail() {
     const scheduleNext = () => {
         const now = moment().tz("Asia/Brunei");
         let nextRun = moment().tz("Asia/Brunei").set({ hour: 7, minute: 0, second: 0 });
-        
+
         if (now.isAfter(nextRun)) nextRun.add(1, 'day');
         if (nextRun.day() === 7) nextRun.add(1, 'day'); // Skip Sunday
-        
+
         const delayMs = nextRun.diff(now);
         console.log(`📅 Next email scheduled: ${nextRun.format('YYYY-MM-DD HH:mm:ss')} (Brunei Time)`);
-        
+
         setTimeout(() => {
             sendPendingJobsEmail(false).then(result => {
                 if (result.success) console.log(`✅ Scheduled email sent`);

@@ -114,8 +114,13 @@
                         </optgroup>
                         <optgroup label="GDEX On Hold Warehouse Flow">
                             <option value="H3">Oversized Shipment</option>
+                            <option value="H9">Reject By Airport</option>
                             <option value="H10">Consignee Office Closed</option>
                             <option value="H17">Damage Shipment</option>
+                            <option value="H18">DG Shipment</option>
+                            <option value="H19">Prohibited Shipment</option>
+                            <option value="H27">Pending Custom Declaration</option>
+                            <option value="H31">Shipment rejected/confiscated by customs</option>
                             <option value="H32">AWB not clear</option>
                         </optgroup>
                         <optgroup label="GDEX Return">
@@ -179,8 +184,9 @@
                             <option value="Ermi">Ermi</option>
                             <option value="Feeza">Feeza</option>
                             <!-- <option value="Hjjul">Hjjul</option> -->
-                             <option value="Khairul">Khairul</option>
+                            <option value="Khairul">Khairul</option>
                             <option value="Jon">Jon</option>
+                            <option value="Mikael">Mikael</option>
                             <option value="Qui">Qui</option>
                             <option value="Tommy">Tommy</option>
                             <!-- <option value="Zuran">Zuran</option> -->
@@ -428,10 +434,10 @@
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
             const todayFormatted = `${yyyy}-${mm}-${dd}`;
-            
+
             // Set the value of the assignDate field to today's date
             assignDateField.value = todayFormatted;
-            
+
             // The field is already disabled by default, but we ensure it remains disabled
             // and the user cannot change it manually. However, we want it to be submitted with the form.
             // Disabled inputs are not submitted, so we need to make it readonly but still enabled? 
@@ -442,15 +448,15 @@
             // However, note: disabled fields are not submitted; but original design used disabled + required? That's contradictory.
             // Better approach: make the field readonly when shown, not disabled, to allow submission AND user cannot change.
             // We'll adjust dynamically in updateFieldStatus to set readonly attribute instead of disabled, but preserve original required logic.
-            
+
             // Store original functions and override behaviour for assignDate.
             // But to keep it simple and robust: we'll patch the updateFieldStatus logic to ensure assignDate is always today and readonly when active.
             // However we must respect original requirements for assignDate: it should be required for certain status codes.
             // So we will preserve the required flag, but instead of setting disabled=false, we set readonly=true and remove disabled.
             // This ensures the value is submitted and user cannot change it.
-            
+
             // Let's keep references and modify updateFieldStatus function after its definition.
-            
+
             $("#assignDateWrapper").hide();
             $("#dispatchersWrapper").hide();
             $("#freelancerNameWrapper").hide();
@@ -471,7 +477,7 @@
             $("#k2rowWrapper").hide();
             $("#fridgeWrapper").hide();
             $("#grRemarkWrapper").hide();
-            
+
             // Get references to the fields
             const dispatchersField = document.getElementById('dispatchers');
             const freelancerNameField = document.getElementById('freelancerName');
@@ -644,9 +650,9 @@
 
                     $("#assignDateWrapper").fadeIn();
                     $("#dispatchersWrapper").fadeIn();
-                    
+
                     setAssignDateTodayAndReadonly(true);
-                    
+
                     dispatchersField.required = true;
                     additionalReasonField.required = false;
                     warehouseField.required = false;
@@ -666,7 +672,7 @@
                     k2rowField.disabled = true; k2rowField.required = false;
                     fridgeField.disabled = true; fridgeField.required = false;
                     grRemarkField.disabled = true; grRemarkField.required = false;
-                } 
+                }
                 else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
                     assignDateField.disabled = false;
                     dispatchersField.disabled = true;
@@ -785,7 +791,7 @@
                     k2rowField.disabled = true;
                     fridgeField.disabled = true;
                     grRemarkField.disabled = true;
-                    
+
                     assignDateField.required = false;
                     dispatchersField.required = false;
                     additionalReasonField.required = false;
