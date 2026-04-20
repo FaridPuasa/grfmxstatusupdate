@@ -21154,7 +21154,7 @@ function generateEmailContent(productGroups, reportDate) {
 function generateExcelAttachment(productGroups) {
     const XLSX = require('xlsx');
     const workbook = XLSX.utils.book_new();
-
+    
     for (const group of productGroups) {
         if (group.type === 'mawb_group') {
             for (const subgroup of group.subgroups) {
@@ -21166,25 +21166,25 @@ function generateExcelAttachment(productGroups) {
                 ];
                 for (const job of subgroup.jobs) {
                     data.push([
-                        job.doTrackingNumber,
-                        job.aging,
-                        job.warehouseEntryDateTime,
-                        job.latestLocation,
-                        job.attempt,
-                        job.latestReason,
-                        job.area,
+                        job.doTrackingNumber, 
+                        job.aging, 
+                        job.warehouseEntryDateTime, 
+                        job.latestLocation, 
+                        job.attempt, 
+                        job.latestReason, 
+                        job.area, 
                         job.receiverAddress,
-                        job.receiverName,
-                        job.receiverPhoneNumber,
-                        job.additionalPhoneNumber,
-                        job.remarks,
+                        job.receiverName, 
+                        job.receiverPhoneNumber, 
+                        job.additionalPhoneNumber, 
+                        job.remarks, 
                         job.grRemark
                     ]);
                 }
                 const worksheet = XLSX.utils.aoa_to_sheet(data);
                 worksheet['!cols'] = [
-                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 },
-                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 },
+                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
+                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
                     { wch: 15 }, { wch: 35 }, { wch: 35 }
                 ];
                 XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
@@ -21198,31 +21198,31 @@ function generateExcelAttachment(productGroups) {
             ];
             for (const job of group.jobs) {
                 data.push([
-                    job.doTrackingNumber,
-                    job.aging,
-                    job.warehouseEntryDateTime,
-                    job.latestLocation,
-                    job.attempt,
-                    job.latestReason,
-                    job.area,
+                    job.doTrackingNumber, 
+                    job.aging, 
+                    job.warehouseEntryDateTime, 
+                    job.latestLocation, 
+                    job.attempt, 
+                    job.latestReason, 
+                    job.area, 
                     job.receiverAddress,
-                    job.receiverName,
-                    job.receiverPhoneNumber,
-                    job.additionalPhoneNumber,
-                    job.remarks,
+                    job.receiverName, 
+                    job.receiverPhoneNumber, 
+                    job.additionalPhoneNumber, 
+                    job.remarks, 
                     job.grRemark
                 ]);
             }
             const worksheet = XLSX.utils.aoa_to_sheet(data);
             worksheet['!cols'] = [
-                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 },
-                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 },
+                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
+                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
                 { wch: 15 }, { wch: 35 }, { wch: 35 }
             ];
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         }
     }
-
+    
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
@@ -21231,55 +21231,55 @@ async function sendPendingJobsEmail(isTest = true) {
     const bruneiNow = moment().tz("Asia/Brunei");
     const reportDate = bruneiNow.format('DD.MM.YYYY');
     const emailSubject = `Go Rush Pending Jobs Notification ${reportDate}`;
-
+    
     console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate}...`);
-
+    
     try {
         // Fetch jobs
         const pendingJobs = await ORDERS.find({
             warehouseEntry: "Yes",
             currentStatus: { $ne: "Completed" }
         }).lean();
-
+        
         console.log(`📊 Found ${pendingJobs.length} pending jobs`);
-
+        
         if (pendingJobs.length === 0) {
             return { success: false, message: 'No pending jobs found' };
         }
-
+        
         // Filter: age ≤ 30 days, not cancelled
         const filteredJobs = pendingJobs.filter(job => {
             const aging = calculateAging(job.warehouseEntryDateTime);
             return aging <= 30 && job.currentStatus !== "Cancelled";
         });
-
+        
         const cancelledCount = pendingJobs.filter(job => job.currentStatus === "Cancelled").length;
         const oldCount = pendingJobs.length - filteredJobs.length - cancelledCount;
-
+        
         if (cancelledCount > 0) console.log(`🗑️ Excluding ${cancelledCount} cancelled jobs`);
         if (oldCount > 0) console.log(`🗑️ Excluding ${oldCount} jobs > 30 days`);
         console.log(`📊 Processing ${filteredJobs.length} jobs`);
-
+        
         if (filteredJobs.length === 0) {
             return { success: false, message: 'No jobs after filtering' };
         }
-
+        
         // Group by product and MAWB
         const mawbData = {};
         const regularData = {};
-
+        
         for (const job of filteredJobs) {
             const productKey = job.product || 'Unknown';
-
+            
             if (MAWB_PRODUCTS.includes(productKey)) {
                 if (!mawbData[productKey]) {
                     mawbData[productKey] = { productName: getProductDisplayName(productKey), groups: {} };
                 }
                 const mawbNo = job.mawbNo;
                 if (!mawbNo || mawbNo === 'No MAWB') continue; // Skip empty MAWB
-
+                
                 if (!mawbData[productKey].groups[mawbNo]) mawbData[productKey].groups[mawbNo] = [];
-
+                
                 mawbData[productKey].groups[mawbNo].push({
                     doTrackingNumber: job.doTrackingNumber || '-',
                     aging: calculateAging(job.warehouseEntryDateTime),
@@ -21314,10 +21314,10 @@ async function sendPendingJobsEmail(isTest = true) {
                 });
             }
         }
-
+        
         // Build product groups
         const productGroups = [];
-
+        
         for (const [key, data] of Object.entries(mawbData)) {
             const subgroups = [];
             let totalJobs = 0;
@@ -21329,25 +21329,32 @@ async function sendPendingJobsEmail(isTest = true) {
             subgroups.sort((a, b) => b.maxAging - a.maxAging);
             productGroups.push({ type: 'mawb_group', productName: data.productName, totalJobs, subgroups, maxAging: Math.max(...subgroups.map(s => s.maxAging)) });
         }
-
+        
         for (const [key, jobs] of Object.entries(regularData)) {
             jobs.sort((a, b) => b.aging - a.aging);
             productGroups.push({ type: 'regular', productName: getProductDisplayName(key), count: jobs.length, jobs, maxAging: jobs[0]?.aging || 0 });
         }
-
+        
         productGroups.sort((a, b) => b.maxAging - a.maxAging);
-
+        
         // Generate email content
         const emailHtml = generateEmailContent(productGroups, reportDate);
         const excelBuffer = generateExcelAttachment(productGroups);
-
-        // Set recipients
-        const recipients = isTest
+        
+        // Set recipients - UPDATED with new emails
+        const recipients = isTest 
             ? ['syahmi.ghafar@globex.com.bn']
-            : ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn', 'customer.care@globex.com.bn'];
-
+            : [
+                'operation2@globex.com.bn',
+                'operation3@globex.com.bn',
+                'warehouse@globex.com.bn',
+                'customer.care@globex.com.bn',
+                'lovelyna.magdalin@globex.com.bn',
+                'zulaikha.salleh@globex.com.bn'
+              ];
+        
         console.log(`📧 Sending to: ${recipients.join(', ')}`);
-
+        
         // Send email
         const info = await emailTransporter.sendMail({
             from: `"Go Rush System" <${process.env.EMAIL_USER || 'it.support@globex.com.bn'}>`,
@@ -21356,37 +21363,46 @@ async function sendPendingJobsEmail(isTest = true) {
             html: emailHtml,
             attachments: [{ filename: `pending_jobs_${reportDate}.xlsx`, content: excelBuffer, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }]
         });
-
+        
         console.log(`✅ Email sent! Message ID: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
-
+        
     } catch (error) {
         console.error('❌ Email error:', error);
         return { success: false, error: error.message };
     }
 }
 
-// Scheduled job: Every day at 7am Brunei time (Monday to Saturday)
-function scheduleDailyEmail() {
-    const scheduleNext = () => {
+// Scheduled job: Every day at 7am AND 5pm Brunei time (Monday to Saturday)
+function scheduleDailyEmails() {
+    const scheduleNext = (hour, minute) => {
         const now = moment().tz("Asia/Brunei");
-        let nextRun = moment().tz("Asia/Brunei").set({ hour: 7, minute: 0, second: 0 });
-
+        let nextRun = moment().tz("Asia/Brunei").set({ hour: hour, minute: minute, second: 0 });
+        
         if (now.isAfter(nextRun)) nextRun.add(1, 'day');
         if (nextRun.day() === 7) nextRun.add(1, 'day'); // Skip Sunday
-
+        
         const delayMs = nextRun.diff(now);
-        console.log(`📅 Next email scheduled: ${nextRun.format('YYYY-MM-DD HH:mm:ss')} (Brunei Time)`);
-
+        const timeStr = nextRun.format('YYYY-MM-DD HH:mm:ss');
+        const period = hour === 7 ? 'MORNING' : 'EVENING';
+        
+        console.log(`📅 Next ${period} email scheduled: ${timeStr} (Brunei Time)`);
+        
         setTimeout(() => {
             sendPendingJobsEmail(false).then(result => {
-                if (result.success) console.log(`✅ Scheduled email sent`);
-                else console.error(`❌ Scheduled email failed: ${result.error}`);
-                scheduleNext();
+                if (result.success) {
+                    console.log(`✅ ${period} scheduled email sent at ${moment().tz("Asia/Brunei").format('YYYY-MM-DD HH:mm:ss')}`);
+                } else {
+                    console.error(`❌ ${period} scheduled email failed: ${result.error}`);
+                }
+                scheduleNext(hour, minute);
             });
         }, delayMs);
     };
-    scheduleNext();
+    
+    // Schedule both 7am and 5pm
+    scheduleNext(7, 0);   // 7:00 AM
+    scheduleNext(17, 0);  // 5:00 PM
 }
 
 // ==================================================
@@ -21416,8 +21432,8 @@ app.get('/email-health', async (req, res) => {
     }
 });
 
-// Start the scheduled email job
-scheduleDailyEmail();
+// Start the scheduled email jobs (7am AND 5pm)
+scheduleDailyEmails();
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
