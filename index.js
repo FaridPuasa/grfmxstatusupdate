@@ -21157,12 +21157,12 @@ function escapeHtml(text) {
 }
 
 // Generate HTML email content
-function generateEmailContent(productGroups, reportDate) {
+function generateEmailContent(productGroups, reportDate, timePeriod) {
     let html = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Go Rush Pending Jobs Notification ${reportDate}</title>
+    <title>Go Rush Pending Jobs Notification ${reportDate} ${timePeriod}</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
@@ -21182,7 +21182,7 @@ function generateEmailContent(productGroups, reportDate) {
 <body>
     <div class="container">
         <div class="header">
-            <h2>Go Rush Pending Jobs Notification - ${reportDate}</h2>
+            <h2>Go Rush Pending Jobs Notification - ${reportDate} ${timePeriod}</h2>
         </div>`;
 
     for (const group of productGroups) {
@@ -21191,7 +21191,7 @@ function generateEmailContent(productGroups, reportDate) {
                 <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.totalJobs} jobs)</span></div>`;
             for (const subgroup of group.subgroups) {
                 html += `<div class="subgroup-title">MAWB: ${escapeHtml(subgroup.mawbNo)} <span class="job-count">(${subgroup.count} jobs)</span></div>
-                <table><thead><tr>
+                </table><thead><tr>
                     <th>Tracking No.</th>
                     <th>Aging (days)</th>
                     <th>First in Warehouse</th>
@@ -21230,7 +21230,7 @@ function generateEmailContent(productGroups, reportDate) {
         } else {
             html += `<div class="product-section">
                 <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.count} jobs)</span></div>
-                <table><thead><tr>
+                 able<thead><tr>
                     <th>Tracking No.</th>
                     <th>Aging (days)</th>
                     <th>First in Warehouse</th>
@@ -21348,12 +21348,29 @@ function generateExcelAttachment(productGroups) {
 }
 
 // Main function to send email
-async function sendPendingJobsEmail(isTest = true) {
+async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
     const bruneiNow = moment().tz("Asia/Brunei");
     const reportDate = bruneiNow.format('DD.MM.YYYY');
-    const emailSubject = `Go Rush Pending Jobs Notification ${reportDate}`;
     
-    console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate}...`);
+    // Determine the time period (7AM or 5PM)
+    let timePeriod = '';
+    if (scheduledHour === 7) {
+        timePeriod = '7AM';
+    } else if (scheduledHour === 17) {
+        timePeriod = '5PM';
+    } else {
+        // For manual test, use current hour to determine
+        const currentHour = bruneiNow.hour();
+        if (currentHour >= 12) {
+            timePeriod = currentHour === 17 ? '5PM' : `${currentHour % 12 || 12}PM`;
+        } else {
+            timePeriod = currentHour === 7 ? '7AM' : `${currentHour % 12 || 12}AM`;
+        }
+    }
+    
+    const emailSubject = `Go Rush Pending Jobs Notification - ${reportDate} ${timePeriod}`;
+    
+    console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate} ${timePeriod}...`);
     
     try {
         // Fetch jobs
@@ -21458,11 +21475,11 @@ async function sendPendingJobsEmail(isTest = true) {
         
         productGroups.sort((a, b) => b.maxAging - a.maxAging);
         
-        // Generate email content
-        const emailHtml = generateEmailContent(productGroups, reportDate);
+        // Generate email content (pass timePeriod for the header)
+        const emailHtml = generateEmailContent(productGroups, reportDate, timePeriod);
         const excelBuffer = generateExcelAttachment(productGroups);
         
-        // Set recipients - UPDATED with new emails
+        // Set recipients
         const recipients = isTest 
             ? ['syahmi.ghafar@globex.com.bn']
             : [
@@ -21483,7 +21500,7 @@ async function sendPendingJobsEmail(isTest = true) {
             to: recipients.join(', '),
             subject: emailSubject,
             html: emailHtml,
-            attachments: [{ filename: `pending_jobs_${reportDate}.xlsx`, content: excelBuffer, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }]
+            attachments: [{ filename: `pending_jobs_${reportDate}_${timePeriod}.xlsx`, content: excelBuffer, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }]
         });
         
         console.log(`✅ Email sent! Message ID: ${info.messageId}`);
@@ -21506,12 +21523,13 @@ function scheduleDailyEmails() {
         
         const delayMs = nextRun.diff(now);
         const timeStr = nextRun.format('YYYY-MM-DD HH:mm:ss');
-        const period = hour === 7 ? 'MORNING' : 'EVENING';
+        const period = hour === 7 ? 'MORNING (7AM)' : 'EVENING (5PM)';
         
         console.log(`📅 Next ${period} email scheduled: ${timeStr} (Brunei Time)`);
         
         setTimeout(() => {
-            sendPendingJobsEmail(false).then(result => {
+            // Pass the hour to the send function
+            sendPendingJobsEmail(false, hour).then(result => {
                 if (result.success) {
                     console.log(`✅ ${period} scheduled email sent at ${moment().tz("Asia/Brunei").format('YYYY-MM-DD HH:mm:ss')}`);
                 } else {
@@ -21534,7 +21552,9 @@ function scheduleDailyEmails() {
 // Test email (always sends to test recipient)
 app.get('/test-email', async (req, res) => {
     console.log('🧪 Test email triggered');
-    const result = await sendPendingJobsEmail(true);
+    // Get current hour to determine time period in subject
+    const currentHour = moment().tz("Asia/Brunei").hour();
+    const result = await sendPendingJobsEmail(true, currentHour);
     res.json(result);
 });
 
