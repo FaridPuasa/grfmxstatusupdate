@@ -46,7 +46,7 @@
 
         .card-header {
             background: white;
-            padding: 30px 30px 20px 30px;  /* Increased top padding */
+            padding: 30px 30px 20px 30px;
             text-align: center;
         }
 
@@ -57,9 +57,8 @@
             display: block;
         }
 
-        /* Added spacer between logo and profile picture */
         .logo-spacer {
-            height: 0px;  /* Increased spacing */
+            height: 0px;
         }
 
         .card-body {
@@ -73,15 +72,14 @@
             border-radius: 50%;
             object-fit: cover;
             border: 4px solid #2078BE;
-            margin: 0 auto 20px auto;  /* Changed from negative margin */
+            margin: 0 auto 20px auto;
             background: white;
             display: block;
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
             position: relative;
-            top: 0;  /* Removed negative positioning */
+            top: 0;
         }
 
-        /* Extra spacing after profile picture */
         .profile-spacer {
             height: 0px;
         }
@@ -104,7 +102,7 @@
             border-radius: 10px;
             padding: 12px;
             margin-bottom: 12px;
-            text-align: left;
+            text-align: center;
         }
 
         .info-label {
@@ -113,12 +111,14 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 5px;
+            text-align: center;
         }
 
         .info-value {
             font-size: 16px;
             font-weight: 600;
             color: #333;
+            text-align: center;
         }
 
         .timer {
@@ -156,11 +156,13 @@
             color: #666;
             margin-bottom: 15px;
             font-weight: 500;
+            text-align: center;
         }
 
         .contact-info {
             margin-top: 10px;
             margin-bottom: 20px;
+            text-align: center;
         }
 
         .contact-link {
@@ -223,10 +225,22 @@
 <body>
     <div class="digital-id-card">
         <div class="card-header">
-            <img src="/images/logo.png" alt="Go Rush Logo" class="company-logo">
+            <!-- Dynamic logo based on company -->
+            <% 
+                let logoFile = 'logo.png'; // default
+                if (user.company === 'Globex') {
+                    logoFile = 'globexlogo.png';
+                } else if (user.company === 'Gorush') {
+                    logoFile = 'logo.png';
+                } else if (user.company === 'Rbskyshop') {
+                    logoFile = 'rbskyshoplogo.png';
+                } else if (user.company === 'Others') {
+                    logoFile = 'globexlogo.png';
+                }
+            %>
+            <img src="/images/<%= logoFile %>" alt="Company Logo" class="company-logo">
         </div>
         
-        <!-- Spacer between logo and profile picture -->
         <div class="logo-spacer"></div>
         
         <div class="card-body">
@@ -234,7 +248,6 @@
                 <img src="<%= user.profilePicture %>" alt="Profile" class="profile-circle">
             <% } %>
             
-            <!-- Spacer after profile picture -->
             <div class="profile-spacer"></div>
             
             <div class="name">
@@ -250,13 +263,16 @@
                 <i class="fas <%= statusIcon %>"></i> <%= statusText %>
             </div>
             
-            <% if (user.icNum && user.icNum.length >= 4) { %>
+            <% if (user.icNum && user.icNum.length >= 4) { 
+                let lastFourDigits = user.icNum.slice(-4);
+                let censoredIc = `**-**-${lastFourDigits}`;
+            %>
                 <div class="info-row">
                     <div class="info-label">
                         <i class="fas fa-id-card"></i> IC Number
                     </div>
                     <div class="info-value">
-                        ****-****-<%= user.icNum.slice(-4) %>
+                        <%= censoredIc %>
                     </div>
                 </div>
             <% } %>
@@ -274,7 +290,6 @@
                 </div>
             </div>
             
-            <!-- Assurance text above buttons -->
             <div class="assurance-text">
                 <%= assuranceText %>
             </div>
@@ -287,8 +302,8 @@
         </div>
         
         <div class="footer">
-            <i class="fas fa-shield-alt"></i> Verified Digital ID • Go Rush Express
-        </div>
+    <i class="fas fa-shield-alt"></i> Verified Digital ID
+</div>
     </div>
     
     <% if (needTimer) { %>

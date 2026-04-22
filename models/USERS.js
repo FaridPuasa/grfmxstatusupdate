@@ -7,9 +7,8 @@ const UserSchema = new mongoose.Schema({
         type: String, 
         lowercase: true,
         trim: true,
-        default: undefined,  // Use undefined instead of null
+        default: undefined,
         set: function(email) {
-            // If email is empty string or falsy, set to undefined
             if (!email || email === '') {
                 return undefined;
             }
@@ -31,7 +30,8 @@ const UserSchema = new mongoose.Schema({
     status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
     profilePicture: { type: String, default: '' },
     qrcodeVerify: { type: String, default: '' },
-    userId: { type: String, unique: true, sparse: true }
+    userId: { type: String, unique: true, sparse: true },
+    company: { type: String, enum: ['Globex', 'Gorush', 'Rbskyshop', 'Others'], default: 'Gorush' }  // NEW FIELD
 });
 
 // Generate userId if not exists (pre-save middleware)

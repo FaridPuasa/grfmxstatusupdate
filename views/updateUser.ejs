@@ -286,6 +286,18 @@
                                     <input type="text" name="icNum" class="form-control" value="<%= editUser.icNum || '' %>" placeholder="Enter IC number">
                                 </div>
 
+                                <!-- NEW COMPANY FIELD -->
+                                <div class="form-group">
+                                    <label class="form-label">Company</label>
+                                    <select name="company" class="form-select">
+                                        <option value="Gorush" <%= editUser.company === 'Gorush' ? 'selected' : '' %>>Go Rush</option>
+                                        <option value="Globex" <%= editUser.company === 'Globex' ? 'selected' : '' %>>Globex</option>
+                                        <option value="Rbskyshop" <%= editUser.company === 'Rbskyshop' ? 'selected' : '' %>>RBSkyshop</option>
+                                        <option value="Others" <%= editUser.company === 'Others' ? 'selected' : '' %>>Others</option>
+                                    </select>
+                                    <small class="text-muted">Select the company this user belongs to (optional)</small>
+                                </div>
+
                                 <div class="form-group">
                                     <label class="form-label">Job Position <span class="text-danger">*</span></label>
                                     <input type="text" name="jobPosition" class="form-control" required value="<%= editUser.jobPosition || '' %>" placeholder="Enter job position">

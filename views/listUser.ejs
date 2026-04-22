@@ -105,6 +105,34 @@
             border-radius: 20px;
         }
 
+        /* Company badge styles */
+        .badge-company {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .company-gorush {
+            background: #2078BE;
+            color: white;
+        }
+
+        .company-globex {
+            background: #28a745;
+            color: white;
+        }
+
+        .company-rbskyshop {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .company-others {
+            background: #6c757d;
+            color: white;
+        }
+
         .logo {
             height: 40px;
             width: auto;
@@ -206,6 +234,7 @@
                                 <th>Name</th>
                                 <th>User ID</th>
                                 <th>Job Position</th>
+                                <th>Company</th>
                                 <th>Role</th>
                                 <th>Status</th>
                                 <th>Action</th>
@@ -218,6 +247,19 @@
                                     <td><%= user.name %></td>
                                     <td><%= user.userId || '-' %></td>
                                     <td><%= user.jobPosition || '-' %></td>
+                                    <td>
+                                        <% if (user.company) { %>
+                                            <span class="badge-company 
+                                                <%= user.company === 'Gorush' ? 'company-gorush' : 
+                                                   user.company === 'Globex' ? 'company-globex' : 
+                                                   user.company === 'Rbskyshop' ? 'company-rbskyshop' : 
+                                                   'company-others' %>">
+                                                <%= user.company === 'Rbskyshop' ? 'RBSkyshop' : user.company %>
+                                            </span>
+                                        <% } else { %>
+                                            <span class="badge-company company-others">Not Set</span>
+                                        <% } %>
+                                    </td>
                                     <td><span class="badge bg-info"><%= user.role.toUpperCase() %></span></td>
                                     <td>
                                         <span class="badge <%= user.status === 'Active' ? 'badge-active' : 'badge-inactive' %>">

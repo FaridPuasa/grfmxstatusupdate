@@ -3037,16 +3037,17 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             finalUserId = userId;
         }
 
-        // Prepare update data
-        let updateData = {
-            role,
-            fullName: fullName || '',
-            name,
-            icNum: icNum || '',
-            jobPosition,
-            status,
-            userId: finalUserId
-        };
+        // Add company to updateData
+let updateData = {
+    role,
+    fullName: fullName || '',
+    name,
+    icNum: icNum || '',
+    jobPosition,
+    status,
+    userId: finalUserId,
+    company: req.body.company || 'Gorush'  // Add this line
+};
 
         // Handle profile picture
         if (removeProfilePicture === '1') {
@@ -3147,6 +3148,48 @@ app.get('/verify/:userId', async (req, res) => {
         let needTimer = false;
         let assuranceText = '';
 
+        // Get company-specific contact info
+        const getCompanyContact = (company, role) => {
+            const companyData = {
+                'Globex': {
+                    name: 'Globex',
+                    assurance: 'For assurance, please contact Globex HR:',
+                    phone: '6738740189',
+                    isHR: true
+                },
+                'Gorush': {
+                    name: 'Go Rush',
+                    assurance: role === 'freelancer' || role === 'dispatcher' 
+                        ? 'For assurance, please contact Go Rush Manager:' 
+                        : 'For assurance, please contact Go Rush HR:',
+                    phone: role === 'freelancer' || role === 'dispatcher' ? '6738334988' : '6738740189',
+                    isManager: role === 'freelancer' || role === 'dispatcher'
+                },
+                'Rbskyshop': {
+                    name: 'RBSkyshop',
+                    assurance: 'For assurance, please contact RBSkyshop Manager:',
+                    phone: '6738794949',
+                    isManager: true
+                },
+                'Others': {
+                    name: 'Globex',
+                    assurance: 'For assurance, please contact Globex HR:',
+                    phone: '6738740189',
+                    isHR: true
+                }
+            };
+            
+            let data = companyData[company] || companyData['Gorush'];
+            
+            // Override for freelancer/dispatcher in Gorush
+            if (company === 'Gorush' && (role === 'freelancer' || role === 'dispatcher')) {
+                data.assurance = 'For assurance, please contact Go Rush Manager:';
+                data.phone = '6738334988';
+            }
+            
+            return data;
+        };
+
         // Check if user is active
         if (user.status === 'Active') {
             // Check for freelancer
@@ -3167,15 +3210,17 @@ app.get('/verify/:userId', async (req, res) => {
                     statusIcon = 'fa-check-circle';
                     positionHtml = `Freelancer for <span id="timer" class="timer">Loading...</span>`;
                     needTimer = true;
-                    assuranceText = 'For assurance, please contact Go Rush Manager:';
+                    
+                    const contactInfo = getCompanyContact(user.company, user.role);
+                    assuranceText = contactInfo.assurance;
                     contactHtml = `
-                        <a href="tel:+6738334988" class="contact-link">
+                        <a href="tel:+${contactInfo.phone}" class="contact-link">
                             <i class="fas fa-phone"></i> Call
                         </a>
-                        <a href="sms:+6738334988" class="contact-link">
+                        <a href="sms:+${contactInfo.phone}" class="contact-link">
                             <i class="fas fa-sms"></i> SMS
                         </a>
-                        <a href="https://wa.me/6738334988" class="contact-link">
+                        <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
                             <i class="fab fa-whatsapp"></i> WhatsApp
                         </a>
                     `;
@@ -3184,15 +3229,17 @@ app.get('/verify/:userId', async (req, res) => {
                     statusText = 'Inactive Freelancer';
                     statusIcon = 'fa-clock';
                     position = 'Inactive Freelancer';
-                    assuranceText = 'For assurance, please contact Go Rush Manager:';
+                    
+                    const contactInfo = getCompanyContact(user.company, user.role);
+                    assuranceText = contactInfo.assurance;
                     contactHtml = `
-                        <a href="tel:+6738334988" class="contact-link">
+                        <a href="tel:+${contactInfo.phone}" class="contact-link">
                             <i class="fas fa-phone"></i> Call
                         </a>
-                        <a href="sms:+6738334988" class="contact-link">
+                        <a href="sms:+${contactInfo.phone}" class="contact-link">
                             <i class="fas fa-sms"></i> SMS
                         </a>
-                        <a href="https://wa.me/6738334988" class="contact-link">
+                        <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
                             <i class="fab fa-whatsapp"></i> WhatsApp
                         </a>
                     `;
@@ -3201,15 +3248,17 @@ app.get('/verify/:userId', async (req, res) => {
                 statusType = 'authorized';
                 statusText = 'Authorized Digital ID';
                 statusIcon = 'fa-check-circle';
-                assuranceText = 'For assurance, please contact Go Rush Manager:';
+                
+                const contactInfo = getCompanyContact(user.company, user.role);
+                assuranceText = contactInfo.assurance;
                 contactHtml = `
-                    <a href="tel:+6738334988" class="contact-link">
+                    <a href="tel:+${contactInfo.phone}" class="contact-link">
                         <i class="fas fa-phone"></i> Call
                     </a>
-                    <a href="sms:+6738334988" class="contact-link">
+                    <a href="sms:+${contactInfo.phone}" class="contact-link">
                         <i class="fas fa-sms"></i> SMS
                     </a>
-                    <a href="https://wa.me/6738334988" class="contact-link">
+                    <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
                         <i class="fab fa-whatsapp"></i> WhatsApp
                     </a>
                 `;
@@ -3217,48 +3266,36 @@ app.get('/verify/:userId', async (req, res) => {
                 statusType = 'authorized';
                 statusText = 'Authorized Digital ID';
                 statusIcon = 'fa-check-circle';
-                assuranceText = 'For assurance, please contact Go Rush HR:';
+                
+                const contactInfo = getCompanyContact(user.company, user.role);
+                assuranceText = contactInfo.assurance;
                 contactHtml = `
-                    <a href="tel:+6738740189" class="contact-link">
+                    <a href="tel:+${contactInfo.phone}" class="contact-link">
                         <i class="fas fa-phone"></i> Call
                     </a>
-                    <a href="sms:+6738740189" class="contact-link">
+                    <a href="sms:+${contactInfo.phone}" class="contact-link">
                         <i class="fas fa-sms"></i> SMS
                     </a>
-                    <a href="https://wa.me/6738740189" class="contact-link">
+                    <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
                         <i class="fab fa-whatsapp"></i> WhatsApp
                     </a>
                 `;
             }
         } else {
             // Inactive user
-            if (user.role === 'freelancer' || user.role === 'dispatcher') {
-                assuranceText = 'For assurance, please contact Go Rush Manager:';
-                contactHtml = `
-                    <a href="tel:+6738334988" class="contact-link">
-                        <i class="fas fa-phone"></i> Call
-                    </a>
-                    <a href="sms:+6738334988" class="contact-link">
-                        <i class="fas fa-sms"></i> SMS
-                    </a>
-                    <a href="https://wa.me/6738334988" class="contact-link">
-                        <i class="fab fa-whatsapp"></i> WhatsApp
-                    </a>
-                `;
-            } else {
-                assuranceText = 'For assurance, please contact Go Rush HR:';
-                contactHtml = `
-                    <a href="tel:+6738740189" class="contact-link">
-                        <i class="fas fa-phone"></i> Call
-                    </a>
-                    <a href="sms:+6738740189" class="contact-link">
-                        <i class="fas fa-sms"></i> SMS
-                    </a>
-                    <a href="https://wa.me/6738740189" class="contact-link">
-                        <i class="fab fa-whatsapp"></i> WhatsApp
-                    </a>
-                `;
-            }
+            const contactInfo = getCompanyContact(user.company, user.role);
+            assuranceText = contactInfo.assurance;
+            contactHtml = `
+                <a href="tel:+${contactInfo.phone}" class="contact-link">
+                    <i class="fas fa-phone"></i> Call
+                </a>
+                <a href="sms:+${contactInfo.phone}" class="contact-link">
+                    <i class="fas fa-sms"></i> SMS
+                </a>
+                <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
+                    <i class="fab fa-whatsapp"></i> WhatsApp
+                </a>
+            `;
         }
 
         res.render('userview', {
@@ -3305,17 +3342,18 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     }
 
     try {
-        // For freelancer/dispatcher, don't include email field at all
-        let userData = {
-            fullName: fullName || '',
-            name: name,
-            role: role,
-            icNum: icNum || '',
-            jobPosition: jobPosition,
-            status: status,
-            profilePicture: profilePicture || '',
-            qrcodeVerify: ''
-        };
+        // Add company to userData
+let userData = {
+    fullName: fullName || '',
+    name: name,
+    role: role,
+    icNum: icNum || '',
+    jobPosition: jobPosition,
+    status: status,
+    profilePicture: profilePicture || '',
+    qrcodeVerify: '',
+    company: req.body.company || 'Gorush'  // Add this line
+};
 
         // Only add email for non-freelancer/dispatcher roles
         if (role !== 'freelancer' && role !== 'dispatcher') {
@@ -21172,9 +21210,25 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
         .product-title { background-color: #007bff; color: white; padding: 10px 15px; margin: 0 0 10px 0; font-size: 18px; font-weight: bold; }
         .subgroup-title { background-color: #28a745; color: white; padding: 8px 15px; margin: 15px 0 10px 0; font-size: 14px; font-weight: bold; }
         .job-count { font-size: 14px; font-weight: normal; margin-left: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
-        th { background-color: #e9ecef; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold; }
-        td { border: 1px solid #dee2e6; padding: 8px; vertical-align: top; }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 12px; 
+            margin-bottom: 20px;
+            display: table;
+        }
+        th { 
+            background-color: #e9ecef; 
+            border: 1px solid #dee2e6; 
+            padding: 8px; 
+            text-align: left; 
+            font-weight: bold; 
+        }
+        td { 
+            border: 1px solid #dee2e6; 
+            padding: 8px; 
+            vertical-align: top; 
+        }
         tr:nth-child(even) { background-color: #f8f9fa; }
         .footer { margin-top: 30px; padding: 15px; background-color: #f4f4f4; text-align: center; font-size: 11px; color: #666; }
     </style>
@@ -21187,28 +21241,37 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
 
     for (const group of productGroups) {
         if (group.type === 'mawb_group') {
-            html += `<div class="product-section">
-                <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.totalJobs} jobs)</span></div>`;
+            html += `
+        <div class="product-section">
+            <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.totalJobs} jobs)</span></div>`;
+            
             for (const subgroup of group.subgroups) {
-                html += `<div class="subgroup-title">MAWB: ${escapeHtml(subgroup.mawbNo)} <span class="job-count">(${subgroup.count} jobs)</span></div>
-                </table><thead><tr>
-                    <th>Tracking No.</th>
-                    <th>Aging (days)</th>
-                    <th>First in Warehouse</th>
-                    <th>Location</th>
-                    <th>Attempt</th>
-                    <th>Latest Reason</th>
-                    <th>Area</th>
-                    <th>Address</th>
-                    <th>Name</th>
-                    <th>Main Phone</th>
-                    <th>Additional Phone</th>
-                    <th>Customer Remark</th>
-                    <th>GR Remark</th>
-                </tr></thead><tbody>`;
+                html += `
+            <div class="subgroup-title">MAWB: ${escapeHtml(subgroup.mawbNo)} <span class="job-count">(${subgroup.count} jobs)</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tracking No.</th>
+                        <th>Aging (days)</th>
+                        <th>First in Warehouse</th>
+                        <th>Location</th>
+                        <th>Attempt</th>
+                        <th>Latest Reason</th>
+                        <th>Area</th>
+                        <th>Address</th>
+                        <th>Name</th>
+                        <th>Main Phone</th>
+                        <th>Additional Phone</th>
+                        <th>Customer Remark</th>
+                        <th>GR Remark</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+                
                 for (const job of subgroup.jobs) {
                     const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
-                    html += `<tr>
+                    html += `
+                    <tr>
                         <td>${escapeHtml(job.doTrackingNumber)}</td>
                         <td style="text-align: center; ${agingStyle}">${job.aging}</td>
                         <td>${escapeHtml(job.warehouseEntryDateTime)}</td>
@@ -21224,50 +21287,74 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
                         <td>${escapeHtml(job.grRemark)}</td>
                     </tr>`;
                 }
-                html += `</tbody></table>`;
+                
+                html += `
+                </tbody>
+            </table>`;
             }
-            html += `</div>`;
+            html += `
+        </div>`;
+            
         } else {
-            html += `<div class="product-section">
-                <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.count} jobs)</span></div>
-                 able<thead><tr>
-                    <th>Tracking No.</th>
-                    <th>Aging (days)</th>
-                    <th>First in Warehouse</th>
-                    <th>Location</th>
-                    <th>Attempt</th>
-                    <th>Latest Reason</th>
-                    <th>Area</th>
-                    <th>Address</th>
-                    <th>Name</th>
-                    <th>Main Phone</th>
-                    <th>Additional Phone</th>
-                    <th>Customer Remark</th>
-                    <th>GR Remark</th>
-                </tr></thead><tbody>`;
+            html += `
+        <div class="product-section">
+            <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.count} jobs)</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tracking No.</th>
+                        <th>Aging (days)</th>
+                        <th>First in Warehouse</th>
+                        <th>Location</th>
+                        <th>Attempt</th>
+                        <th>Latest Reason</th>
+                        <th>Area</th>
+                        <th>Address</th>
+                        <th>Name</th>
+                        <th>Main Phone</th>
+                        <th>Additional Phone</th>
+                        <th>Customer Remark</th>
+                        <th>GR Remark</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
             for (const job of group.jobs) {
                 const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
-                html += `<tr>
-                    <td>${escapeHtml(job.doTrackingNumber)}</td>
-                    <td style="text-align: center; ${agingStyle}">${job.aging}</td>
-                    <td>${escapeHtml(job.warehouseEntryDateTime)}</td>
-                    <td>${escapeHtml(job.latestLocation)}</td>
-                    <td style="text-align: center;">${escapeHtml(job.attempt)}</td>
-                    <td>${escapeHtml(job.latestReason)}</td>
-                    <td>${escapeHtml(job.area)}</td>
-                    <td>${escapeHtml(job.receiverAddress)}</td>
-                    <td>${escapeHtml(job.receiverName)}</td>
-                    <td>${escapeHtml(job.receiverPhoneNumber)}</td>
-                    <td>${escapeHtml(job.additionalPhoneNumber)}</td>
-                    <td>${escapeHtml(job.remarks)}</td>
-                    <td>${escapeHtml(job.grRemark)}</td>
-                </tr>`;
+                html += `
+                    <tr>
+                        <td>${escapeHtml(job.doTrackingNumber)}</td>
+                        <td style="text-align: center; ${agingStyle}">${job.aging}</td>
+                        <td>${escapeHtml(job.warehouseEntryDateTime)}</td>
+                        <td>${escapeHtml(job.latestLocation)}</td>
+                        <td style="text-align: center;">${escapeHtml(job.attempt)}</td>
+                        <td>${escapeHtml(job.latestReason)}</td>
+                        <td>${escapeHtml(job.area)}</td>
+                        <td>${escapeHtml(job.receiverAddress)}</td>
+                        <td>${escapeHtml(job.receiverName)}</td>
+                        <td>${escapeHtml(job.receiverPhoneNumber)}</td>
+                        <td>${escapeHtml(job.additionalPhoneNumber)}</td>
+                        <td>${escapeHtml(job.remarks)}</td>
+                        <td>${escapeHtml(job.grRemark)}</td>
+                    </tr>`;
             }
-            html += `</tbody></table></div>`;
+            
+            html += `
+                </tbody>
+            </table>
+        </div>`;
         }
     }
 
-    html += `<div class="footer"><p>This is an automated report. Please contact IT Support for any issues.</p><p>Generated by Go Rush System</p></div></div></body></html>`;
+    html += `
+        <div class="footer">
+            <p>This is an automated report. Please contact IT Support for any issues.</p>
+            <p>Generated by Go Rush System</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    
     return html;
 }
 
