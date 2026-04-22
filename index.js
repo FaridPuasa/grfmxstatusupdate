@@ -1054,14 +1054,14 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const { date } = req.query;
         if (!date) return res.status(400).json({ error: "Missing date" });
 
-        // Parse the date components
-        const [year, month, day] = date.split('-').map(Number);
+        const moment = require('moment-timezone');
+
+        // Parse the date and create Brunei timezone range
+        const bruneiDate = moment.tz(date, 'Asia/Brunei');
         
-        // CORRECTED: Create Brunei date range using UTC+8
-        // Start: beginning of the day in Brunei (00:00:00 UTC+8)
-        const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - 8 * 60 * 60 * 1000);
-        // End: end of the day in Brunei (23:59:59.999 UTC+8)
-        const endUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+        // Get UTC boundaries for the Brunei date
+        const startUTC = bruneiDate.clone().startOf('day').utc().toDate();
+        const endUTC = bruneiDate.clone().endOf('day').utc().toDate();
 
         // For debugging - log the date range
         console.log(`Querying orders for date: ${date}`);
@@ -1073,25 +1073,21 @@ app.get('/api/delivery-result-report', async (req, res) => {
             "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
         ];
 
-        // IMPORTANT: Also fetch orders by jobDate as fallback
-        const [orders, reportDoc] = await Promise.all([
-            ORDERS.find({ 
-                $or: [
-                    { jobDate: date },  // Direct match on jobDate field
-                    { 
-                        "history.dateUpdated": { 
-                            $gte: startUTC, 
-                            $lte: endUTC 
-                        }
-                    }
-                ]
-            }).lean(),
-            REPORTS.findOne({
-                reportName: `Operation Morning Report ${new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".")}`
-            }).lean()
-        ]);
+        // Since history.dateUpdated is a STRING, we need to fetch all orders and filter in JavaScript
+        // But we can still use jobDate for initial filtering
+        const orders = await ORDERS.find({ jobDate: date }).lean();
+        
+        console.log(`Found ${orders.length} orders with jobDate = ${date}`);
 
-        console.log(`Found ${orders.length} orders for date ${date}`);
+        if (orders.length === 0) {
+            console.log(`No orders found for date ${date}`);
+            return res.json({ products: [], results: [] });
+        }
+
+        // Fetch morning report for area mapping
+        const reportDateFormatted = new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".");
+        const reportName = `Operation Morning Report ${reportDateFormatted}`;
+        const reportDoc = await REPORTS.findOne({ reportName }).lean();
 
         // Build dispatcher map with proper name handling
         const dispatcherMap = {};
@@ -1121,25 +1117,42 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const staffMap = {};
         const allProducts = new Set();
 
-        // Process orders
+        // Process orders - filtering history dates as STRINGS
         for (const order of orders) {
             const product = order.product || "N/A";
             allProducts.add(product);
 
-            // Filter histories based on UTC range
-            const histories = (order.history || [])
+            // Get all relevant history entries for this date
+            // Since dateUpdated is a STRING, we need to parse and compare
+            const relevantHistories = (order.history || [])
                 .filter(h => {
                     if (!h.dateUpdated) return false;
-                    const d = new Date(h.dateUpdated);
-                    return d >= startUTC && d <= endUTC;
+                    
+                    // Parse the string date
+                    let historyDate;
+                    try {
+                        historyDate = new Date(h.dateUpdated);
+                        if (isNaN(historyDate.getTime())) return false;
+                    } catch (e) {
+                        return false;
+                    }
+                    
+                    // Check if history entry is within our date range
+                    const isInRange = historyDate >= startUTC && historyDate <= endUTC;
+                    
+                    // Also check if the date string matches directly (YYYY-MM-DD format)
+                    const dateStr = historyDate.toISOString().split('T')[0];
+                    const matchesDirectly = dateStr === date;
+                    
+                    return isInRange || matchesDirectly;
                 });
 
-            // Also consider jobDate match
-            const isJobDateMatch = order.jobDate === date;
+            console.log(`Order ${order.doTrackingNumber} has ${relevantHistories.length} relevant histories`);
 
+            // Group by date to get latest status per day
             const perDay = new Map();
 
-            histories.forEach(h => {
+            relevantHistories.forEach(h => {
                 const d = new Date(h.dateUpdated);
                 const dateKey = d.toISOString().split('T')[0];
 
@@ -1158,50 +1171,70 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 }
             });
 
+            // Process each day's statuses
             for (const { current, final } of perDay.values()) {
-                [current, final].forEach((h, index) => {
-                    if (!h) return;
-
-                    let staff = h.lastAssignedTo || "Unassigned";
-
-                    // Special handling for Selfcollect
-                    if (staff === "Unassigned" && order.paymentMethod === "COD" && order.currentStatus === "Completed") {
-                        staff = "Selfcollect";
-                    }
-
-                    // Filter: Only include operation staff
+                // Process current (assigned) status
+                if (current) {
+                    let staff = current.lastAssignedTo || "Unassigned";
+                    
+                    // Filter: Only include operation staff for assigned tasks
                     const staffNames = staff.split('/').map(n => n.trim());
-                    const hasAllowedStaff = staffNames.some(name =>
-                        operationStaff.includes(name)
-                    );
-
-                    if (!hasAllowedStaff) return;
-
+                    const hasAllowedStaff = staffNames.some(name => operationStaff.includes(name));
+                    
+                    if (!hasAllowedStaff) continue;
+                    
                     if (!staffMap[staff]) {
                         staffMap[staff] = {
                             products: {},
                             totals: { current: 0, completed: 0, failed: 0 }
                         };
                     }
-
+                    
                     if (!staffMap[staff].products[product]) {
                         staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
                     }
-
+                    
+                    staffMap[staff].products[product].current++;
+                    staffMap[staff].totals.current++;
+                }
+                
+                // Process final (completed/failed) status
+                if (final) {
+                    let staff = final.lastAssignedTo || "Unassigned";
+                    
+                    // Special handling for Selfcollect
+                    if (staff === "Unassigned" && order.paymentMethod === "COD" && order.currentStatus === "Completed") {
+                        staff = "Selfcollect";
+                    }
+                    
+                    // Filter: Only include operation staff for final statuses
+                    const staffNames = staff.split('/').map(n => n.trim());
+                    const hasAllowedStaff = staffNames.some(name => operationStaff.includes(name));
+                    
+                    if (!hasAllowedStaff) continue;
+                    
+                    if (!staffMap[staff]) {
+                        staffMap[staff] = {
+                            products: {},
+                            totals: { current: 0, completed: 0, failed: 0 }
+                        };
+                    }
+                    
+                    if (!staffMap[staff].products[product]) {
+                        staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
+                    }
+                    
                     const productData = staffMap[staff].products[product];
                     const totals = staffMap[staff].totals;
-
-                    if (h.statusHistory === "Out for Delivery" || h.statusHistory === "Self Collect") {
-                        productData.current++;
-                        totals.current++;
-                    } else if (h.statusHistory === "Completed") {
+                    
+                    if (final.statusHistory === "Completed") {
                         productData.completed++;
                         totals.completed++;
-                    } else if (h.statusHistory === "Failed Delivery") {
+                    } else if (final.statusHistory === "Failed Delivery") {
                         productData.failed++;
                         totals.failed++;
                     }
-                });
+                }
             }
         }
 
@@ -1223,7 +1256,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 const total = current + completed + failed;
                 const successRate = completed + failed > 0
                     ? Math.round((completed / (completed + failed)) * 100)
-                    : 100;
+                    : (current > 0 ? 0 : 100);
 
                 let vehicle = "-";
                 let area = "-";
@@ -1270,7 +1303,8 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 return a.staff.localeCompare(b.staff);
             });
 
-        console.log(`Returning ${results.length} staff results`);
+        console.log(`Returning ${results.length} staff results with ${products.length} products`);
+        console.log('Staff found:', results.map(r => r.staff));
         res.json({ products, results });
     } catch (err) {
         console.error('Delivery result report error:', err);
