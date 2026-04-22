@@ -1054,8 +1054,14 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const { date } = req.query;
         if (!date) return res.status(400).json({ error: "Missing date" });
 
-        const start = new Date(date + "T00:00:00+08:00");
-        const end = new Date(date + "T23:59:59+08:00");
+        // Parse the date as Brunei date (UTC+8)
+        const [year, month, day] = date.split('-').map(Number);
+        
+        // Create start and end as UTC timestamps for Brunei date
+        // Start: 00:00:00 Brunei time = previous day 16:00 UTC
+        // End: 23:59:59 Brunei time = current day 15:59:59 UTC
+        const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - 8 * 60 * 60 * 1000);
+        const endUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
 
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
@@ -1099,15 +1105,17 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const staffMap = {};
         const allProducts = new Set();
 
-        // 3. Process orders
+        // 3. Process orders - FIXED TIMEZONE COMPARISON
         for (const order of orders) {
             const product = order.product || "N/A";
             allProducts.add(product);
 
+            // Filter histories based on UTC range (which correctly represents Brunei date)
             const histories = (order.history || [])
                 .filter(h => {
+                    if (!h.dateUpdated) return false;
                     const d = new Date(h.dateUpdated);
-                    return d >= start && d <= end;
+                    return d >= startUTC && d <= endUTC;
                 });
 
             const perDay = new Map();
@@ -1138,13 +1146,11 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     const staff = h.lastAssignedTo || "Unassigned";
 
                     // ========== FILTER: Only include operation staff ==========
-                    // Check if staff name (or any part of compound name) is in operationStaff list
                     const staffNames = staff.split('/').map(n => n.trim());
                     const hasAllowedStaff = staffNames.some(name =>
                         operationStaff.includes(name)
                     );
 
-                    // Skip if not an operation staff member
                     if (!hasAllowedStaff) return;
 
                     if (!staffMap[staff]) {
@@ -1175,6 +1181,8 @@ app.get('/api/delivery-result-report', async (req, res) => {
             }
         }
 
+        // ... rest of the code remains the same ...
+        
         const products = Array.from(allProducts).filter(p =>
             Object.values(staffMap).some(data =>
                 Object.values(data.products[p] || {}).some(count => count > 0)
@@ -1498,12 +1506,22 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
             ORDERS.aggregate([{ $match: { jobDate: date, currentStatus: "Completed" } }, { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }]).then(r => new Map(r.map(x => [`${x._id.product}|${x._id.mawb}`, x.count])))
         ]);
 
-        // Group by product
+        // Group by product and track highest aging for each product
         const productGroups = new Map();
+        const productHighestAging = new Map(); // Track highest aging per product
         
         for (const group of warehouseData) {
             const product = group._id.product;
             const mawb = group._id.mawb;
+            
+            // Get aging value for sorting (use maxDays)
+            let agingValue = group.maxDays !== undefined && group.maxDays !== null ? group.maxDays : 0;
+            
+            // Track the highest aging for this product
+            const currentHighest = productHighestAging.get(product) || 0;
+            if (agingValue > currentHighest) {
+                productHighestAging.set(product, agingValue);
+            }
             
             const minAging = group.minDays;
             const maxAging = group.maxDays;
@@ -1525,6 +1543,7 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
             const groupData = {
                 mawb,
                 agingDisplay,
+                agingValue, // Store numeric value for sorting
                 totalJobs,
                 completedJobs,
                 k1: group.k1 || 0,
@@ -1543,12 +1562,49 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
             productGroups.get(product).push(groupData);
         }
         
-        // Sort products
+        // ========== STEP 1: Sort AWB items within each product by aging (largest to smallest) ==========
+        for (const [product, groups] of productGroups.entries()) {
+            const isAwbProduct = awbProducts.includes(product.toLowerCase());
+            
+            if (isAwbProduct) {
+                // Sort AWB products by agingValue - LARGEST to SMALLEST
+                groups.sort((a, b) => {
+                    const agingA = a.agingValue !== undefined ? a.agingValue : 0;
+                    const agingB = b.agingValue !== undefined ? b.agingValue : 0;
+                    return agingB - agingA; // Descending order (largest first)
+                });
+            } else {
+                // For non-AWB products, sort by mawb name (alphabetical)
+                groups.sort((a, b) => a.mawb.localeCompare(b.mawb));
+            }
+        }
+        
+        // ========== STEP 2: Sort products by their highest aging (largest to smallest) ==========
         const sortedProducts = Array.from(productGroups.keys()).sort((a, b) => {
             const aIsAwb = awbProducts.includes(a.toLowerCase());
             const bIsAwb = awbProducts.includes(b.toLowerCase());
+            
+            // Get highest aging for each product
+            const highestAgingA = productHighestAging.get(a) || 0;
+            const highestAgingB = productHighestAging.get(b) || 0;
+            
+            // First, prioritize products with aging data (non-zero) over those without
+            const aHasAging = highestAgingA > 0;
+            const bHasAging = highestAgingB > 0;
+            
+            if (aHasAging && !bHasAging) return -1;
+            if (!aHasAging && bHasAging) return 1;
+            
+            // If both have aging or both don't, sort by highest aging (descending)
+            if (highestAgingA !== highestAgingB) {
+                return highestAgingB - highestAgingA; // Larger aging first
+            }
+            
+            // If aging is equal, prioritize AWB products
             if (aIsAwb && !bIsAwb) return -1;
             if (!aIsAwb && bIsAwb) return 1;
+            
+            // Finally, sort alphabetically
             return a.localeCompare(b);
         });
         
@@ -1589,7 +1645,10 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
                 
                 // Only add product cell for the first row of this product group
                 if (i === 0) {
-                    htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}</td>`);
+                    // Add a badge showing highest aging for the product
+                    const highestAging = productHighestAging.get(product) || 0;
+                    const agingBadge = highestAging > 0 ? `<span style="font-size:0.8em; color:#666;"> (max: ${highestAging}d)</span>` : '';
+                    htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}${agingBadge}</td>`);
                 }
                 
                 htmlParts.push(`
@@ -1610,9 +1669,13 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
             }
         }
         
-        htmlParts.push(`</tbody></table>`);
+        htmlParts.push(`</tbody>
+</table>`);
         
         console.log(`✅ Warehouse report generated in ${Date.now() - startTime}ms`);
+        console.log(`📊 Product order (by highest aging):`, 
+            sortedProducts.map(p => `${p} (max: ${productHighestAging.get(p) || 0}d)`).join(', '));
+        
         res.setHeader('Cache-Control', 'private, max-age=300');
         res.send(htmlParts.join(''));
         
