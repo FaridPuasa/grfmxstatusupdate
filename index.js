@@ -1054,14 +1054,18 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const { date } = req.query;
         if (!date) return res.status(400).json({ error: "Missing date" });
 
-        // Parse the date as Brunei date (UTC+8)
+        // Parse the date components
         const [year, month, day] = date.split('-').map(Number);
         
-        // Create start and end as UTC timestamps for Brunei date
-        // Start: 00:00:00 Brunei time = previous day 16:00 UTC
-        // End: 23:59:59 Brunei time = current day 15:59:59 UTC
+        // CORRECTED: Create Brunei date range using UTC+8
+        // Start: beginning of the day in Brunei (00:00:00 UTC+8)
         const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - 8 * 60 * 60 * 1000);
+        // End: end of the day in Brunei (23:59:59.999 UTC+8)
         const endUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - 8 * 60 * 60 * 1000);
+
+        // For debugging - log the date range
+        console.log(`Querying orders for date: ${date}`);
+        console.log(`UTC Range: ${startUTC.toISOString()} to ${endUTC.toISOString()}`);
 
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
@@ -1069,15 +1073,27 @@ app.get('/api/delivery-result-report', async (req, res) => {
             "Hamidin", "Wafi", "Edey", "Zura", "Selfcollect"
         ];
 
-        // 1. Parallelize database queries
+        // IMPORTANT: Also fetch orders by jobDate as fallback
         const [orders, reportDoc] = await Promise.all([
-            ORDERS.find({ jobDate: date }).lean(),
+            ORDERS.find({ 
+                $or: [
+                    { jobDate: date },  // Direct match on jobDate field
+                    { 
+                        "history.dateUpdated": { 
+                            $gte: startUTC, 
+                            $lte: endUTC 
+                        }
+                    }
+                ]
+            }).lean(),
             REPORTS.findOne({
                 reportName: `Operation Morning Report ${new Date(date).toLocaleDateString("en-GB").replace(/\//g, ".")}`
             }).lean()
         ]);
 
-        // 2. Build dispatcher map with proper name handling
+        console.log(`Found ${orders.length} orders for date ${date}`);
+
+        // Build dispatcher map with proper name handling
         const dispatcherMap = {};
         const fullNameMap = {};
 
@@ -1105,18 +1121,21 @@ app.get('/api/delivery-result-report', async (req, res) => {
         const staffMap = {};
         const allProducts = new Set();
 
-        // 3. Process orders - FIXED TIMEZONE COMPARISON
+        // Process orders
         for (const order of orders) {
             const product = order.product || "N/A";
             allProducts.add(product);
 
-            // Filter histories based on UTC range (which correctly represents Brunei date)
+            // Filter histories based on UTC range
             const histories = (order.history || [])
                 .filter(h => {
                     if (!h.dateUpdated) return false;
                     const d = new Date(h.dateUpdated);
                     return d >= startUTC && d <= endUTC;
                 });
+
+            // Also consider jobDate match
+            const isJobDateMatch = order.jobDate === date;
 
             const perDay = new Map();
 
@@ -1143,9 +1162,14 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 [current, final].forEach((h, index) => {
                     if (!h) return;
 
-                    const staff = h.lastAssignedTo || "Unassigned";
+                    let staff = h.lastAssignedTo || "Unassigned";
 
-                    // ========== FILTER: Only include operation staff ==========
+                    // Special handling for Selfcollect
+                    if (staff === "Unassigned" && order.paymentMethod === "COD" && order.currentStatus === "Completed") {
+                        staff = "Selfcollect";
+                    }
+
+                    // Filter: Only include operation staff
                     const staffNames = staff.split('/').map(n => n.trim());
                     const hasAllowedStaff = staffNames.some(name =>
                         operationStaff.includes(name)
@@ -1181,8 +1205,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
             }
         }
 
-        // ... rest of the code remains the same ...
-        
+        // Get products that have data
         const products = Array.from(allProducts).filter(p =>
             Object.values(staffMap).some(data =>
                 Object.values(data.products[p] || {}).some(count => count > 0)
@@ -1200,7 +1223,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 const total = current + completed + failed;
                 const successRate = completed + failed > 0
                     ? Math.round((completed / (completed + failed)) * 100)
-                    : 0;
+                    : 100;
 
                 let vehicle = "-";
                 let area = "-";
@@ -1247,10 +1270,11 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 return a.staff.localeCompare(b.staff);
             });
 
+        console.log(`Returning ${results.length} staff results`);
         res.json({ products, results });
     } catch (err) {
         console.error('Delivery result report error:', err);
-        res.status(500).json({ error: "Server error" });
+        res.status(500).json({ error: "Server error: " + err.message });
     }
 });
 
