@@ -93,7 +93,7 @@
         .print-header {
             text-align: center;
             padding: 0;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
         }
 
         .print-logo {
@@ -115,16 +115,16 @@
         }
 
         .print-profile-circle {
-            width: 65px;
-            height: 65px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             object-fit: cover;
             display: block;
         }
 
         .default-avatar {
-            width: 65px;
-            height: 65px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -144,8 +144,9 @@
             text-align: center;
         }
 
+        /* Larger nickname when no full name */
         .print-nickname-as-name {
-            font-size: 10px;
+            font-size: 12px;
             font-weight: 700;
             color: #333;
             text-align: center;
@@ -176,6 +177,7 @@
             text-align: center;
         }
 
+        /* Consistent QR code size for both front and back */
         .print-qr-section {
             text-align: center;
             margin-top: 4px;
@@ -186,17 +188,36 @@
             height: auto;
         }
 
-        /* Back card styles */
+        /* Back card QR code - same size as front card */
+        .back-qr-code {
+            max-width: 55px;
+            height: auto;
+            margin: 4px auto;
+            display: block;
+        }
+
+        /* Back card styles - consistent text styling */
         .back-location-icon {
             font-size: 20px;
             margin-bottom: 4px;
         }
 
+        /* Consistent text style for both "If found" and "Or contact" */
+        .back-section-title {
+            font-size: 9px;
+            font-weight: 600;
+            color: #000;
+            text-align: center;
+            margin: 4px 0;
+        }
+
         .back-address-text {
-            font-size: 8px;
+            font-size: 9px;
             color: #333;
             line-height: 1.3;
             text-align: center;
+            font-weight: 500;
+            margin-bottom: 2px;
         }
 
         .back-company-logo {
@@ -206,19 +227,14 @@
             display: block;
         }
 
-        .back-qr-code {
-            max-width: 50px;
-            height: auto;
-            margin: 4px auto;
-            display: block;
-        }
-
+        /* Larger address details font */
         .back-address-details {
-            font-size: 7px;
+            font-size: 8px;
             color: #333;
-            line-height: 1.3;
+            line-height: 1.4;
             text-align: center;
             margin-bottom: 6px;
+            font-weight: 500;
         }
 
         /* Divider for back card */
@@ -227,14 +243,6 @@
             height: 1px;
             background: #ccc;
             margin: 8px auto;
-        }
-
-        .back-contact-label {
-            font-size: 8px;
-            font-weight: 600;
-            color: #000;
-            text-align: center;
-            margin: 4px 0 6px 0;
         }
 
         .contact-icons-group {
@@ -414,7 +422,7 @@
                                 <% } else { %>
                                     <div class="print-profile-circle-wrapper">
                                         <div class="default-avatar" style="background-color: #f0f0f0;">
-                                            <i class="fas fa-user" style="color: #999; font-size: 28px;"></i>
+                                            <i class="fas fa-user" style="color: #999; font-size: 32px;"></i>
                                         </div>
                                     </div>
                                 <% } %>
@@ -423,6 +431,7 @@
                                     <div class="print-name"><%= user.fullName %></div>
                                     <div class="print-nickname">(<%= user.name %>)</div>
                                 <% } else { %>
+                                    <!-- Larger nickname when no full name -->
                                     <div class="print-nickname-as-name"><%= user.name %></div>
                                 <% } %>
                             </div>
@@ -454,19 +463,22 @@
                     </div>
                 </div>
 
-                <!-- Back Card - With Divider -->
+                <!-- Back Card - Consistent text styling with larger address font -->
                 <div class="print-card">
                     <div class="back-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
                         <i class="fas fa-map-marker-alt back-location-icon" style="color: <%= locationIconColor %>;"></i>
                         
-                        <div class="back-address-text" style="margin-bottom: 2px;">
+                        <!-- "If found, kindly return to:" with consistent style -->
+                        <div class="back-section-title">
                             If found, kindly return to:
                         </div>
                         
                         <img src="/images/<%= companyLogoFile %>" alt="<%= companyName %>" class="back-company-logo">
                         
+                        <!-- Back card QR code - same size as front card -->
                         <img src="/images/qrcodelocation.png" alt="Location QR Code" class="back-qr-code">
                         
+                        <!-- Larger address details -->
                         <div class="back-address-details">
                             1st Floor, Block B,<br>
                             Bangunan Begawan Pehin Dato Hj Md Yusof,<br>
@@ -474,10 +486,11 @@
                             Brunei Darussalam.
                         </div>
                         
-                        <!-- Divider added back -->
+                        <!-- Divider -->
                         <div class="back-divider"></div>
                         
-                        <div class="back-contact-label">
+                        <!-- "Or contact" with consistent style -->
+                        <div class="back-section-title">
                             Or contact <%= contactPerson %>:
                         </div>
                         
