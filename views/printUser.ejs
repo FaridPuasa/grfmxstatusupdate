@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print ID - <%= user.name %></title>
+    <title>Print ID - <%= user.name %>
+    </title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -38,7 +39,7 @@
             height: 321px;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             overflow: hidden;
             position: relative;
             page-break-inside: avoid;
@@ -254,7 +255,7 @@
 
         .print-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
         }
 
         @media print {
@@ -263,17 +264,17 @@
                 padding: 0;
                 margin: 0;
             }
-            
+
             .print-btn {
                 display: none;
             }
-            
+
             .print-container {
                 gap: 15px;
                 margin: 0;
                 padding: 10px;
             }
-            
+
             .print-card {
                 box-shadow: none;
                 border: 1px solid #ddd;
@@ -281,7 +282,7 @@
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
-            
+
             @page {
                 size: auto;
                 margin: 0.5cm;
@@ -293,131 +294,100 @@
 <body>
     <div class="print-container">
         <div class="print-card" id="frontCard">
-            <% 
-                let logoFile = 'logo.png';
-                let companyColor = '#3176BE';
-                let infoBgColor = '#FFEAED';
-                let buttonColor = '#3176BE';
-                let companyName = 'Go Rush';
-                let companyLogoFile = 'logo.png';
-                let contactPerson = 'Go Rush Manager';
-                let phoneNumber = '6738334988';
-                let formattedPhone = '+673 833 4988';
-                let locationIconColor = '#3176BE';
-                
-                if (user.company === 'Globex') {
-                    logoFile = 'globexlogo.png';
-                    companyLogoFile = 'globexlogo.png';
-                    companyColor = '#3176BE';
-                    infoBgColor = '#E5F2FF';
-                    buttonColor = '#EE8100';
-                    companyName = 'Globex';
-                    contactPerson = 'Globex HR';
-                    phoneNumber = '6738740189';
-                    formattedPhone = '+673 874 0189';
-                    locationIconColor = '#3176BE';
-                } else if (user.company === 'Gorush') {
-                    logoFile = 'logo.png';
-                    companyLogoFile = 'logo.png';
-                    companyColor = '#3176BE';
-                    infoBgColor = '#FFEAED';
-                    buttonColor = '#3176BE';
-                    companyName = 'Go Rush';
-                    contactPerson = 'Go Rush Manager';
-                    phoneNumber = '6738334988';
-                    formattedPhone = '+673 833 4988';
-                    locationIconColor = '#BE1E2D';
-                } else if (user.company === 'Rbskyshop') {
-                    logoFile = 'rbskyshoplogo.png';
-                    companyLogoFile = 'rbskyshoplogo.png';
-                    companyColor = '#372F2D';
-                    infoBgColor = '#FFFAD7';
-                    buttonColor = '#372F2D';
-                    companyName = 'RBSkyshop';
-                    contactPerson = 'RBSkyshop Manager';
-                    phoneNumber = '6738794949';
-                    formattedPhone = '+673 879 4949';
-                    locationIconColor = '#372F2D';
-                } else if (user.company === 'Others' || !user.company) {
-                    logoFile = 'globexlogo.png';
-                    companyLogoFile = 'globexlogo.png';
-                    companyColor = '#555555';
-                    infoBgColor = '#E0E0E0';
-                    buttonColor = '#555555';
-                    companyName = 'Globex';
-                    contactPerson = 'Globex HR';
-                    phoneNumber = '6738740189';
-                    formattedPhone = '+673 874 0189';
-                    locationIconColor = '#555555';
-                }
-            %>
-            <div class="front-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
-                <div class="print-header">
-                    <img src="/images/<%= logoFile %>" alt="Logo" class="print-logo">
-                </div>
-                
-                <div class="print-profile-section">
-                    <% if (user.profilePicture) { %>
-                        <div class="print-profile-circle-wrapper">
-                            <img src="<%= user.profilePicture %>" alt="Profile" class="print-profile-circle">
-                        </div>
-                    <% } else { %>
-                        <div class="print-profile-circle-wrapper">
-                            <div class="default-avatar" style="background-color: #f0f0f0;">
-                                <i class="fas fa-user" style="color: #999; font-size: 32px;"></i>
+            <% let logoFile='logo.png' ; let companyColor='#3176BE' ; let infoBgColor='#FFEAED' ; let
+                buttonColor='#3176BE' ; let companyName='Go Rush' ; let companyLogoFile='logo.png' ; let
+                contactPerson='Go Rush Manager' ; let phoneNumber='6738334988' ; let formattedPhone='+673 833 4988' ;
+                let locationIconColor='#3176BE' ; if (user.company==='Globex' ) { logoFile='globexlogo.png' ;
+                companyLogoFile='globexlogo.png' ; companyColor='#3176BE' ; infoBgColor='#E5F2FF' ;
+                buttonColor='#EE8100' ; companyName='Globex' ; contactPerson='Globex HR' ; phoneNumber='6738740189' ;
+                formattedPhone='+673 874 0189' ; locationIconColor='#3176BE' ; } else if (user.company==='Gorush' ) {
+                logoFile='logo.png' ; companyLogoFile='logo.png' ; companyColor='#3176BE' ; infoBgColor='#FFEAED' ;
+                buttonColor='#3176BE' ; companyName='Go Rush' ; contactPerson='Go Rush Manager' ;
+                phoneNumber='6738334988' ; formattedPhone='+673 833 4988' ; locationIconColor='#BE1E2D' ; } else if
+                (user.company==='Rbskyshop' ) { logoFile='rbskyshoplogo.png' ; companyLogoFile='rbskyshoplogo.png' ;
+                companyColor='#372F2D' ; infoBgColor='#FFFAD7' ; buttonColor='#372F2D' ; companyName='RBSkyshop' ;
+                contactPerson='RBSkyshop Manager' ; phoneNumber='6738794949' ; formattedPhone='+673 879 4949' ;
+                locationIconColor='#372F2D' ; } else if (user.company==='Others' || !user.company) {
+                logoFile='globexlogo.png' ; companyLogoFile='globexlogo.png' ; companyColor='#555555' ;
+                infoBgColor='#E0E0E0' ; buttonColor='#555555' ; companyName='Globex' ; contactPerson='Globex HR' ;
+                phoneNumber='6738740189' ; formattedPhone='+673 874 0189' ; locationIconColor='#555555' ; } %>
+                <div class="front-card-body"
+                    style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
+                    <div class="print-header">
+                        <img src="/images/<%= logoFile %>" alt="Logo" class="print-logo">
+                    </div>
+
+                    <div class="print-profile-section">
+                        <% if (user.profilePicture) { %>
+                            <div class="print-profile-circle-wrapper">
+                                <img src="<%= user.profilePicture %>" alt="Profile" class="print-profile-circle">
+                            </div>
+                            <% } else { %>
+                                <div class="print-profile-circle-wrapper">
+                                    <div class="default-avatar" style="background-color: #f0f0f0;">
+                                        <i class="fas fa-user" style="color: #999; font-size: 32px;"></i>
+                                    </div>
+                                </div>
+                                <% } %>
+
+                                    <% if (user.fullName && user.fullName !==user.name) { %>
+                                        <div class="print-name">
+                                            <%= user.fullName %>
+                                        </div>
+                                        <div class="print-nickname">(<%= user.name %>)</div>
+                                        <% } else { %>
+                                            <div class="print-nickname-as-name">
+                                                <%= user.name %>
+                                            </div>
+                                            <% } %>
+                    </div>
+
+                    <% if (user.icNum && user.icNum.length>= 4) {
+                        let lastFourDigits = user.icNum.slice(-4);
+                        let censoredIc = `**-**-${lastFourDigits}`;
+                        %>
+                        <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
+                            <div class="print-info-label"><i class="fas fa-id-card"></i> IC Number</div>
+                            <div class="print-info-value">
+                                <%= censoredIc %>
                             </div>
                         </div>
-                    <% } %>
-                    
-                    <% if (user.fullName && user.fullName !== user.name) { %>
-                        <div class="print-name"><%= user.fullName %></div>
-                        <div class="print-nickname">(<%= user.name %>)</div>
-                    <% } else { %>
-                        <div class="print-nickname-as-name"><%= user.name %></div>
-                    <% } %>
+                        <% } %>
+
+                            <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
+                                <div class="print-info-label"><i class="fas fa-briefcase"></i> Position</div>
+                                <div class="print-info-value">
+                                    <%= user.jobPosition || 'Staff' %>
+                                </div>
+                            </div>
+
+                            <% if (user.qrcodeVerify && user.qrcodeVerify !=='' ) { %>
+                                <div class="print-qr-section">
+                                    <img src="<%= user.qrcodeVerify %>" alt="QR Code" class="print-qr-image">
+                                </div>
+                                <% } %>
                 </div>
-                
-                <% if (user.icNum && user.icNum.length >= 4) { 
-                    let lastFourDigits = user.icNum.slice(-4);
-                    let censoredIc = `**-**-${lastFourDigits}`;
-                %>
-                    <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
-                        <div class="print-info-label"><i class="fas fa-id-card"></i> IC Number</div>
-                        <div class="print-info-value"><%= censoredIc %></div>
-                    </div>
-                <% } %>
-                
-                <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
-                    <div class="print-info-label"><i class="fas fa-briefcase"></i> Position</div>
-                    <div class="print-info-value"><%= user.jobPosition || 'Staff' %></div>
-                </div>
-                
-                <% if (user.qrcodeVerify && user.qrcodeVerify !== '') { %>
-                    <div class="print-qr-section">
-                        <img src="<%= user.qrcodeVerify %>" alt="QR Code" class="print-qr-image">
-                    </div>
-                <% } %>
-            </div>
         </div>
 
         <!-- BACK CARD (Vertical) - Divider Removed -->
         <div class="print-card" id="backCard">
-            <div class="back-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
-                
+            <div class="back-card-body"
+                style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
+
                 <!-- Location Icon with company color -->
                 <i class="fas fa-map-marker-alt back-location-icon" style="color: <%= locationIconColor %>;"></i>
-                
+
                 <!-- "If found, kindly return to:" -->
                 <div class="back-address-text" style="margin-bottom: 2px;">
                     If found, kindly return to:
                 </div>
-                
+
                 <!-- Company Logo -->
                 <img src="/images/<%= companyLogoFile %>" alt="<%= companyName %>" class="back-company-logo">
-                
+
                 <!-- QR Code Image (for all companies) -->
                 <img src="/images/qrcodelocation.png" alt="Location QR Code" class="back-qr-code">
-                
+
                 <!-- Address details -->
                 <div class="back-address-details">
                     1st Floor, Block B,<br>
@@ -425,28 +395,28 @@
                     Unit 7, Bandar Seri Begawan BE1518,<br>
                     Brunei Darussalam.
                 </div>
-                
+
                 <!-- Or contact text (divider removed) -->
                 <div class="back-contact-label">
                     Or contact <%= contactPerson %>:
                 </div>
-                
+
                 <!-- Contact icons below the text -->
                 <div class="contact-icons-group">
                     <i class="fas fa-phone contact-icon-simple" style="color: <%= buttonColor %>;"></i>
                     <i class="fas fa-sms contact-icon-simple" style="color: <%= buttonColor %>;"></i>
                     <i class="fab fa-whatsapp contact-icon-simple" style="color: <%= buttonColor %>;"></i>
                 </div>
-                
+
                 <!-- Phone number -->
                 <div class="back-phone-number">
                     <%= formattedPhone %>
                 </div>
-                
+
             </div>
         </div>
     </div>
-    
+
     <button class="print-btn" onclick="window.print()">
         <i class="fas fa-print"></i> Print Cards
     </button>

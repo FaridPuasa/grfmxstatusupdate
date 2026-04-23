@@ -55,13 +55,16 @@
             break-inside: avoid;
         }
 
+        /* Front card body - balanced margins using flex spacing */
         .front-card-body {
-            padding: 10px 10px 12px 10px;
+            padding: 12px 10px;
             height: 100%;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }
 
+        /* Back card body - vertically centered */
         .back-card-body {
             padding: 12px;
             height: 100%;
@@ -72,10 +75,25 @@
             text-align: center;
         }
 
+        .front-card-top {
+            flex-shrink: 0;
+        }
+
+        .front-card-middle {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .front-card-bottom {
+            flex-shrink: 0;
+        }
+
         .print-header {
             text-align: center;
             padding: 0;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
 
         .print-logo {
@@ -87,7 +105,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 0px 0 6px 0;
+            margin-bottom: 8px;
         }
 
         .print-profile-circle-wrapper {
@@ -137,8 +155,9 @@
             background: #f8f9fa;
             border-radius: 5px;
             padding: 4px 6px;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
             text-align: center;
+            width: 100%;
         }
 
         .print-info-label {
@@ -159,7 +178,7 @@
 
         .print-qr-section {
             text-align: center;
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .print-qr-image {
@@ -167,6 +186,7 @@
             height: auto;
         }
 
+        /* Back card styles */
         .back-location-icon {
             font-size: 20px;
             margin-bottom: 4px;
@@ -199,6 +219,14 @@
             line-height: 1.3;
             text-align: center;
             margin-bottom: 6px;
+        }
+
+        /* Divider for back card */
+        .back-divider {
+            width: 80px;
+            height: 1px;
+            background: #ccc;
+            margin: 8px auto;
         }
 
         .back-contact-label {
@@ -366,58 +394,67 @@
         %>
             <!-- Each user gets a pair of cards (front + back) -->
             <div class="user-card-pair">
-                <!-- Front Card -->
+                <!-- Front Card - Balanced margins -->
                 <div class="print-card">
                     <div class="front-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
-                        <div class="print-header">
-                            <img src="/images/<%= logoFile %>" alt="Logo" class="print-logo">
+                        <!-- Top section -->
+                        <div class="front-card-top">
+                            <div class="print-header">
+                                <img src="/images/<%= logoFile %>" alt="Logo" class="print-logo">
+                            </div>
                         </div>
                         
-                        <div class="print-profile-section">
-                            <% if (user.profilePicture) { %>
-                                <div class="print-profile-circle-wrapper">
-                                    <img src="<%= user.profilePicture %>" alt="Profile" class="print-profile-circle">
-                                </div>
-                            <% } else { %>
-                                <div class="print-profile-circle-wrapper">
-                                    <div class="default-avatar" style="background-color: #f0f0f0;">
-                                        <i class="fas fa-user" style="color: #999; font-size: 28px;"></i>
+                        <!-- Middle section (centered) -->
+                        <div class="front-card-middle">
+                            <div class="print-profile-section">
+                                <% if (user.profilePicture) { %>
+                                    <div class="print-profile-circle-wrapper">
+                                        <img src="<%= user.profilePicture %>" alt="Profile" class="print-profile-circle">
                                     </div>
+                                <% } else { %>
+                                    <div class="print-profile-circle-wrapper">
+                                        <div class="default-avatar" style="background-color: #f0f0f0;">
+                                            <i class="fas fa-user" style="color: #999; font-size: 28px;"></i>
+                                        </div>
+                                    </div>
+                                <% } %>
+                                
+                                <% if (user.fullName && user.fullName !== user.name) { %>
+                                    <div class="print-name"><%= user.fullName %></div>
+                                    <div class="print-nickname">(<%= user.name %>)</div>
+                                <% } else { %>
+                                    <div class="print-nickname-as-name"><%= user.name %></div>
+                                <% } %>
+                            </div>
+                            
+                            <% if (user.icNum && user.icNum.length >= 4) { 
+                                let lastFourDigits = user.icNum.slice(-4);
+                                let censoredIc = `**-**-${lastFourDigits}`;
+                            %>
+                                <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
+                                    <div class="print-info-label"><i class="fas fa-id-card"></i> IC Number</div>
+                                    <div class="print-info-value"><%= censoredIc %></div>
                                 </div>
                             <% } %>
                             
-                            <% if (user.fullName && user.fullName !== user.name) { %>
-                                <div class="print-name"><%= user.fullName %></div>
-                                <div class="print-nickname">(<%= user.name %>)</div>
-                            <% } else { %>
-                                <div class="print-nickname-as-name"><%= user.name %></div>
+                            <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
+                                <div class="print-info-label"><i class="fas fa-briefcase"></i> Position</div>
+                                <div class="print-info-value"><%= user.jobPosition || 'Staff' %></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bottom section -->
+                        <div class="front-card-bottom">
+                            <% if (user.qrcodeVerify && user.qrcodeVerify !== '') { %>
+                                <div class="print-qr-section">
+                                    <img src="<%= user.qrcodeVerify %>" alt="QR Code" class="print-qr-image">
+                                </div>
                             <% } %>
                         </div>
-                        
-                        <% if (user.icNum && user.icNum.length >= 4) { 
-                            let lastFourDigits = user.icNum.slice(-4);
-                            let censoredIc = `**-**-${lastFourDigits}`;
-                        %>
-                            <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
-                                <div class="print-info-label"><i class="fas fa-id-card"></i> IC Number</div>
-                                <div class="print-info-value"><%= censoredIc %></div>
-                            </div>
-                        <% } %>
-                        
-                        <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
-                            <div class="print-info-label"><i class="fas fa-briefcase"></i> Position</div>
-                            <div class="print-info-value"><%= user.jobPosition || 'Staff' %></div>
-                        </div>
-                        
-                        <% if (user.qrcodeVerify && user.qrcodeVerify !== '') { %>
-                            <div class="print-qr-section">
-                                <img src="<%= user.qrcodeVerify %>" alt="QR Code" class="print-qr-image">
-                            </div>
-                        <% } %>
                     </div>
                 </div>
 
-                <!-- Back Card -->
+                <!-- Back Card - With Divider -->
                 <div class="print-card">
                     <div class="back-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
                         <i class="fas fa-map-marker-alt back-location-icon" style="color: <%= locationIconColor %>;"></i>
@@ -436,6 +473,9 @@
                             Unit 7, Bandar Seri Begawan BE1518,<br>
                             Brunei Darussalam.
                         </div>
+                        
+                        <!-- Divider added back -->
+                        <div class="back-divider"></div>
                         
                         <div class="back-contact-label">
                             Or contact <%= contactPerson %>:
