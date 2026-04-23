@@ -53,6 +53,67 @@
             border-bottom: 2px solid #dee2e6;
         }
 
+        /* Print button styles */
+        .print-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-print-main {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+
+        .btn-print-main:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .btn-confirm-print {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+
+        .btn-confirm-print:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .btn-cancel-print {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+
+        .btn-cancel-print:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .selection-badge {
+            background: #2078BE;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
         .btn-digital-id {
             background: #17a2b8;
             color: white;
@@ -105,7 +166,6 @@
             border-radius: 20px;
         }
 
-        /* Company badge styles */
         .badge-company {
             padding: 5px 10px;
             border-radius: 20px;
@@ -137,6 +197,18 @@
             height: 40px;
             width: auto;
             max-height: 40px;
+        }
+
+        /* Checkbox column */
+        .checkbox-column {
+            width: 40px;
+            text-align: center;
+        }
+
+        .user-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
 
         /* Modal styles for QR code */
@@ -204,11 +276,28 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h2><i class="fas fa-users"></i> User List</h2>
-                    <form action="/generate-user-ids" method="post" onsubmit="return confirm('Generate missing User IDs for all users? This will assign GRxxxxxx format IDs.');">
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-sync-alt"></i> Generate Missing User IDs
+                    <div class="print-actions">
+                        <!-- Normal Print Button -->
+                        <button id="printButton" class="btn-print-main" onclick="enableSelectionMode()">
+                            <i class="fas fa-print"></i> Print
                         </button>
-                    </form>
+                        
+                        <!-- Selection Mode Buttons (hidden by default) -->
+                        <div id="selectionButtons" style="display: none;">
+                            <button class="btn-confirm-print" onclick="confirmPrint()">
+                                <i class="fas fa-check"></i> Confirm Print (<span id="selectedCount">0</span>)
+                            </button>
+                            <button class="btn-cancel-print" onclick="cancelSelection()">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                        
+                        <form action="/generate-user-ids" method="post" onsubmit="return confirm('Generate missing User IDs for all users? This will assign GRxxxxxx format IDs.');">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-sync-alt"></i> Generate Missing User IDs
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -230,6 +319,7 @@
                     <table id="userTable" class="table table-hover">
                         <thead>
                             <tr>
+                                <th class="checkbox-column" style="display: none;" id="checkboxHeader"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
                                 <th>No.</th>
                                 <th>Name</th>
                                 <th>User ID</th>
@@ -242,7 +332,8 @@
                         </thead>
                         <tbody>
                             <% users.forEach(function(user, index) { %>
-                                <tr>
+                                <tr data-user-id="<%= user.userId || user._id %>" data-user-name="<%= user.name %>">
+                                    <td class="checkbox-column" style="display: none;"><input type="checkbox" class="user-checkbox" value="<%= user.userId || user._id %>"></td>
                                     <td><%= index + 1 %></td>
                                     <td><%= user.name %></td>
                                     <td><%= user.userId || '-' %></td>
@@ -308,8 +399,11 @@
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
     
     <script>
+        let dataTable;
+        let selectionMode = false;
+
         $(document).ready(function() {
-            $('#userTable').DataTable({
+            dataTable = $('#userTable').DataTable({
                 pageLength: 10,
                 language: {
                     search: "Search:",
@@ -318,6 +412,88 @@
                 }
             });
         });
+
+        // Enable selection mode (show checkboxes)
+        function enableSelectionMode() {
+            selectionMode = true;
+            
+            // Show checkbox column
+            $('#checkboxHeader').show();
+            $('.checkbox-column').show();
+            
+            // Hide normal print button, show selection buttons
+            $('#printButton').hide();
+            $('#selectionButtons').show();
+            
+            // Update DataTable column visibility
+            if (dataTable) {
+                dataTable.columns.adjust().draw();
+            }
+        }
+
+        // Cancel selection mode
+        function cancelSelection() {
+            selectionMode = false;
+            
+            // Uncheck all checkboxes
+            $('.user-checkbox').prop('checked', false);
+            $('#selectAllCheckbox').prop('checked', false);
+            
+            // Hide checkbox column
+            $('#checkboxHeader').hide();
+            $('.checkbox-column').hide();
+            
+            // Hide selection buttons, show normal print button
+            $('#selectionButtons').hide();
+            $('#printButton').show();
+            
+            // Update selected count
+            updateSelectedCount();
+            
+            // Update DataTable column visibility
+            if (dataTable) {
+                dataTable.columns.adjust().draw();
+            }
+        }
+
+        // Toggle select all checkboxes
+        function toggleSelectAll() {
+            const isChecked = $('#selectAllCheckbox').is(':checked');
+            $('.user-checkbox').prop('checked', isChecked);
+            updateSelectedCount();
+        }
+
+        // Update selected count display
+        function updateSelectedCount() {
+            const selectedCount = $('.user-checkbox:checked').length;
+            $('#selectedCount').text(selectedCount);
+        }
+
+        // Listen for checkbox changes
+        $(document).on('change', '.user-checkbox', function() {
+            updateSelectedCount();
+            
+            // Update select all checkbox state
+            const totalCheckboxes = $('.user-checkbox').length;
+            const checkedCheckboxes = $('.user-checkbox:checked').length;
+            $('#selectAllCheckbox').prop('checked', checkedCheckboxes === totalCheckboxes);
+        });
+
+        // Confirm print - get selected users and redirect to print page
+        function confirmPrint() {
+            const selectedUsers = [];
+            $('.user-checkbox:checked').each(function() {
+                selectedUsers.push($(this).val());
+            });
+            
+            if (selectedUsers.length === 0) {
+                alert('Please select at least one user to print.');
+                return;
+            }
+            
+            // Redirect to print page with selected user IDs as query parameter
+            window.location.href = '/print-multiple?users=' + selectedUsers.join(',');
+        }
 
         function deleteUser(identifier) {
             if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {

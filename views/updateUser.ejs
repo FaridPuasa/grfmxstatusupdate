@@ -22,7 +22,7 @@
         .card {
             border: none;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             margin-bottom: 30px;
         }
@@ -55,14 +55,16 @@
             display: block;
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 10px;
             border: 2px solid #e0e0e0;
             padding: 10px 15px;
             transition: all 0.3s ease;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: #2078BE;
             box-shadow: 0 0 0 0.2rem rgba(32, 120, 190, 0.25);
         }
@@ -82,7 +84,7 @@
 
         .btn-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
         }
 
         .profile-preview {
@@ -162,7 +164,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.9);
+            background-color: rgba(0, 0, 0, 0.9);
             justify-content: center;
             align-items: center;
         }
@@ -230,142 +232,190 @@
                         <h2><i class="fas fa-user-edit"></i> Update User</h2>
                     </div>
                     <div class="card-body">
-                        <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                        <% if (typeof errors !=='undefined' && errors.length> 0) { %>
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                 <strong><i class="fas fa-exclamation-triangle"></i> Errors:</strong>
                                 <ul class="mb-0 mt-2">
                                     <% errors.forEach(function(error) { %>
-                                        <li><%= error.msg %></li>
-                                    <% }); %>
+                                        <li>
+                                            <%= error.msg %>
+                                        </li>
+                                        <% }); %>
                                 </ul>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
                             </div>
-                        <% } %>
+                            <% } %>
 
-                        <form action="/updateUser/<%= editUser.userId || editUser._id %>" method="post" id="userForm">
-                            <div class="form-group">
-                                <label class="form-label">Role <span class="text-danger">*</span></label>
-                                <select name="role" id="role" class="form-select" required>
-                                    <option value="admin" <%= editUser.role === 'admin' ? 'selected' : '' %>>Admin</option>
-                                    <option value="manager" <%= editUser.role === 'manager' ? 'selected' : '' %>>Manager</option>
-                                    <option value="cs" <%= editUser.role === 'cs' ? 'selected' : '' %>>CS</option>
-                                    <option value="warehouse" <%= editUser.role === 'warehouse' ? 'selected' : '' %>>Warehouse</option>
-                                    <option value="finance" <%= editUser.role === 'finance' ? 'selected' : '' %>>Finance</option>
-                                    <option value="moh" <%= editUser.role === 'moh' ? 'selected' : '' %>>MOH</option>
-                                    <option value="dispatcher" <%= editUser.role === 'dispatcher' ? 'selected' : '' %>>Dispatcher</option>
-                                    <option value="freelancer" <%= editUser.role === 'freelancer' ? 'selected' : '' %>>Freelancer</option>
-                                </select>
-                            </div>
-
-                            <div id="regularFields">
-                                <div class="form-group">
-                                    <label class="form-label">Full Name</label>
-                                    <input type="text" name="fullName" class="form-control" value="<%= editUser.fullName || '' %>" placeholder="Enter full name">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Nickname <span class="text-danger">*</span></label>
-                                    <input type="text" name="name" class="form-control" required value="<%= editUser.name %>" placeholder="Enter nickname">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Email <span class="text-danger" id="emailRequired">*</span></label>
-                                    <input type="email" name="email" class="form-control" id="email" value="<%= editUser.email || '' %>" placeholder="Enter email address">
-                                    <small class="text-muted" id="emailHint" style="display: none;">Email is optional for Freelancer/Dispatcher roles</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Password <span class="text-danger" id="passwordRequired">*</span></label>
-                                    <input type="password" name="password" class="form-control" id="password" placeholder="Leave blank to keep current password">
-                                    <small class="text-muted">Leave blank to keep current password (min 6 characters if changing)</small>
-                                    <small class="text-muted" id="passwordHint" style="display: none;">Password is optional for Freelancer/Dispatcher roles</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">IC No</label>
-                                    <input type="text" name="icNum" class="form-control" value="<%= editUser.icNum || '' %>" placeholder="Enter IC number">
-                                </div>
-
-                                <!-- NEW COMPANY FIELD -->
-                                <div class="form-group">
-                                    <label class="form-label">Company</label>
-                                    <select name="company" class="form-select">
-                                        <option value="Gorush" <%= editUser.company === 'Gorush' ? 'selected' : '' %>>Go Rush</option>
-                                        <option value="Globex" <%= editUser.company === 'Globex' ? 'selected' : '' %>>Globex</option>
-                                        <option value="Rbskyshop" <%= editUser.company === 'Rbskyshop' ? 'selected' : '' %>>RBSkyshop</option>
-                                        <option value="Others" <%= editUser.company === 'Others' ? 'selected' : '' %>>Others</option>
-                                    </select>
-                                    <small class="text-muted">Select the company this user belongs to (optional)</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Job Position <span class="text-danger">*</span></label>
-                                    <input type="text" name="jobPosition" class="form-control" required value="<%= editUser.jobPosition || '' %>" placeholder="Enter job position">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Status <span class="text-danger">*</span></label>
-                                    <select name="status" class="form-select" required>
-                                        <option value="Active" <%= editUser.status === 'Active' ? 'selected' : '' %>>Active</option>
-                                        <option value="Inactive" <%= editUser.status === 'Inactive' ? 'selected' : '' %>>Inactive</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">User ID (Unique Identifier)</label>
-                                    <input type="text" name="userId" class="form-control" value="<%= editUser.userId || '' %>" placeholder="Enter User ID (e.g., GR000001 or FL000001)">
-                                    <small class="text-muted">User ID must be unique. Format: GRxxxxxx or FLxxxxxx</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Profile Picture</label>
-                                    <div class="image-upload-area" onclick="document.getElementById('profilePictureInput').click()">
-                                        <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
-                                        <p class="mt-2">Click to upload new profile picture</p>
-                                        <small class="text-muted">Supported formats: JPG, PNG, GIF (Click to crop)</small>
+                                <form action="/updateUser/<%= editUser.userId || editUser._id %>" method="post"
+                                    id="userForm">
+                                    <div class="form-group">
+                                        <label class="form-label">Role <span class="text-danger">*</span></label>
+                                        <select name="role" id="role" class="form-select" required>
+                                            <option value="admin" <%=editUser.role==='admin' ? 'selected' : '' %>>Admin
+                                            </option>
+                                            <option value="supervisor" <%=editUser.role==='supervisor' ? 'selected' : ''
+                                                %>>Supervisor</option>
+                                            <option value="manager" <%=editUser.role==='manager' ? 'selected' : '' %>
+                                                >Manager</option>
+                                            <option value="cs" <%=editUser.role==='cs' ? 'selected' : '' %>>CS</option>
+                                            <option value="warehouse" <%=editUser.role==='warehouse' ? 'selected' : ''
+                                                %>>Warehouse</option>
+                                            <option value="finance" <%=editUser.role==='finance' ? 'selected' : '' %>
+                                                >Finance</option>
+                                            <option value="moh" <%=editUser.role==='moh' ? 'selected' : '' %>>MOH
+                                            </option>
+                                            <option value="dispatcher" <%=editUser.role==='dispatcher' ? 'selected' : ''
+                                                %>>Dispatcher</option>
+                                            <option value="freelancer" <%=editUser.role==='freelancer' ? 'selected' : ''
+                                                %>>Freelancer</option>
+                                        </select>
                                     </div>
-                                    <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
-                                    <input type="hidden" name="profilePicture" id="profilePicture" value="<%= editUser.profilePicture || '' %>">
-                                    <input type="hidden" name="removeProfilePicture" id="removeProfilePicture" value="0">
-                                    
-                                    <div id="profileImageContainer">
-                                        <% if (editUser.profilePicture) { %>
-                                            <div class="image-container">
-                                                <img class="profile-preview" src="<%= editUser.profilePicture %>" alt="Profile Preview">
-                                                <button type="button" class="remove-image-btn" id="removeProfileBtn">Remove</button>
+
+                                    <div id="regularFields">
+                                        <div class="form-group">
+                                            <label class="form-label">Full Name</label>
+                                            <input type="text" name="fullName" class="form-control"
+                                                value="<%= editUser.fullName || '' %>" placeholder="Enter full name">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Nickname <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="text" name="name" class="form-control" required
+                                                value="<%= editUser.name %>" placeholder="Enter nickname">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Email <span class="text-danger"
+                                                    id="emailRequired">*</span></label>
+                                            <input type="email" name="email" class="form-control" id="email"
+                                                value="<%= editUser.email || '' %>" placeholder="Enter email address">
+                                            <small class="text-muted" id="emailHint" style="display: none;">Email is
+                                                optional for Freelancer/Dispatcher roles</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Password <span class="text-danger"
+                                                    id="passwordRequired">*</span></label>
+                                            <input type="password" name="password" class="form-control" id="password"
+                                                placeholder="Leave blank to keep current password">
+                                            <small class="text-muted">Leave blank to keep current password (min 6
+                                                characters if changing)</small>
+                                            <small class="text-muted" id="passwordHint" style="display: none;">Password
+                                                is optional for Freelancer/Dispatcher roles</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">IC No</label>
+                                            <input type="text" name="icNum" class="form-control"
+                                                value="<%= editUser.icNum || '' %>" placeholder="Enter IC number">
+                                        </div>
+
+                                        <!-- NEW COMPANY FIELD -->
+                                        <div class="form-group">
+                                            <label class="form-label">Company</label>
+                                            <select name="company" class="form-select">
+                                                <option value="Gorush" <%=editUser.company==='Gorush' ? 'selected' : ''
+                                                    %>>Go Rush</option>
+                                                <option value="Globex" <%=editUser.company==='Globex' ? 'selected' : ''
+                                                    %>>Globex</option>
+                                                <option value="Rbskyshop" <%=editUser.company==='Rbskyshop' ? 'selected'
+                                                    : '' %>>RBSkyshop</option>
+                                                <option value="Others" <%=editUser.company==='Others' ? 'selected' : ''
+                                                    %>>Others</option>
+                                            </select>
+                                            <small class="text-muted">Select the company this user belongs to
+                                                (optional)</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Job Position <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="text" name="jobPosition" class="form-control" required
+                                                value="<%= editUser.jobPosition || '' %>"
+                                                placeholder="Enter job position">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                                            <select name="status" class="form-select" required>
+                                                <option value="Active" <%=editUser.status==='Active' ? 'selected' : ''
+                                                    %>>Active</option>
+                                                <option value="Inactive" <%=editUser.status==='Inactive' ? 'selected'
+                                                    : '' %>>Inactive</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">User ID (Unique Identifier)</label>
+                                            <input type="text" name="userId" class="form-control"
+                                                value="<%= editUser.userId || '' %>"
+                                                placeholder="Enter User ID (e.g., GR000001 or FL000001)">
+                                            <small class="text-muted">User ID must be unique. Format: GRxxxxxx or
+                                                FLxxxxxx</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Profile Picture</label>
+                                            <div class="image-upload-area"
+                                                onclick="document.getElementById('profilePictureInput').click()">
+                                                <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
+                                                <p class="mt-2">Click to upload new profile picture</p>
+                                                <small class="text-muted">Supported formats: JPG, PNG, GIF (Click to
+                                                    crop)</small>
                                             </div>
-                                        <% } %>
-                                    </div>
-                                </div>
+                                            <input type="file" id="profilePictureInput" accept="image/*"
+                                                style="display: none;">
+                                            <input type="hidden" name="profilePicture" id="profilePicture"
+                                                value="<%= editUser.profilePicture || '' %>">
+                                            <input type="hidden" name="removeProfilePicture" id="removeProfilePicture"
+                                                value="0">
 
-                                <div class="form-group">
-                                    <label class="form-label">QR Code Image (for verification)</label>
-                                    <div class="image-upload-area" onclick="document.getElementById('qrcodeInput').click()">
-                                        <i class="fas fa-qrcode fa-2x" style="color: #2078BE;"></i>
-                                        <p class="mt-2">Click to upload QR code image</p>
-                                        <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
-                                    </div>
-                                    <input type="file" id="qrcodeInput" accept="image/*" style="display: none;">
-                                    <input type="hidden" name="qrcodeVerify" id="qrcodeVerify" value="<%= editUser.qrcodeVerify || '' %>">
-                                    <input type="hidden" name="removeQrcode" id="removeQrcode" value="0">
-                                    
-                                    <div id="qrcodeImageContainer">
-                                        <% if (editUser.qrcodeVerify) { %>
-                                            <div class="image-container">
-                                                <img class="qrcode-preview" src="<%= editUser.qrcodeVerify %>" alt="QR Code Preview">
-                                                <button type="button" class="remove-image-btn" id="removeQrcodeBtn">Remove</button>
+                                            <div id="profileImageContainer">
+                                                <% if (editUser.profilePicture) { %>
+                                                    <div class="image-container">
+                                                        <img class="profile-preview"
+                                                            src="<%= editUser.profilePicture %>" alt="Profile Preview">
+                                                        <button type="button" class="remove-image-btn"
+                                                            id="removeProfileBtn">Remove</button>
+                                                    </div>
+                                                    <% } %>
                                             </div>
-                                        <% } %>
-                                    </div>
-                                </div>
-                            </div>
+                                        </div>
 
-                            <div class="form-group mt-4">
-                                <button type="submit" class="btn-submit">
-                                    <i class="fas fa-save"></i> Update User
-                                </button>
-                            </div>
-                        </form>
+                                        <div class="form-group">
+                                            <label class="form-label">QR Code Image (for verification)</label>
+                                            <div class="image-upload-area"
+                                                onclick="document.getElementById('qrcodeInput').click()">
+                                                <i class="fas fa-qrcode fa-2x" style="color: #2078BE;"></i>
+                                                <p class="mt-2">Click to upload QR code image</p>
+                                                <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
+                                            </div>
+                                            <input type="file" id="qrcodeInput" accept="image/*" style="display: none;">
+                                            <input type="hidden" name="qrcodeVerify" id="qrcodeVerify"
+                                                value="<%= editUser.qrcodeVerify || '' %>">
+                                            <input type="hidden" name="removeQrcode" id="removeQrcode" value="0">
+
+                                            <div id="qrcodeImageContainer">
+                                                <% if (editUser.qrcodeVerify) { %>
+                                                    <div class="image-container">
+                                                        <img class="qrcode-preview" src="<%= editUser.qrcodeVerify %>"
+                                                            alt="QR Code Preview">
+                                                        <button type="button" class="remove-image-btn"
+                                                            id="removeQrcodeBtn">Remove</button>
+                                                    </div>
+                                                    <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mt-4">
+                                        <button type="submit" class="btn-submit">
+                                            <i class="fas fa-save"></i> Update User
+                                        </button>
+                                    </div>
+                                </form>
                     </div>
                 </div>
             </div>
@@ -387,7 +437,7 @@
     <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Cropper.js JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    
+
     <script>
         let cropper = null;
         let currentFile = null;
@@ -416,15 +466,15 @@
         function openCropper(file) {
             currentFile = file;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 const image = document.getElementById('cropperImage');
                 image.src = e.target.result;
                 document.getElementById('cropperModal').style.display = 'flex';
-                
+
                 if (cropper) {
                     cropper.destroy();
                 }
-                
+
                 cropper = new Cropper(image, {
                     aspectRatio: 1, // Square for profile picture
                     viewMode: 2,
@@ -461,33 +511,33 @@
                     imageSmoothingEnabled: true,
                     imageSmoothingQuality: 'high'
                 });
-                
+
                 const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
                 document.getElementById('profilePicture').value = croppedImage;
                 document.getElementById('removeProfilePicture').value = '0';
-                
+
                 // Update preview
                 const container = document.getElementById('profileImageContainer');
                 container.innerHTML = '';
-                
+
                 const imageContainer = document.createElement('div');
                 imageContainer.className = 'image-container';
-                
+
                 const preview = document.createElement('img');
                 preview.className = 'profile-preview';
                 preview.src = croppedImage;
                 preview.alt = 'Profile Preview';
-                
+
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.className = 'remove-image-btn';
                 removeBtn.textContent = 'Remove';
-                removeBtn.onclick = function() { removeProfilePicture(); };
-                
+                removeBtn.onclick = function () { removeProfilePicture(); };
+
                 imageContainer.appendChild(preview);
                 imageContainer.appendChild(removeBtn);
                 container.appendChild(imageContainer);
-                
+
                 closeCropper();
             }
         }
@@ -502,13 +552,13 @@
         }
 
         // Attach event listeners when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Attach remove profile picture button
             const removeProfileBtn = document.getElementById('removeProfileBtn');
             if (removeProfileBtn) {
                 removeProfileBtn.addEventListener('click', removeProfilePicture);
             }
-            
+
             // Attach remove QR code button
             const removeQrcodeBtn = document.getElementById('removeQrcodeBtn');
             if (removeQrcodeBtn) {
@@ -523,11 +573,11 @@
         const passwordRequired = document.getElementById('passwordRequired');
         const emailHint = document.getElementById('emailHint');
         const passwordHint = document.getElementById('passwordHint');
-        
+
         // Function to update field requirements based on role
         function updateFieldRequirements() {
             const role = document.getElementById('role').value;
-            
+
             if (role === 'freelancer' || role === 'dispatcher') {
                 emailField.removeAttribute('required');
                 passwordField.removeAttribute('required');
@@ -547,7 +597,7 @@
                 passwordField.placeholder = "Leave blank to keep current password";
             }
         }
-        
+
         if (document.getElementById('role')) {
             updateFieldRequirements();
             document.getElementById('role').addEventListener('change', updateFieldRequirements);
@@ -556,7 +606,7 @@
         // Profile Picture upload with cropper
         const profileInput = document.getElementById('profilePictureInput');
         if (profileInput) {
-            profileInput.addEventListener('change', function(e) {
+            profileInput.addEventListener('change', function (e) {
                 const file = e.target.files[0];
                 if (file) {
                     openCropper(file);
@@ -568,41 +618,41 @@
         // QR Code upload and compression (no cropper needed for QR)
         const qrcodeInput = document.getElementById('qrcodeInput');
         if (qrcodeInput) {
-            qrcodeInput.addEventListener('change', function(e) {
+            qrcodeInput.addEventListener('change', function (e) {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onload = function(event) {
+                    reader.onload = function (event) {
                         const img = new Image();
-                        img.onload = function() {
+                        img.onload = function () {
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
-                            
+
                             canvas.width = 300;
                             canvas.height = 300;
                             ctx.drawImage(img, 0, 0, 300, 300);
-                            
+
                             const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
                             document.getElementById('qrcodeVerify').value = compressedBase64;
                             document.getElementById('removeQrcode').value = '0';
-                            
+
                             const container = document.getElementById('qrcodeImageContainer');
                             container.innerHTML = '';
-                            
+
                             const imageContainer = document.createElement('div');
                             imageContainer.className = 'image-container';
-                            
+
                             const preview = document.createElement('img');
                             preview.className = 'qrcode-preview';
                             preview.src = compressedBase64;
                             preview.alt = 'QR Code Preview';
-                            
+
                             const removeBtn = document.createElement('button');
                             removeBtn.type = 'button';
                             removeBtn.className = 'remove-image-btn';
                             removeBtn.textContent = 'Remove';
                             removeBtn.addEventListener('click', removeQrcode);
-                            
+
                             imageContainer.appendChild(preview);
                             imageContainer.appendChild(removeBtn);
                             container.appendChild(imageContainer);

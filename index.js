@@ -2865,19 +2865,20 @@ app.get('/createUser', ensureAuthenticated, ensureAdmin, (req, res) => {
 // List all users (Admin only) - with role-based sorting
 app.get('/listUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
-        // Define role priority order
+        // Define role priority order - PUT THIS HERE
         const rolePriority = {
             'admin': 1,
-            'manager': 2,
-            'finance': 3,
-            'cs': 4,
-            'warehouse': 5,
-            'dispatcher': 6,
-            'freelancer': 7,
-            'moh': 8
+            'supervisor': 2,
+            'manager': 3,
+            'finance': 4,
+            'cs': 5,
+            'warehouse': 6,
+            'dispatcher': 7,
+            'freelancer': 8,
+            'moh': 9
         };
 
-        // Get all users and sort by role priority
+        // Get all users
         const users = await USERS.find({}).sort({ date: -1 });
 
         // Sort users by role priority
@@ -2967,13 +2968,12 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
     }
 });
 
-// Update user POST route with user ID editing support
 app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
         const identifier = req.params.identifier;
         const {
             role, fullName, name, email, password, icNum, jobPosition, status,
-            profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode
+            profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode, company
         } = req.body;
         let errors = [];
 
@@ -2982,7 +2982,8 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             errors.push({ msg: 'Please fill all required fields' });
         }
 
-        if (role !== 'freelancer' && role !== 'dispatcher') {
+        const regularRoles = ['admin', 'manager', 'finance', 'cs', 'supervisor'];
+        if (regularRoles.includes(role)) {
             if (!email || email === '') {
                 errors.push({ msg: 'Email is required for this role' });
             }
@@ -3011,43 +3012,69 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             return res.redirect('/listUser');
         }
 
-        // Check if userId is being changed and validate uniqueness
+        // Check if role has changed - if so, generate new userId
         let finalUserId = existingUser.userId;
-        if (userId && userId !== existingUser.userId) {
-            // Validate userId format (GRxxxxxx or FLxxxxxx)
-            const userIdPattern = /^(GR|FL)\d{6}$/;
-            if (!userIdPattern.test(userId)) {
-                errors.push({ msg: 'User ID must be in format GRxxxxxx or FLxxxxxx (where x is a number)' });
-                req.flash('error', errors);
-                return res.redirect(`/updateUser/${identifier}`);
+        const oldRole = existingUser.role;
+        const newRole = role;
+        
+        if (oldRole !== newRole) {
+            // Role changed, need to generate new userId with new prefix
+            const prefix = getPrefixForRole(newRole);
+            
+            // Find the highest userId with the new prefix
+            const lastUser = await USERS.findOne({ 
+                userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' } 
+            }).sort({ userId: -1 });
+            
+            let lastNum = 0;
+            if (lastUser && lastUser.userId) {
+                const match = lastUser.userId.match(new RegExp(`${prefix}(\\d+)`));
+                if (match) {
+                    lastNum = parseInt(match[1]);
+                }
             }
-
-            // Check if userId already exists
-            const userIdExists = await USERS.findOne({
-                userId: userId,
-                _id: { $ne: existingUser._id }
-            });
-
-            if (userIdExists) {
-                errors.push({ msg: 'User ID already exists. Please choose a different one.' });
-                req.flash('error', errors);
-                return res.redirect(`/updateUser/${identifier}`);
+            
+            const newNumber = lastNum + 1;
+            finalUserId = `${prefix}${String(newNumber).padStart(3, '0')}`;
+            console.log(`Role changed from ${oldRole} to ${newRole}, new userId: ${finalUserId}`);
+        } else {
+            // Check if userId is being changed manually (only if role hasn't changed)
+            if (userId && userId !== existingUser.userId) {
+                // Validate userId format
+                const userIdPattern = /^(GRF|GRD|GRW|MOH|GRO)\d{3}$/;
+                if (!userIdPattern.test(userId)) {
+                    errors.push({ msg: 'User ID must be in format GRFxxx, GRDxxx, GRWxxx, MOHxxx, or GROxxx' });
+                    req.flash('error', errors);
+                    return res.redirect(`/updateUser/${identifier}`);
+                }
+                
+                // Check if userId already exists
+                const userIdExists = await USERS.findOne({
+                    userId: userId,
+                    _id: { $ne: existingUser._id }
+                });
+                
+                if (userIdExists) {
+                    errors.push({ msg: 'User ID already exists. Please choose a different one.' });
+                    req.flash('error', errors);
+                    return res.redirect(`/updateUser/${identifier}`);
+                }
+                
+                finalUserId = userId;
             }
-
-            finalUserId = userId;
         }
 
-        // Add company to updateData
-let updateData = {
-    role,
-    fullName: fullName || '',
-    name,
-    icNum: icNum || '',
-    jobPosition,
-    status,
-    userId: finalUserId,
-    company: req.body.company || 'Gorush'  // Add this line
-};
+        // Prepare update data
+        let updateData = {
+            role,
+            fullName: fullName || '',
+            name,
+            icNum: icNum || '',
+            jobPosition,
+            status,
+            userId: finalUserId,
+            company: company || 'Gorush'
+        };
 
         // Handle profile picture
         if (removeProfilePicture === '1') {
@@ -3064,10 +3091,8 @@ let updateData = {
         }
 
         // Handle email based on role
-        if (role !== 'freelancer' && role !== 'dispatcher') {
-            // For regular roles, email is required
+        if (regularRoles.includes(role)) {
             if (email && email !== '') {
-                // Check if email is taken by another user
                 const emailExists = await USERS.findOne({
                     email: email,
                     _id: { $ne: existingUser._id }
@@ -3083,9 +3108,22 @@ let updateData = {
                 req.flash('error', errors);
                 return res.redirect(`/updateUser/${identifier}`);
             }
-        } else {
-            // For freelancer/dispatcher, remove email field if it exists
+        } else if (role === 'freelancer' || role === 'dispatcher') {
             updateData.$unset = { email: 1 };
+        } else {
+            // For other roles (moh, warehouse, etc.)
+            if (email && email !== '') {
+                const emailExists = await USERS.findOne({
+                    email: email,
+                    _id: { $ne: existingUser._id }
+                });
+                if (emailExists) {
+                    errors.push({ msg: 'Email already exists' });
+                    req.flash('error', errors);
+                    return res.redirect(`/updateUser/${identifier}`);
+                }
+                updateData.email = email;
+            }
         }
 
         // Update password if provided
@@ -3110,6 +3148,28 @@ let updateData = {
         res.redirect(`/updateUser/${req.params.identifier}`);
     }
 });
+
+// Helper function to get prefix based on role
+function getPrefixForRole(role) {
+    switch(role) {
+        case 'freelancer':
+            return 'GRF';
+        case 'dispatcher':
+            return 'GRD';
+        case 'warehouse':
+            return 'GRW';
+        case 'moh':
+            return 'MOH';
+        case 'admin':
+        case 'manager':
+        case 'finance':
+        case 'cs':
+        case 'supervisor':
+            return 'GRO';
+        default:
+            return 'GR';
+    }
+}
 
 // Updated DELETE route to handle both formats
 app.delete('/deleteUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
@@ -3316,9 +3376,8 @@ app.get('/verify/:userId', async (req, res) => {
     }
 });
 
-// Update createUser POST route
 app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
-    const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture } = req.body;
+    const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture, company } = req.body;
     let errors = [];
 
     console.log('Create User Request Body:', req.body);
@@ -3328,7 +3387,19 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         errors.push({ msg: 'Please enter all required fields' });
     }
 
-    if (role !== 'freelancer' && role !== 'dispatcher') {
+    // Regular roles (admin, manager, finance, cs, supervisor) require email and password
+    const regularRoles = ['admin', 'manager', 'finance', 'cs', 'supervisor'];
+    if (regularRoles.includes(role)) {
+        if (!email || email === '') {
+            errors.push({ msg: 'Email is required for this role' });
+        }
+        if (!password || password.length < 6) {
+            errors.push({ msg: 'Password must be at least 6 characters' });
+        }
+    }
+
+    // Freelancer and dispatcher don't require email
+    if (role !== 'freelancer' && role !== 'dispatcher' && !regularRoles.includes(role)) {
         if (!email || email === '') {
             errors.push({ msg: 'Email is required for this role' });
         }
@@ -3342,63 +3413,60 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     }
 
     try {
-        // Add company to userData
-let userData = {
-    fullName: fullName || '',
-    name: name,
-    role: role,
-    icNum: icNum || '',
-    jobPosition: jobPosition,
-    status: status,
-    profilePicture: profilePicture || '',
-    qrcodeVerify: '',
-    company: req.body.company || 'Gorush'  // Add this line
-};
+        // Prepare user data
+        let userData = {
+            fullName: fullName || '',
+            name: name,
+            role: role,
+            icNum: icNum || '',
+            jobPosition: jobPosition,
+            status: status,
+            profilePicture: profilePicture || '',
+            qrcodeVerify: '',
+            company: company || 'Gorush'
+        };
 
-        // Only add email for non-freelancer/dispatcher roles
-        if (role !== 'freelancer' && role !== 'dispatcher') {
+        // Handle email and password based on role
+        const regularRolesList = ['admin', 'manager', 'finance', 'cs', 'supervisor'];
+        if (regularRolesList.includes(role)) {
             userData.email = email;
-
+            
             // Check if email exists
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
                 return res.render('createUser', { errors, user: req.user });
             }
-
+            
             // Add password for regular roles
             if (password && password.length >= 6) {
                 const salt = await bcrypt.genSalt(10);
                 userData.password = await bcrypt.hash(password, salt);
             }
-        } else {
+        } else if (role === 'freelancer' || role === 'dispatcher') {
             // For freelancer/dispatcher, set a placeholder password
             const salt = await bcrypt.genSalt(10);
             userData.password = await bcrypt.hash('changeme123', salt);
-        }
-
-        const newUser = new USERS(userData);
-
-        // Generate userId based on role (before saving)
-        const prefix = (role === 'freelancer') ? 'FL' : 'GR';
-
-        // Find the highest userId with the same prefix
-        const lastUser = await USERS.findOne({
-            userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' }
-        }).sort({ userId: -1 });
-
-        let lastNum = 0;
-        if (lastUser && lastUser.userId) {
-            const match = lastUser.userId.match(new RegExp(`${prefix}(\\d+)`));
-            if (match) {
-                lastNum = parseInt(match[1]);
+        } else {
+            // For other roles (moh, warehouse, etc.)
+            userData.email = email;
+            
+            // Check if email exists
+            let existingUser = await USERS.findOne({ email: email });
+            if (existingUser) {
+                errors.push({ msg: 'Email already exists' });
+                return res.render('createUser', { errors, user: req.user });
+            }
+            
+            if (password && password.length >= 6) {
+                const salt = await bcrypt.genSalt(10);
+                userData.password = await bcrypt.hash(password, salt);
             }
         }
 
-        const newNumber = lastNum + 1;
-        newUser.userId = `${prefix}${String(newNumber).padStart(6, '0')}`;
-
-        // Save user
+        const newUser = new USERS(userData);
+        
+        // userId will be auto-generated by the pre-save middleware based on role
         await newUser.save();
 
         console.log('User created successfully:', newUser.userId);
@@ -3408,7 +3476,6 @@ let userData = {
     } catch (err) {
         console.error('Detailed error creating user:', err);
 
-        // Check for specific MongoDB errors
         if (err.code === 11000) {
             if (err.keyPattern && err.keyPattern.email) {
                 errors.push({ msg: 'Email already exists' });
@@ -21663,6 +21730,92 @@ app.get('/email-health', async (req, res) => {
 
 // Start the scheduled email jobs (7am AND 5pm)
 scheduleDailyEmails();
+
+// Print ID page (Admin only) - Handles both MongoDB _id and userId (GR/FL format)
+app.get('/print/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    try {
+        const identifier = req.params.identifier;
+        console.log('Print route called for identifier:', identifier);
+        
+        let user;
+        
+        // Check if identifier is MongoDB ObjectId format (24 hex chars)
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+        
+        if (isObjectId) {
+            // Search by MongoDB _id
+            console.log('Searching by MongoDB _id');
+            user = await USERS.findById(identifier);
+        } else {
+            // Search by userId (GR000001 or FL000001 format)
+            console.log('Searching by userId');
+            user = await USERS.findOne({ userId: identifier });
+        }
+        
+        if (!user) {
+            console.log('User not found for identifier:', identifier);
+            req.flash('error_msg', 'User not found');
+            return res.redirect('/listUser');
+        }
+        
+        console.log('User found:', user.name, user.userId);
+        
+        res.render('printUser', {
+            user: user,
+            loggedUser: req.user
+        });
+    } catch (err) {
+        console.error('Error in print route:', err);
+        req.flash('error_msg', 'Error loading print page: ' + err.message);
+        res.redirect('/listUser');
+    }
+});
+
+// Print multiple IDs page (Admin only)
+app.get('/print-multiple', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    try {
+        const userIdsParam = req.query.users;
+        
+        if (!userIdsParam) {
+            req.flash('error_msg', 'No users selected');
+            return res.redirect('/listUser');
+        }
+        
+        const userIds = userIdsParam.split(',');
+        
+        // Fetch all selected users
+        const users = [];
+        for (const id of userIds) {
+            let user;
+            // Check if ID is MongoDB ObjectId or userId
+            const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+            
+            if (isObjectId) {
+                user = await USERS.findById(id);
+            } else {
+                user = await USERS.findOne({ userId: id });
+            }
+            
+            if (user) {
+                users.push(user);
+            }
+        }
+        
+        if (users.length === 0) {
+            req.flash('error_msg', 'No valid users found');
+            return res.redirect('/listUser');
+        }
+        
+        res.render('printMultiple', {
+            users: users,
+            loggedUser: req.user
+        });
+    } catch (err) {
+        console.error('Error in print-multiple route:', err);
+        req.flash('error_msg', 'Error loading print page: ' + err.message);
+        res.redirect('/listUser');
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

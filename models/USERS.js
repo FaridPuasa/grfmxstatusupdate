@@ -18,7 +18,7 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, default: null },
     role: { 
         type: String, 
-        enum: ['admin','manager','cs','warehouse','finance','moh','dispatcher','freelancer'], 
+        enum: ['admin','manager','cs','warehouse','finance','moh','dispatcher','freelancer','supervisor'], 
         default: 'admin' 
     },
     date: { type: Date, default: Date.now },
@@ -31,30 +31,54 @@ const UserSchema = new mongoose.Schema({
     profilePicture: { type: String, default: '' },
     qrcodeVerify: { type: String, default: '' },
     userId: { type: String, unique: true, sparse: true },
-    company: { type: String, enum: ['Globex', 'Gorush', 'Rbskyshop', 'Others'], default: 'Gorush' }  // NEW FIELD
+    company: { type: String, enum: ['Globex', 'Gorush', 'Rbskyshop', 'Others'], default: 'Gorush' }
 });
+
+// Function to get prefix based on role
+function getPrefixForRole(role) {
+    switch(role) {
+        case 'freelancer':
+            return 'GRF';
+        case 'dispatcher':
+            return 'GRD';
+        case 'warehouse':
+            return 'GRW';
+        case 'moh':
+            return 'MOH';
+        case 'admin':
+        case 'manager':
+        case 'finance':
+        case 'cs':
+        case 'supervisor':
+            return 'GRO';
+        default:
+            return 'GR';
+    }
+}
 
 // Generate userId if not exists (pre-save middleware)
 UserSchema.pre('save', async function(next) {
     try {
         if (!this.userId) {
-            console.log('Generating userId for:', this.name);
+            console.log('Generating userId for:', this.name, 'Role:', this.role);
             
-            // Find the highest userId
+            const prefix = getPrefixForRole(this.role);
+            
+            // Find the highest userId with the same prefix
             const lastUser = await this.constructor.findOne({ 
-                userId: { $exists: true, $ne: null, $ne: '' } 
+                userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' } 
             }).sort({ userId: -1 });
             
             let lastNum = 0;
             if (lastUser && lastUser.userId) {
-                const match = lastUser.userId.match(/GR(\d+)/);
+                const match = lastUser.userId.match(new RegExp(`${prefix}(\\d+)`));
                 if (match) {
                     lastNum = parseInt(match[1]);
                 }
             }
             
             const newNumber = lastNum + 1;
-            this.userId = `GR${String(newNumber).padStart(6, '0')}`;
+            this.userId = `${prefix}${String(newNumber).padStart(3, '0')}`;
             console.log(`Generated userId: ${this.userId}`);
         }
         next();

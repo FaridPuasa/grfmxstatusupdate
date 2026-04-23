@@ -174,6 +174,15 @@
                 <option value="Qui">Qui</option>
                 <option value="Tommy">Tommy</option>
               </optgroup>
+              <optgroup label="Belts">
+                <option value="Adiwardi">Adiwardi</option>
+                <!-- <option value="Aiedil">Aiedil</option> -->
+                <!-- <option value="Hardy">Hardy</option> -->
+                <!-- <option value="Hazif">Hazif</option> -->
+                <!-- <option value="Rizal">Rizal</option> -->
+                <!-- <option value="Zainul">Zainul</option> -->
+                <!-- <option value="Zakwan">Zakwan</option> -->
+              </optgroup>
               <optgroup label="Others">
                 <option value="Agung">Agung</option>
               </optgroup>
@@ -198,12 +207,12 @@
       <table id="dispatcherJobsTable" class="table table-bordered">
         <thead id="dispatcherJobsHeader"></thead>
         <tbody></tbody>
-      <tr>
-      <table id="morningMileageTable" class="table table-bordered">
-        <thead id="morningMileageHeader"></thead>
-        <tbody></tbody>
-      </table>
-      <div id="assignedByContainer"></div>
+        <tr>
+          <table id="morningMileageTable" class="table table-bordered">
+            <thead id="morningMileageHeader"></thead>
+            <tbody></tbody>
+          </table>
+          <div id="assignedByContainer"></div>
     </div>
 
     <div id="endOfDayReportSection" class="hidden">
@@ -395,85 +404,85 @@
         reportDateEl.removeAttribute('disabled');
       }
 
-// ======================= DELETE BUTTON HANDLERS (FIXED FOR FIRST ROW DELETION) =======================
-document.body.addEventListener('click', function(e) {
-  // Handle warehouse delete button
-  const warehouseBtn = e.target.closest('.removeWarehouseRowBtn');
-  if (warehouseBtn) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const currentRow = warehouseBtn.closest('tr');
-    if (!currentRow) return;
-    
-    const tbody = currentRow.parentElement;
-    const allRows = Array.from(tbody.children);
-    const currentIndex = allRows.indexOf(currentRow);
-    
-    // Find the product cell (the one with rowspan) in this row group
-    let productCell = null;
-    let productCellRowIndex = -1;
-    
-    // Look backwards from current row to find the product cell
-    for (let i = currentIndex; i >= 0; i--) {
-      const cells = allRows[i].cells;
-      if (cells.length > 0 && cells[0].hasAttribute('rowspan')) {
-        productCell = cells[0];
-        productCellRowIndex = i;
-        break;
-      }
-    }
-    
-    if (productCell) {
-      const currentRowSpan = parseInt(productCell.getAttribute('rowspan'));
-      
-      if (currentRowSpan > 1) {
-        // Reduce the rowspan by 1
-        productCell.setAttribute('rowspan', currentRowSpan - 1);
-        
-        // SPECIAL CASE: If we're deleting the FIRST row (where product cell is),
-        // we need to move the product cell to the next row
-        if (currentIndex === productCellRowIndex) {
-          // This is the first row being deleted
-          // Find the next row (which will become the new first row)
-          const nextRow = allRows[currentIndex + 1];
-          if (nextRow) {
-            // Get the product cell content
-            const productText = productCell.innerText;
-            
-            // Remove the product cell from current row (will be deleted anyway)
-            // Create a new product cell in the next row as the first cell
-            const newProductCell = document.createElement('td');
-            newProductCell.innerText = productText;
-            newProductCell.setAttribute('rowspan', currentRowSpan - 1);
-            newProductCell.style.verticalAlign = 'middle';
-            
-            // Insert as first cell in the next row
-            nextRow.insertBefore(newProductCell, nextRow.cells[0]);
+      // ======================= DELETE BUTTON HANDLERS (FIXED FOR FIRST ROW DELETION) =======================
+      document.body.addEventListener('click', function (e) {
+        // Handle warehouse delete button
+        const warehouseBtn = e.target.closest('.removeWarehouseRowBtn');
+        if (warehouseBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const currentRow = warehouseBtn.closest('tr');
+          if (!currentRow) return;
+
+          const tbody = currentRow.parentElement;
+          const allRows = Array.from(tbody.children);
+          const currentIndex = allRows.indexOf(currentRow);
+
+          // Find the product cell (the one with rowspan) in this row group
+          let productCell = null;
+          let productCellRowIndex = -1;
+
+          // Look backwards from current row to find the product cell
+          for (let i = currentIndex; i >= 0; i--) {
+            const cells = allRows[i].cells;
+            if (cells.length > 0 && cells[0].hasAttribute('rowspan')) {
+              productCell = cells[0];
+              productCellRowIndex = i;
+              break;
+            }
           }
+
+          if (productCell) {
+            const currentRowSpan = parseInt(productCell.getAttribute('rowspan'));
+
+            if (currentRowSpan > 1) {
+              // Reduce the rowspan by 1
+              productCell.setAttribute('rowspan', currentRowSpan - 1);
+
+              // SPECIAL CASE: If we're deleting the FIRST row (where product cell is),
+              // we need to move the product cell to the next row
+              if (currentIndex === productCellRowIndex) {
+                // This is the first row being deleted
+                // Find the next row (which will become the new first row)
+                const nextRow = allRows[currentIndex + 1];
+                if (nextRow) {
+                  // Get the product cell content
+                  const productText = productCell.innerText;
+
+                  // Remove the product cell from current row (will be deleted anyway)
+                  // Create a new product cell in the next row as the first cell
+                  const newProductCell = document.createElement('td');
+                  newProductCell.innerText = productText;
+                  newProductCell.setAttribute('rowspan', currentRowSpan - 1);
+                  newProductCell.style.verticalAlign = 'middle';
+
+                  // Insert as first cell in the next row
+                  nextRow.insertBefore(newProductCell, nextRow.cells[0]);
+                }
+              }
+            } else {
+              // Rowspan is 1, this is the last row - remove the product cell
+              productCell.remove();
+            }
+          }
+
+          // Remove the current row
+          currentRow.remove();
+
+          return;
         }
-      } else {
-        // Rowspan is 1, this is the last row - remove the product cell
-        productCell.remove();
-      }
-    }
-    
-    // Remove the current row
-    currentRow.remove();
-    
-    return;
-  }
-  
-  // Handle staff tasks delete button
-  const staffBtn = e.target.closest('.removeRowBtn');
-  if (staffBtn) {
-    e.preventDefault();
-    e.stopPropagation();
-    const row = staffBtn.closest('tr');
-    if (row) row.remove();
-    return;
-  }
-});
+
+        // Handle staff tasks delete button
+        const staffBtn = e.target.closest('.removeRowBtn');
+        if (staffBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const row = staffBtn.closest('tr');
+          if (row) row.remove();
+          return;
+        }
+      });
 
       // ======================= FREELANCER REPORT =======================
       const freelancerEndOfDaySection = document.getElementById('freelancerEndOfDayReportSection');

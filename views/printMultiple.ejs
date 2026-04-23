@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Multiple IDs - Go Rush</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        /* Print container - grid layout for A4 */
+        .print-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(208px, 208px));
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            max-width: 1200px;
+        }
+
+        /* Each user's card pair (front + back) */
+        .user-card-pair {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .print-card {
+            width: 208px;
+            height: 321px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            position: relative;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .front-card-body {
+            padding: 10px 10px 12px 10px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .back-card-body {
+            padding: 12px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .print-header {
+            text-align: center;
+            padding: 0;
+            margin-bottom: 4px;
+        }
+
+        .print-logo {
+            max-width: 85px;
+            height: auto;
+        }
+
+        .print-profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0px 0 6px 0;
+        }
+
+        .print-profile-circle-wrapper {
+            border-radius: 50%;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .print-profile-circle {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .default-avatar {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .print-name {
+            font-size: 9px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+        }
+
+        .print-nickname {
+            font-size: 8px;
+            color: #666;
+            text-align: center;
+        }
+
+        .print-nickname-as-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+        }
+
+        .print-info-row {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 4px 6px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .print-info-label {
+            font-size: 7px;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .print-info-value {
+            font-size: 8px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+        }
+
+        .print-qr-section {
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .print-qr-image {
+            max-width: 55px;
+            height: auto;
+        }
+
+        .back-location-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .back-address-text {
+            font-size: 8px;
+            color: #333;
+            line-height: 1.3;
+            text-align: center;
+        }
+
+        .back-company-logo {
+            max-width: 65px;
+            height: auto;
+            margin: 4px auto;
+            display: block;
+        }
+
+        .back-qr-code {
+            max-width: 50px;
+            height: auto;
+            margin: 4px auto;
+            display: block;
+        }
+
+        .back-address-details {
+            font-size: 7px;
+            color: #333;
+            line-height: 1.3;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .back-contact-label {
+            font-size: 8px;
+            font-weight: 600;
+            color: #000;
+            text-align: center;
+            margin: 4px 0 6px 0;
+        }
+
+        .contact-icons-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 4px 0;
+        }
+
+        .contact-icon-simple {
+            font-size: 16px;
+        }
+
+        .back-phone-number {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #333;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .print-btn {
+            background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin-top: 20px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .print-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Print styles - optimized for A4 paper */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .print-btn {
+                display: none;
+            }
+            
+            .print-container {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                gap: 12px;
+                margin: 0;
+                padding: 10px;
+            }
+            
+            .user-card-pair {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .print-card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* A4 paper optimization - landscape for more cards */
+            @page {
+                size: A4 landscape;
+                margin: 0.5cm;
+            }
+        }
+
+        /* Small screens - adjust grid */
+        @media (max-width: 768px) {
+            .print-container {
+                grid-template-columns: repeat(auto-fill, minmax(208px, 208px));
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="print-container">
+        <% users.forEach(function(user, userIndex) { 
+            let logoFile = 'logo.png';
+            let companyColor = '#3176BE';
+            let infoBgColor = '#FFEAED';
+            let buttonColor = '#3176BE';
+            let companyName = 'Go Rush';
+            let companyLogoFile = 'logo.png';
+            let contactPerson = 'Go Rush Manager';
+            let phoneNumber = '6738334988';
+            let formattedPhone = '+673 833 4988';
+            let locationIconColor = '#3176BE';
+            
+            if (user.company === 'Globex') {
+                logoFile = 'globexlogo.png';
+                companyLogoFile = 'globexlogo.png';
+                companyColor = '#3176BE';
+                infoBgColor = '#E5F2FF';
+                buttonColor = '#EE8100';
+                companyName = 'Globex';
+                contactPerson = 'Globex HR';
+                phoneNumber = '6738740189';
+                formattedPhone = '+673 874 0189';
+                locationIconColor = '#3176BE';
+            } else if (user.company === 'Gorush') {
+                logoFile = 'logo.png';
+                companyLogoFile = 'logo.png';
+                companyColor = '#3176BE';
+                infoBgColor = '#FFEAED';
+                buttonColor = '#3176BE';
+                companyName = 'Go Rush';
+                contactPerson = 'Go Rush Manager';
+                phoneNumber = '6738334988';
+                formattedPhone = '+673 833 4988';
+                locationIconColor = '#BE1E2D';
+            } else if (user.company === 'Rbskyshop') {
+                logoFile = 'rbskyshoplogo.png';
+                companyLogoFile = 'rbskyshoplogo.png';
+                companyColor = '#372F2D';
+                infoBgColor = '#FFFAD7';
+                buttonColor = '#372F2D';
+                companyName = 'RBSkyshop';
+                contactPerson = 'RBSkyshop Manager';
+                phoneNumber = '6738794949';
+                formattedPhone = '+673 879 4949';
+                locationIconColor = '#372F2D';
+            } else if (user.company === 'Others' || !user.company) {
+                logoFile = 'globexlogo.png';
+                companyLogoFile = 'globexlogo.png';
+                companyColor = '#555555';
+                infoBgColor = '#E0E0E0';
+                buttonColor = '#555555';
+                companyName = 'Globex';
+                contactPerson = 'Globex HR';
+                phoneNumber = '6738740189';
+                formattedPhone = '+673 874 0189';
+                locationIconColor = '#555555';
+            }
+        %>
+            <!-- Each user gets a pair of cards (front + back) -->
+            <div class="user-card-pair">
+                <!-- Front Card -->
+                <div class="print-card">
+                    <div class="front-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
+                        <div class="print-header">
+                            <img src="/images/<%= logoFile %>" alt="Logo" class="print-logo">
+                        </div>
+                        
+                        <div class="print-profile-section">
+                            <% if (user.profilePicture) { %>
+                                <div class="print-profile-circle-wrapper">
+                                    <img src="<%= user.profilePicture %>" alt="Profile" class="print-profile-circle">
+                                </div>
+                            <% } else { %>
+                                <div class="print-profile-circle-wrapper">
+                                    <div class="default-avatar" style="background-color: #f0f0f0;">
+                                        <i class="fas fa-user" style="color: #999; font-size: 28px;"></i>
+                                    </div>
+                                </div>
+                            <% } %>
+                            
+                            <% if (user.fullName && user.fullName !== user.name) { %>
+                                <div class="print-name"><%= user.fullName %></div>
+                                <div class="print-nickname">(<%= user.name %>)</div>
+                            <% } else { %>
+                                <div class="print-nickname-as-name"><%= user.name %></div>
+                            <% } %>
+                        </div>
+                        
+                        <% if (user.icNum && user.icNum.length >= 4) { 
+                            let lastFourDigits = user.icNum.slice(-4);
+                            let censoredIc = `**-**-${lastFourDigits}`;
+                        %>
+                            <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
+                                <div class="print-info-label"><i class="fas fa-id-card"></i> IC Number</div>
+                                <div class="print-info-value"><%= censoredIc %></div>
+                            </div>
+                        <% } %>
+                        
+                        <div class="print-info-row" style="background-color: <%= infoBgColor %>;">
+                            <div class="print-info-label"><i class="fas fa-briefcase"></i> Position</div>
+                            <div class="print-info-value"><%= user.jobPosition || 'Staff' %></div>
+                        </div>
+                        
+                        <% if (user.qrcodeVerify && user.qrcodeVerify !== '') { %>
+                            <div class="print-qr-section">
+                                <img src="<%= user.qrcodeVerify %>" alt="QR Code" class="print-qr-image">
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+
+                <!-- Back Card -->
+                <div class="print-card">
+                    <div class="back-card-body" style="border: 3px solid <%= companyColor %>; border-radius: 12px; height: 100%;">
+                        <i class="fas fa-map-marker-alt back-location-icon" style="color: <%= locationIconColor %>;"></i>
+                        
+                        <div class="back-address-text" style="margin-bottom: 2px;">
+                            If found, kindly return to:
+                        </div>
+                        
+                        <img src="/images/<%= companyLogoFile %>" alt="<%= companyName %>" class="back-company-logo">
+                        
+                        <img src="/images/qrcodelocation.png" alt="Location QR Code" class="back-qr-code">
+                        
+                        <div class="back-address-details">
+                            1st Floor, Block B,<br>
+                            Bangunan Begawan Pehin Dato Hj Md Yusof,<br>
+                            Unit 7, Bandar Seri Begawan BE1518,<br>
+                            Brunei Darussalam.
+                        </div>
+                        
+                        <div class="back-contact-label">
+                            Or contact <%= contactPerson %>:
+                        </div>
+                        
+                        <div class="contact-icons-group">
+                            <i class="fas fa-phone contact-icon-simple" style="color: <%= buttonColor %>;"></i>
+                            <i class="fas fa-sms contact-icon-simple" style="color: <%= buttonColor %>;"></i>
+                            <i class="fab fa-whatsapp contact-icon-simple" style="color: <%= buttonColor %>;"></i>
+                        </div>
+                        
+                        <div class="back-phone-number">
+                            <%= formattedPhone %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+    
+    <button class="print-btn" onclick="window.print()">
+        <i class="fas fa-print"></i> Print All Cards
+    </button>
+</body>
+
+</html>

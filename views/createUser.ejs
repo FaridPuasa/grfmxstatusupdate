@@ -29,7 +29,7 @@
         .navbar {
             background-color: transparent;
             backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
         }
 
         .container-bg {
@@ -43,7 +43,7 @@
         .card {
             border: none;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             margin-bottom: 30px;
         }
@@ -76,14 +76,16 @@
             display: block;
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 10px;
             border: 2px solid #e0e0e0;
             padding: 10px 15px;
             transition: all 0.3s ease;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: #2078BE;
             box-shadow: 0 0 0 0.2rem rgba(32, 120, 190, 0.25);
         }
@@ -103,7 +105,7 @@
 
         .btn-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
         }
 
         .alert {
@@ -171,7 +173,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.9);
+            background-color: rgba(0, 0, 0, 0.9);
             justify-content: center;
             align-items: center;
         }
@@ -239,106 +241,126 @@
                         <h2><i class="fas fa-user-plus"></i> Create New User</h2>
                     </div>
                     <div class="card-body">
-                        <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                        <% if (typeof errors !=='undefined' && errors.length> 0) { %>
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                 <strong><i class="fas fa-exclamation-triangle"></i> Errors:</strong>
                                 <ul class="mb-0 mt-2">
                                     <% errors.forEach(function(error) { %>
-                                        <li><%= error.msg %></li>
-                                    <% }); %>
+                                        <li>
+                                            <%= error.msg %>
+                                        </li>
+                                        <% }); %>
                                 </ul>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
                             </div>
-                        <% } %>
+                            <% } %>
 
-                        <form action="/createUser" method="post" id="userForm">
-                            <div class="form-group">
-                                <label class="form-label">Role <span class="text-danger">*</span></label>
-                                <select name="role" id="role" class="form-select" required>
-                                    <option value="">Select Role</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="cs">CS</option>
-                                    <option value="warehouse">Warehouse</option>
-                                    <option value="finance">Finance</option>
-                                    <option value="moh">MOH</option>
-                                    <option value="dispatcher">Dispatcher</option>
-                                    <option value="freelancer">Freelancer</option>
-                                </select>
-                            </div>
-
-                            <div id="regularFields" style="display: none;">
-                                <div class="form-group">
-                                    <label class="form-label">Full Name</label>
-                                    <input type="text" name="fullName" class="form-control" placeholder="Enter full name">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Nickname <span class="text-danger">*</span></label>
-                                    <input type="text" name="name" class="form-control" required placeholder="Enter nickname">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Email <span class="text-danger" id="emailRequired">*</span></label>
-                                    <input type="email" name="email" class="form-control" id="email" placeholder="Enter email address">
-                                    <small class="text-muted" id="emailHint" style="display: none;">Email is optional for Freelancer/Dispatcher roles</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Password <span class="text-danger" id="passwordRequired">*</span></label>
-                                    <input type="password" name="password" class="form-control" id="password" placeholder="Enter password (min 6 characters)">
-                                    <small class="text-muted" id="passwordHint" style="display: none;">Password is optional for Freelancer/Dispatcher roles</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">IC No</label>
-                                    <input type="text" name="icNum" class="form-control" placeholder="Enter IC number">
-                                </div>
-
-                                <!-- NEW COMPANY FIELD -->
-                                <div class="form-group">
-                                    <label class="form-label">Company</label>
-                                    <select name="company" class="form-select">
-                                        <option value="Gorush">Go Rush</option>
-                                        <option value="Globex">Globex</option>
-                                        <option value="Rbskyshop">RBSkyshop</option>
-                                        <option value="Others">Others</option>
-                                    </select>
-                                    <small class="text-muted">Select the company this user belongs to (optional)</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Job Position <span class="text-danger">*</span></label>
-                                    <input type="text" name="jobPosition" class="form-control" required placeholder="Enter job position">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Status <span class="text-danger">*</span></label>
-                                    <select name="status" class="form-select" required>
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Profile Picture</label>
-                                    <div class="image-upload-area" onclick="document.getElementById('profilePictureInput').click()">
-                                        <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
-                                        <p class="mt-2">Click to upload profile picture</p>
-                                        <small class="text-muted">Supported formats: JPG, PNG, GIF (Click to crop)</small>
+                                <form action="/createUser" method="post" id="userForm">
+                                    <div class="form-group">
+                                        <label class="form-label">Role <span class="text-danger">*</span></label>
+                                        <select name="role" id="role" class="form-select" required>
+                                            <option value="">Select Role</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="supervisor">Supervisor</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="cs">CS</option>
+                                            <option value="warehouse">Warehouse</option>
+                                            <option value="finance">Finance</option>
+                                            <option value="moh">MOH</option>
+                                            <option value="dispatcher">Dispatcher</option>
+                                            <option value="freelancer">Freelancer</option>
+                                        </select>
                                     </div>
-                                    <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
-                                    <input type="hidden" name="profilePicture" id="profilePicture">
-                                    <div id="profileImageContainer"></div>
-                                </div>
-                            </div>
 
-                            <div class="form-group mt-4">
-                                <button type="submit" class="btn-submit">
-                                    <i class="fas fa-save"></i> Create User
-                                </button>
-                            </div>
-                        </form>
+                                    <div id="regularFields" style="display: none;">
+                                        <div class="form-group">
+                                            <label class="form-label">Full Name</label>
+                                            <input type="text" name="fullName" class="form-control"
+                                                placeholder="Enter full name">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Nickname <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="text" name="name" class="form-control" required
+                                                placeholder="Enter nickname">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Email <span class="text-danger"
+                                                    id="emailRequired">*</span></label>
+                                            <input type="email" name="email" class="form-control" id="email"
+                                                placeholder="Enter email address">
+                                            <small class="text-muted" id="emailHint" style="display: none;">Email is
+                                                optional for Freelancer/Dispatcher roles</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Password <span class="text-danger"
+                                                    id="passwordRequired">*</span></label>
+                                            <input type="password" name="password" class="form-control" id="password"
+                                                placeholder="Enter password (min 6 characters)">
+                                            <small class="text-muted" id="passwordHint" style="display: none;">Password
+                                                is optional for Freelancer/Dispatcher roles</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">IC No</label>
+                                            <input type="text" name="icNum" class="form-control"
+                                                placeholder="Enter IC number">
+                                        </div>
+
+                                        <!-- NEW COMPANY FIELD -->
+                                        <div class="form-group">
+                                            <label class="form-label">Company</label>
+                                            <select name="company" class="form-select">
+                                                <option value="Gorush">Go Rush</option>
+                                                <option value="Globex">Globex</option>
+                                                <option value="Rbskyshop">RBSkyshop</option>
+                                                <option value="Others">Others</option>
+                                            </select>
+                                            <small class="text-muted">Select the company this user belongs to
+                                                (optional)</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Job Position <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="text" name="jobPosition" class="form-control" required
+                                                placeholder="Enter job position">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                                            <select name="status" class="form-select" required>
+                                                <option value="Active">Active</option>
+                                                <option value="Inactive">Inactive</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label">Profile Picture</label>
+                                            <div class="image-upload-area"
+                                                onclick="document.getElementById('profilePictureInput').click()">
+                                                <i class="fas fa-cloud-upload-alt fa-2x" style="color: #2078BE;"></i>
+                                                <p class="mt-2">Click to upload profile picture</p>
+                                                <small class="text-muted">Supported formats: JPG, PNG, GIF (Click to
+                                                    crop)</small>
+                                            </div>
+                                            <input type="file" id="profilePictureInput" accept="image/*"
+                                                style="display: none;">
+                                            <input type="hidden" name="profilePicture" id="profilePicture">
+                                            <div id="profileImageContainer"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mt-4">
+                                        <button type="submit" class="btn-submit">
+                                            <i class="fas fa-save"></i> Create User
+                                        </button>
+                                    </div>
+                                </form>
                     </div>
                 </div>
             </div>
@@ -360,7 +382,7 @@
     <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Cropper.js JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    
+
     <script>
         let cropper = null;
         let currentFile = null;
@@ -378,15 +400,15 @@
         function openCropper(file) {
             currentFile = file;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 const image = document.getElementById('cropperImage');
                 image.src = e.target.result;
                 document.getElementById('cropperModal').style.display = 'flex';
-                
+
                 if (cropper) {
                     cropper.destroy();
                 }
-                
+
                 cropper = new Cropper(image, {
                     aspectRatio: 1, // Square for profile picture
                     viewMode: 2,
@@ -423,32 +445,32 @@
                     imageSmoothingEnabled: true,
                     imageSmoothingQuality: 'high'
                 });
-                
+
                 const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
                 document.getElementById('profilePicture').value = croppedImage;
-                
+
                 // Update preview
                 const container = document.getElementById('profileImageContainer');
                 container.innerHTML = '';
-                
+
                 const imageContainer = document.createElement('div');
                 imageContainer.className = 'image-container';
-                
+
                 const preview = document.createElement('img');
                 preview.className = 'profile-preview';
                 preview.src = croppedImage;
                 preview.alt = 'Profile Preview';
-                
+
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.className = 'remove-image-btn';
                 removeBtn.textContent = 'Remove';
-                removeBtn.onclick = function() { removeProfilePicture(); };
-                
+                removeBtn.onclick = function () { removeProfilePicture(); };
+
                 imageContainer.appendChild(preview);
                 imageContainer.appendChild(removeBtn);
                 container.appendChild(imageContainer);
-                
+
                 closeCropper();
             }
         }
@@ -463,7 +485,7 @@
         }
 
         // Show/hide fields based on role
-        document.getElementById('role').addEventListener('change', function() {
+        document.getElementById('role').addEventListener('change', function () {
             const role = this.value;
             const regularFields = document.getElementById('regularFields');
             const emailField = document.getElementById('email');
@@ -472,7 +494,7 @@
             const passwordRequired = document.getElementById('passwordRequired');
             const emailHint = document.getElementById('emailHint');
             const passwordHint = document.getElementById('passwordHint');
-            
+
             if (role === 'freelancer' || role === 'dispatcher') {
                 regularFields.style.display = 'block';
                 emailField.removeAttribute('required');
@@ -501,7 +523,7 @@
         // Profile Picture upload with cropper
         const profileInput = document.getElementById('profilePictureInput');
         if (profileInput) {
-            profileInput.addEventListener('change', function(e) {
+            profileInput.addEventListener('change', function (e) {
                 const file = e.target.files[0];
                 if (file) {
                     openCropper(file);
