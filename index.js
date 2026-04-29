@@ -15021,7 +15021,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
 
         // Step 1: Check if order exists in MongoDB
         const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
-        
+
         if (!existingOrder) {
             console.log(`❌ Order not found in MongoDB for ${trackingNumber}`);
             return {
@@ -15034,7 +15034,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
         // Step 2: Validate product (only PDU, EWE, MGLOBAL)
         const allowedProducts = ['pdu', 'ewe', 'mglobal'];
         const currentProduct = existingOrder.product?.toLowerCase() || '';
-        
+
         if (!allowedProducts.includes(currentProduct)) {
             console.log(`❌ Product "${currentProduct}" not allowed. Only PDU, EWE, MGLOBAL allowed.`);
             return {
@@ -15091,7 +15091,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
         // Case 1: Detrack status is "custom_clearing" - Update instantly
         if (detrackStatus === 'custom_clearing') {
             console.log(`🔄 Detrack status is "custom_clearing" - UPDATING INSTANTLY (no delay)`);
-            
+
             // Step 5a: Update MongoDB to At Warehouse
             await ORDERS.updateOne(
                 { doTrackingNumber: trackingNumber },
@@ -15118,15 +15118,15 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                 }
             );
             console.log(`✅ MongoDB updated to "At Warehouse"`);
-            
+
             // Step 5b: Update Detrack to at_warehouse
             const updateDataWarehouse = {
                 do_number: trackingNumber,
                 data: { status: "at_warehouse" }
             };
-            
+
             const warehouseUpdateSuccess = await sendDetrackUpdateWithRetry(trackingNumber, updateDataWarehouse, null);
-            
+
             if (!warehouseUpdateSuccess) {
                 console.error(`❌ Failed to update Detrack to at_warehouse for ${trackingNumber}`);
                 return {
@@ -15136,18 +15136,18 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                 };
             }
             console.log(`✅ Detrack updated to "at_warehouse" for ${trackingNumber}`);
-            
+
             // Small delay before next update
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             // Step 5c: Update Detrack to in_sorting_area
             const updateDataSorting = {
                 do_number: trackingNumber,
                 data: { status: "in_sorting_area" }
             };
-            
+
             const sortingUpdateSuccess = await sendDetrackUpdateWithRetry(trackingNumber, updateDataSorting, null);
-            
+
             if (!sortingUpdateSuccess) {
                 console.error(`❌ Failed to update Detrack to in_sorting_area for ${trackingNumber}`);
                 return {
@@ -15157,7 +15157,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                 };
             }
             console.log(`✅ Detrack updated to "in_sorting_area" for ${trackingNumber}`);
-            
+
             // Add in_sorting_area to history
             await ORDERS.updateOne(
                 { doTrackingNumber: trackingNumber },
@@ -15172,7 +15172,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                     }
                 }
             );
-            
+
             result = {
                 success: true,
                 message: `Job fixed instantly: ${detrackStatus} → at_warehouse → in_sorting_area`,
@@ -15180,20 +15180,20 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                 trackingNumber,
                 updates: ['custom_clearing → at_warehouse', 'at_warehouse → in_sorting_area']
             };
-            
-        } 
+
+        }
         // Case 2: Detrack status is "at_warehouse" - Update to in_sorting_area
         else if (detrackStatus === 'at_warehouse') {
             console.log(`✅ Detrack status is "at_warehouse" - proceeding to "in_sorting_area"`);
-            
+
             // Step 5a: Update Detrack to in_sorting_area
             const updateDataSorting = {
                 do_number: trackingNumber,
                 data: { status: "in_sorting_area" }
             };
-            
+
             const sortingUpdateSuccess = await sendDetrackUpdateWithRetry(trackingNumber, updateDataSorting, null);
-            
+
             if (sortingUpdateSuccess) {
                 // Step 5b: Update MongoDB if needed
                 if (existingOrder.warehouseEntry !== "Yes") {
@@ -15222,7 +15222,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                         }
                     );
                 }
-                
+
                 // Add in_sorting_area to history
                 await ORDERS.updateOne(
                     { doTrackingNumber: trackingNumber },
@@ -15237,7 +15237,7 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                         }
                     }
                 );
-                
+
                 result = {
                     success: true,
                     message: `Job fixed: at_warehouse → in_sorting_area`,
@@ -15251,8 +15251,8 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                     reason: 'DETRACK_UPDATE_FAILED'
                 };
             }
-            
-        } 
+
+        }
         // Case 3: Unexpected status
         else {
             console.log(`⚠️ Unexpected Detrack status: ${detrackStatus}`);
@@ -15263,10 +15263,10 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                 detrackStatus: detrackStatus
             };
         }
-        
+
         console.log(`\n🏁 ========== FOQJ COMPLETE ==========\n`);
         return result;
-        
+
     } catch (error) {
         console.error(`\n🔥 ERROR in FOQJ for ${trackingNumber}:`, error);
         return {
@@ -21487,6 +21487,8 @@ const PRODUCT_MAPPING = {
     'ewe': 'EWE',
     'pdu': 'PDU',
     'mglobal': 'MGLOBAL',
+    'mglobal_my': 'MGMY',      // NEW: MGLOBAL with MY prefix
+    'mglobal_hk': 'MGHK',      // NEW: MGLOBAL without MY prefix
     'gdex': 'GDEX',
     'gdext': 'GDEX',
     'pure51': 'PURE51',
@@ -21500,7 +21502,7 @@ const PRODUCT_MAPPING = {
 };
 
 // Products that need grouping by MAWB number
-const MAWB_PRODUCTS = ['ewe', 'pdu', 'mglobal', 'gdex', 'gdext'];
+const MAWB_PRODUCTS = ['ewe', 'pdu', 'mglobal', 'mglobal_my', 'mglobal_hk', 'gdex', 'gdext'];
 
 // Email Transporter (SMTP)
 const emailTransporter = nodemailer.createTransport({
@@ -21803,7 +21805,7 @@ function generateExcelAttachment(productGroups) {
 async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
     const bruneiNow = moment().tz("Asia/Brunei");
     const reportDate = bruneiNow.format('DD.MM.YYYY');
-    
+
     // Determine the time period (7AM, 4PM, or 5PM)
     let timePeriod = '';
     if (scheduledHour === 7) {
@@ -21827,9 +21829,9 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
             timePeriod = `${currentHour % 12 || 12}AM`;
         }
     }
-    
+
     const emailSubject = `Go Rush Pending Jobs Notification - ${reportDate} ${timePeriod}`;
-    
+
     console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate} ${timePeriod}...`);
 
     try {
@@ -21867,7 +21869,17 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
         const regularData = {};
 
         for (const job of filteredJobs) {
-            const productKey = job.product || 'Unknown';
+            let productKey = job.product || 'Unknown';
+
+            // SPECIAL HANDLING FOR MGLOBAL - Split into MGMY and MGHK based on tracking number prefix
+            if (productKey === 'mglobal') {
+                const trackingNumber = job.doTrackingNumber || '';
+                if (trackingNumber.startsWith('MY')) {
+                    productKey = 'mglobal_my';  // MGMY group
+                } else {
+                    productKey = 'mglobal_hk';  // MGHK group
+                }
+            }
 
             if (MAWB_PRODUCTS.includes(productKey)) {
                 if (!mawbData[productKey]) {
@@ -21935,6 +21947,9 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
 
         productGroups.sort((a, b) => b.maxAging - a.maxAging);
 
+        // Log the split for MGLOBAL
+        console.log(`📊 MGLOBAL split: MGMY=${mawbData['mglobal_my']?.totalJobs || 0} jobs, MGHK=${mawbData['mglobal_hk']?.totalJobs || 0} jobs`);
+
         // Generate email content (pass timePeriod for the header)
         const emailHtml = generateEmailContent(productGroups, reportDate, timePeriod);
         const excelBuffer = generateExcelAttachment(productGroups);
@@ -21977,15 +21992,15 @@ function scheduleDailyEmails() {
     const scheduleNext = (hour, minute, label) => {
         const now = moment().tz("Asia/Brunei");
         let nextRun = moment().tz("Asia/Brunei").set({ hour: hour, minute: minute, second: 0 });
-        
+
         if (now.isAfter(nextRun)) nextRun.add(1, 'day');
         if (nextRun.day() === 7) nextRun.add(1, 'day'); // Skip Sunday
-        
+
         const delayMs = nextRun.diff(now);
         const timeStr = nextRun.format('YYYY-MM-DD HH:mm:ss');
-        
+
         console.log(`📅 Next ${label} email scheduled: ${timeStr} (Brunei Time)`);
-        
+
         setTimeout(() => {
             // Pass the hour to the send function
             sendPendingJobsEmail(false, hour).then(result => {
@@ -21998,7 +22013,7 @@ function scheduleDailyEmails() {
             });
         }, delayMs);
     };
-    
+
     // Schedule all three times
     scheduleNext(7, 0, 'MORNING (7AM)');    // 7:00 AM
     scheduleNext(16, 0, 'AFTERNOON (4PM)'); // 4:00 PM
