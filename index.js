@@ -1058,7 +1058,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         // Parse the date and create Brunei timezone range
         const bruneiDate = moment.tz(date, 'Asia/Brunei');
-        
+
         // Get UTC boundaries for the Brunei date
         const startUTC = bruneiDate.clone().startOf('day').utc().toDate();
         const endUTC = bruneiDate.clone().endOf('day').utc().toDate();
@@ -1076,7 +1076,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
         // Since history.dateUpdated is a STRING, we need to fetch all orders and filter in JavaScript
         // But we can still use jobDate for initial filtering
         const orders = await ORDERS.find({ jobDate: date }).lean();
-        
+
         console.log(`Found ${orders.length} orders with jobDate = ${date}`);
 
         if (orders.length === 0) {
@@ -1127,7 +1127,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
             const relevantHistories = (order.history || [])
                 .filter(h => {
                     if (!h.dateUpdated) return false;
-                    
+
                     // Parse the string date
                     let historyDate;
                     try {
@@ -1136,14 +1136,14 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     } catch (e) {
                         return false;
                     }
-                    
+
                     // Check if history entry is within our date range
                     const isInRange = historyDate >= startUTC && historyDate <= endUTC;
-                    
+
                     // Also check if the date string matches directly (YYYY-MM-DD format)
                     const dateStr = historyDate.toISOString().split('T')[0];
                     const matchesDirectly = dateStr === date;
-                    
+
                     return isInRange || matchesDirectly;
                 });
 
@@ -1176,57 +1176,57 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 // Process current (assigned) status
                 if (current) {
                     let staff = current.lastAssignedTo || "Unassigned";
-                    
+
                     // Filter: Only include operation staff for assigned tasks
                     const staffNames = staff.split('/').map(n => n.trim());
                     const hasAllowedStaff = staffNames.some(name => operationStaff.includes(name));
-                    
+
                     if (!hasAllowedStaff) continue;
-                    
+
                     if (!staffMap[staff]) {
                         staffMap[staff] = {
                             products: {},
                             totals: { current: 0, completed: 0, failed: 0 }
                         };
                     }
-                    
+
                     if (!staffMap[staff].products[product]) {
                         staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
                     }
-                    
+
                     staffMap[staff].products[product].current++;
                     staffMap[staff].totals.current++;
                 }
-                
+
                 // Process final (completed/failed) status
                 if (final) {
                     let staff = final.lastAssignedTo || "Unassigned";
-                    
+
                     // Special handling for Selfcollect
                     if (staff === "Unassigned" && order.paymentMethod === "COD" && order.currentStatus === "Completed") {
                         staff = "Selfcollect";
                     }
-                    
+
                     // Filter: Only include operation staff for final statuses
                     const staffNames = staff.split('/').map(n => n.trim());
                     const hasAllowedStaff = staffNames.some(name => operationStaff.includes(name));
-                    
+
                     if (!hasAllowedStaff) continue;
-                    
+
                     if (!staffMap[staff]) {
                         staffMap[staff] = {
                             products: {},
                             totals: { current: 0, completed: 0, failed: 0 }
                         };
                     }
-                    
+
                     if (!staffMap[staff].products[product]) {
                         staffMap[staff].products[product] = { current: 0, completed: 0, failed: 0 };
                     }
-                    
+
                     const productData = staffMap[staff].products[product];
                     const totals = staffMap[staff].totals;
-                    
+
                     if (final.statusHistory === "Completed") {
                         productData.completed++;
                         totals.completed++;
@@ -1567,37 +1567,37 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
         // Group by product and track highest aging for each product
         const productGroups = new Map();
         const productHighestAging = new Map(); // Track highest aging per product
-        
+
         for (const group of warehouseData) {
             const product = group._id.product;
             const mawb = group._id.mawb;
-            
+
             // Get aging value for sorting (use maxDays)
             let agingValue = group.maxDays !== undefined && group.maxDays !== null ? group.maxDays : 0;
-            
+
             // Track the highest aging for this product
             const currentHighest = productHighestAging.get(product) || 0;
             if (agingValue > currentHighest) {
                 productHighestAging.set(product, agingValue);
             }
-            
+
             const minAging = group.minDays;
             const maxAging = group.maxDays;
             const agingDisplay = (minAging !== undefined && maxAging !== undefined) ? (minAging === maxAging ? `${minAging}` : `${minAging}-${maxAging}`) : "N/A";
-            
+
             let totalJobs = group.warehouseCount;
             if (awbProducts.includes(product.toLowerCase()) && mawb !== "-") {
                 totalJobs = totalJobsMap.get(mawb) || group.warehouseCount;
             }
-            
+
             let completedJobs = "-";
             if (awbProducts.includes(product.toLowerCase()) && mawb !== "-") {
                 completedJobs = completedCountsMap.get(mawb) || 0;
             }
-            
+
             const delivered = deliveredMap.get(`${product}|${mawb}`) || 0;
             const totalInStore = (group.k1 || 0) + (group.k2 || 0);
-            
+
             const groupData = {
                 mawb,
                 agingDisplay,
@@ -1615,15 +1615,15 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
                     "TEMBURONG": group.areaTemburong || 0, "N/A": group.areaNA || 0
                 }
             };
-            
+
             if (!productGroups.has(product)) productGroups.set(product, []);
             productGroups.get(product).push(groupData);
         }
-        
+
         // ========== STEP 1: Sort AWB items within each product by aging (largest to smallest) ==========
         for (const [product, groups] of productGroups.entries()) {
             const isAwbProduct = awbProducts.includes(product.toLowerCase());
-            
+
             if (isAwbProduct) {
                 // Sort AWB products by agingValue - LARGEST to SMALLEST
                 groups.sort((a, b) => {
@@ -1636,36 +1636,36 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
                 groups.sort((a, b) => a.mawb.localeCompare(b.mawb));
             }
         }
-        
+
         // ========== STEP 2: Sort products by their highest aging (largest to smallest) ==========
         const sortedProducts = Array.from(productGroups.keys()).sort((a, b) => {
             const aIsAwb = awbProducts.includes(a.toLowerCase());
             const bIsAwb = awbProducts.includes(b.toLowerCase());
-            
+
             // Get highest aging for each product
             const highestAgingA = productHighestAging.get(a) || 0;
             const highestAgingB = productHighestAging.get(b) || 0;
-            
+
             // First, prioritize products with aging data (non-zero) over those without
             const aHasAging = highestAgingA > 0;
             const bHasAging = highestAgingB > 0;
-            
+
             if (aHasAging && !bHasAging) return -1;
             if (!aHasAging && bHasAging) return 1;
-            
+
             // If both have aging or both don't, sort by highest aging (descending)
             if (highestAgingA !== highestAgingB) {
                 return highestAgingB - highestAgingA; // Larger aging first
             }
-            
+
             // If aging is equal, prioritize AWB products
             if (aIsAwb && !bIsAwb) return -1;
             if (!aIsAwb && bIsAwb) return 1;
-            
+
             // Finally, sort alphabetically
             return a.localeCompare(b);
         });
-        
+
         // Build HTML with CORRECT rowspan
         const htmlParts = [];
         htmlParts.push(`<table id="warehouseTable" class="table table-bordered" style="width:100%">
@@ -1691,16 +1691,16 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
 </tr>
 </thead>
 <tbody>`);
-        
+
         for (const product of sortedProducts) {
             const groups = productGroups.get(product);
             const totalRows = groups.length;
-            
+
             for (let i = 0; i < groups.length; i++) {
                 const group = groups[i];
-                
+
                 htmlParts.push(`<tr>`);
-                
+
                 // Only add product cell for the first row of this product group
                 if (i === 0) {
                     // Add a badge showing highest aging for the product
@@ -1708,7 +1708,7 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
                     const agingBadge = highestAging > 0 ? `<span style="font-size:0.8em; color:#666;"> (max: ${highestAging}d)</span>` : '';
                     htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}${agingBadge}</td>`);
                 }
-                
+
                 htmlParts.push(`
                     <td>${escapeHtml(group.mawb)}</td>
                     <td>${group.agingDisplay}</td>
@@ -1722,21 +1722,21 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
                     <td>${group.returned}</td>
                     <td><button class="btn btn-sm btn-danger removeWarehouseRowBtn">🗑️</button></td>
                 `);
-                
+
                 htmlParts.push(`</tr>`);
             }
         }
-        
+
         htmlParts.push(`</tbody>
 </table>`);
-        
+
         console.log(`✅ Warehouse report generated in ${Date.now() - startTime}ms`);
-        console.log(`📊 Product order (by highest aging):`, 
+        console.log(`📊 Product order (by highest aging):`,
             sortedProducts.map(p => `${p} (max: ${productHighestAging.get(p) || 0}d)`).join(', '));
-        
+
         res.setHeader('Cache-Control', 'private, max-age=300');
         res.send(htmlParts.join(''));
-        
+
     } catch (err) {
         console.error('Error:', err);
         res.status(500).json({ error: 'Server error: ' + err.message });
@@ -3016,16 +3016,16 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
         let finalUserId = existingUser.userId;
         const oldRole = existingUser.role;
         const newRole = role;
-        
+
         if (oldRole !== newRole) {
             // Role changed, need to generate new userId with new prefix
             const prefix = getPrefixForRole(newRole);
-            
+
             // Find the highest userId with the new prefix
-            const lastUser = await USERS.findOne({ 
-                userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' } 
+            const lastUser = await USERS.findOne({
+                userId: { $regex: `^${prefix}`, $exists: true, $ne: null, $ne: '' }
             }).sort({ userId: -1 });
-            
+
             let lastNum = 0;
             if (lastUser && lastUser.userId) {
                 const match = lastUser.userId.match(new RegExp(`${prefix}(\\d+)`));
@@ -3033,7 +3033,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                     lastNum = parseInt(match[1]);
                 }
             }
-            
+
             const newNumber = lastNum + 1;
             finalUserId = `${prefix}${String(newNumber).padStart(3, '0')}`;
             console.log(`Role changed from ${oldRole} to ${newRole}, new userId: ${finalUserId}`);
@@ -3047,19 +3047,19 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                     req.flash('error', errors);
                     return res.redirect(`/updateUser/${identifier}`);
                 }
-                
+
                 // Check if userId already exists
                 const userIdExists = await USERS.findOne({
                     userId: userId,
                     _id: { $ne: existingUser._id }
                 });
-                
+
                 if (userIdExists) {
                     errors.push({ msg: 'User ID already exists. Please choose a different one.' });
                     req.flash('error', errors);
                     return res.redirect(`/updateUser/${identifier}`);
                 }
-                
+
                 finalUserId = userId;
             }
         }
@@ -3151,7 +3151,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
 
 // Helper function to get prefix based on role
 function getPrefixForRole(role) {
-    switch(role) {
+    switch (role) {
         case 'freelancer':
             return 'GRF';
         case 'dispatcher':
@@ -3219,8 +3219,8 @@ app.get('/verify/:userId', async (req, res) => {
                 },
                 'Gorush': {
                     name: 'Go Rush',
-                    assurance: role === 'freelancer' || role === 'dispatcher' 
-                        ? 'For assurance, please contact Go Rush Manager:' 
+                    assurance: role === 'freelancer' || role === 'dispatcher'
+                        ? 'For assurance, please contact Go Rush Manager:'
                         : 'For assurance, please contact Go Rush HR:',
                     phone: role === 'freelancer' || role === 'dispatcher' ? '6738334988' : '6738740189',
                     isManager: role === 'freelancer' || role === 'dispatcher'
@@ -3238,15 +3238,15 @@ app.get('/verify/:userId', async (req, res) => {
                     isHR: true
                 }
             };
-            
+
             let data = companyData[company] || companyData['Gorush'];
-            
+
             // Override for freelancer/dispatcher in Gorush
             if (company === 'Gorush' && (role === 'freelancer' || role === 'dispatcher')) {
                 data.assurance = 'For assurance, please contact Go Rush Manager:';
                 data.phone = '6738334988';
             }
-            
+
             return data;
         };
 
@@ -3270,7 +3270,7 @@ app.get('/verify/:userId', async (req, res) => {
                     statusIcon = 'fa-check-circle';
                     positionHtml = `Freelancer for <span id="timer" class="timer">Loading...</span>`;
                     needTimer = true;
-                    
+
                     const contactInfo = getCompanyContact(user.company, user.role);
                     assuranceText = contactInfo.assurance;
                     contactHtml = `
@@ -3289,7 +3289,7 @@ app.get('/verify/:userId', async (req, res) => {
                     statusText = 'Inactive Freelancer';
                     statusIcon = 'fa-clock';
                     position = 'Inactive Freelancer';
-                    
+
                     const contactInfo = getCompanyContact(user.company, user.role);
                     assuranceText = contactInfo.assurance;
                     contactHtml = `
@@ -3308,7 +3308,7 @@ app.get('/verify/:userId', async (req, res) => {
                 statusType = 'authorized';
                 statusText = 'Authorized Digital ID';
                 statusIcon = 'fa-check-circle';
-                
+
                 const contactInfo = getCompanyContact(user.company, user.role);
                 assuranceText = contactInfo.assurance;
                 contactHtml = `
@@ -3326,7 +3326,7 @@ app.get('/verify/:userId', async (req, res) => {
                 statusType = 'authorized';
                 statusText = 'Authorized Digital ID';
                 statusIcon = 'fa-check-circle';
-                
+
                 const contactInfo = getCompanyContact(user.company, user.role);
                 assuranceText = contactInfo.assurance;
                 contactHtml = `
@@ -3430,14 +3430,14 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         const regularRolesList = ['admin', 'manager', 'finance', 'cs', 'supervisor'];
         if (regularRolesList.includes(role)) {
             userData.email = email;
-            
+
             // Check if email exists
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
                 return res.render('createUser', { errors, user: req.user });
             }
-            
+
             // Add password for regular roles
             if (password && password.length >= 6) {
                 const salt = await bcrypt.genSalt(10);
@@ -3450,14 +3450,14 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         } else {
             // For other roles (moh, warehouse, etc.)
             userData.email = email;
-            
+
             // Check if email exists
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
                 return res.render('createUser', { errors, user: req.user });
             }
-            
+
             if (password && password.length >= 6) {
                 const salt = await bcrypt.genSalt(10);
                 userData.password = await bcrypt.hash(password, salt);
@@ -3465,7 +3465,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         }
 
         const newUser = new USERS(userData);
-        
+
         // userId will be auto-generated by the pre-save middleware based on role
         await newUser.save();
 
@@ -14195,6 +14195,25 @@ app.post('/updateJob', async (req, res) => {
                             message: uanResult ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed'
                         };
                         break;
+                    case 'FOQJ':
+                        // Fix On Queue Jobs
+                        if (updateMethod === 'onebyone' && uniqueTrackingNumbers.length === 1) {
+                            const foqjResult = await processFixOnQueueJobs(uniqueTrackingNumbers[0], warehouse, req);
+                            result = {
+                                success: foqjResult.success,
+                                message: foqjResult.message,
+                                delayed: foqjResult.delayed || false,
+                                delayedInfo: foqjResult.delayedInfo,
+                                reason: foqjResult.reason
+                            };
+                        } else if (updateMethod === 'bulk') {
+                            // Bulk processing - will be handled by processBatch
+                            // Just pass through to the batch processor
+                            break;
+                        } else {
+                            result = { success: false, message: 'Invalid update method for FOQJ' };
+                        }
+                        break;
                     case 'UWP':  // NEW UWP CASE
                         // For one-by-one, we'll need postalCode and parcelWeight from somewhere
                         // This would need a different UI for single updates
@@ -14986,6 +15005,275 @@ async function processGDEXHoldUpdate(trackingNumber, holdCode, req) {
     } catch (error) {
         console.error(`❌ Error in GDEX Hold update for ${trackingNumber}:`, error);
         return { success: false, message: 'Error: ' + error.message };
+    }
+}
+
+// ==================================================
+// 🔧 FIX ON QUEUE JOBS (FOQJ) - Manual Update Code (NO DELAY)
+// ==================================================
+
+async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
+    try {
+        console.log(`\n🔧 ========== FOQJ: Fix On Queue Jobs ==========`);
+        console.log(`📋 Tracking: ${trackingNumber}`);
+        console.log(`🏪 Warehouse: ${warehouse}`);
+        console.log(`👤 User: ${req.user.name}`);
+
+        // Step 1: Check if order exists in MongoDB
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
+        
+        if (!existingOrder) {
+            console.log(`❌ Order not found in MongoDB for ${trackingNumber}`);
+            return {
+                success: false,
+                message: 'Order not found in MongoDB',
+                reason: 'NOT_FOUND'
+            };
+        }
+
+        // Step 2: Validate product (only PDU, EWE, MGLOBAL)
+        const allowedProducts = ['pdu', 'ewe', 'mglobal'];
+        const currentProduct = existingOrder.product?.toLowerCase() || '';
+        
+        if (!allowedProducts.includes(currentProduct)) {
+            console.log(`❌ Product "${currentProduct}" not allowed. Only PDU, EWE, MGLOBAL allowed.`);
+            return {
+                success: false,
+                message: `Product "${currentProduct.toUpperCase()}" not allowed. Only PDU, EWE, MGLOBAL allowed.`,
+                reason: 'PRODUCT_NOT_ALLOWED'
+            };
+        }
+
+        console.log(`✅ Product validated: ${currentProduct.toUpperCase()}`);
+
+        // Step 3: Check current status in MongoDB
+        const currentMongoStatus = existingOrder.currentStatus || '';
+        console.log(`📊 MongoDB Current Status: ${currentMongoStatus}`);
+        console.log(`📊 MongoDB Warehouse Entry: ${existingOrder.warehouseEntry || 'No'}`);
+
+        // Only allow if status is "Queued for Warehouse"
+        if (currentMongoStatus !== 'Queued for Warehouse') {
+            console.log(`❌ Status is "${currentMongoStatus}", not "Queued for Warehouse"`);
+            return {
+                success: false,
+                message: `Job status is "${currentMongoStatus}", must be "Queued for Warehouse"`,
+                reason: 'WRONG_STATUS',
+                currentStatus: currentMongoStatus
+            };
+        }
+
+        // Step 4: Get job details from Detrack
+        const jobExists = await checkJobExists(trackingNumber);
+        if (!jobExists) {
+            console.log(`❌ Job not found in Detrack for ${trackingNumber}`);
+            return {
+                success: false,
+                message: 'Job not found in Detrack',
+                reason: 'DETRACK_NOT_FOUND'
+            };
+        }
+
+        const jobData = await getJobDetails(trackingNumber);
+        if (!jobData) {
+            return {
+                success: false,
+                message: 'Could not get job details from Detrack',
+                reason: 'DETRACK_NO_DETAILS'
+            };
+        }
+
+        const detrackStatus = jobData.status?.toLowerCase() || '';
+        console.log(`📊 Detrack Status: ${detrackStatus}`);
+
+        // Step 5: Handle based on Detrack status (NO DELAY - INSTANT UPDATE)
+        let result;
+
+        // Case 1: Detrack status is "custom_clearing" - Update instantly
+        if (detrackStatus === 'custom_clearing') {
+            console.log(`🔄 Detrack status is "custom_clearing" - UPDATING INSTANTLY (no delay)`);
+            
+            // Step 5a: Update MongoDB to At Warehouse
+            await ORDERS.updateOne(
+                { doTrackingNumber: trackingNumber },
+                {
+                    $set: {
+                        currentStatus: "At Warehouse",
+                        lastUpdateDateTime: moment().format(),
+                        warehouseEntry: "Yes",
+                        warehouseEntryDateTime: moment().format(),
+                        latestLocation: warehouse,
+                        lastUpdatedBy: req.user.name,
+                        queueStatus: null,
+                        queueScheduledTime: null,
+                        queueNote: null
+                    },
+                    $push: {
+                        history: {
+                            statusHistory: "At Warehouse",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            lastLocation: warehouse,
+                        }
+                    }
+                }
+            );
+            console.log(`✅ MongoDB updated to "At Warehouse"`);
+            
+            // Step 5b: Update Detrack to at_warehouse
+            const updateDataWarehouse = {
+                do_number: trackingNumber,
+                data: { status: "at_warehouse" }
+            };
+            
+            const warehouseUpdateSuccess = await sendDetrackUpdateWithRetry(trackingNumber, updateDataWarehouse, null);
+            
+            if (!warehouseUpdateSuccess) {
+                console.error(`❌ Failed to update Detrack to at_warehouse for ${trackingNumber}`);
+                return {
+                    success: false,
+                    message: 'Failed to update Detrack to at_warehouse',
+                    reason: 'DETRACK_UPDATE_FAILED'
+                };
+            }
+            console.log(`✅ Detrack updated to "at_warehouse" for ${trackingNumber}`);
+            
+            // Small delay before next update
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Step 5c: Update Detrack to in_sorting_area
+            const updateDataSorting = {
+                do_number: trackingNumber,
+                data: { status: "in_sorting_area" }
+            };
+            
+            const sortingUpdateSuccess = await sendDetrackUpdateWithRetry(trackingNumber, updateDataSorting, null);
+            
+            if (!sortingUpdateSuccess) {
+                console.error(`❌ Failed to update Detrack to in_sorting_area for ${trackingNumber}`);
+                return {
+                    success: false,
+                    message: 'Failed to update Detrack to in_sorting_area (at_warehouse succeeded)',
+                    reason: 'DETRACK_UPDATE_PARTIAL'
+                };
+            }
+            console.log(`✅ Detrack updated to "in_sorting_area" for ${trackingNumber}`);
+            
+            // Add in_sorting_area to history
+            await ORDERS.updateOne(
+                { doTrackingNumber: trackingNumber },
+                {
+                    $push: {
+                        history: {
+                            statusHistory: "In Sorting Area",
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            lastLocation: warehouse,
+                        }
+                    }
+                }
+            );
+            
+            result = {
+                success: true,
+                message: `Job fixed instantly: ${detrackStatus} → at_warehouse → in_sorting_area`,
+                action: 'completed_instantly',
+                trackingNumber,
+                updates: ['custom_clearing → at_warehouse', 'at_warehouse → in_sorting_area']
+            };
+            
+        } 
+        // Case 2: Detrack status is "at_warehouse" - Update to in_sorting_area
+        else if (detrackStatus === 'at_warehouse') {
+            console.log(`✅ Detrack status is "at_warehouse" - proceeding to "in_sorting_area"`);
+            
+            // Step 5a: Update Detrack to in_sorting_area
+            const updateDataSorting = {
+                do_number: trackingNumber,
+                data: { status: "in_sorting_area" }
+            };
+            
+            const sortingUpdateSuccess = await sendDetrackUpdateWithRetry(trackingNumber, updateDataSorting, null);
+            
+            if (sortingUpdateSuccess) {
+                // Step 5b: Update MongoDB if needed
+                if (existingOrder.warehouseEntry !== "Yes") {
+                    await ORDERS.updateOne(
+                        { doTrackingNumber: trackingNumber },
+                        {
+                            $set: {
+                                currentStatus: "At Warehouse",
+                                lastUpdateDateTime: moment().format(),
+                                warehouseEntry: "Yes",
+                                warehouseEntryDateTime: moment().format(),
+                                latestLocation: warehouse,
+                                lastUpdatedBy: req.user.name,
+                                queueStatus: null,
+                                queueScheduledTime: null,
+                                queueNote: null
+                            },
+                            $push: {
+                                history: {
+                                    statusHistory: "At Warehouse",
+                                    dateUpdated: moment().format(),
+                                    updatedBy: req.user.name,
+                                    lastLocation: warehouse,
+                                }
+                            }
+                        }
+                    );
+                }
+                
+                // Add in_sorting_area to history
+                await ORDERS.updateOne(
+                    { doTrackingNumber: trackingNumber },
+                    {
+                        $push: {
+                            history: {
+                                statusHistory: "In Sorting Area",
+                                dateUpdated: moment().format(),
+                                updatedBy: req.user.name,
+                                lastLocation: warehouse,
+                            }
+                        }
+                    }
+                );
+                
+                result = {
+                    success: true,
+                    message: `Job fixed: at_warehouse → in_sorting_area`,
+                    action: 'completed_from_at_warehouse',
+                    trackingNumber
+                };
+            } else {
+                result = {
+                    success: false,
+                    message: 'Failed to update Detrack to in_sorting_area',
+                    reason: 'DETRACK_UPDATE_FAILED'
+                };
+            }
+            
+        } 
+        // Case 3: Unexpected status
+        else {
+            console.log(`⚠️ Unexpected Detrack status: ${detrackStatus}`);
+            result = {
+                success: false,
+                message: `Unexpected Detrack status: "${detrackStatus}". Expected "at_warehouse" or "custom_clearing"`,
+                reason: 'UNEXPECTED_DETRACK_STATUS',
+                detrackStatus: detrackStatus
+            };
+        }
+        
+        console.log(`\n🏁 ========== FOQJ COMPLETE ==========\n`);
+        return result;
+        
+    } catch (error) {
+        console.error(`\n🔥 ERROR in FOQJ for ${trackingNumber}:`, error);
+        return {
+            success: false,
+            message: 'Error: ' + error.message,
+            reason: 'PROCESSING_ERROR'
+        };
     }
 }
 
@@ -18961,6 +19249,16 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
                     success: success,
                     message: success ? `MAWB updated to ${mawbNum}` : 'UMN update failed'
                 };
+            } else if (updateCode === 'FOQJ') {
+                const foqjResult = await processFixOnQueueJobs(trackingNumber, warehouse, req);
+                return {
+                    success: foqjResult.success,
+                    message: foqjResult.message,
+                    delayed: foqjResult.delayed || false,
+                    delayedInfo: foqjResult.delayedInfo,
+                    trackingNumber: trackingNumber,
+                    reason: foqjResult.reason
+                };
             } else {
                 result = {
                     success: false,
@@ -21311,7 +21609,7 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
             html += `
         <div class="product-section">
             <div class="product-title">${escapeHtml(group.productName)} <span class="job-count">(${group.totalJobs} jobs)</span></div>`;
-            
+
             for (const subgroup of group.subgroups) {
                 html += `
             <div class="subgroup-title">MAWB: ${escapeHtml(subgroup.mawbNo)} <span class="job-count">(${subgroup.count} jobs)</span></div>
@@ -21334,7 +21632,7 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
                     </tr>
                 </thead>
                 <tbody>`;
-                
+
                 for (const job of subgroup.jobs) {
                     const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
                     html += `
@@ -21354,14 +21652,14 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
                         <td>${escapeHtml(job.grRemark)}</td>
                     </tr>`;
                 }
-                
+
                 html += `
                 </tbody>
             </table>`;
             }
             html += `
         </div>`;
-            
+
         } else {
             html += `
         <div class="product-section">
@@ -21385,7 +21683,7 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
                     </tr>
                 </thead>
                 <tbody>`;
-            
+
             for (const job of group.jobs) {
                 const agingStyle = job.aging >= 7 ? 'color: red; font-weight: bold;' : (job.aging >= 3 ? 'color: orange;' : '');
                 html += `
@@ -21405,7 +21703,7 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
                         <td>${escapeHtml(job.grRemark)}</td>
                     </tr>`;
             }
-            
+
             html += `
                 </tbody>
             </table>
@@ -21421,7 +21719,7 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
     </div>
 </body>
 </html>`;
-    
+
     return html;
 }
 
@@ -21429,7 +21727,7 @@ function generateEmailContent(productGroups, reportDate, timePeriod) {
 function generateExcelAttachment(productGroups) {
     const XLSX = require('xlsx');
     const workbook = XLSX.utils.book_new();
-    
+
     for (const group of productGroups) {
         if (group.type === 'mawb_group') {
             for (const subgroup of group.subgroups) {
@@ -21441,25 +21739,25 @@ function generateExcelAttachment(productGroups) {
                 ];
                 for (const job of subgroup.jobs) {
                     data.push([
-                        job.doTrackingNumber, 
-                        job.aging, 
-                        job.warehouseEntryDateTime, 
-                        job.latestLocation, 
-                        job.attempt, 
-                        job.latestReason, 
-                        job.area, 
+                        job.doTrackingNumber,
+                        job.aging,
+                        job.warehouseEntryDateTime,
+                        job.latestLocation,
+                        job.attempt,
+                        job.latestReason,
+                        job.area,
                         job.receiverAddress,
-                        job.receiverName, 
-                        job.receiverPhoneNumber, 
-                        job.additionalPhoneNumber, 
-                        job.remarks, 
+                        job.receiverName,
+                        job.receiverPhoneNumber,
+                        job.additionalPhoneNumber,
+                        job.remarks,
                         job.grRemark
                     ]);
                 }
                 const worksheet = XLSX.utils.aoa_to_sheet(data);
                 worksheet['!cols'] = [
-                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
-                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
+                    { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 },
+                    { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 },
                     { wch: 15 }, { wch: 35 }, { wch: 35 }
                 ];
                 XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
@@ -21473,31 +21771,31 @@ function generateExcelAttachment(productGroups) {
             ];
             for (const job of group.jobs) {
                 data.push([
-                    job.doTrackingNumber, 
-                    job.aging, 
-                    job.warehouseEntryDateTime, 
-                    job.latestLocation, 
-                    job.attempt, 
-                    job.latestReason, 
-                    job.area, 
+                    job.doTrackingNumber,
+                    job.aging,
+                    job.warehouseEntryDateTime,
+                    job.latestLocation,
+                    job.attempt,
+                    job.latestReason,
+                    job.area,
                     job.receiverAddress,
-                    job.receiverName, 
-                    job.receiverPhoneNumber, 
-                    job.additionalPhoneNumber, 
-                    job.remarks, 
+                    job.receiverName,
+                    job.receiverPhoneNumber,
+                    job.additionalPhoneNumber,
+                    job.remarks,
                     job.grRemark
                 ]);
             }
             const worksheet = XLSX.utils.aoa_to_sheet(data);
             worksheet['!cols'] = [
-                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 }, 
-                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, 
+                { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 20 }, { wch: 8 },
+                { wch: 20 }, { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 15 },
                 { wch: 15 }, { wch: 35 }, { wch: 35 }
             ];
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         }
     }
-    
+
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
@@ -21506,72 +21804,80 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
     const bruneiNow = moment().tz("Asia/Brunei");
     const reportDate = bruneiNow.format('DD.MM.YYYY');
     
-    // Determine the time period (7AM or 5PM)
+    // Determine the time period (7AM, 4PM, or 5PM)
     let timePeriod = '';
     if (scheduledHour === 7) {
         timePeriod = '7AM';
+    } else if (scheduledHour === 16) {
+        timePeriod = '4PM';
     } else if (scheduledHour === 17) {
         timePeriod = '5PM';
     } else {
         // For manual test, use current hour to determine
         const currentHour = bruneiNow.hour();
-        if (currentHour >= 12) {
-            timePeriod = currentHour === 17 ? '5PM' : `${currentHour % 12 || 12}PM`;
+        if (currentHour === 7) {
+            timePeriod = '7AM';
+        } else if (currentHour === 16) {
+            timePeriod = '4PM';
+        } else if (currentHour === 17) {
+            timePeriod = '5PM';
+        } else if (currentHour >= 12) {
+            timePeriod = `${currentHour % 12 || 12}PM`;
         } else {
-            timePeriod = currentHour === 7 ? '7AM' : `${currentHour % 12 || 12}AM`;
+            timePeriod = `${currentHour % 12 || 12}AM`;
         }
     }
     
     const emailSubject = `Go Rush Pending Jobs Notification - ${reportDate} ${timePeriod}`;
     
     console.log(`\n📧 ${isTest ? 'TEST' : 'PRODUCTION'}: Starting pending jobs email for ${reportDate} ${timePeriod}...`);
-    
+
     try {
         // Fetch jobs
         const pendingJobs = await ORDERS.find({
             warehouseEntry: "Yes",
             currentStatus: { $ne: "Completed" }
         }).lean();
-        
+
         console.log(`📊 Found ${pendingJobs.length} pending jobs`);
-        
+
         if (pendingJobs.length === 0) {
             return { success: false, message: 'No pending jobs found' };
         }
-        
+
         // Filter: age ≤ 30 days, not cancelled
         const filteredJobs = pendingJobs.filter(job => {
             const aging = calculateAging(job.warehouseEntryDateTime);
             return aging <= 30 && job.currentStatus !== "Cancelled";
         });
-        
+
         const cancelledCount = pendingJobs.filter(job => job.currentStatus === "Cancelled").length;
         const oldCount = pendingJobs.length - filteredJobs.length - cancelledCount;
-        
+
         if (cancelledCount > 0) console.log(`🗑️ Excluding ${cancelledCount} cancelled jobs`);
         if (oldCount > 0) console.log(`🗑️ Excluding ${oldCount} jobs > 30 days`);
         console.log(`📊 Processing ${filteredJobs.length} jobs`);
-        
+
         if (filteredJobs.length === 0) {
             return { success: false, message: 'No jobs after filtering' };
         }
-        
+
         // Group by product and MAWB
         const mawbData = {};
         const regularData = {};
-        
+
         for (const job of filteredJobs) {
             const productKey = job.product || 'Unknown';
-            
+
             if (MAWB_PRODUCTS.includes(productKey)) {
                 if (!mawbData[productKey]) {
                     mawbData[productKey] = { productName: getProductDisplayName(productKey), groups: {} };
                 }
                 const mawbNo = job.mawbNo;
                 if (!mawbNo || mawbNo === 'No MAWB') continue; // Skip empty MAWB
-                
+
                 if (!mawbData[productKey].groups[mawbNo]) mawbData[productKey].groups[mawbNo] = [];
-                
+
                 mawbData[productKey].groups[mawbNo].push({
                     doTrackingNumber: job.doTrackingNumber || '-',
                     aging: calculateAging(job.warehouseEntryDateTime),
@@ -21606,10 +21912,10 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
                 });
             }
         }
-        
+
         // Build product groups
         const productGroups = [];
-        
+
         for (const [key, data] of Object.entries(mawbData)) {
             const subgroups = [];
             let totalJobs = 0;
@@ -21621,20 +21927,20 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
             subgroups.sort((a, b) => b.maxAging - a.maxAging);
             productGroups.push({ type: 'mawb_group', productName: data.productName, totalJobs, subgroups, maxAging: Math.max(...subgroups.map(s => s.maxAging)) });
         }
-        
+
         for (const [key, jobs] of Object.entries(regularData)) {
             jobs.sort((a, b) => b.aging - a.aging);
             productGroups.push({ type: 'regular', productName: getProductDisplayName(key), count: jobs.length, jobs, maxAging: jobs[0]?.aging || 0 });
         }
-        
+
         productGroups.sort((a, b) => b.maxAging - a.maxAging);
-        
+
         // Generate email content (pass timePeriod for the header)
         const emailHtml = generateEmailContent(productGroups, reportDate, timePeriod);
         const excelBuffer = generateExcelAttachment(productGroups);
-        
+
         // Set recipients
-        const recipients = isTest 
+        const recipients = isTest
             ? ['syahmi.ghafar@globex.com.bn']
             : [
                 'operation2@globex.com.bn',
@@ -21644,10 +21950,10 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
                 'lovelyna.magdalin@globex.com.bn',
                 'zulaikha.salleh@globex.com.bn',
                 'danny.chua@globex.com.bn'
-              ];
-        
+            ];
+
         console.log(`📧 Sending to: ${recipients.join(', ')}`);
-        
+
         // Send email
         const info = await emailTransporter.sendMail({
             from: `"Go Rush System" <${process.env.EMAIL_USER || 'it.support@globex.com.bn'}>`,
@@ -21656,19 +21962,19 @@ async function sendPendingJobsEmail(isTest = true, scheduledHour = null) {
             html: emailHtml,
             attachments: [{ filename: `pending_jobs_${reportDate}_${timePeriod}.xlsx`, content: excelBuffer, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }]
         });
-        
+
         console.log(`✅ Email sent! Message ID: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
-        
+
     } catch (error) {
         console.error('❌ Email error:', error);
         return { success: false, error: error.message };
     }
 }
 
-// Scheduled job: Every day at 7am AND 5pm Brunei time (Monday to Saturday)
+// Scheduled job: Every day at 7am, 4pm, and 5pm Brunei time (Monday to Saturday)
 function scheduleDailyEmails() {
-    const scheduleNext = (hour, minute) => {
+    const scheduleNext = (hour, minute, label) => {
         const now = moment().tz("Asia/Brunei");
         let nextRun = moment().tz("Asia/Brunei").set({ hour: hour, minute: minute, second: 0 });
         
@@ -21677,26 +21983,26 @@ function scheduleDailyEmails() {
         
         const delayMs = nextRun.diff(now);
         const timeStr = nextRun.format('YYYY-MM-DD HH:mm:ss');
-        const period = hour === 7 ? 'MORNING (7AM)' : 'EVENING (5PM)';
         
-        console.log(`📅 Next ${period} email scheduled: ${timeStr} (Brunei Time)`);
+        console.log(`📅 Next ${label} email scheduled: ${timeStr} (Brunei Time)`);
         
         setTimeout(() => {
             // Pass the hour to the send function
             sendPendingJobsEmail(false, hour).then(result => {
                 if (result.success) {
-                    console.log(`✅ ${period} scheduled email sent at ${moment().tz("Asia/Brunei").format('YYYY-MM-DD HH:mm:ss')}`);
+                    console.log(`✅ ${label} scheduled email sent at ${moment().tz("Asia/Brunei").format('YYYY-MM-DD HH:mm:ss')}`);
                 } else {
-                    console.error(`❌ ${period} scheduled email failed: ${result.error}`);
+                    console.error(`❌ ${label} scheduled email failed: ${result.error}`);
                 }
-                scheduleNext(hour, minute);
+                scheduleNext(hour, minute, label);
             });
         }, delayMs);
     };
     
-    // Schedule both 7am and 5pm
-    scheduleNext(7, 0);   // 7:00 AM
-    scheduleNext(17, 0);  // 5:00 PM
+    // Schedule all three times
+    scheduleNext(7, 0, 'MORNING (7AM)');    // 7:00 AM
+    scheduleNext(16, 0, 'AFTERNOON (4PM)'); // 4:00 PM
+    scheduleNext(17, 0, 'EVENING (5PM)');   // 5:00 PM
 }
 
 // ==================================================
@@ -21736,12 +22042,12 @@ app.get('/print/:identifier', ensureAuthenticated, ensureAdmin, async (req, res)
     try {
         const identifier = req.params.identifier;
         console.log('Print route called for identifier:', identifier);
-        
+
         let user;
-        
+
         // Check if identifier is MongoDB ObjectId format (24 hex chars)
         const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-        
+
         if (isObjectId) {
             // Search by MongoDB _id
             console.log('Searching by MongoDB _id');
@@ -21751,15 +22057,15 @@ app.get('/print/:identifier', ensureAuthenticated, ensureAdmin, async (req, res)
             console.log('Searching by userId');
             user = await USERS.findOne({ userId: identifier });
         }
-        
+
         if (!user) {
             console.log('User not found for identifier:', identifier);
             req.flash('error_msg', 'User not found');
             return res.redirect('/listUser');
         }
-        
+
         console.log('User found:', user.name, user.userId);
-        
+
         res.render('printUser', {
             user: user,
             loggedUser: req.user
@@ -21775,37 +22081,37 @@ app.get('/print/:identifier', ensureAuthenticated, ensureAdmin, async (req, res)
 app.get('/print-multiple', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
         const userIdsParam = req.query.users;
-        
+
         if (!userIdsParam) {
             req.flash('error_msg', 'No users selected');
             return res.redirect('/listUser');
         }
-        
+
         const userIds = userIdsParam.split(',');
-        
+
         // Fetch all selected users
         const users = [];
         for (const id of userIds) {
             let user;
             // Check if ID is MongoDB ObjectId or userId
             const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-            
+
             if (isObjectId) {
                 user = await USERS.findById(id);
             } else {
                 user = await USERS.findOne({ userId: id });
             }
-            
+
             if (user) {
                 users.push(user);
             }
         }
-        
+
         if (users.length === 0) {
             req.flash('error_msg', 'No valid users found');
             return res.redirect('/listUser');
         }
-        
+
         res.render('printMultiple', {
             users: users,
             loggedUser: req.user

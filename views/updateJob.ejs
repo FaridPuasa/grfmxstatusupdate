@@ -41,14 +41,14 @@
         }
 
         #trackingNumSingle:focus {
-    border-color: #28a745;
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-}
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
 
-.scan-success-flash {
-    background-color: #d4edda !important;
-    transition: background-color 0.1s ease;
-}
+        .scan-success-flash {
+            background-color: #d4edda !important;
+            transition: background-color 0.1s ease;
+        }
     </style>
 </head>
 
@@ -96,6 +96,11 @@
                                     <option value="UWP">Update Weight/Postal Code</option>
                                     <!-- <option value="UMN">Update MAWB Number</option> -->
                                 </optgroup>
+                                <% if (['admin' ].includes(user.role)) { %>
+                                <optgroup label="Admin Only">
+                                    <option value="FOQJ">Fix On Queue Jobs</option>
+                                </optgroup>
+                                <% } %>
                     </select>
                 </div>
 
@@ -355,7 +360,7 @@
             const readyToScan = document.getElementById('readyToScan');
             const gdexHoldCodes = ['H9', 'H18', 'H19', 'H27', 'H31'];
 
-            if (this.value === 'UAN' || this.value === 'UWP' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN' || this.value === 'H9' ||
+            if (this.value === 'UAN' || this.value === 'UWP' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN' || this.value === 'H9' || this.value === 'FOQJ' ||
                 this.value === 'H18' ||
                 this.value === 'H19' ||
                 this.value === 'H27' ||
@@ -463,6 +468,42 @@
 
                     // Load recent MAWBs
                     await loadRecentMAWBs();
+                }
+                else if (this.value === 'FOQJ') {
+                    // Fix On Queue Jobs - Allow warehouse selection, no MAWB
+                    mawbFields.style.display = 'block';
+                    mawbNumContainer.style.display = 'none';
+                    warehouseFields.style.display = 'block';
+                    updateMethodSection.style.display = 'block';
+                    updateMethod.required = true;
+                    warehouseSelect.required = true;
+                    mawbInput.required = false;
+                    mawbHelp.textContent = 'No MAWB number required - Fixing stuck queue jobs';
+                    hideExcelUploadButton();
+
+                    // Reset update method and hide sections
+                    updateMethod.value = '';
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
+                    // Show info alert
+                    let infoAlert = document.getElementById('foqjInfoAlert');
+                    if (!infoAlert) {
+                        infoAlert = document.createElement('div');
+                        infoAlert.id = 'foqjInfoAlert';
+                        infoAlert.className = 'alert alert-info mt-2';
+                        infoAlert.innerHTML = `
+            <i class="fas fa-info-circle"></i> 
+            <strong>Fix On Queue Jobs:</strong> This will check jobs stuck in "Queued for Warehouse" status.
+            Only works for PDU, EWE, and MGLOBAL products.
+        `;
+                        const mawbFieldsDiv = document.getElementById('mawbFields');
+                        if (mawbFieldsDiv) {
+                            mawbFieldsDiv.appendChild(infoAlert);
+                        }
+                    } else {
+                        infoAlert.style.display = 'block';
+                    }
                 }
             } else {
                 mawbFields.style.display = 'none';
@@ -639,28 +680,28 @@
         }
 
         // Green flash for success
-function flashSuccess(input) {
-    input.style.backgroundColor = '#d4edda';
-    setTimeout(() => {
-        input.style.backgroundColor = '';
-    }, 150);
-}
+        function flashSuccess(input) {
+            input.style.backgroundColor = '#d4edda';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 150);
+        }
 
-// Yellow flash for delayed/warning
-function flashWarning(input) {
-    input.style.backgroundColor = '#fff3cd';
-    setTimeout(() => {
-        input.style.backgroundColor = '';
-    }, 150);
-}
+        // Yellow flash for delayed/warning
+        function flashWarning(input) {
+            input.style.backgroundColor = '#fff3cd';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 150);
+        }
 
-// Red flash for error
-function flashError(input) {
-    input.style.backgroundColor = '#f8d7da';
-    setTimeout(() => {
-        input.style.backgroundColor = '';
-    }, 150);
-}
+        // Red flash for error
+        function flashError(input) {
+            input.style.backgroundColor = '#f8d7da';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 150);
+        }
 
         // Show MAWB alert - Add this function too
         function showMAWBAlert(message, isSuccess) {
@@ -970,6 +1011,13 @@ function flashError(input) {
             }
 
             if (updateCode === 'IIW' && !warehouse) {
+                alert('Please select a warehouse location');
+                this.focus();
+                return;
+            }
+
+            // FOQJ validation - only need warehouse
+            if (updateCode === 'FOQJ' && !warehouse) {
                 alert('Please select a warehouse location');
                 this.focus();
                 return;
@@ -1927,7 +1975,8 @@ function flashError(input) {
                 'UAB': 'Update AWB Number',
                 'UCD': 'Cancelled Job Update',
                 'URJ': 'Reactivate Job Update',
-                'UDJ': 'Dispose Job Update'
+                'UDJ': 'Dispose Job Update',
+                'FOQJ': 'Fix On Queue Jobs',
             };
 
             return updateTitles[updateCode] || 'Update Job';
