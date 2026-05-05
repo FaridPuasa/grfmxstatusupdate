@@ -779,10 +779,10 @@ async function checkActiveDeliveriesStatus() {
     }
 }
 
-setInterval(checkActiveDeliveriesStatus, 600000);
+/* setInterval(checkActiveDeliveriesStatus, 600000);
 setInterval(checkStaleInfoReceivedJobs, 86400000);
 checkActiveDeliveriesStatus();
-checkStaleInfoReceivedJobs();
+checkStaleInfoReceivedJobs(); */
 
 // --- Utility: normalize Mongo date field (string or {$date}) ---
 function normalizeDate(raw) {
@@ -7520,272 +7520,79 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             // ==================================================
-            // 🚨 FIX JOB HANDLER - Reprocess ALL GDEX milestones to GDEX API
-            // (Skips completed status - send separately via SFJ)
+            // FA - FIX ALL JOBS (PURE51 Attempt Correction - MongoDB Only)
             // ==================================================
             if (req.body.statusCode == 'FA') {
-                // MongoDB Updatedata.data.assign_to
-                update = {
-                    paymentMethod: data.data.payment_mode,
-                    totalPrice: data.data.total_price,
-                    paymentAmount: data.data.payment_amount,
-                };
-
-                // GDEX API Update (will be handled by GDEXAPIrun = 7)
-                portalUpdate = `Fix wrong updated jobs `;
-
-                mongoDBrun = 2;
-                completeRun = 1;
-                /* console.log(`\n🔄 === FIX JOB: Reprocessing ALL milestones for ${consignmentID} ===`);
-                console.log(`Product: ${product}, Current Detrack Status: ${data.data.status}`);
-
-                // Only process GDEX/GDEXT products
-                if (product !== 'GDEX' && product !== 'GDEXT') {
-                    console.log(`❌ Product ${product} is not GDEX/GDEXT - skipping`);
+                // Only process PURE51 products
+                if (product !== 'PURE51') {
                     processingResults.push({
                         consignmentID,
-                        status: `Error: Fix Job only available for GDEX/GDEXT products. This is ${product}`,
+                        status: `Skipped: FA option is only for PURE51 products. Current product: ${product}`,
                     });
                     continue;
                 }
 
+                console.log(`\n🔧 FIXING PURE51 JOB: ${consignmentID} - Calculating correct attempts from Detrack milestones`);
+
                 try {
-                    // Get GDEX token
-                    const token = await getGDEXToken();
-                    if (!token) {
-                        console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
-                        processingResults.push({
-                            consignmentID,
-                            status: `Error: Failed to get GDEX token`,
-                        });
-                        continue;
-                    }
+                    // Calculate correct attempts from Detrack milestones
+                    // Default attempt starts at 1 when job is created
+                    let calculatedAttempts = 1; // Base attempt (initial creation)
 
-                    // Get all milestones from Detrack
-                    const milestones = data.data.milestones || [];
-                    console.log(`📊 Found ${milestones.length} total milestones in Detrack`);
-
-                    // Track which statuses we've already sent
-                    const sentStatuses = new Set();
-                    let firstCompletedFound = false;
-                    let lastStatus = '';
-                    let gdexUpdatesSent = 0;
-
-                    // Sort milestones by created_at (ascending)
-                    const sortedMilestones = [...milestones].sort((a, b) =>
-                        new Date(a.created_at) - new Date(b.created_at)
+                    // Count all failed milestones (including Unattempted Delivery)
+                    const failedMilestones = data.data.milestones.filter(milestone =>
+                        milestone.status === 'failed'
                     );
 
-                    // Process each milestone in chronological order
-                    for (const milestone of sortedMilestones) {
-                        const status = milestone.status;
-                        const created_at = milestone.created_at;
+                    // Each failed milestone represents an attempt
+                    calculatedAttempts += failedMilestones.length;
 
-                        // Skip if we've already found the first completed status
-                        if (firstCompletedFound) {
-                            console.log(`⏭️ Stopping: Already found first completed at ${firstCompletedFound}`);
-                            break;
-                        }
+                    // Get the current MongoDB attempt value
+                    const currentMongoAttempt = existingOrder ? existingOrder.attempt : 1;
 
-                        // Skip if not a status we care about
-                        const validStatuses = ['on_hold', 'in_sorting_area', 'at_warehouse', 'out_for_delivery', 'failed', 'completed'];
-                        if (!validStatuses.includes(status)) {
-                            console.log(`⏭️ Skipping milestone: ${status} (not in GDEX flow)`);
-                            continue;
-                        }
+                    console.log(`   📊 Attempt Calculation for ${consignmentID}:`);
+                    console.log(`      - Base attempt: 1`);
+                    console.log(`      - Failed milestones: ${failedMilestones.length}`);
+                    console.log(`      - Calculated total: ${calculatedAttempts}`);
+                    console.log(`      - Current MongoDB attempt: ${currentMongoAttempt}`);
 
-                        // Skip duplicate statuses (GDEX doesn't want multiple AL2s after failures)
-                        if (status === lastStatus && status !== 'failed') {
-                            console.log(`⏭️ Skipping duplicate ${status} - already sent`);
-                            continue;
-                        }
+                    // Only update if calculated attempts are different from current
+                    if (calculatedAttempts !== currentMongoAttempt) {
+                        console.log(`   ✏️ Updating attempt from ${currentMongoAttempt} to ${calculatedAttempts}`);
 
-                        console.log(`\n📌 Processing milestone: ${status} at ${created_at}`);
+                        // UPDATE ONLY THE ATTEMPT FIELD - NOTHING ELSE
+                        await ORDERS.findOneAndUpdate(
+                            { doTrackingNumber: consignmentID },
+                            { $set: { attempt: calculatedAttempts } },
+                            { upsert: false }
+                        );
 
-                        let trackingData = null;
-
-                        // ===== ON HOLD =====
-                        if (status === 'on_hold') {
-                            trackingData = {
-                                consignmentno: consignmentID,
-                                statuscode: "K",
-                                statusdescription: "Hold",
-                                statusdatetime: moment(created_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-                                reasoncode: "H27", // Brunei Customs
-                                locationdescription: "Brunei Customs",
-                                epod: [],
-                                deliverypartner: "gorush",
-                                returnflag: false
-                            };
-                            console.log(`📤 Sending ON HOLD (K) with reason H27`);
-                        }
-
-                        // ===== IN SORTING AREA =====
-                        else if (status === 'in_sorting_area') {
-                            console.log(`⏭️ Skipping IN SORTING AREA milestone - DT1/DT2 no longer sent to GDEX`);
-                            lastStatus = status;
-                            continue; // Skip this milestone completely
-                        }
-
-                        // ===== AT WAREHOUSE (FIRST ONLY) =====
-                        else if (status === 'at_warehouse') {
-                            // Check if this is the first at_warehouse
-                            const isFirstAtWarehouse = milestones.findIndex(m => m.status === 'at_warehouse') ===
-                                milestones.findIndex(m => m.created_at === created_at);
-
-                            if (!isFirstAtWarehouse) {
-                                console.log(`⏭️ Skipping subsequent at_warehouse - only first is sent to GDEX`);
-                                lastStatus = status;
-                                continue;
-                            }
-
-                            trackingData = {
-                                consignmentno: consignmentID,
-                                statuscode: "AL1",
-                                statusdescription: "Received by Branch",
-                                statusdatetime: moment(created_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-                                reasoncode: "",
-                                locationdescription: "Go Rush Warehouse",
-                                epod: [],
-                                deliverypartner: "gorush",
-                                returnflag: false
-                            };
-                            console.log(`📤 Sending AT WAREHOUSE - AL1 (Received by Branch)`);
-                        }
-
-                        // ===== OUT FOR DELIVERY =====
-                        else if (status === 'out_for_delivery') {
-                            trackingData = {
-                                consignmentno: consignmentID,
-                                statuscode: "AL2",
-                                statusdescription: "Out for Delivery",
-                                statusdatetime: moment(created_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-                                reasoncode: "",
-                                locationdescription: "Go Rush Driver",
-                                epod: [],
-                                deliverypartner: "gorush",
-                                returnflag: false
-                            };
-                            console.log(`📤 Sending OUT FOR DELIVERY - AL2`);
-                        }
-
-                        // ===== FAILED =====
-                        else if (status === 'failed') {
-                            const failReason = milestone.reason || "";
-
-                            // Map reason to GDEX code
-                            const reasonCodeMap = {
-                                "Unattempted Delivery": "BM",
-                                "Reschedule delivery requested by customer": "BK",
-                                "Reschedule to self collect requested by customer": "AG",
-                                "Cash/Duty Not Ready": "BM",
-                                "Customer not available / cannot be contacted": "AR",
-                                "No Such Person": "AW",
-                                "Customer declined delivery": "BM",
-                                "Unable to Locate Address": "BM",
-                                "Incorrect Address": "BM",
-                                "Access not allowed (OFFICE & GUARD HOUSE)": "AA",
-                                "Shipment Under Investigation": "AB",
-                                "Receiver Address Under Renovation": "AC",
-                                "Receiver Shifted": "AE",
-                                "Redirection Request by Shipper / Receiver": "AF",
-                                "Non-Service Area (NSA)": "AN",
-                                "Refusal to Accept – Damaged Shipment": "AS",
-                                "Refusal to Accept – Receiver Not Known at Address": "AW",
-                                "Refusal to Acknowledge POD / DO": "AX",
-                                "Receiver Not Present - Sorry Card Dropped": "AZ",
-                                "Natural Disaster / Pandemic": "BF",
-                                "Road Closure": "BG",
-                                "Refusal to Accept – Invalid / cancel Order": "BJ",
-                                "Consignee request for postponed delivery": "BL",
-                                "Shipper/HQ Instruction to Cancel Delivery": "BA"
-                            };
-
-                            const reasonCode = reasonCodeMap[failReason] || "";
-                            console.log(`📝 Fail reason: "${failReason}" → Code: ${reasonCode || 'UNMAPPED'}`);
-
-                            trackingData = {
-                                consignmentno: consignmentID,
-                                statuscode: "DF",
-                                statusdescription: "Delivery Failed",
-                                statusdatetime: moment(created_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-                                reasoncode: reasonCode,
-                                locationdescription: "Go Rush Warehouse",
-                                epod: [],
-                                deliverypartner: "gorush",
-                                returnflag: false
-                            };
-                        }
-
-                        // ===== COMPLETED =====
-                        else if (status === 'completed') {
-                            console.log(`🎯 FOUND COMPLETED milestone at ${created_at}`);
-                            console.log(`⏭️ Stopping: First completed found - will NOT send to GDEX (send separately via SFJ)`);
-
-                            // Set flag to stop processing further milestones
-                            firstCompletedFound = created_at;
-
-                            // DO NOT send any tracking data to GDEX for completed
-                            // Just break out of the loop
-                            break; // Exit the loop immediately
-                        }
-
-                        // Send the tracking data if we created it (for non-completed statuses)
-                        if (trackingData) {
-                            const result = await sendGDEXTrackingWebhookWithData(consignmentID, trackingData, token);
-                            if (result.success) {
-                                gdexUpdatesSent++;
-                                console.log(`✅ Successfully sent ${status} to GDEX`);
-                            } else {
-                                console.error(`❌ Failed to send ${status} to GDEX:`, result.error);
-
-                                // Add detailed error to processing results
-                                const errorMsg = `❌ Failed to send ${status}: ${result.error}`;
-                                processingResults.push({
-                                    consignmentID,
-                                    status: errorMsg,
-                                });
-
-                                // Break if it's a critical error (optional)
-                                if (result.statusCode === 401 || result.statusCode === 403) {
-                                    console.error(`🔴 Authentication error - stopping further updates for this tracking`);
-                                    break;
-                                }
-                            }
-
-                            // Small delay between updates
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                        }
-
-                        lastStatus = status;
-                    }
-
-                    // Summary
-                    console.log(`\n🎉 === FIX JOB COMPLETE for ${consignmentID} ===`);
-                    console.log(`✅ Sent ${gdexUpdatesSent} GDEX updates (excluding completed)`);
-                    console.log(`🛑 Stopped at first completed: ${firstCompletedFound || 'No completed found'}`);
-
-                    let statusMessage = `✅ Fix Job: Reprocessed ${gdexUpdatesSent} GDEX updates.`;
-                    if (firstCompletedFound) {
-                        statusMessage += ` Found completed at ${moment(firstCompletedFound).format('YYYY-MM-DD HH:mm:ss')} (send separately via SFJ)`;
+                        processingResults.push({
+                            consignmentID,
+                            status: `✅ PURE51 attempt fixed: ${currentMongoAttempt} → ${calculatedAttempts}`,
+                        });
+                        console.log(`   ✅ Successfully updated attempt for ${consignmentID}`);
                     } else {
-                        statusMessage += ` No completed milestone found.`;
+                        processingResults.push({
+                            consignmentID,
+                            status: `ℹ️ Attempt already correct: ${calculatedAttempts}. No update needed.`,
+                        });
+                        console.log(`   ℹ️ Attempt already correct for ${consignmentID}`);
                     }
 
-                    processingResults.push({
-                        consignmentID,
-                        status: statusMessage,
-                    });
+                    // NO Detrack updates - MongoDB only
+                    // NO history push
+                    // NO other field updates
 
-                } catch (error) {
-                    console.error(`🔥 Fix Job error for ${consignmentID}:`, error.message);
+                } catch (faError) {
+                    console.error(`❌ Error fixing PURE51 job ${consignmentID}:`, faError.message);
                     processingResults.push({
                         consignmentID,
-                        status: `Error: Fix Job failed - ${error.message}`,
+                        status: `Error: ${faError.message}`,
                     });
                 }
 
-                continue; // Skip rest of the update delivery logic for this tracking number */
+                continue; // Skip to next consignment
             }
 
             // ==================================================
@@ -8742,52 +8549,105 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         // ========== NON-GDEX PRODUCTS (keep existing logic) ==========
                         if (data.data.reason == "Unattempted Delivery") {
-                            // Keep existing non-GDEX failed delivery logic here
-                            // [Your existing code for non-GDEX products]
+                            const isPure51 = (product == 'PURE51');
 
-                            update = {
-                                currentStatus: "Return to Warehouse",
-                                lastUpdateDateTime: moment().format(),
-                                assignedTo: "N/A",
-                                latestReason: data.data.reason,
-                                attempt: data.data.attempt,
-                                latestLocation: req.body.warehouse,
-                                lastUpdatedBy: req.user.name,
-                                $push: {
-                                    history: {
-                                        $each: [
-                                            {
-                                                statusHistory: "Failed Delivery",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastAssignedTo: data.data.assign_to,
-                                                reason: data.data.reason,
-                                                lastLocation: data.data.assign_to,
-                                            },
-                                            {
-                                                statusHistory: "Return to Warehouse",
-                                                dateUpdated: moment().format(),
-                                                updatedBy: req.user.name,
-                                                lastLocation: req.body.warehouse,
-                                            }
-                                        ]
+                            if (isPure51) {
+                                // PURE51: Increment attempt for Unattempted Delivery
+                                update = {
+                                    currentStatus: "Return to Warehouse",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt + 1,  // ✅ NOW INCREMENTED for PURE51
+                                    latestLocation: req.body.warehouse,
+                                    lastUpdatedBy: req.user.name,
+                                    $push: {
+                                        history: {
+                                            $each: [
+                                                {
+                                                    statusHistory: "Failed Delivery",
+                                                    dateUpdated: moment().format(),
+                                                    updatedBy: req.user.name,
+                                                    lastAssignedTo: data.data.assign_to,
+                                                    reason: data.data.reason,
+                                                    lastLocation: data.data.assign_to,
+                                                },
+                                                {
+                                                    statusHistory: "Return to Warehouse",
+                                                    dateUpdated: moment().format(),
+                                                    updatedBy: req.user.name,
+                                                    lastLocation: req.body.warehouse,
+                                                }
+                                            ]
+                                        }
                                     }
-                                }
+                                };
+
+                                // Detrack: TWO updates (increment attempt + update status)
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        status: "at_warehouse"
+                                    }
+                                };
+
+                                var detrackUpdateDataAttempt = {
+                                    data: {
+                                        do_number: consignmentID,
+                                    }
+                                };
+
+                                DetrackAPIrun = 2;  // Two Detrack updates (increment + status)
+                                mongoDBrun = 2;
+                                completeRun = 1;
+                                appliedStatus = "Failed Delivery, Return to Warehouse";
+                                portalUpdate = "Portal and Detrack status updated to At Warehouse. Attempt incremented for PURE51.";
+
+                            } else {
+                                // Non-PURE51 products: Keep original behavior (no increment)
+                                update = {
+                                    currentStatus: "Return to Warehouse",
+                                    lastUpdateDateTime: moment().format(),
+                                    assignedTo: "N/A",
+                                    latestReason: data.data.reason,
+                                    attempt: data.data.attempt,  // No increment for non-PURE51
+                                    latestLocation: req.body.warehouse,
+                                    lastUpdatedBy: req.user.name,
+                                    $push: {
+                                        history: {
+                                            $each: [
+                                                {
+                                                    statusHistory: "Failed Delivery",
+                                                    dateUpdated: moment().format(),
+                                                    updatedBy: req.user.name,
+                                                    lastAssignedTo: data.data.assign_to,
+                                                    reason: data.data.reason,
+                                                    lastLocation: data.data.assign_to,
+                                                },
+                                                {
+                                                    statusHistory: "Return to Warehouse",
+                                                    dateUpdated: moment().format(),
+                                                    updatedBy: req.user.name,
+                                                    lastLocation: req.body.warehouse,
+                                                }
+                                            ]
+                                        }
+                                    }
+                                };
+
+                                var detrackUpdateData = {
+                                    do_number: consignmentID,
+                                    data: {
+                                        status: "at_warehouse"
+                                    }
+                                };
+
+                                DetrackAPIrun = 1;  // Only one Detrack update (no attempt increment)
+                                mongoDBrun = 2;
+                                completeRun = 1;
+                                appliedStatus = "Failed Delivery, Return to Warehouse";
+                                portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
                             }
-
-                            var detrackUpdateData = {
-                                do_number: consignmentID,
-                                data: {
-                                    status: "at_warehouse"
-                                }
-                            };
-
-                            DetrackAPIrun = 1;
-                            mongoDBrun = 2;
-                            completeRun = 1;
-                            appliedStatus = "Failed Delivery, Return to Warehouse"
-                            portalUpdate = "Portal and Detrack status updated to At Warehouse. ";
-
                         } else if (data.data.reason == "Reschedule to self collect requested by customer") {
                             // Keep existing non-GDEX failed delivery logic here
                             // [Your existing code for non-GDEX products]
@@ -12582,14 +12442,14 @@ const queue = [];
 let isProcessing = false;
 
 // Watch for new order inserts
-orderWatch.on('change', async (change) => {
+/* orderWatch.on('change', async (change) => {
     if (change.operationType === "insert") {
         queue.push(change);
         if (!isProcessing) {
             processQueue();
         }
     }
-});
+}); */
 
 async function processQueue() {
     isProcessing = true;
