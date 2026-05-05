@@ -378,6 +378,7 @@
     let selectedAreas = [];
     let scanBuffer = '';
     let lastKeyTime = 0;
+    let scanTimeout = null;
 
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('deliveryDate').min = today;
@@ -401,37 +402,36 @@
       });
     });
 
-document.getElementById('confirmDetailsBtn').addEventListener('click', function() {
-    const deliveryDate = document.getElementById('deliveryDate').value;
-    if (!deliveryDate) {
+    document.getElementById('confirmDetailsBtn').addEventListener('click', function() {
+      const deliveryDate = document.getElementById('deliveryDate').value;
+      if (!deliveryDate) {
         alert('Please select a delivery date');
         return;
-    }
+      }
 
-    if (selectedAreas.length === 0) {
+      if (selectedAreas.length === 0) {
         alert('Please select at least one area');
         return;
-    }
+      }
 
-    const dispatcher = dispatchersField.value;
-    if (!dispatcher) {
+      const dispatcher = dispatchersField.value;
+      if (!dispatcher) {
         alert('Please select a dispatcher');
         return;
-    }
+      }
 
-    podData.dispatcher = dispatcher;
-    podData.deliveryDate = deliveryDate;
-    podData.areas = [...selectedAreas];
+      podData.dispatcher = dispatcher;
+      podData.deliveryDate = deliveryDate;
+      podData.areas = [...selectedAreas];
 
-    document.querySelector('.form-container').style.display = 'none';
-    document.getElementById('podTableContainer').style.display = 'block';
-    
-    // Show scan section (now inside podTableContainer)
-    document.getElementById('scanSection').style.display = 'block';
-    
-    generateTableHeader();
-    document.getElementById('scanInput').focus();
-});
+      document.querySelector('.form-container').style.display = 'none';
+      document.getElementById('podTableContainer').style.display = 'block';
+      
+      document.getElementById('scanSection').style.display = 'block';
+      
+      generateTableHeader();
+      document.getElementById('scanInput').focus();
+    });
 
     function generateTableHeader() {
       const thead = document.getElementById('podHeader');
@@ -482,59 +482,58 @@ document.getElementById('confirmDetailsBtn').addEventListener('click', function(
     }
 
     function addRowToTable(item, index) {
-    const tbody = document.getElementById('podTableBody');
-    
-    const row = tbody.insertRow();
-    row.setAttribute('data-tracking', item.trackingNumber);
-    
-    row.insertCell(0).textContent = index + 1;
-    row.insertCell(1).textContent = item.fridge || '';
-    
-    const trackingCell = row.insertCell(2);
-    trackingCell.innerHTML = `
+      const tbody = document.getElementById('podTableBody');
+      
+      const row = tbody.insertRow();
+      row.setAttribute('data-tracking', item.trackingNumber);
+      
+      row.insertCell(0).textContent = index + 1;
+      row.insertCell(1).textContent = item.fridge || '';
+      
+      const trackingCell = row.insertCell(2);
+      trackingCell.innerHTML = `
         <div class="barcode-container">
             <svg id="barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}"></svg>
             <div class="tracking-number">${item.trackingNumber}</div>
         </div>
-    `;
-    
-    row.insertCell(3).textContent = item.deliverToCollectFrom || '';
-    row.insertCell(4).textContent = item.address || '';
-    row.insertCell(5).textContent = item.phoneNumber || '';
-    row.insertCell(6).textContent = item.additionalPhoneNumber || '';
-    row.insertCell(7).textContent = item.jobType || '';
-    row.insertCell(8).textContent = item.totalPrice || '';
-    row.insertCell(9).textContent = item.paymentMode || '';
-    row.insertCell(10).textContent = item.remarks || '';
-    
-    // Remarks (Office Use) - Now shows grRemark from MongoDB
-    const remarksOffice = row.insertCell(11);
-    remarksOffice.setAttribute('contenteditable', 'true');
-    remarksOffice.textContent = item.grRemark || '';  // grRemark goes here
-    
-    const financeCell = row.insertCell(12);
-    financeCell.setAttribute('contenteditable', 'true');
-    financeCell.textContent = '';
-    
-    row.insertCell(13).textContent = '';
-    
-    const actionCell = row.insertCell(14);
-    if (!podData.isSaved) {
+      `;
+      
+      row.insertCell(3).textContent = item.deliverToCollectFrom || '';
+      row.insertCell(4).textContent = item.address || '';
+      row.insertCell(5).textContent = item.phoneNumber || '';
+      row.insertCell(6).textContent = item.additionalPhoneNumber || '';
+      row.insertCell(7).textContent = item.jobType || '';
+      row.insertCell(8).textContent = item.totalPrice || '';
+      row.insertCell(9).textContent = item.paymentMode || '';
+      row.insertCell(10).textContent = item.remarks || '';
+      
+      const remarksOffice = row.insertCell(11);
+      remarksOffice.setAttribute('contenteditable', 'true');
+      remarksOffice.textContent = item.grRemark || '';
+      
+      const financeCell = row.insertCell(12);
+      financeCell.setAttribute('contenteditable', 'true');
+      financeCell.textContent = '';
+      
+      row.insertCell(13).textContent = '';
+      
+      const actionCell = row.insertCell(14);
+      if (!podData.isSaved) {
         actionCell.innerHTML = '<button class="delete-row-btn" onclick="deleteRow(this)">Delete</button>';
-    }
-    
-    setTimeout(() => {
+      }
+      
+      setTimeout(() => {
         JsBarcode(`#barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}`, item.trackingNumber, {
-            format: "CODE128",
-            lineColor: "#000",
-            width: 1.5,
-            height: 35,
-            displayValue: false
+          format: "CODE128",
+          lineColor: "#000",
+          width: 1.5,
+          height: 35,
+          displayValue: false
         });
-    }, 10);
-    
-    updateRowNumbers();
-}
+      }, 10);
+      
+      updateRowNumbers();
+    }
 
     window.deleteRow = function(button) {
       if (podData.isSaved) return;
@@ -587,9 +586,8 @@ document.getElementById('confirmDetailsBtn').addEventListener('click', function(
       return productMap[groupName] || groupName;
     }
 
-    // Determine product from the product field in MongoDB
-function getProductFromMongoDB(productField) {
-    const productMap = {
+    function getProductFromMongoDB(productField) {
+      const productMap = {
         'ewe': 'EWE',
         'pdu': 'PDU',
         'mglobal': 'MGLOBAL',
@@ -603,57 +601,57 @@ function getProductFromMongoDB(productField) {
         'pharmacyphc': 'PHC',
         'kptdp': 'KPT',
         'icarus': 'ICARUS'
-    };
-    return productMap[productField?.toLowerCase()] || productField || 'Unknown';
-}
+      };
+      return productMap[productField?.toLowerCase()] || productField || 'Unknown';
+    }
 
-// Scan tracking number - Check from MongoDB Orders
-async function scanTrackingNumber(trackingNumber) {
-    const scanInput = document.getElementById('scanInput');
-    const scanMessage = document.getElementById('scanMessage');
-    
-    if (!trackingNumber || trackingNumber.length < 5) {
-        scanInput.value = '';
+    async function scanTrackingNumber(trackingNumber) {
+      const scanInput = document.getElementById('scanInput');
+      const scanMessage = document.getElementById('scanMessage');
+      
+      if (!trackingNumber || trackingNumber.length < 5) {
+        scanMessage.innerHTML = '<div class="alert alert-warning">Please enter a valid tracking number (minimum 5 characters)</div>';
+        setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
         scanInput.focus();
         return;
-    }
-    
-    if (podData.trackingNumbers.some(item => item.trackingNumber === trackingNumber)) {
+      }
+      
+      if (podData.trackingNumbers.some(item => item.trackingNumber === trackingNumber)) {
         scanMessage.innerHTML = '<div class="alert alert-warning">Duplicate tracking number!</div>';
         scanInput.value = '';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
         scanInput.focus();
         return;
-    }
-    
-    scanMessage.innerHTML = '<div class="alert alert-info">Fetching data from database...</div>';
-    
-    try {
+      }
+      
+      scanMessage.innerHTML = '<div class="alert alert-info">Fetching data from database...</div>';
+      
+      try {
         const response = await axios.get(`/api/order-details/${trackingNumber}`);
         const order = response.data;
         
         console.log('Raw order data from API:', order);
         
         if (!order) {
-            throw new Error('Order not found in database');
+          throw new Error('Order not found in database');
         }
         
         const product = getProductFromMongoDB(order.product);
         const totalPrice = order.totalPrice || order.paymentAmount || 0;
         
         const newItem = {
-            trackingNumber: order.doTrackingNumber || trackingNumber,
-            deliverToCollectFrom: order.receiverName || '',
-            address: order.receiverAddress || '',
-            phoneNumber: order.receiverPhoneNumber || '',
-            additionalPhoneNumber: order.additionalPhoneNumber || '',
-            jobType: order.jobMethod || '',
-            totalPrice: totalPrice,
-            paymentMode: order.paymentMethod || '',
-            remarks: order.remarks || '',
-            grRemark: order.grRemark || '',  // ADD THIS LINE - grRemark field
-            product: product,
-            fridge: ''
+          trackingNumber: order.doTrackingNumber || trackingNumber,
+          deliverToCollectFrom: order.receiverName || '',
+          address: order.receiverAddress || '',
+          phoneNumber: order.receiverPhoneNumber || '',
+          additionalPhoneNumber: order.additionalPhoneNumber || '',
+          jobType: order.jobMethod || '',
+          totalPrice: totalPrice,
+          paymentMode: order.paymentMethod || '',
+          remarks: order.remarks || '',
+          grRemark: order.grRemark || '',
+          product: product,
+          fridge: ''
         };
         
         console.log('New item being added:', newItem);
@@ -668,50 +666,102 @@ async function scanTrackingNumber(trackingNumber) {
         scanInput.value = '';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 1500);
         
-    } catch (error) {
+      } catch (error) {
         console.error('Error fetching order:', error);
         scanMessage.innerHTML = '<div class="alert alert-danger">✗ Order not found in database. Please check tracking number.</div>';
         scanInput.value = '';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 3000);
+      }
+      
+      scanInput.focus();
     }
-    
-    scanInput.focus();
-}
+
+    // Helper function to process tracking number
+    function processTrackingNumber(trackingNumber) {
+      if (!trackingNumber || trackingNumber.length < 5) {
+        const scanMessage = document.getElementById('scanMessage');
+        scanMessage.innerHTML = '<div class="alert alert-warning">Please enter a valid tracking number (minimum 5 characters)</div>';
+        setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
+        return false;
+      }
+      
+      if (podData.trackingNumbers.some(item => item.trackingNumber === trackingNumber)) {
+        const scanMessage = document.getElementById('scanMessage');
+        scanMessage.innerHTML = '<div class="alert alert-warning">Duplicate tracking number!</div>';
+        setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
+        return false;
+      }
+      
+      scanTrackingNumber(trackingNumber);
+      return true;
+    }
 
     const scanInput = document.getElementById('scanInput');
-    
+
+    // Handle Enter key - works for typed, pasted, and scanned values
+    scanInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        
+        let trackingNumber = this.value.trim().toUpperCase();
+        
+        if (!trackingNumber && scanBuffer.length > 0) {
+          trackingNumber = scanBuffer.trim().toUpperCase();
+          scanBuffer = '';
+        }
+        
+        if (trackingNumber) {
+          processTrackingNumber(trackingNumber);
+          this.value = '';
+        } else {
+          const scanMessage = document.getElementById('scanMessage');
+          scanMessage.innerHTML = '<div class="alert alert-warning">Please enter or scan a tracking number</div>';
+          setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
+        }
+      }
+    });
+
+    // Barcode scanner buffer handling
     scanInput.addEventListener('keydown', function(e) {
       const now = Date.now();
       
-      if (e.key === 'Enter') {
-        if (scanBuffer.length > 0) {
-          scanTrackingNumber(scanBuffer.trim().toUpperCase());
-          scanBuffer = '';
-          e.preventDefault();
-        } else {
-          const value = this.value.trim().toUpperCase();
-          if (value) {
-            scanTrackingNumber(value);
-            this.value = '';
+      if (now - lastKeyTime > 100) {
+        scanBuffer = '';
+      }
+      lastKeyTime = now;
+      
+      if (scanTimeout) {
+        clearTimeout(scanTimeout);
+      }
+      
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        scanBuffer += e.key;
+        
+        scanTimeout = setTimeout(() => {
+          if (scanBuffer.length > 5 && !scanInput.value) {
+            const trackingNumber = scanBuffer.trim().toUpperCase();
+            scanBuffer = '';
+            processTrackingNumber(trackingNumber);
+            scanInput.value = '';
           }
+        }, 50);
+      }
+      
+      if (e.key === 'Enter') {
+        scanBuffer = '';
+        if (scanTimeout) {
+          clearTimeout(scanTimeout);
         }
-        e.preventDefault();
+      }
+    });
+
+    document.getElementById('saveButton').addEventListener('click', async function() {
+      if (podData.trackingNumbers.length === 0) {
+        alert('No tracking numbers to save!');
         return;
       }
       
-      if (now - lastKeyTime > 50) scanBuffer = '';
-      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) scanBuffer += e.key;
-      lastKeyTime = now;
-    });
-
-// Save POD - Remove action column properly and enable print button
-document.getElementById('saveButton').addEventListener('click', async function() {
-    if (podData.trackingNumbers.length === 0) {
-        alert('No tracking numbers to save!');
-        return;
-    }
-    
-    if (confirm('Save this POD?')) {
+      if (confirm('Save this POD?')) {
         const saveBtn = document.getElementById('saveButton');
         const printBtn = document.getElementById('printButton');
         const originalText = saveBtn.textContent;
@@ -720,82 +770,77 @@ document.getElementById('saveButton').addEventListener('click', async function()
         saveBtn.disabled = true;
         
         try {
-            podData.isSaved = true;
-            
-            document.querySelectorAll('.delete-row-btn').forEach(btn => btn.remove());
-            document.getElementById('scanInput').disabled = true;
-            
-            const tableElement = document.getElementById('podTable');
-            const tableClone = tableElement.cloneNode(true);
-            
-            // Remove the Action column (last column) from all rows
-            const allRows = tableClone.querySelectorAll('tr');
-            allRows.forEach(row => {
-                if (row.cells.length > 0) {
-                    row.removeChild(row.cells[row.cells.length - 1]);
-                }
-            });
-            
-            const tableHTML = tableClone.outerHTML;
-            
-            const deliveryDateFormatted = new Date(podData.deliveryDate).toLocaleDateString('en-GB', {
-                day: '2-digit', month: '2-digit', year: '2-digit'
-            }).replace(/\//g, '.');
-            
-            // Convert pod name to UPPERCASE
-            const dispatcherUpper = podData.dispatcher.toUpperCase();
-            const areasUpper = podData.areas.join(', ').toUpperCase();
-            const podName = `${dispatcherUpper} ${areasUpper} ${deliveryDateFormatted}`;
-            const productList = Array.from(podData.products).join(', ');
-            
-            const saveData = {
-                podName: podName,
-                product: productList,
-                podDate: podData.podCreatedDate,
-                podCreator: podData.podCreator,
-                deliveryDate: deliveryDateFormatted,
-                area: podData.areas.join(', '),
-                dispatcher: podData.dispatcher.toUpperCase(),
-                htmlContent: tableHTML,
-                rowCount: podData.trackingNumbers.length.toString()
-            };
-            
-            const response = await fetch('/save-pod', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(saveData)
-            });
-            
-            if (response.ok) {
-                alert('POD saved successfully!');
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Saved!';
-                // Enable print button after successful save
-                printBtn.disabled = false;
-            } else {
-                alert('Failed to save POD');
-                podData.isSaved = false;
-                document.getElementById('scanInput').disabled = false;
-                saveBtn.disabled = false;
-                saveBtn.textContent = originalText;
+          podData.isSaved = true;
+          
+          document.querySelectorAll('.delete-row-btn').forEach(btn => btn.remove());
+          document.getElementById('scanInput').disabled = true;
+          
+          const tableElement = document.getElementById('podTable');
+          const tableClone = tableElement.cloneNode(true);
+          
+          const allRows = tableClone.querySelectorAll('tr');
+          allRows.forEach(row => {
+            if (row.cells.length > 0) {
+              row.removeChild(row.cells[row.cells.length - 1]);
             }
-        } catch (error) {
-            console.error('Save error:', error);
-            alert('Error saving POD: ' + error.message);
+          });
+          
+          const tableHTML = tableClone.outerHTML;
+          
+          const deliveryDateFormatted = new Date(podData.deliveryDate).toLocaleDateString('en-GB', {
+            day: '2-digit', month: '2-digit', year: '2-digit'
+          }).replace(/\//g, '.');
+          
+          const dispatcherUpper = podData.dispatcher.toUpperCase();
+          const areasUpper = podData.areas.join(', ').toUpperCase();
+          const podName = `${dispatcherUpper} ${areasUpper} ${deliveryDateFormatted}`;
+          const productList = Array.from(podData.products).join(', ');
+          
+          const saveData = {
+            podName: podName,
+            product: productList,
+            podDate: podData.podCreatedDate,
+            podCreator: podData.podCreator,
+            deliveryDate: deliveryDateFormatted,
+            area: podData.areas.join(', '),
+            dispatcher: podData.dispatcher.toUpperCase(),
+            htmlContent: tableHTML,
+            rowCount: podData.trackingNumbers.length.toString()
+          };
+          
+          const response = await fetch('/save-pod', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(saveData)
+          });
+          
+          if (response.ok) {
+            alert('POD saved successfully!');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saved!';
+            printBtn.disabled = false;
+          } else {
+            alert('Failed to save POD');
             podData.isSaved = false;
             document.getElementById('scanInput').disabled = false;
             saveBtn.disabled = false;
             saveBtn.textContent = originalText;
+          }
+        } catch (error) {
+          console.error('Save error:', error);
+          alert('Error saving POD: ' + error.message);
+          podData.isSaved = false;
+          document.getElementById('scanInput').disabled = false;
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
         }
-    }
-});
+      }
+    });
 
-    // Print - Remove action column properly
     document.getElementById('printButton').addEventListener('click', function() {
       const originalTable = document.getElementById('podTable');
       const tableClone = originalTable.cloneNode(true);
       
-      // Remove the Action column (last column) from all rows
       const allRows = tableClone.querySelectorAll('tr');
       allRows.forEach(row => {
         if (row.cells.length > 0) {
