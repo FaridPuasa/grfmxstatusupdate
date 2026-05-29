@@ -86,8 +86,10 @@
                                 <option value="H27">Pending Custom Declaration</option>
                                 <option value="H31">Shipment rejected/confiscated by customs</option>
                             </optgroup>
+                            <!-- <optgroup label="GDEX Flow">
+                                <option value="SBR">Scan Manifest Seal</option>
+                            </optgroup> -->
                             <% } %>
-                                <!-- Other optgroups remain the same -->
                                 <optgroup label="Standard Flow">
                                     <option value="IIW">2.2. Item in Warehouse</option>
                                     <!-- <option value="OFD">2.1. Out for Delivery</option> -->
@@ -97,10 +99,10 @@
                                     <!-- <option value="UMN">Update MAWB Number</option> -->
                                 </optgroup>
                                 <% if (['admin' ].includes(user.role)) { %>
-                                <optgroup label="Admin Only">
-                                    <option value="FOQJ">Fix On Queue Jobs</option>
-                                </optgroup>
-                                <% } %>
+                                    <optgroup label="Admin Only">
+                                        <option value="FOQJ">Fix On Queue Jobs</option>
+                                    </optgroup>
+                                    <% } %>
                     </select>
                 </div>
 
@@ -342,6 +344,84 @@
             }
         }
 
+        // Function to load only GDEX/GDEXT MAWBs for SBR
+        async function loadGDEXMAWBs() {
+            try {
+                console.log('🔍 Fetching GDEX/GDEXT MAWBs for SBR...');
+
+                const response = await fetch('/updateJob/gdexMAWBs');
+                const data = await response.json();
+
+                console.log('📊 GDEX MAWB response:', data);
+
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbStats = document.getElementById('mawbStats');
+                const mawbStatsText = document.getElementById('mawbStatsText');
+
+                // Clear existing options (keep first empty option)
+                while (mawbSelect.options.length > 1) {
+                    mawbSelect.remove(1);
+                }
+
+                if (data.success && data.mawbs && data.mawbs.length > 0) {
+                    console.log(`✅ Found ${data.mawbs.length} GDEX/GDEXT MAWBs`);
+
+                    data.mawbs.forEach(mawb => {
+                        const option = document.createElement('option');
+                        option.value = mawb.mawbNo;
+                        option.textContent = `${mawb.mawbNo} (${mawb.totalJobs}) - ${mawb.product}`;
+                        option.setAttribute('data-total', mawb.totalJobs);
+                        option.setAttribute('data-product', mawb.product);
+                        option.setAttribute('data-last-updated', mawb.lastUpdated);
+                        mawbSelect.appendChild(option);
+                    });
+
+                    mawbStats.style.display = 'block';
+                    mawbStatsText.textContent = `Showing ${data.mawbs.length} GDEX MAWBs from last 30 days with ${data.summary?.totalJobs || 0} total jobs`;
+
+                    // Show the first option as selected hint
+                    if (mawbSelect.options.length > 1) {
+                        mawbSelect.selectedIndex = 0;
+                    }
+
+                } else {
+                    console.log('⚠️ No GDEX/GDEXT MAWBs found');
+
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No GDEX/GDEXT MAWBs found';
+                    option.disabled = true;
+                    option.selected = true;
+                    mawbSelect.appendChild(option);
+
+                    mawbStats.style.display = 'block';
+                    mawbStatsText.textContent = 'No GDEX/GDEXT MAWBs found in the system. Make sure there are orders with product "gdex" or "gdext" and MAWB numbers assigned.';
+                }
+
+            } catch (error) {
+                console.error('❌ Error loading GDEX MAWBs:', error);
+
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbStats = document.getElementById('mawbStats');
+                const mawbStatsText = document.getElementById('mawbStatsText');
+
+                // Clear options
+                while (mawbSelect.options.length > 1) {
+                    mawbSelect.remove(1);
+                }
+
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Error loading MAWB numbers';
+                option.disabled = true;
+                option.selected = true;
+                mawbSelect.appendChild(option);
+
+                mawbStats.style.display = 'block';
+                mawbStatsText.textContent = `Error: ${error.message}. Check console for details.`;
+            }
+        }
+
         document.getElementById('updateCode').addEventListener('change', async function () {
             const mawbFields = document.getElementById('mawbFields');
             const updateMethodSection = document.getElementById('updateMethod').closest('.mb-3');
@@ -364,7 +444,8 @@
                 this.value === 'H18' ||
                 this.value === 'H19' ||
                 this.value === 'H27' ||
-                this.value === 'H31') {
+                this.value === 'H31' ||
+                this.value === 'SBR') {
                 mawbFields.style.display = 'block';
 
                 if (this.value === 'UAN') {
@@ -446,6 +527,29 @@
                     bulkSection.style.display = 'none';
                     oneByOneSection.style.display = 'none';
 
+                } else if (this.value === 'SBR') {
+                    // Scan Manifest Seal - GDEX only
+                    mawbFields.style.display = 'block';
+                    mawbNumContainer.style.display = 'block';
+                    mawbSelect.style.display = 'block';
+                    mawbInput.style.display = 'none';
+                    mawbRequired.style.display = 'inline';
+                    mawbOptional.style.display = 'none';
+                    warehouseFields.style.display = 'none';
+                    updateMethodSection.style.display = 'block';
+                    updateMethod.required = true;
+                    mawbInput.required = false;
+                    warehouseSelect.required = false;
+                    mawbHelp.textContent = 'Select MAWB Number (GDEX/GDEXT only) - Required';
+                    hideExcelUploadButton();
+
+                    // Reset update method and hide sections
+                    updateMethod.value = '';
+                    bulkSection.style.display = 'none';
+                    oneByOneSection.style.display = 'none';
+
+                    // Load GDEX MAWBs only
+                    await loadGDEXMAWBs();
                 } else if (this.value === 'IIW') {
                     // Item in Warehouse - Show dropdown with recent MAWBs
                     mawbNumContainer.style.display = 'block';
@@ -904,6 +1008,78 @@
             this.value = '';
 
             const updateCode = document.getElementById('updateCode').value;
+
+            // Handle SBR (Scan Manifest Seal) one-by-one
+            if (updateCode === 'SBR') {
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
+
+                if (!mawbNum) {
+                    alert('Please select a MAWB Number first');
+                    this.focus();
+                    return;
+                }
+
+                // Check for duplicate
+                const duplicateCheck = trackDuplicate(trackingNumber, updateCode, 'onebyone');
+                if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
+                    showScanAlert(`⚠️ Duplicate manifest seal: ${trackingNumber} (skipped)`, 'info');
+                    this.focus();
+                    return;
+                }
+
+                showSingleLoading(true);
+
+                try {
+                    const response = await fetch('/updateJob/scanManifestSeal', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            mawbNum: mawbNum,
+                            manifestSeals: [trackingNumber],
+                            updateMethod: 'onebyone'
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        scanResults.successful.push({
+                            trackingNumber: trackingNumber,
+                            result: `Manifest seal scanned successfully for MAWB ${mawbNum}`
+                        });
+                        scanResults.updatedCount++;
+                        flashSuccess(this);
+                    } else {
+                        scanResults.failed.push({
+                            trackingNumber: trackingNumber,
+                            result: result.message || 'Failed to scan manifest seal'
+                        });
+                        scanResults.notUpdatedCount++;
+                        flashError(this);
+                    }
+
+                    updateScanResultsDisplay();
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    scanResults.failed.push({
+                        trackingNumber: trackingNumber,
+                        result: 'Error: ' + error.message
+                    });
+                    scanResults.notUpdatedCount++;
+                    updateScanResultsDisplay();
+                    flashError(this);
+                } finally {
+                    showSingleLoading(false);
+                    this.focus();
+                }
+
+                return;
+            }
+
             const warehouse = document.getElementById('warehouse') ? document.getElementById('warehouse').value : '';
 
             // GET MAWB VALUE FROM PRESERVED STORAGE
@@ -1497,6 +1673,88 @@
 
             const updateCode = document.getElementById('updateCode').value;
 
+            if (updateCode === 'SBR') {
+                const mawbSelect = document.getElementById('mawbNum');
+                const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
+                const updateMethod = document.getElementById('updateMethod').value;
+
+                console.log('SBR Form Submit - MAWB:', mawbNum, 'Method:', updateMethod);
+
+                if (!mawbNum) {
+                    alert('Please select a MAWB Number');
+                    return;
+                }
+
+                if (!updateMethod) {
+                    alert('Please select an update method (Bulk or One by One)');
+                    return;
+                }
+
+                let manifestSeals = [];
+
+                if (updateMethod === 'bulk') {
+                    const trackingNumBulk = document.getElementById('trackingNumBulk').value;
+                    manifestSeals = trackingNumBulk.split('\n').map(num => num.trim()).filter(num => num !== '');
+
+                    if (manifestSeals.length === 0) {
+                        alert('Please enter manifest seal numbers (one per line)');
+                        return;
+                    }
+
+                    console.log('Processing bulk SBR with', manifestSeals.length, 'seals');
+
+                    // Switch to active update mode
+                    switchToActiveUpdateMode(updateCode, 'bulk');
+
+                    // Show loading
+                    document.getElementById('loading').innerHTML = `
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Processing ${manifestSeals.length} manifest seal(s) for MAWB: ${mawbNum}...</p>
+                <div class="progress mt-3" style="height: 25px;">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%; font-weight: bold;">0%</div>
+                </div>
+                <p id="progressText" class="mt-2">Sending request to GDEX...</p>
+            `;
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('bulkResults').style.display = 'none';
+
+                    try {
+                        const response = await fetch('/updateJob/scanManifestSeal', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                mawbNum: mawbNum,
+                                manifestSeals: manifestSeals,
+                                updateMethod: 'bulk'
+                            })
+                        });
+
+                        const result = await response.json();
+                        console.log('SBR Result:', result);
+
+                        document.getElementById('loading').style.display = 'none';
+                        displaySBRResults(result);
+
+                    } catch (error) {
+                        console.error('Error:', error);
+                        document.getElementById('loading').style.display = 'none';
+                        alert('An error occurred: ' + error.message);
+                    }
+
+                } else if (updateMethod === 'onebyone') {
+                    // One-by-one is handled separately in the tracking input change event
+                    console.log('One-by-one SBR mode - ready to scan');
+                    switchToActiveUpdateMode(updateCode, 'onebyone');
+                }
+
+                return;
+            }
+
             const gdexHoldCodes = ['H9', 'H18', 'H19', 'H27', 'H31'];
             if (gdexHoldCodes.includes(updateCode)) {
                 // GDEX Hold requires update method selection
@@ -1562,29 +1820,6 @@
                         return;
                     }
                 }
-
-                // ========== REMOVE THIS PROBLEMATIC SECTION ==========
-                // The validateMAWBForIIW function doesn't exist in frontend!
-                // if (updateCode === 'IIW' && mawbNum !== '') {
-                //     // Validate MAWB first
-                //     const validation = await validateMAWBForIIW(mawbNum, 'bulk');
-                //     
-                //     if (!validation.isValid) {
-                //         // Clear MAWB field if validation failed
-                //         if (mawbInput) {
-                //             mawbInput.value = '';
-                //         }
-                //         return;
-                //     }
-                //     
-                //     // Show MAWB stats for bulk
-                //     showMAWBStatsForBulk(validation, trackingNumbers.length);
-                //     
-                //     // Filter tracking numbers...
-                // }
-                // ========== END REMOVAL ==========
-
-                // Instead, just show basic stats from the dropdown data
                 showMAWBStatsForBulkBasic(mawbNum, totalJobs, unscannedJobs, trackingNumbers.length);
             }
 
@@ -3700,7 +3935,111 @@ EXAMPLE004\t\t
             }
         }
 
+        function displaySBRResults(result) {
+            const bulkResults = document.getElementById('bulkResults');
+            if (!bulkResults) return;
 
+            bulkResults.style.display = 'block';
+
+            // Update counts
+            const updatedCountElem = document.getElementById('updatedCount');
+            const failedCountElem = document.getElementById('failedCount');
+            const totalCountElem = document.getElementById('totalCount');
+
+            if (updatedCountElem) updatedCountElem.textContent = result.successful?.length || 0;
+            if (failedCountElem) failedCountElem.textContent = result.failed?.length || 0;
+            if (totalCountElem) totalCountElem.textContent = (result.successful?.length || 0) + (result.failed?.length || 0);
+
+            const resultsContainer = document.getElementById('resultsContainer');
+            if (!resultsContainer) return;
+
+            resultsContainer.innerHTML = '';
+
+            // Success table
+            if (result.successful && result.successful.length > 0) {
+                const successTable = document.createElement('div');
+                successTable.innerHTML = `
+            <h4 class="text-success mt-4">Successfully Scanned (${result.successful.length})</h4>
+            <div class="table-responsive">
+                <table class="table table-success table-striped">
+                    <thead>
+                        <tr>
+                            <th>Manifest Seal Number</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${result.successful.map(item => `
+                            <tr>
+                                <td><code>${escapeHtml(item.sealNumber)}</code></td>
+                                <td><span class="badge bg-success">Success</span></td>
+                                <td>${escapeHtml(item.message || 'Scanned successfully')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(successTable);
+            }
+
+            // Failed table
+            if (result.failed && result.failed.length > 0) {
+                const failedTable = document.createElement('div');
+                failedTable.innerHTML = `
+            <h4 class="text-danger mt-4">Failed Scans (${result.failed.length})</h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped">
+                    <thead>
+                        <tr>
+                            <th>Manifest Seal Number</th>
+                            <th>Status</th>
+                            <th>Error Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${result.failed.map(item => `
+                            <tr>
+                                <td><code>${escapeHtml(item.sealNumber)}</code></td>
+                                <td><span class="badge bg-danger">Failed</span></td>
+                                <td>${escapeHtml(item.message || 'Unknown error')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(failedTable);
+            }
+
+            // Summary alert
+            if (result.summary) {
+                const summaryAlert = document.createElement('div');
+                summaryAlert.className = `alert alert-${result.summary.hasFailures ? 'warning' : 'success'} mt-3`;
+                summaryAlert.innerHTML = `
+            <strong>Summary:</strong> ${result.summary.message}
+            <br>MAWB: ${result.mawbNum}
+            <br>Total: ${result.summary.total} | Success: ${result.summary.success} | Failed: ${result.summary.failures}
+        `;
+                resultsContainer.prepend(summaryAlert);
+            }
+
+            // Auto-scroll to results
+            setTimeout(() => {
+                bulkResults.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
     </script>
 </body>
 

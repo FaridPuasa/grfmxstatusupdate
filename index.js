@@ -28,6 +28,18 @@ const GDEX_CONFIG = {
 
 const gdexConfig = GDEX_CONFIG[GDEX_ENV];
 
+// Add to GDEX_CONFIG
+const GDEX_MANIFEST_CONFIG = {
+    uat: {
+        manifestUrl: 'https://uat1.gdexpress.com/CustomerAPI/api/services/app/shipmentStatus/SubmitAirLinehaul'
+    },
+    live: {
+        manifestUrl: 'https://esvr3.gdexpress.com/CustomerAPI/api/services/app/shipmentStatus/SubmitAirLinehaul'
+    }
+};
+
+const gdexManifestConfig = GDEX_MANIFEST_CONFIG[GDEX_ENV];
+
 // ==================================================
 // 📦 Core Packages
 // ==================================================
@@ -130,6 +142,7 @@ const PharmacyFORM = mainConn.model('PharmacyFORM', require('./models/PharmacyFO
 const ORDERCOUNTER = mainConn.model('ORDERCOUNTER', require('./models/ORDERCOUNTER'));
 const REPORTS = mainConn.model('REPORTS', require('./models/REPORTS'));
 const UnifiedPOD = mainConn.model('UnifiedPOD', require('./models/UnifiedPOD'));
+const GDEXMANIFESTSEALTAGS = mainConn.model('GDEXMANIFESTSEALTAGS', require('./models/GDEXMANIFESTSEALTAGS'));
 
 // Vehicle DB
 const VEHICLE = vehicleConn.model('VEHICLE', require('./models/VEHICLE'));
@@ -15861,9 +15874,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // Aggregate to get MAWB stats - only show MAWBs with unscanned jobs
-        // Update the unscannedJobs calculation in the aggregation
-        // Update the aggregation pipeline in /updateJob/recentMAWBs route
         const mawbStats = await ORDERS.aggregate([
             {
                 $match: {
@@ -15876,7 +15886,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     product: {
                         $in: ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext']
                     },
-                    // ADD: Filter for jobs that need scanning
                     $or: [
                         { currentStatus: "Info Received" },
                         { currentStatus: "Custom Clearing" },
@@ -15893,7 +15902,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                 $group: {
                     _id: '$mawbNo',
                     totalJobs: { $sum: 1 },
-                    // NEW LOGIC: Count by status categories
                     infoReceivedJobs: {
                         $sum: {
                             $cond: [{ $eq: ['$currentStatus', 'Info Received'] }, 1, 0]
@@ -15966,7 +15974,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                 }
             },
             {
-                // Calculate unscanned jobs
                 $addFields: {
                     unscannedJobs: {
                         $add: [
@@ -15985,7 +15992,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                 }
             },
             {
-                // Only include MAWBs with unscanned jobs
                 $match: {
                     unscannedJobs: { $gt: 0 }
                 }
@@ -15996,7 +16002,6 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                     totalJobs: 1,
                     unscannedJobs: 1,
                     scannedJobs: 1,
-                    // Detailed breakdown for frontend
                     statusBreakdown: {
                         infoReceived: '$infoReceivedJobs',
                         customClearing: '$customClearingJobs',
@@ -16034,15 +16039,7 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
 
         console.log(`📊 Found ${mawbStats.length} MAWBs with unscanned jobs`);
 
-        if (mawbStats.length > 0) {
-            console.log('Sample MAWBs:');
-            mawbStats.slice(0, 5).forEach(mawb => {
-                console.log(`   ${mawb.mawbNo}: ${mawb.unscannedJobs}/${mawb.totalJobs} Unscanned (${mawb.product})`);
-            });
-        }
-
-        // Format for frontend
-        // Format for frontend
+        // Format for frontend with PRODUCT_MAPPING
         const formattedMAWBs = mawbStats.map(mawb => ({
             mawbNo: mawb.mawbNo,
             totalJobs: mawb.totalJobs,
@@ -16050,12 +16047,11 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
             scannedJobs: mawb.scannedJobs || 0,
             atWarehouseJobs: mawb.atWarehouseJobs || 0,
             otherJobs: mawb.otherJobs || 0,
-            product: mawb.product,
+            product: PRODUCT_MAPPING[mawb.product] || mawb.product.toUpperCase(),  // Use mapping
             sampleTracking: mawb.sampleTracking,
             lastUpdated: formatDateForDisplay(mawb.latestUpdate),
             percentageUnscanned: Math.round(mawb.percentageUnscanned || 0),
             percentageScanned: Math.round(mawb.percentageScanned || 0),
-            // ADD status breakdown
             statusBreakdown: mawb.statusBreakdown || {
                 infoReceived: 0,
                 customClearing: 0,
@@ -21997,6 +21993,349 @@ app.get('/print-multiple', ensureAuthenticated, ensureAdmin, async (req, res) =>
         res.redirect('/listUser');
     }
 });
+
+// Get MAWBs for GDEX/GDEXT products only (for SBR) - Last 30 days
+app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
+    try {
+        console.log('🔍 Fetching GDEX/GDEXT MAWBs for SBR (last 30 days)...');
+        
+        // Calculate date 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+        
+        console.log(`   Filtering orders from: ${thirtyDaysAgoISO}`);
+        
+        const gdexMAWBs = await ORDERS.aggregate([
+            {
+                $match: {
+                    mawbNo: {
+                        $exists: true,
+                        $ne: '',
+                        $nin: [null, '', 'N/A', 'NA']
+                    },
+                    product: { $in: ['gdex', 'gdext'] },
+                    lastUpdateDateTime: { $gte: thirtyDaysAgoISO }  // Last 30 days
+                }
+            },
+            {
+                $group: {
+                    _id: '$mawbNo',
+                    totalJobs: { $sum: 1 },
+                    latestUpdate: { $max: '$lastUpdateDateTime' },
+                    product: { $first: '$product' },
+                    sampleTracking: { $first: '$doTrackingNumber' }
+                }
+            },
+            {
+                $project: {
+                    mawbNo: '$_id',
+                    totalJobs: 1,
+                    latestUpdate: 1,
+                    product: 1,
+                    sampleTracking: 1
+                }
+            },
+            {
+                $sort: {
+                    latestUpdate: -1
+                }
+            },
+            { $limit: 100 }
+        ]);
+        
+        console.log(`📊 Found ${gdexMAWBs.length} GDEX/GDEXT MAWBs with activity in last 30 days`);
+        
+        // Use PRODUCT_MAPPING for display
+        const formattedMAWBs = gdexMAWBs.map(mawb => ({
+            mawbNo: mawb.mawbNo,
+            totalJobs: mawb.totalJobs,
+            product: PRODUCT_MAPPING[mawb.product] || 'GDEX',  // Use mapping
+            sampleTracking: mawb.sampleTracking,
+            lastUpdated: formatDateForDisplay(mawb.latestUpdate)
+        }));
+        
+        res.json({
+            success: true,
+            count: formattedMAWBs.length,
+            mawbs: formattedMAWBs,
+            summary: {
+                totalMAWBs: formattedMAWBs.length,
+                totalJobs: formattedMAWBs.reduce((sum, m) => sum + m.totalJobs, 0),
+                dateRange: `Last 30 days (from ${thirtyDaysAgo.toISOString().split('T')[0]})`
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Error getting GDEX MAWBs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to load GDEX MAWBs',
+            message: error.message
+        });
+    }
+});
+
+// Scan Manifest Seal (SBR) for GDEX
+app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) => {
+    try {
+        const { mawbNum, manifestSeals, updateMethod } = req.body;
+        
+        if (!mawbNum || mawbNum.trim() === '') {
+            return res.status(400).json({ error: 'MAWB Number is required' });
+        }
+        
+        if (!manifestSeals || manifestSeals.length === 0) {
+            return res.status(400).json({ error: 'Manifest seal numbers are required' });
+        }
+        
+        // Clean manifest seal numbers
+        const cleanSeals = manifestSeals
+            .map(seal => seal.trim().toUpperCase())
+            .filter(seal => seal !== '');
+        
+        if (cleanSeals.length === 0) {
+            return res.status(400).json({ error: 'No valid manifest seal numbers' });
+        }
+        
+        // Remove duplicates
+        const uniqueSeals = [...new Set(cleanSeals)];
+        
+        console.log(`📦 Processing SBR for MAWB: ${mawbNum}`);
+        console.log(`   Seals: ${uniqueSeals.join(', ')}`);
+        console.log(`   Method: ${updateMethod}`);
+        
+        // Get GDEX token
+        const token = await getGDEXToken();
+        if (!token) {
+            return res.status(500).json({
+                error: 'Failed to get GDEX authentication token'
+            });
+        }
+        
+        // Prepare request body for GDEX API
+        const requestBody = {
+            cBr: "GOR",
+            sdtm: moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
+            mnList: uniqueSeals,
+            deliverypartner: "GOR"
+        };
+        
+        console.log(`📤 Sending request to GDEX Manifest API:`);
+        console.log(`   URL: ${gdexManifestConfig.manifestUrl}`);
+        console.log(`   Body:`, JSON.stringify(requestBody, null, 2));
+        
+        // Call GDEX API
+        let gdexResponse;
+        try {
+            gdexResponse = await axios.post(gdexManifestConfig.manifestUrl, requestBody, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                timeout: 15000
+            });
+            
+            console.log(`📥 GDEX Response Status: ${gdexResponse.status}`);
+            console.log(`📥 GDEX Response Data:`, JSON.stringify(gdexResponse.data, null, 2));
+            
+        } catch (error) {
+            console.error(`❌ GDEX API error:`, error.message);
+            if (error.response) {
+                console.error(`   Status: ${error.response.status}`);
+                console.error(`   Data:`, JSON.stringify(error.response.data, null, 2));
+            }
+            
+            return res.status(500).json({
+                error: 'GDEX API request failed',
+                message: error.message,
+                details: error.response?.data
+            });
+        }
+        
+        // Process GDEX response
+        const results = {
+            successful: [],
+            failed: [],
+            mawbNum: mawbNum,
+            updateMethod: updateMethod
+        };
+        
+        if (gdexResponse.data && gdexResponse.data.success === true) {
+            // API call was successful overall
+            const resultData = gdexResponse.data.result;
+            
+            if (resultData && resultData.success === true) {
+                // All seals were successful
+                console.log(`✅ All ${uniqueSeals.length} manifest seals accepted by GDEX`);
+                
+                for (const seal of uniqueSeals) {
+                    results.successful.push({
+                        sealNumber: seal,
+                        message: 'Manifest seal scanned successfully'
+                    });
+                }
+                
+                // Save to MongoDB
+                await saveManifestSealsToDatabase(mawbNum, uniqueSeals, updateMethod);
+                
+            } else if (resultData && resultData.error) {
+                // Some seals failed - check error message for duplicate
+                const errorMessage = resultData.error.message || '';
+                const duplicateMatch = errorMessage.match(/Duplicate Manifest: (\S+)/);
+                
+                if (duplicateMatch) {
+                    const duplicateSeal = duplicateMatch[1];
+                    console.log(`⚠️ Duplicate manifest seal detected: ${duplicateSeal}`);
+                    
+                    // Process each seal individually to determine which succeeded/failed
+                    for (const seal of uniqueSeals) {
+                        if (seal === duplicateSeal) {
+                            results.failed.push({
+                                sealNumber: seal,
+                                message: `Duplicate manifest seal: Already scanned`
+                            });
+                        } else {
+                            // For now, assume others succeeded
+                            // In production, you might want to make individual API calls
+                            results.successful.push({
+                                sealNumber: seal,
+                                message: 'Manifest seal scanned successfully'
+                            });
+                        }
+                    }
+                    
+                    // Save successful seals to database
+                    const successfulSeals = results.successful.map(s => s.sealNumber);
+                    if (successfulSeals.length > 0) {
+                        await saveManifestSealsToDatabase(mawbNum, successfulSeals, updateMethod);
+                    }
+                } else {
+                    // Other error - all failed
+                    console.log(`❌ GDEX returned error: ${errorMessage}`);
+                    for (const seal of uniqueSeals) {
+                        results.failed.push({
+                            sealNumber: seal,
+                            message: errorMessage || 'GDEX API returned error'
+                        });
+                    }
+                }
+            }
+            
+        } else if (gdexResponse.data && gdexResponse.data.success === false) {
+            // API call failed
+            const errorMsg = gdexResponse.data.error?.message || 'Unknown GDEX error';
+            console.log(`❌ GDEX API call failed: ${errorMsg}`);
+            
+            for (const seal of uniqueSeals) {
+                results.failed.push({
+                    sealNumber: seal,
+                    message: errorMsg
+                });
+            }
+        } else {
+            // Unexpected response format
+            console.log(`⚠️ Unexpected GDEX response format`);
+            for (const seal of uniqueSeals) {
+                results.failed.push({
+                    sealNumber: seal,
+                    message: 'Unexpected response from GDEX API'
+                });
+            }
+        }
+        
+        // Add summary
+        results.summary = {
+            total: uniqueSeals.length,
+            success: results.successful.length,
+            failures: results.failed.length,
+            hasFailures: results.failed.length > 0,
+            message: `${results.successful.length} of ${uniqueSeals.length} manifest seals processed successfully`
+        };
+        
+        console.log(`📊 SBR Results: ${results.summary.success} success, ${results.summary.failures} failed`);
+        
+        // For bulk updates, return results directly
+        if (updateMethod === 'bulk') {
+            return res.json(results);
+        }
+        
+        // For one-by-one, return single result
+        if (updateMethod === 'onebyone' && uniqueSeals.length === 1) {
+            const seal = uniqueSeals[0];
+            const isSuccess = results.successful.some(s => s.sealNumber === seal);
+            
+            return res.json({
+                success: isSuccess,
+                message: isSuccess ? 'Manifest seal scanned successfully' : (results.failed[0]?.message || 'Scan failed'),
+                sealNumber: seal,
+                mawbNum: mawbNum
+            });
+        }
+        
+        return res.json(results);
+        
+    } catch (error) {
+        console.error('❌ Error in SBR route:', error);
+        res.status(500).json({
+            error: 'Server error',
+            message: error.message
+        });
+    }
+});
+
+// Helper function to save manifest seals to database
+async function saveManifestSealsToDatabase(mawbNum, manifestSeals, updateMethod) {
+    try {
+        console.log(`💾 Saving manifest seals to database for MAWB: ${mawbNum}`);
+        console.log(`   Seals: ${manifestSeals.join(', ')}`);
+        console.log(`   Method: ${updateMethod}`);
+        
+        const now = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+        
+        // Find existing document
+        const existingDoc = await GDEXMANIFESTSEALTAGS.findOne({ mawbNo: mawbNum });
+        
+        if (existingDoc) {
+            // Add new seals to existing array (avoid duplicates)
+            const existingSeals = new Set(existingDoc.manifestsealtags || []);
+            const newSeals = manifestSeals.filter(seal => !existingSeals.has(seal));
+            
+            if (newSeals.length > 0) {
+                const updatedSeals = [...existingDoc.manifestsealtags, ...newSeals];
+                await GDEXMANIFESTSEALTAGS.updateOne(
+                    { mawbNo: mawbNum },
+                    {
+                        $set: {
+                            manifestsealtags: updatedSeals,
+                            lastUpdateDateTime: now
+                        }
+                    }
+                );
+                console.log(`✅ Updated existing document: added ${newSeals.length} new seals`);
+            } else {
+                console.log(`ℹ️ No new seals to add (all already exist)`);
+            }
+        } else {
+            // Create new document
+            const newDoc = new GDEXMANIFESTSEALTAGS({
+                mawbNo: mawbNum,
+                manifestsealtags: manifestSeals,
+                lastUpdateDateTime: now
+            });
+            await newDoc.save();
+            console.log(`✅ Created new document with ${manifestSeals.length} seals`);
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error(`❌ Error saving manifest seals to database:`, error);
+        // Don't throw - just log error, as the GDEX API call was successful
+        return false;
+    }
+}
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
