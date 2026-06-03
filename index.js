@@ -9154,45 +9154,102 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             if (req.body.statusCode == 'RSAL2') {
                 if ((product == 'GDEX') || (product == 'GDEXT')) {
                     // Check if job is in correct status for return
-                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area') || (data.data.status == 'on_hold')) {
+                    if ((data.data.status == 'at_warehouse') ||
+                        (data.data.status == 'in_sorting_area') ||
+                        (data.data.status == 'on_hold') ||
+                        (data.data.status == 'completed')) {
 
-                        // MongoDB update for return status
-                        update = {
-                            currentStatus: "Return",
-                            lastUpdateDateTime: moment().format(),
-                            latestLocation: "Warehouse K2",
-                            lastUpdatedBy: req.user.name,
-                            $push: {
-                                history: {
-                                    statusHistory: "Return",
-                                    dateUpdated: moment().format(),
-                                    updatedBy: req.user.name,
-                                    lastLocation: "Warehouse K2",
+                        console.log(`🔄 Processing GDEX Return to Shipper for Tracking: ${consignmentID}`);
+
+                        // STEP 1: Get GDEX token FIRST
+                        const token = await getGDEXToken();
+                        if (!token) {
+                            console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
+                            processingResults.push({
+                                consignmentID,
+                                status: `Error: Failed to get GDEX authentication token for return to shipper`,
+                            });
+                            continue; // Skip this consignment
+                        }
+
+                        // STEP 2: Send GDEX Return to Shipper API FIRST
+                        let gdexSuccess = false;
+                        try {
+                            gdexSuccess = await sendGDEXTrackingWebhook(
+                                consignmentID,
+                                "AL2",                      // statusCode
+                                "Out for Delivery",         // statusDescription
+                                "Go Rush Warehouse",        // locationDescription
+                                token,                      // Pass the token
+                                "",                         // reasonCode (empty)
+                                "",                         // epod (empty)
+                                true                        // returnflag = true (CRITICAL for returns!)
+                            );
+
+                            if (gdexSuccess) {
+                                console.log(`✅ GDEX Return to Shipper API succeeded for ${consignmentID}`);
+                            } else {
+                                console.error(`❌ GDEX Return to Shipper API FAILED for ${consignmentID}`);
+                            }
+                        } catch (gdexError) {
+                            console.error(`🔥 GDEX API error for ${consignmentID}:`, gdexError.message);
+                            gdexSuccess = false;
+                        }
+
+                        // STEP 3: ONLY proceed with MongoDB and Detrack if GDEX API was successful
+                        if (gdexSuccess) {
+                            console.log(`✅ GDEX successful - Proceeding with MongoDB and Detrack updates for ${consignmentID}`);
+
+                            // MongoDB update for return status
+                            update = {
+                                currentStatus: "Return",
+                                lastUpdateDateTime: moment().format(),
+                                latestLocation: "Warehouse K2",
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
+                                        statusHistory: "Return",
+                                        dateUpdated: moment().format(),
+                                        updatedBy: req.user.name,
+                                        lastLocation: "Warehouse K2",
+                                    }
                                 }
-                            }
-                        };
+                            };
 
-                        // Detrack update for return status
-                        var detrackUpdateData = {
-                            do_number: consignmentID,
-                            data: {
-                                status: "return"
-                            }
-                        };
+                            // Detrack update for return status
+                            var detrackUpdateData = {
+                                do_number: consignmentID,
+                                data: {
+                                    status: "return"
+                                }
+                            };
 
-                        portalUpdate = "Detrack and Portal updated to Return status";
+                            portalUpdate = "Detrack and Portal updated to Return status";
 
-                        // Set GDEXAPIrun = 8 for Return to Shipper
-                        GDEXAPIrun = 8;
+                            // Set flags for MongoDB and Detrack updates
+                            mongoDBrun = 2;           // Update MongoDB
+                            DetrackAPIrun = 1;        // Update Detrack to "return" status
+                            completeRun = 1;
 
-                        mongoDBrun = 2;
-                        DetrackAPIrun = 1;  // Update Detrack to "return" status
-                        completeRun = 1;
+                            // Note: GDEXAPIrun is NOT set to 8 here because we already called GDEX
+                            // and it succeeded. Setting it would cause duplicate calls.
+
+                        } else {
+                            // GDEX API failed - DO NOT update MongoDB or Detrack
+                            console.error(`❌ GDEX API failed for ${consignmentID} - SKIPPING MongoDB and Detrack updates`);
+
+                            processingResults.push({
+                                consignmentID,
+                                status: `Error: GDEX Return to Shipper API failed. MongoDB and Detrack were NOT updated.`,
+                            });
+                            continue; // Skip to next consignment
+                        }
+
                     } else {
                         // Job not in correct status for return
                         processingResults.push({
                             consignmentID,
-                            status: `Error: GDEX job must be "at_warehouse", "in_sorting_area", "failed", or "info_recv" to mark as return. Current status: ${data.data.status}`,
+                            status: `Error: GDEX job must be "at_warehouse", "in_sorting_area", "on_hold", or "completed" to mark as return. Current status: ${data.data.status}`,
                         });
                         continue;
                     }
@@ -21998,15 +22055,15 @@ app.get('/print-multiple', ensureAuthenticated, ensureAdmin, async (req, res) =>
 app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
     try {
         console.log('🔍 Fetching GDEX/GDEXT MAWBs for SBR (last 30 days)...');
-        
+
         // Calculate date 30 days ago
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
+
         const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
-        
+
         console.log(`   Filtering orders from: ${thirtyDaysAgoISO}`);
-        
+
         const gdexMAWBs = await ORDERS.aggregate([
             {
                 $match: {
@@ -22044,9 +22101,9 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
             },
             { $limit: 100 }
         ]);
-        
+
         console.log(`📊 Found ${gdexMAWBs.length} GDEX/GDEXT MAWBs with activity in last 30 days`);
-        
+
         // Use PRODUCT_MAPPING for display
         const formattedMAWBs = gdexMAWBs.map(mawb => ({
             mawbNo: mawb.mawbNo,
@@ -22055,7 +22112,7 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
             sampleTracking: mawb.sampleTracking,
             lastUpdated: formatDateForDisplay(mawb.latestUpdate)
         }));
-        
+
         res.json({
             success: true,
             count: formattedMAWBs.length,
@@ -22066,7 +22123,7 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
                 dateRange: `Last 30 days (from ${thirtyDaysAgo.toISOString().split('T')[0]})`
             }
         });
-        
+
     } catch (error) {
         console.error('❌ Error getting GDEX MAWBs:', error);
         res.status(500).json({
@@ -22081,31 +22138,31 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
 app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) => {
     try {
         const { mawbNum, manifestSeals, updateMethod } = req.body;
-        
+
         if (!mawbNum || mawbNum.trim() === '') {
             return res.status(400).json({ error: 'MAWB Number is required' });
         }
-        
+
         if (!manifestSeals || manifestSeals.length === 0) {
             return res.status(400).json({ error: 'Manifest seal numbers are required' });
         }
-        
+
         // Clean manifest seal numbers
         const cleanSeals = manifestSeals
             .map(seal => seal.trim().toUpperCase())
             .filter(seal => seal !== '');
-        
+
         if (cleanSeals.length === 0) {
             return res.status(400).json({ error: 'No valid manifest seal numbers' });
         }
-        
+
         // Remove duplicates
         const uniqueSeals = [...new Set(cleanSeals)];
-        
+
         console.log(`📦 Processing SBR for MAWB: ${mawbNum}`);
         console.log(`   Seals: ${uniqueSeals.join(', ')}`);
         console.log(`   Method: ${updateMethod}`);
-        
+
         // Get GDEX token
         const token = await getGDEXToken();
         if (!token) {
@@ -22113,7 +22170,7 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
                 error: 'Failed to get GDEX authentication token'
             });
         }
-        
+
         // Prepare request body for GDEX API
         const requestBody = {
             cBr: "GOR",
@@ -22121,11 +22178,11 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
             mnList: uniqueSeals,
             deliverypartner: "GOR"
         };
-        
+
         console.log(`📤 Sending request to GDEX Manifest API:`);
         console.log(`   URL: ${gdexManifestConfig.manifestUrl}`);
         console.log(`   Body:`, JSON.stringify(requestBody, null, 2));
-        
+
         // Call GDEX API
         let gdexResponse;
         try {
@@ -22136,24 +22193,24 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
                 },
                 timeout: 15000
             });
-            
+
             console.log(`📥 GDEX Response Status: ${gdexResponse.status}`);
             console.log(`📥 GDEX Response Data:`, JSON.stringify(gdexResponse.data, null, 2));
-            
+
         } catch (error) {
             console.error(`❌ GDEX API error:`, error.message);
             if (error.response) {
                 console.error(`   Status: ${error.response.status}`);
                 console.error(`   Data:`, JSON.stringify(error.response.data, null, 2));
             }
-            
+
             return res.status(500).json({
                 error: 'GDEX API request failed',
                 message: error.message,
                 details: error.response?.data
             });
         }
-        
+
         // Process GDEX response
         const results = {
             successful: [],
@@ -22161,34 +22218,34 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
             mawbNum: mawbNum,
             updateMethod: updateMethod
         };
-        
+
         if (gdexResponse.data && gdexResponse.data.success === true) {
             // API call was successful overall
             const resultData = gdexResponse.data.result;
-            
+
             if (resultData && resultData.success === true) {
                 // All seals were successful
                 console.log(`✅ All ${uniqueSeals.length} manifest seals accepted by GDEX`);
-                
+
                 for (const seal of uniqueSeals) {
                     results.successful.push({
                         sealNumber: seal,
                         message: 'Manifest seal scanned successfully'
                     });
                 }
-                
+
                 // Save to MongoDB
                 await saveManifestSealsToDatabase(mawbNum, uniqueSeals, updateMethod);
-                
+
             } else if (resultData && resultData.error) {
                 // Some seals failed - check error message for duplicate
                 const errorMessage = resultData.error.message || '';
                 const duplicateMatch = errorMessage.match(/Duplicate Manifest: (\S+)/);
-                
+
                 if (duplicateMatch) {
                     const duplicateSeal = duplicateMatch[1];
                     console.log(`⚠️ Duplicate manifest seal detected: ${duplicateSeal}`);
-                    
+
                     // Process each seal individually to determine which succeeded/failed
                     for (const seal of uniqueSeals) {
                         if (seal === duplicateSeal) {
@@ -22205,7 +22262,7 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
                             });
                         }
                     }
-                    
+
                     // Save successful seals to database
                     const successfulSeals = results.successful.map(s => s.sealNumber);
                     if (successfulSeals.length > 0) {
@@ -22222,12 +22279,12 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
                     }
                 }
             }
-            
+
         } else if (gdexResponse.data && gdexResponse.data.success === false) {
             // API call failed
             const errorMsg = gdexResponse.data.error?.message || 'Unknown GDEX error';
             console.log(`❌ GDEX API call failed: ${errorMsg}`);
-            
+
             for (const seal of uniqueSeals) {
                 results.failed.push({
                     sealNumber: seal,
@@ -22244,7 +22301,7 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
                 });
             }
         }
-        
+
         // Add summary
         results.summary = {
             total: uniqueSeals.length,
@@ -22253,19 +22310,19 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
             hasFailures: results.failed.length > 0,
             message: `${results.successful.length} of ${uniqueSeals.length} manifest seals processed successfully`
         };
-        
+
         console.log(`📊 SBR Results: ${results.summary.success} success, ${results.summary.failures} failed`);
-        
+
         // For bulk updates, return results directly
         if (updateMethod === 'bulk') {
             return res.json(results);
         }
-        
+
         // For one-by-one, return single result
         if (updateMethod === 'onebyone' && uniqueSeals.length === 1) {
             const seal = uniqueSeals[0];
             const isSuccess = results.successful.some(s => s.sealNumber === seal);
-            
+
             return res.json({
                 success: isSuccess,
                 message: isSuccess ? 'Manifest seal scanned successfully' : (results.failed[0]?.message || 'Scan failed'),
@@ -22273,9 +22330,9 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
                 mawbNum: mawbNum
             });
         }
-        
+
         return res.json(results);
-        
+
     } catch (error) {
         console.error('❌ Error in SBR route:', error);
         res.status(500).json({
@@ -22291,17 +22348,17 @@ async function saveManifestSealsToDatabase(mawbNum, manifestSeals, updateMethod)
         console.log(`💾 Saving manifest seals to database for MAWB: ${mawbNum}`);
         console.log(`   Seals: ${manifestSeals.join(', ')}`);
         console.log(`   Method: ${updateMethod}`);
-        
+
         const now = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
-        
+
         // Find existing document
         const existingDoc = await GDEXMANIFESTSEALTAGS.findOne({ mawbNo: mawbNum });
-        
+
         if (existingDoc) {
             // Add new seals to existing array (avoid duplicates)
             const existingSeals = new Set(existingDoc.manifestsealtags || []);
             const newSeals = manifestSeals.filter(seal => !existingSeals.has(seal));
-            
+
             if (newSeals.length > 0) {
                 const updatedSeals = [...existingDoc.manifestsealtags, ...newSeals];
                 await GDEXMANIFESTSEALTAGS.updateOne(
@@ -22327,9 +22384,9 @@ async function saveManifestSealsToDatabase(mawbNum, manifestSeals, updateMethod)
             await newDoc.save();
             console.log(`✅ Created new document with ${manifestSeals.length} seals`);
         }
-        
+
         return true;
-        
+
     } catch (error) {
         console.error(`❌ Error saving manifest seals to database:`, error);
         // Don't throw - just log error, as the GDEX API call was successful
