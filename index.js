@@ -13163,6 +13163,635 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 // ==================================================
+// 🎂 BIRTHDAY GREETING SYSTEM - PRODUCTION
+// ==================================================
+
+// Intelligent date parser for inconsistent formats
+function parseBirthDate(dateString) {
+    if (!dateString || dateString === 'N/A' || dateString === '') {
+        return null;
+    }
+
+    // Clean the string
+    let clean = dateString.toString().trim();
+    
+    // Remove ordinal indicators (st, nd, rd, th)
+    clean = clean.replace(/(\d)(st|nd|rd|th)/gi, '$1');
+    
+    // Remove any non-numeric and non-separator characters
+    clean = clean.replace(/[^0-9\/\.\-\\\s]/g, '');
+    
+    // Replace various separators with a standard separator
+    let normalized = clean
+        .replace(/[\/\.\-\\\s]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    
+    const parts = normalized.split('-').filter(p => p.length > 0);
+    
+    if (parts.length !== 3) {
+        return null;
+    }
+    
+    // Detect format based on patterns
+    let day, month, year;
+    
+    // Check if it's ddmmyyyy format (8 digits)
+    if (parts.length === 1 && parts[0].length === 8 && /^\d{8}$/.test(parts[0])) {
+        day = parseInt(parts[0].substring(0, 2));
+        month = parseInt(parts[0].substring(2, 4));
+        year = parseInt(parts[0].substring(4, 8));
+    } 
+    // Standard 3-part format
+    else if (parts.length === 3) {
+        let p1 = parseInt(parts[0]);
+        let p2 = parseInt(parts[1]);
+        let p3 = parseInt(parts[2]);
+        
+        // Year is usually the largest number or 4 digits
+        if (p3 > 31 && p3 < 2100) {
+            // Year is last
+            year = p3;
+            // Determine day/month based on values
+            if (p1 <= 31 && p2 <= 12) {
+                // Could be DD-MM or MM-DD
+                if (p1 <= 12 && p2 <= 31) {
+                    // Ambiguous: both <=12
+                    // Default to DD-MM (Brunei common format)
+                    day = p1;
+                    month = p2;
+                } else if (p1 <= 12) {
+                    day = p2;
+                    month = p1;
+                } else {
+                    day = p1;
+                    month = p2;
+                }
+            } else {
+                day = p1;
+                month = p2;
+            }
+        } 
+        else if (p1 > 31 && p1 < 2100) {
+            // Year is first
+            year = p1;
+            day = p2;
+            month = p3;
+        }
+        else if (p2 > 31 && p2 < 2100) {
+            // Year is middle
+            year = p2;
+            day = p1;
+            month = p3;
+        }
+        else {
+            // No clear year indicator
+            year = p3 > 1000 ? p3 : (2000 + p3);
+            
+            // Ambiguous day/month
+            if (p1 <= 12 && p2 <= 31) {
+                // Could be MM-DD or DD-MM
+                // Default to DD-MM for Brunei
+                day = p1;
+                month = p2;
+            } else if (p2 <= 12 && p1 <= 31) {
+                day = p2;
+                month = p1;
+            } else {
+                day = p1;
+                month = p2;
+            }
+        }
+    }
+    
+    // Validate
+    if (!day || !month || !year) return null;
+    if (day < 1 || day > 31) return null;
+    if (month < 1 || month > 12) return null;
+    if (year < 1900 || year > new Date().getFullYear()) return null;
+    
+    return {
+        day: day,
+        month: month,
+        year: year,
+        isValid: true
+    };
+}
+
+// Check if today is birthday
+function isBirthdayToday(birthDateObj) {
+    if (!birthDateObj || !birthDateObj.isValid) return false;
+    
+    const today = new Date();
+    const todayMonth = today.getMonth() + 1;
+    const todayDay = today.getDate();
+    
+    return birthDateObj.month === todayMonth && birthDateObj.day === todayDay;
+}
+
+// Clean phone number for WhatsApp - MUST have + prefix for Make/Integromat
+function cleanPhoneNumberForBirthday(phoneNumber) {
+    if (!phoneNumber) return null;
+    
+    let cleaned = phoneNumber.toString().trim();
+    cleaned = cleaned.replace(/\D/g, '');
+    
+    // Remove leading 0
+    if (cleaned.startsWith('0')) {
+        cleaned = cleaned.substring(1);
+    }
+    
+    // Add country code if missing (7 digits = Brunei number)
+    if (cleaned.length === 7) {
+        cleaned = '673' + cleaned;
+    }
+    
+    // CRITICAL: Add + prefix for Make/Integromat
+    cleaned = '+' + cleaned.replace(/^\+/, '');
+    
+    return cleaned;
+}
+
+// Send birthday greeting via Make webhook
+async function sendBirthdayGreeting(phoneNumber, name, dateOfBirth) {
+    try {
+        console.log(`🎂 Sending birthday greeting to ${name} (${phoneNumber})`);
+        
+        const webhookUrl = 'https://hook.eu1.make.com/u0pit5afuwjdvo8ykyd3i4me55azhkrx';
+        
+        const payload = {
+            phone: phoneNumber,  // Will have + prefix
+            name: name || 'Valued Customer',
+            dateOfBirth: dateOfBirth,
+            event: 'birthday_greeting',
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log(`📤 Make webhook payload:`, JSON.stringify(payload, null, 2));
+        
+        const response = await axios.post(webhookUrl, payload, {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+        
+        console.log(`✅ Birthday greeting sent to ${phoneNumber} - Response: ${response.status}`);
+        return { success: true, status: response.status, data: response.data };
+        
+    } catch (error) {
+        console.error(`❌ Failed to send birthday greeting to ${phoneNumber}:`, error.message);
+        if (error.response) {
+            console.error(`   Response:`, error.response.data);
+        }
+        return { success: false, error: error.message };
+    }
+}
+
+// Main birthday checker function - gets latest order per unique phone number
+async function checkAndSendBirthdayGreetings() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    console.log(`\n🎂 ========== BIRTHDAY CHECKER ==========`);
+    console.log(`📅 Date: ${todayStr}`);
+    console.log(`⏰ Time: ${today.toLocaleTimeString()}`);
+    
+    try {
+        // Fetch all orders with dateOfBirth field
+        const orders = await ORDERS.find({
+            dateOfBirth: { $exists: true, $ne: null, $ne: '', $ne: 'N/A' }
+        }).select('dateOfBirth receiverPhoneNumber receiverName updatedAt')
+          .sort({ updatedAt: -1 }); // Sort by newest first
+        
+        console.log(`📊 Total orders with dateOfBirth: ${orders.length}`);
+        
+        // Use Map to keep only the latest order per unique phone number
+        const uniquePhoneMap = new Map();
+        
+        for (const order of orders) {
+            const phoneNumber = order.receiverPhoneNumber;
+            
+            // Skip if no phone number
+            if (!phoneNumber) continue;
+            
+            // Only keep the first (latest) order for this phone number
+            // Since we sorted by updatedAt descending, first encounter is the latest
+            if (!uniquePhoneMap.has(phoneNumber)) {
+                uniquePhoneMap.set(phoneNumber, order);
+            }
+        }
+        
+        const uniqueOrders = Array.from(uniquePhoneMap.values());
+        console.log(`📊 Unique phone numbers after deduplication: ${uniqueOrders.length}`);
+        
+        let birthdayCount = 0;
+        let invalidFormatCount = 0;
+        let noPhoneCount = 0;
+        let sentCount = 0;
+        let failedCount = 0;
+        const results = [];
+        
+        for (const order of uniqueOrders) {
+            // Parse the birth date
+            const birthDateObj = parseBirthDate(order.dateOfBirth);
+            
+            if (!birthDateObj || !birthDateObj.isValid) {
+                invalidFormatCount++;
+                console.log(`⚠️ Invalid date format: "${order.dateOfBirth}" for customer ${order.receiverName}`);
+                continue;
+            }
+            
+            // Check if birthday is today
+            if (isBirthdayToday(birthDateObj)) {
+                birthdayCount++;
+                
+                // Clean phone number
+                const cleanedPhone = cleanPhoneNumberForBirthday(order.receiverPhoneNumber);
+                
+                if (!cleanedPhone || cleanedPhone.length < 11) {
+                    noPhoneCount++;
+                    console.log(`⚠️ No valid phone number for ${order.receiverName}: "${order.receiverPhoneNumber}"`);
+                    results.push({
+                        name: order.receiverName,
+                        dateOfBirth: order.dateOfBirth,
+                        parsedDate: `${birthDateObj.day}/${birthDateObj.month}`,
+                        status: 'no_phone',
+                        phone: order.receiverPhoneNumber
+                    });
+                    continue;
+                }
+                
+                // Send birthday greeting
+                const sendResult = await sendBirthdayGreeting(
+                    cleanedPhone,
+                    order.receiverName,
+                    order.dateOfBirth
+                );
+                
+                if (sendResult.success) {
+                    sentCount++;
+                    console.log(`✅ Birthday wish sent to ${order.receiverName} (${cleanedPhone}) - DOB: ${order.dateOfBirth}`);
+                    results.push({
+                        name: order.receiverName,
+                        dateOfBirth: order.dateOfBirth,
+                        phone: cleanedPhone,
+                        status: 'sent',
+                        updatedAt: order.updatedAt
+                    });
+                } else {
+                    failedCount++;
+                    console.log(`❌ Failed to send to ${order.receiverName}: ${sendResult.error}`);
+                    results.push({
+                        name: order.receiverName,
+                        dateOfBirth: order.dateOfBirth,
+                        phone: cleanedPhone,
+                        status: 'failed',
+                        error: sendResult.error
+                    });
+                }
+                
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+        
+        // Summary log
+        console.log(`\n📊 BIRTHDAY SUMMARY:`);
+        console.log(`   ├── Total orders checked: ${orders.length}`);
+        console.log(`   ├── Unique phone numbers: ${uniqueOrders.length}`);
+        console.log(`   ├── Invalid date formats: ${invalidFormatCount}`);
+        console.log(`   ├── Birthdays today: ${birthdayCount}`);
+        console.log(`   ├── No valid phone: ${noPhoneCount}`);
+        console.log(`   ├── Successfully sent: ${sentCount}`);
+        console.log(`   └── Failed to send: ${failedCount}`);
+        
+        // Log unique customers who received greetings
+        if (sentCount > 0) {
+            console.log(`\n📱 Customers who received birthday greetings:`);
+            results.filter(r => r.status === 'sent').forEach(r => {
+                console.log(`   ├── ${r.name} (${r.phone})`);
+            });
+        }
+        
+        return {
+            success: true,
+            date: todayStr,
+            totalOrders: orders.length,
+            uniqueCustomers: uniqueOrders.length,
+            birthdayCount,
+            sentCount,
+            failedCount,
+            invalidFormatCount,
+            noPhoneCount,
+            results
+        };
+        
+    } catch (error) {
+        console.error(`❌ Birthday checker error:`, error);
+        return {
+            success: false,
+            error: error.message,
+            date: todayStr
+        };
+    }
+}
+
+// Scheduled job: Run every day at 10am Brunei time
+function scheduleBirthdayChecker() {
+    const scheduleNext = () => {
+        const now = moment().tz("Asia/Brunei");
+        let nextRun = moment().tz("Asia/Brunei").set({ hour: 10, minute: 0, second: 0 });
+        
+        if (now.isAfter(nextRun)) {
+            nextRun.add(1, 'day');
+        }
+        
+        const delayMs = nextRun.diff(now);
+        const timeStr = nextRun.format('YYYY-MM-DD HH:mm:ss');
+        
+        console.log(`🎂 Next birthday checker scheduled: ${timeStr} (Brunei Time)`);
+        
+        setTimeout(async () => {
+            console.log(`\n🎂 Running scheduled birthday checker at ${moment().tz("Asia/Brunei").format('YYYY-MM-DD HH:mm:ss')}`);
+            const result = await checkAndSendBirthdayGreetings();
+            
+            if (result.success) {
+                console.log(`✅ Birthday checker completed: ${result.sentCount} greetings sent to ${result.uniqueCustomers} unique customers`);
+            } else {
+                console.error(`❌ Birthday checker failed: ${result.error}`);
+            }
+            
+            // Schedule next run
+            scheduleNext();
+        }, delayMs);
+    };
+    
+    scheduleNext();
+}
+
+// ==================================================
+// 📍 BIRTHDAY API ENDPOINTS (Admin only)
+// ==================================================
+
+// Manual trigger endpoint (for admin testing)
+app.get('/api/birthday/check', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    console.log(`🎂 Manual birthday check triggered by ${req.user.name}`);
+    const result = await checkAndSendBirthdayGreetings();
+    res.json(result);
+});
+
+// Get today's birthday results
+app.get('/api/birthday/today', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    const result = await checkAndSendBirthdayGreetings();
+    res.json(result);
+});
+
+// ==================================================
+// 🚀 START BIRTHDAY SCHEDULER
+// ==================================================
+
+// Start the birthday checker scheduler
+scheduleBirthdayChecker();
+
+console.log(`
+╔════════════════════════════════════════════════════════════════════════╗
+║  🎂 BIRTHDAY GREETING SYSTEM - PRODUCTION                               ║
+║                                                                         ║
+║  ✅ Scheduled: Daily at 10:00 AM Brunei Time                           ║
+║  ✅ Duplicate Prevention: Latest order per unique phone number         ║
+║  ✅ Uses updatedAt field to get most recent order                      ║
+║  ✅ Phone format: +673XXXXXXXX for Make/Integromat                     ║
+║  ✅ Includes: receiverName and dateOfBirth only                        ║
+║                                                                         ║
+║  📍 Admin Endpoints:                                                   ║
+║     GET /api/birthday/check - Manual trigger                           ║
+║     GET /api/birthday/today - Get today's results                      ║
+║                                                                         ║
+║  📦 Webhook URL:                                                       ║
+║     https://hook.eu1.make.com/u0pit5afuwjdvo8ykyd3i4me55azhkrx        ║
+║                                                                         ║
+║  📤 Payload sent to Make:                                              ║
+║     {                                                                  ║
+║       "phone": "+6738758135",                                          ║
+║       "name": "Customer Name",                                         ║
+║       "dateOfBirth": "01-03-1988",                                     ║
+║       "event": "birthday_greeting",                                    ║
+║       "timestamp": "2026-06-05T10:00:00.000Z"                          ║
+║     }                                                                  ║
+║                                                                         ║
+╚════════════════════════════════════════════════════════════════════════╝
+`);
+
+// ==================================================
+// 🧪 TEST BIRTHDAY ENDPOINT (Remove after testing)
+// ==================================================
+
+// Test endpoint for Syahmi - http://localhost:3000/test-birthday-syahmi
+app.get('/test-birthday-syahmi', async (req, res) => {
+    const phoneNumber = '6738758135';
+    const name = 'Syahmi Ghafar';
+    const dateOfBirth = '13-05-1993'; // 13th May 1993
+    
+    console.log(`\n🎂 TESTING BIRTHDAY FOR SYAHMI`);
+    console.log(`📱 Phone: ${phoneNumber}`);
+    console.log(`👤 Name: ${name}`);
+    console.log(`📅 DOB: ${dateOfBirth}`);
+    
+    // Clean the phone number (will add + prefix)
+    const cleanedPhone = cleanPhoneNumberForBirthday(phoneNumber);
+    console.log(`📞 Formatted for Make: ${cleanedPhone}`);
+    
+    if (!cleanedPhone || cleanedPhone.length < 11) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid phone number',
+            originalPhone: phoneNumber,
+            cleanedPhone: cleanedPhone,
+            requiredFormat: '+673XXXXXXXX (e.g., +6738758135)'
+        });
+    }
+    
+    // Send the birthday greeting via Make webhook
+    const result = await sendBirthdayGreeting(cleanedPhone, name, dateOfBirth);
+    
+    // Return HTML response for easy viewing
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Birthday Test - Syahmi</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    max-width: 800px;
+                    margin: 50px auto;
+                    padding: 20px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+                .container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                }
+                h1 {
+                    color: #e91e63;
+                    margin-bottom: 10px;
+                    font-size: 2.5em;
+                }
+                .subtitle {
+                    color: #666;
+                    margin-bottom: 30px;
+                    border-bottom: 2px solid #f0f0f0;
+                    padding-bottom: 10px;
+                }
+                .success {
+                    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                    color: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    margin: 20px 0;
+                }
+                .error {
+                    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+                    color: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    margin: 20px 0;
+                }
+                .info-box {
+                    background: #f5f5f5;
+                    padding: 15px;
+                    border-radius: 10px;
+                    margin: 15px 0;
+                    font-family: monospace;
+                }
+                .label {
+                    font-weight: bold;
+                    color: #555;
+                    display: inline-block;
+                    width: 120px;
+                }
+                .value {
+                    color: #333;
+                }
+                .phone-highlight {
+                    background: #fff3e0;
+                    padding: 3px 8px;
+                    border-radius: 5px;
+                    font-family: monospace;
+                    font-weight: bold;
+                    color: #e65100;
+                }
+                pre {
+                    background: #263238;
+                    color: #aed581;
+                    padding: 15px;
+                    border-radius: 10px;
+                    overflow-x: auto;
+                    font-size: 12px;
+                }
+                .emoji {
+                    font-size: 3em;
+                }
+                button {
+                    background: #e91e63;
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 25px;
+                    font-size: 16px;
+                    cursor: pointer;
+                    margin-top: 20px;
+                }
+                button:hover {
+                    background: #c2185b;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="emoji">🎂🎉🎈</div>
+                <h1>Birthday Test - Syahmi</h1>
+                <div class="subtitle">Testing birthday greeting for 13th May 1993</div>
+                
+                <div class="${result.success ? 'success' : 'error'}">
+                    <h2>${result.success ? '✅ Birthday Greeting Sent Successfully!' : '❌ Failed to Send Birthday Greeting'}</h2>
+                    
+                    <div class="info-box">
+                        <div><span class="label">📱 Original Phone:</span> <span class="value">${phoneNumber}</span></div>
+                        <div><span class="label">📞 Formatted for Make:</span> <span class="phone-highlight">${cleanedPhone}</span></div>
+                        <div><span class="label">👤 Name:</span> <span class="value">${name}</span></div>
+                        <div><span class="label">📅 Date of Birth:</span> <span class="value">${dateOfBirth}</span></div>
+                        <div><span class="label">⏰ Sent at:</span> <span class="value">${new Date().toLocaleString()}</span></div>
+                    </div>
+                    
+                    ${result.error ? `<div class="info-box" style="background: #ffebee;"><span class="label">❌ Error:</span> ${result.error}</div>` : ''}
+                </div>
+                
+                <h3>📤 Webhook Payload Sent to Make:</h3>
+                <pre>${JSON.stringify({
+                    phone: cleanedPhone,
+                    name: name,
+                    dateOfBirth: dateOfBirth,
+                    event: 'birthday_greeting',
+                    timestamp: new Date().toISOString()
+                }, null, 2)}</pre>
+                
+                <h3>📥 Response from Make Webhook:</h3>
+                <pre>${JSON.stringify(result, null, 2)}</pre>
+                
+                <button onclick="window.location.href='/test-birthday-syahmi'">🔄 Send Again</button>
+                <button onclick="window.location.href='/'" style="background: #666; margin-left: 10px;">🏠 Go Home</button>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">
+                    <strong>Note:</strong> This is a test endpoint. Your phone number ${cleanedPhone} will receive a birthday greeting via ManyChat flow triggered by Make/Integromat.
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// Also add a simple JSON endpoint for quick testing
+app.get('/test-birthday-json', async (req, res) => {
+    const phoneNumber = req.query.phone || '6738758135';
+    const name = req.query.name || 'Syahmi Ghafar';
+    const dateOfBirth = req.query.dob || '13-05-1993';
+    
+    console.log(`\n🎂 JSON TEST REQUEST`);
+    console.log(`📱 Phone: ${phoneNumber}`);
+    console.log(`👤 Name: ${name}`);
+    console.log(`📅 DOB: ${dateOfBirth}`);
+    
+    const cleanedPhone = cleanPhoneNumberForBirthday(phoneNumber);
+    
+    if (!cleanedPhone || cleanedPhone.length < 11) {
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid phone number',
+            originalPhone: phoneNumber,
+            cleanedPhone: cleanedPhone
+        });
+    }
+    
+    const result = await sendBirthdayGreeting(cleanedPhone, name, dateOfBirth);
+    
+    res.json({
+        success: result.success,
+        message: result.success ? 'Birthday greeting sent successfully!' : 'Failed to send',
+        request: {
+            originalPhone: phoneNumber,
+            formattedPhone: cleanedPhone,
+            name: name,
+            dateOfBirth: dateOfBirth
+        },
+        webhookResponse: result
+    });
+});
+
+// ==================================================
 // 🩺 Health Checks
 // ==================================================
 
