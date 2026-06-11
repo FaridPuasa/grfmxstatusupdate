@@ -1478,213 +1478,271 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
         const { date } = req.body;
         if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
 
-        console.log('=== Starting Optimized Warehouse Report Generation ===');
+        console.log('=== Starting Warehouse Report Generation ===');
         const startTime = Date.now();
 
-        const today = new Date(date + "T23:59:59+08:00");
-        const maxDays = 30;
         const allAreas = ["JT", "G", "B", "TUTONG", "KB", "TEMBURONG", "N/A"];
         const awbProducts = ["mglobal", "ewe", "pdu", "gdex", "gdext"];
 
-        // Aggregation pipeline
-        const warehouseData = await ORDERS.aggregate([
-            {
-                $match: {
-                    currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] },
-                    warehouseEntryDateTime: { $exists: true, $ne: null }
-                }
-            },
-            {
-                $addFields: {
-                    parsedEntryDate: {
-                        $cond: {
-                            if: { $isNumber: "$warehouseEntryDateTime" },
-                            then: { $toDate: "$warehouseEntryDateTime" },
-                            else: {
-                                $cond: {
-                                    if: { $eq: [{ $type: "$warehouseEntryDateTime" }, "date"] },
-                                    then: "$warehouseEntryDateTime",
-                                    else: {
-                                        $dateFromString: {
-                                            dateString: "$warehouseEntryDateTime",
-                                            onError: null
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            { $match: { parsedEntryDate: { $ne: null } } },
-            {
-                $addFields: {
-                    daysInWarehouse: {
-                        $floor: {
-                            $divide: [
-                                { $subtract: [today, "$parsedEntryDate"] },
-                                1000 * 60 * 60 * 24
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                $match: {
-                    daysInWarehouse: { $gte: 0, $lte: maxDays }
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        product: { $ifNull: ["$product", "N/A"] },
-                        mawb: { $ifNull: ["$mawbNo", "-"] }
-                    },
-                    warehouseCount: { $sum: 1 },
-                    k1: { $sum: { $cond: [{ $eq: ["$latestLocation", "Warehouse K1"] }, 1, 0] } },
-                    k2: { $sum: { $cond: [{ $eq: ["$latestLocation", "Warehouse K2"] }, 1, 0] } },
-                    returned: {
-                        $sum: {
-                            $cond: [
-                                { $and: [{ $eq: ["$currentStatus", "Return to Warehouse"] }, { $eq: ["$jobDate", date] }] },
-                                1, 0
-                            ]
-                        }
-                    },
-                    minDays: { $min: "$daysInWarehouse" },
-                    maxDays: { $max: "$daysInWarehouse" },
-                    areaJT: { $sum: { $cond: [{ $eq: ["$area", "JT"] }, 1, 0] } },
-                    areaG: { $sum: { $cond: [{ $eq: ["$area", "G"] }, 1, 0] } },
-                    areaB: { $sum: { $cond: [{ $eq: ["$area", "B"] }, 1, 0] } },
-                    areaTutong: { $sum: { $cond: [{ $eq: ["$area", "TUTONG"] }, 1, 0] } },
-                    areaKB: { $sum: { $cond: [{ $eq: ["$area", "KB"] }, 1, 0] } },
-                    areaTemburong: { $sum: { $cond: [{ $eq: ["$area", "TEMBURONG"] }, 1, 0] } },
-                    areaNA: { $sum: { $cond: [{ $eq: ["$area", "N/A"] }, 1, 0] } }
-                }
-            }
-        ]);
+        // ========== OPTIMIZATION 1: Get ALL warehouse orders first (no date filter in query) ==========
+        // Then filter in JavaScript to handle various date formats
+        const relevantOrders = await ORDERS.find({
+            currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] },
+            warehouseEntryDateTime: { $exists: true, $ne: null }
+        })
+        .select('product mawbNo latestLocation currentStatus jobDate area warehouseEntryDateTime')
+        .lean()
+        .maxTimeMS(20000);
 
-        if (warehouseData.length === 0) {
-            return res.send(`<div style="padding: 20px;"><h3>No Warehouse Data Found</h3><p>Selected Date: ${date}</p></div>`);
+        console.log(`Total warehouse orders found: ${relevantOrders.length}`);
+
+        if (relevantOrders.length === 0) {
+            return res.send(`<div style="padding: 20px;"><h3>No Warehouse Data Found</h3><p>Selected Date: ${date}</p><p>No orders with status 'At Warehouse' or 'Return to Warehouse' found.</p></div>`);
         }
 
-        // Fetch AWB data
-        const allAwbs = [...new Set(warehouseData.filter(g => awbProducts.includes(g._id.product.toLowerCase())).map(g => g._id.mawb).filter(m => m && m !== "-"))];
+        // Calculate date boundaries
+        const selectedDate = new Date(date + "T00:00:00+08:00");
+        const thirtyDaysAgo = new Date(selectedDate);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const [totalJobsMap, completedCountsMap, deliveredMap] = await Promise.all([
-            allAwbs.length > 0 ? ORDERS.aggregate([{ $match: { $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } }, { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }]).then(r => new Map(r.map(x => [x._id, x.count]))) : Promise.resolve(new Map()),
-            allAwbs.length > 0 ? ORDERS.aggregate([{ $match: { currentStatus: "Completed", $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } }, { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }]).then(r => new Map(r.map(x => [x._id, x.count]))) : Promise.resolve(new Map()),
-            ORDERS.aggregate([{ $match: { jobDate: date, currentStatus: "Completed" } }, { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }]).then(r => new Map(r.map(x => [`${x._id.product}|${x._id.mawb}`, x.count])))
+        console.log(`Filtering orders between ${thirtyDaysAgo.toISOString()} and ${selectedDate.toISOString()}`);
+
+        // ========== OPTIMIZATION 2: Filter in memory with proper date parsing ==========
+        const filteredOrders = [];
+        
+        for (const order of relevantOrders) {
+            // Parse warehouse entry date - handle multiple formats
+            let parsedEntryDate = null;
+            
+            // Handle different date formats
+            if (order.warehouseEntryDateTime) {
+                if (typeof order.warehouseEntryDateTime === 'number') {
+                    parsedEntryDate = new Date(order.warehouseEntryDateTime);
+                } else if (typeof order.warehouseEntryDateTime === 'string') {
+                    parsedEntryDate = new Date(order.warehouseEntryDateTime);
+                    if (isNaN(parsedEntryDate.getTime())) {
+                        // Try parsing with moment if needed
+                        const moment = require('moment');
+                        const momentDate = moment(order.warehouseEntryDateTime);
+                        if (momentDate.isValid()) {
+                            parsedEntryDate = momentDate.toDate();
+                        }
+                    }
+                } else if (order.warehouseEntryDateTime instanceof Date) {
+                    parsedEntryDate = order.warehouseEntryDateTime;
+                }
+            }
+            
+            if (!parsedEntryDate || isNaN(parsedEntryDate.getTime())) {
+                console.log(`Invalid date for order: ${order._id}, value: ${order.warehouseEntryDateTime}`);
+                continue;
+            }
+            
+            // Check if within last 30 days
+            const isWithinRange = parsedEntryDate >= thirtyDaysAgo && parsedEntryDate <= selectedDate;
+            
+            if (isWithinRange) {
+                filteredOrders.push({
+                    ...order,
+                    parsedEntryDate,
+                    daysInWarehouse: Math.floor((selectedDate - parsedEntryDate) / (1000 * 60 * 60 * 24))
+                });
+            }
+        }
+
+        console.log(`Filtered to ${filteredOrders.length} orders within last 30 days`);
+
+        if (filteredOrders.length === 0) {
+            // Show sample of dates to help debug
+            const sampleDates = relevantOrders.slice(0, 5).map(o => ({
+                raw: o.warehouseEntryDateTime,
+                type: typeof o.warehouseEntryDateTime,
+                parsed: new Date(o.warehouseEntryDateTime)
+            }));
+            
+            return res.send(`
+                <div style="padding: 20px;">
+                    <h3>No Warehouse Data Found in Last 30 Days</h3>
+                    <p>Selected Date: ${date}</p>
+                    <p>Total warehouse orders: ${relevantOrders.length}</p>
+                    <p>Filtered to last 30 days: 0</p>
+                    <div style="margin-top: 20px; background: #f5f5f5; padding: 10px;">
+                        <h4>Debug Info - Sample warehouseEntryDateTime values:</h4>
+                        <pre>${JSON.stringify(sampleDates, null, 2)}</pre>
+                        <p>Date range used: ${thirtyDaysAgo.toISOString()} to ${selectedDate.toISOString()}</p>
+                    </div>
+                </div>
+            `);
+        }
+
+        // ========== OPTIMIZATION 3: Process the filtered orders ==========
+        const warehouseDataMap = new Map();
+        
+        for (const order of filteredOrders) {
+            const product = order.product || "N/A";
+            const mawb = order.mawbNo || "-";
+            const key = `${product}|${mawb}`;
+            const daysInWarehouse = order.daysInWarehouse;
+
+            let group = warehouseDataMap.get(key);
+            if (!group) {
+                group = {
+                    _id: { product, mawb },
+                    warehouseCount: 0,
+                    k1: 0,
+                    k2: 0,
+                    returned: 0,
+                    daysList: [],
+                    areaJT: 0,
+                    areaG: 0,
+                    areaB: 0,
+                    areaTutong: 0,
+                    areaKB: 0,
+                    areaTemburong: 0,
+                    areaNA: 0
+                };
+                warehouseDataMap.set(key, group);
+            }
+
+            group.warehouseCount++;
+            if (order.latestLocation === "Warehouse K1") group.k1++;
+            if (order.latestLocation === "Warehouse K2") group.k2++;
+            if (order.currentStatus === "Return to Warehouse" && order.jobDate === date) group.returned++;
+            group.daysList.push(daysInWarehouse);
+
+            const area = order.area || "N/A";
+            switch(area) {
+                case "JT": group.areaJT++; break;
+                case "G": group.areaG++; break;
+                case "B": group.areaB++; break;
+                case "TUTONG": group.areaTutong++; break;
+                case "KB": group.areaKB++; break;
+                case "TEMBURONG": group.areaTemburong++; break;
+                default: group.areaNA++;
+            }
+        }
+
+        const warehouseData = Array.from(warehouseDataMap.values());
+        console.log(`Processed into ${warehouseData.length} groups`);
+
+        // Batch AWB queries (same as before)
+        const allAwbs = [...new Set(warehouseData
+            .filter(g => awbProducts.includes(g._id.product.toLowerCase()))
+            .map(g => g._id.mawb)
+            .filter(m => m && m !== "-"))];
+
+        let totalJobsMap = new Map();
+        let completedCountsMap = new Map();
+
+        if (allAwbs.length > 0) {
+            const [totalJobsResults, completedResults] = await Promise.all([
+                ORDERS.aggregate([
+                    { $match: { $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
+                    { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
+                ]),
+                ORDERS.aggregate([
+                    { $match: { currentStatus: "Completed", $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
+                    { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
+                ])
+            ]);
+            
+            totalJobsMap = new Map(totalJobsResults.map(x => [x._id, x.count]));
+            completedCountsMap = new Map(completedResults.map(x => [x._id, x.count]));
+        }
+
+        // Batch query for delivered counts
+        const deliveredResults = await ORDERS.aggregate([
+            { $match: { jobDate: date, currentStatus: "Completed" } },
+            { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
         ]);
+        const deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
 
-        // Group by product and track highest aging for each product
+        // Process groups and calculate stats
         const productGroups = new Map();
-        const productHighestAging = new Map(); // Track highest aging per product
+        const productHighestAging = new Map();
 
         for (const group of warehouseData) {
             const product = group._id.product;
             const mawb = group._id.mawb;
-
-            // Get aging value for sorting (use maxDays)
-            let agingValue = group.maxDays !== undefined && group.maxDays !== null ? group.maxDays : 0;
-
-            // Track the highest aging for this product
-            const currentHighest = productHighestAging.get(product) || 0;
-            if (agingValue > currentHighest) {
-                productHighestAging.set(product, agingValue);
-            }
-
-            const minAging = group.minDays;
-            const maxAging = group.maxDays;
-            const agingDisplay = (minAging !== undefined && maxAging !== undefined) ? (minAging === maxAging ? `${minAging}` : `${minAging}-${maxAging}`) : "N/A";
-
-            let totalJobs = group.warehouseCount;
-            if (awbProducts.includes(product.toLowerCase()) && mawb !== "-") {
-                totalJobs = totalJobsMap.get(mawb) || group.warehouseCount;
-            }
-
-            let completedJobs = "-";
-            if (awbProducts.includes(product.toLowerCase()) && mawb !== "-") {
-                completedJobs = completedCountsMap.get(mawb) || 0;
-            }
-
-            const delivered = deliveredMap.get(`${product}|${mawb}`) || 0;
-            const totalInStore = (group.k1 || 0) + (group.k2 || 0);
-
-            const groupData = {
-                mawb,
-                agingDisplay,
-                agingValue, // Store numeric value for sorting
-                totalJobs,
-                completedJobs,
-                k1: group.k1 || 0,
-                k2: group.k2 || 0,
-                totalInStore,
-                delivered,
-                returned: group.returned || 0,
-                areaCounts: {
-                    "JT": group.areaJT || 0, "G": group.areaG || 0, "B": group.areaB || 0,
-                    "TUTONG": group.areaTutong || 0, "KB": group.areaKB || 0,
-                    "TEMBURONG": group.areaTemburong || 0, "N/A": group.areaNA || 0
-                }
-            };
-
-            if (!productGroups.has(product)) productGroups.set(product, []);
-            productGroups.get(product).push(groupData);
-        }
-
-        // ========== STEP 1: Sort AWB items within each product by aging (largest to smallest) ==========
-        for (const [product, groups] of productGroups.entries()) {
             const isAwbProduct = awbProducts.includes(product.toLowerCase());
 
+            const daysList = group.daysList;
+            delete group.daysList;
+            
+            const minDays = Math.min(...daysList);
+            const maxDays = Math.max(...daysList);
+            group.agingDisplay = minDays === maxDays ? `${minDays}` : `${minDays}-${maxDays}`;
+            group.agingValue = maxDays;
+
+            const currentHighest = productHighestAging.get(product) || 0;
+            if (maxDays > currentHighest) {
+                productHighestAging.set(product, maxDays);
+            }
+
+            let totalJobs = group.warehouseCount;
+            if (isAwbProduct && mawb !== "-") {
+                totalJobs = totalJobsMap.get(mawb) || group.warehouseCount;
+            }
+            group.totalJobs = totalJobs;
+
+            let completedJobs = "-";
+            if (isAwbProduct && mawb !== "-") {
+                completedJobs = completedCountsMap.get(mawb) || 0;
+            }
+            group.completedJobs = completedJobs;
+
+            group.delivered = deliveredMap.get(`${product}|${mawb}`) || 0;
+            group.totalInStore = (group.k1 || 0) + (group.k2 || 0);
+
+            group.areaCounts = {
+                "JT": group.areaJT || 0, "G": group.areaG || 0, "B": group.areaB || 0,
+                "TUTONG": group.areaTutong || 0, "KB": group.areaKB || 0,
+                "TEMBURONG": group.areaTemburong || 0, "N/A": group.areaNA || 0
+            };
+
+            delete group.areaJT;
+            delete group.areaG;
+            delete group.areaB;
+            delete group.areaTutong;
+            delete group.areaKB;
+            delete group.areaTemburong;
+            delete group.areaNA;
+
+            if (!productGroups.has(product)) productGroups.set(product, []);
+            productGroups.get(product).push(group);
+        }
+
+        // Sort within each product
+        for (const [product, groups] of productGroups.entries()) {
+            const isAwbProduct = awbProducts.includes(product.toLowerCase());
             if (isAwbProduct) {
-                // Sort AWB products by agingValue - LARGEST to SMALLEST
-                groups.sort((a, b) => {
-                    const agingA = a.agingValue !== undefined ? a.agingValue : 0;
-                    const agingB = b.agingValue !== undefined ? b.agingValue : 0;
-                    return agingB - agingA; // Descending order (largest first)
-                });
+                groups.sort((a, b) => (b.agingValue || 0) - (a.agingValue || 0));
             } else {
-                // For non-AWB products, sort by mawb name (alphabetical)
-                groups.sort((a, b) => a.mawb.localeCompare(b.mawb));
+                groups.sort((a, b) => a._id.mawb.localeCompare(b._id.mawb));
             }
         }
 
-        // ========== STEP 2: Sort products by their highest aging (largest to smallest) ==========
+        // Sort products by highest aging
         const sortedProducts = Array.from(productGroups.keys()).sort((a, b) => {
             const aIsAwb = awbProducts.includes(a.toLowerCase());
             const bIsAwb = awbProducts.includes(b.toLowerCase());
-
-            // Get highest aging for each product
             const highestAgingA = productHighestAging.get(a) || 0;
             const highestAgingB = productHighestAging.get(b) || 0;
 
-            // First, prioritize products with aging data (non-zero) over those without
-            const aHasAging = highestAgingA > 0;
-            const bHasAging = highestAgingB > 0;
-
-            if (aHasAging && !bHasAging) return -1;
-            if (!aHasAging && bHasAging) return 1;
-
-            // If both have aging or both don't, sort by highest aging (descending)
             if (highestAgingA !== highestAgingB) {
-                return highestAgingB - highestAgingA; // Larger aging first
+                return highestAgingB - highestAgingA;
             }
-
-            // If aging is equal, prioritize AWB products
             if (aIsAwb && !bIsAwb) return -1;
             if (!aIsAwb && bIsAwb) return 1;
-
-            // Finally, sort alphabetically
             return a.localeCompare(b);
         });
 
-        // Build HTML with CORRECT rowspan
+        // Build HTML
         const htmlParts = [];
         htmlParts.push(`<table id="warehouseTable" class="table table-bordered" style="width:100%">
 <thead>
 <tr style="background-color: lightblue; font-weight: bold;">
-<th colspan="${10 + allAreas.length + 1}" style="text-align:left;">4. Warehouse</th>
+<th colspan="${10 + allAreas.length + 1}" style="text-align:left;">4. Warehouse (Last 30 days from ${date})</th>
 </tr>
 <tr>
 <th rowspan="2">Product</th>
@@ -1708,22 +1766,20 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
         for (const product of sortedProducts) {
             const groups = productGroups.get(product);
             const totalRows = groups.length;
+            const highestAging = productHighestAging.get(product) || 0;
+            const agingBadge = highestAging > 0 ? `<span style="font-size:0.8em; color:#666;"> (max: ${highestAging}d)</span>` : '';
 
             for (let i = 0; i < groups.length; i++) {
                 const group = groups[i];
-
+                
                 htmlParts.push(`<tr>`);
-
-                // Only add product cell for the first row of this product group
+                
                 if (i === 0) {
-                    // Add a badge showing highest aging for the product
-                    const highestAging = productHighestAging.get(product) || 0;
-                    const agingBadge = highestAging > 0 ? `<span style="font-size:0.8em; color:#666;"> (max: ${highestAging}d)</span>` : '';
                     htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}${agingBadge}</td>`);
                 }
-
+                
                 htmlParts.push(`
-                    <td>${escapeHtml(group.mawb)}</td>
+                    <td>${escapeHtml(group._id.mawb)}</td>
                     <td>${group.agingDisplay}</td>
                     <td>${group.totalJobs}</td>
                     <td>${group.completedJobs}</td>
@@ -1735,7 +1791,7 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
                     <td>${group.returned}</td>
                     <td><button class="btn btn-sm btn-danger removeWarehouseRowBtn">🗑️</button></td>
                 `);
-
+                
                 htmlParts.push(`</tr>`);
             }
         }
@@ -1743,16 +1799,15 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
         htmlParts.push(`</tbody>
 </table>`);
 
-        console.log(`✅ Warehouse report generated in ${Date.now() - startTime}ms`);
-        console.log(`📊 Product order (by highest aging):`,
-            sortedProducts.map(p => `${p} (max: ${productHighestAging.get(p) || 0}d)`).join(', '));
+        const totalTime = Date.now() - startTime;
+        console.log(`✅ Warehouse report generated in ${totalTime}ms with ${filteredOrders.length} orders`);
 
         res.setHeader('Cache-Control', 'private, max-age=300');
         res.send(htmlParts.join(''));
 
     } catch (err) {
-        console.error('Error:', err);
-        res.status(500).json({ error: 'Server error: ' + err.message });
+        console.error('Error in warehouseTableGenerate:', err);
+        res.status(500).send(`<div class="alert alert-danger">Error generating warehouse report: ${err.message}</div>`);
     }
 });
 

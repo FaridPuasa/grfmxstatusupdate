@@ -162,7 +162,7 @@
                 <option value="Wafi">Wafi</option>
                 <option value="Zura">Zura</option>
                 <option value="Hjazam">Hjazam</option>
-                            <option value="Syazwan">Syazwan</option>
+                <option value="Syazwan">Syazwan</option>
               </optgroup>
               <optgroup label="Freelancers">
                 <option value="Azreena">Azreena</option>
@@ -178,7 +178,7 @@
               <optgroup label="Belts">
                 <!-- <option value="Adiwardi">Adiwardi</option> -->
                 <!-- <option value="Aiedil">Aiedil</option> -->
-                 <!-- <option value="Haiqal">Haiqal</option> -->
+                <!-- <option value="Haiqal">Haiqal</option> -->
                 <!-- <option value="Hardy">Hardy</option> -->
                 <option value="Hazif">Hazif</option>
                 <!-- <option value="Rizal">Rizal</option> -->
@@ -1120,15 +1120,24 @@
         isWarehouseLoading = true;
         const loadingDiv = document.createElement('div');
         loadingDiv.id = 'warehouseLoading';
-        loadingDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p>Loading warehouse report...</p></div>';
+        loadingDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p>Loading warehouse report... This may take up to 30 seconds.</p></div>';
         reportContainer.appendChild(loadingDiv);
         try {
+          // Increase timeout to 45 seconds
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000);
-          const res = await fetch('/api/warehouseTableGenerate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }), signal: controller.signal });
+          const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+          const res = await fetch('/api/warehouseTableGenerate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date }),
+            signal: controller.signal
+          });
           clearTimeout(timeoutId);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           const html = await res.text();
+
           warehouseDataCache = html;
           lastWarehouseDate = date;
           const loadingElem = document.getElementById('warehouseLoading');
@@ -1148,8 +1157,12 @@
           console.error('Error loading Warehouse table:', err);
           const loadingElem = document.getElementById('warehouseLoading');
           if (loadingElem) {
-            loadingElem.innerHTML = `<div class="alert alert-danger">Failed to load warehouse data: ${err.message}. Please try again.</div>`;
-            setTimeout(() => { if (loadingElem) loadingElem.remove(); }, 5000);
+            if (err.name === 'AbortError') {
+              loadingElem.innerHTML = `<div class="alert alert-warning">Warehouse report is taking longer than expected. The server might be busy. Please try again or select a more recent date.</div>`;
+            } else {
+              loadingElem.innerHTML = `<div class="alert alert-danger">Failed to load warehouse data: ${err.message}. Please try again.</div>`;
+            }
+            setTimeout(() => { if (loadingElem) loadingElem.remove(); }, 8000);
           }
         } finally {
           isWarehouseLoading = false;
