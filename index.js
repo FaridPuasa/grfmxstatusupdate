@@ -1479,13 +1479,15 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
         if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
 
         console.log('=== Starting Warehouse Report Generation ===');
+        console.log(`Selected date: ${date}`);
         const startTime = Date.now();
 
         const allAreas = ["JT", "G", "B", "TUTONG", "KB", "TEMBURONG", "N/A"];
+        
+        // AWB products that need special lookup for total jobs
         const awbProducts = ["mglobal", "ewe", "pdu", "gdex", "gdext"];
 
-        // ========== OPTIMIZATION 1: Get ALL warehouse orders first (no date filter in query) ==========
-        // Then filter in JavaScript to handle various date formats
+        // Get ALL warehouse orders (no date filter in query - we'll filter in JS)
         const relevantOrders = await ORDERS.find({
             currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] },
             warehouseEntryDateTime: { $exists: true, $ne: null }
@@ -1501,17 +1503,18 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
         }
 
         // Calculate date boundaries
-        const selectedDate = new Date(date + "T00:00:00+08:00");
+        // IMPORTANT: selectedDate is the END of the selected day (23:59:59)
+        const selectedDate = new Date(date + "T23:59:59+08:00");
         const thirtyDaysAgo = new Date(selectedDate);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        thirtyDaysAgo.setHours(0, 0, 0, 0);  // Start of day 30 days ago
 
-        console.log(`Filtering orders between ${thirtyDaysAgo.toISOString()} and ${selectedDate.toISOString()}`);
+        console.log(`Date range: ${thirtyDaysAgo.toISOString()} to ${selectedDate.toISOString()}`);
 
-        // ========== OPTIMIZATION 2: Filter in memory with proper date parsing ==========
+        // Filter in memory with proper date parsing
         const filteredOrders = [];
         
         for (const order of relevantOrders) {
-            // Parse warehouse entry date - handle multiple formats
             let parsedEntryDate = null;
             
             // Handle different date formats
@@ -1521,7 +1524,6 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
                 } else if (typeof order.warehouseEntryDateTime === 'string') {
                     parsedEntryDate = new Date(order.warehouseEntryDateTime);
                     if (isNaN(parsedEntryDate.getTime())) {
-                        // Try parsing with moment if needed
                         const moment = require('moment');
                         const momentDate = moment(order.warehouseEntryDateTime);
                         if (momentDate.isValid()) {
@@ -1538,44 +1540,42 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
                 continue;
             }
             
-            // Check if within last 30 days
+            // Check if within last 30 days (including the selected date)
             const isWithinRange = parsedEntryDate >= thirtyDaysAgo && parsedEntryDate <= selectedDate;
             
             if (isWithinRange) {
+                const daysInWarehouse = Math.floor((selectedDate - parsedEntryDate) / (1000 * 60 * 60 * 24));
                 filteredOrders.push({
                     ...order,
                     parsedEntryDate,
-                    daysInWarehouse: Math.floor((selectedDate - parsedEntryDate) / (1000 * 60 * 60 * 24))
+                    daysInWarehouse: daysInWarehouse
                 });
             }
         }
 
         console.log(`Filtered to ${filteredOrders.length} orders within last 30 days`);
+        
+        // Check specifically for icarus
+        const icarusOrders = filteredOrders.filter(o => o.product && o.product.toLowerCase() === 'icarus');
+        console.log(`Icarus orders in filtered results: ${icarusOrders.length}`);
+        
+        if (icarusOrders.length > 0) {
+            console.log(`Sample Icarus order date: ${icarusOrders[0].warehouseEntryDateTime}, days in warehouse: ${icarusOrders[0].daysInWarehouse}`);
+        }
 
         if (filteredOrders.length === 0) {
-            // Show sample of dates to help debug
-            const sampleDates = relevantOrders.slice(0, 5).map(o => ({
-                raw: o.warehouseEntryDateTime,
-                type: typeof o.warehouseEntryDateTime,
-                parsed: new Date(o.warehouseEntryDateTime)
-            }));
-            
             return res.send(`
                 <div style="padding: 20px;">
                     <h3>No Warehouse Data Found in Last 30 Days</h3>
                     <p>Selected Date: ${date}</p>
                     <p>Total warehouse orders: ${relevantOrders.length}</p>
                     <p>Filtered to last 30 days: 0</p>
-                    <div style="margin-top: 20px; background: #f5f5f5; padding: 10px;">
-                        <h4>Debug Info - Sample warehouseEntryDateTime values:</h4>
-                        <pre>${JSON.stringify(sampleDates, null, 2)}</pre>
-                        <p>Date range used: ${thirtyDaysAgo.toISOString()} to ${selectedDate.toISOString()}</p>
-                    </div>
+                    <p>Try selecting a more recent date (within the last 30 days).</p>
                 </div>
             `);
         }
 
-        // ========== OPTIMIZATION 3: Process the filtered orders ==========
+        // Process the filtered orders
         const warehouseDataMap = new Map();
         
         for (const order of filteredOrders) {
@@ -1625,17 +1625,18 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
         const warehouseData = Array.from(warehouseDataMap.values());
         console.log(`Processed into ${warehouseData.length} groups`);
 
-        // Batch AWB queries (same as before)
-        const allAwbs = [...new Set(warehouseData
-            .filter(g => awbProducts.includes(g._id.product.toLowerCase()))
-            .map(g => g._id.mawb)
-            .filter(m => m && m !== "-"))];
+        // Only fetch AWB data for products that need it
+        const awbGroups = warehouseData.filter(g => awbProducts.includes(g._id.product.toLowerCase()));
+        const allAwbs = [...new Set(awbGroups.map(g => g._id.mawb).filter(m => m && m !== "-"))];
 
         let totalJobsMap = new Map();
         let completedCountsMap = new Map();
+        let deliveredMap = new Map();
 
         if (allAwbs.length > 0) {
-            const [totalJobsResults, completedResults] = await Promise.all([
+            console.log(`Fetching AWB data for ${allAwbs.length} AWBs`);
+            
+            const [totalJobsResults, completedResults, deliveredResults] = await Promise.all([
                 ORDERS.aggregate([
                     { $match: { $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
                     { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
@@ -1643,19 +1644,24 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
                 ORDERS.aggregate([
                     { $match: { currentStatus: "Completed", $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
                     { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
+                ]),
+                ORDERS.aggregate([
+                    { $match: { jobDate: date, currentStatus: "Completed" } },
+                    { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
                 ])
             ]);
             
             totalJobsMap = new Map(totalJobsResults.map(x => [x._id, x.count]));
             completedCountsMap = new Map(completedResults.map(x => [x._id, x.count]));
+            deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
+        } else {
+            // Still need delivered map for non-AWB products
+            const deliveredResults = await ORDERS.aggregate([
+                { $match: { jobDate: date, currentStatus: "Completed" } },
+                { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
+            ]);
+            deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
         }
-
-        // Batch query for delivered counts
-        const deliveredResults = await ORDERS.aggregate([
-            { $match: { jobDate: date, currentStatus: "Completed" } },
-            { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
-        ]);
-        const deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
 
         // Process groups and calculate stats
         const productGroups = new Map();
@@ -1800,7 +1806,8 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
 </table>`);
 
         const totalTime = Date.now() - startTime;
-        console.log(`✅ Warehouse report generated in ${totalTime}ms with ${filteredOrders.length} orders`);
+        console.log(`✅ Warehouse report generated in ${totalTime}ms`);
+        console.log(`📊 Products in report: ${sortedProducts.join(', ')}`);
 
         res.setHeader('Cache-Control', 'private, max-age=300');
         res.send(htmlParts.join(''));
@@ -1810,6 +1817,26 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
         res.status(500).send(`<div class="alert alert-danger">Error generating warehouse report: ${err.message}</div>`);
     }
 });
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 function escapeHtml(text) {
     if (!text) return '';
