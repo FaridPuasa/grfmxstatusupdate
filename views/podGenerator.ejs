@@ -55,7 +55,7 @@
       margin-right: calc(-50vw + 50%);
       background: white;
       padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       overflow-x: auto;
     }
 
@@ -137,11 +137,12 @@
     }
 
     #printButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
     @media print {
+
       #printButton,
       #saveButton,
       #backButton,
@@ -152,7 +153,7 @@
       .action-buttons,
       .container-bg,
       .navbar,
-      .full-width-container > .button-container {
+      .full-width-container>.button-container {
         display: none !important;
       }
 
@@ -213,7 +214,7 @@
     <div class="container mt-4">
       <div class="form-container">
         <h1 class="text-center mt-4">POD Generator</h1>
-        
+
         <div class="info-section">
           <div class="row">
             <div class="col-md-6">
@@ -271,37 +272,37 @@
                 <label for="dispatchers" class="form-label">Dispatchers:</label>
                 <select class="form-select" name="dispatchers" id="dispatchers" required>
                   <optgroup label="Dispatchers">
-                            <option value="Edey">Edey</option>
-                            <!-- <option value="Hairol">Hairol</option> -->
-                            <option value="Hamidin">Hamidin</option>
-                            <option value="Leo">Leo</option>
-                            <option value="Sowdeq">Sowdeq</option>
-                            <!-- <option value="Wafi">Wafi</option> -->
-                            <!-- <option value="Zura">Zura</option> -->
-                            <option value="Hjazam">Hjazam</option>
-                            <option value="Syazwan">Syazwan</option>
-                        </optgroup>
-                        <optgroup label="Freelancers">
-                            <option value="Azreena">Azreena</option>
-                            <option value="Bob">Bob</option>
-                            <option value="Ermi">Ermi</option>
-                            <option value="Feeza">Feeza</option>
-                            <option value="Ikha">Ikha</option>
-                            <option value="Jon">Jon</option>
-                            <option value="Mikael">Mikael</option>
-                            <option value="Qui">Qui</option>
-                            <!-- <option value="Tommy">Tommy</option> -->
-                        </optgroup>
-                        <optgroup label="Belts">
-                            <!-- <option value="Adiwardi">Adiwardi</option> -->
-                            <!-- <option value="Aiedil">Aiedil</option> -->
-                             <!-- <option value="Haiqal">Haiqal</option> -->
-                            <!-- <option value="Hardy">Hardy</option> -->
-                            <option value="Hazif">Hazif</option>
-                            <!-- <option value="Rizal">Rizal</option> -->
-                            <!-- <option value="Zainul">Zainul</option> -->
-                            <!-- <option value="Zakwan">Zakwan</option> -->
-                        </optgroup>
+                    <option value="Edey">Edey</option>
+                    <!-- <option value="Hairol">Hairol</option> -->
+                    <option value="Hamidin">Hamidin</option>
+                    <option value="Leo">Leo</option>
+                    <option value="Sowdeq">Sowdeq</option>
+                    <!-- <option value="Wafi">Wafi</option> -->
+                    <!-- <option value="Zura">Zura</option> -->
+                    <!-- <option value="Hjazam">Hjazam</option> -->
+                    <option value="Syazwan">Syazwan</option>
+                    <option value="Adiwardi">Adiwardi</option>
+                  </optgroup>
+                  <optgroup label="Freelancers">
+                    <option value="Azreena">Azreena</option>
+                    <option value="Bob">Bob</option>
+                    <option value="Ermi">Ermi</option>
+                    <option value="Feeza">Feeza</option>
+                    <option value="Ikha">Ikha</option>
+                    <option value="Jon">Jon</option>
+                    <option value="Mikael">Mikael</option>
+                    <option value="Qui">Qui</option>
+                    <!-- <option value="Tommy">Tommy</option> -->
+                  </optgroup>
+                  <optgroup label="Belts">
+                    <!-- <option value="Aiedil">Aiedil</option> -->
+                    <!-- <option value="Haiqal">Haiqal</option> -->
+                    <!-- <option value="Hardy">Hardy</option> -->
+                    <option value="Hazif">Hazif</option>
+                    <!-- <option value="Rizal">Rizal</option> -->
+                    <!-- <option value="Zainul">Zainul</option> -->
+                    <!-- <option value="Zakwan">Zakwan</option> -->
+                  </optgroup>
                   <optgroup label="Others">
                     <option value="Selfcollect">Selfcollect</option>
                     <!-- <option value="Syahmi">Syahmi</option> -->
@@ -335,22 +336,24 @@
       </div>
 
       <div class="container mt-4" id="scanSection" style="display: none;">
-      <div class="scan-section info-section">
-        <h4>Scan Tracking Numbers</h4>
-        <input type="text" id="scanInput" class="form-control scan-input" placeholder="Scan or paste tracking number here..." autocomplete="off">
-        <div id="scanMessage" class="mt-2"></div>
-        <div class="mt-2">
-          <strong>Products in this POD:</strong> <span id="productList">-</span>
+        <div class="scan-section info-section">
+          <h4>Scan Tracking Numbers</h4>
+          <input type="text" id="scanInput" class="form-control scan-input"
+            placeholder="Scan or paste tracking number here..." autocomplete="off">
+          <div id="scanMessage" class="mt-2"></div>
+          <div class="mt-2">
+            <strong>Products in this POD:</strong> <span id="productList">-</span>
+          </div>
         </div>
       </div>
-    </div>
-    
+
       <div class="button-container text-center mt-3" id="actionButtons">
-  <button id="saveButton" class="btn btn-success">Save POD</button>
-  <button id="printButton" class="btn btn-primary" disabled>Print</button>
-  <button id="backButton" class="btn btn-primary" onclick="window.location.reload()">New POD</button>
-  <button id="backToListBtn" class="btn btn-secondary" onclick="window.location.href = '/listPOD'">Back to POD List</button>
-</div>
+        <button id="saveButton" class="btn btn-success">Save POD</button>
+        <button id="printButton" class="btn btn-primary" disabled>Print</button>
+        <button id="backButton" class="btn btn-primary" onclick="window.location.reload()">New POD</button>
+        <button id="backToListBtn" class="btn btn-secondary" onclick="window.location.href = '/listPOD'">Back to POD
+          List</button>
+      </div>
     </div>
   </main>
 
@@ -380,7 +383,7 @@
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('deliveryDate').min = today;
     document.getElementById('deliveryDate').value = today;
-    
+
     podData.podCreatedDate = new Date().toLocaleDateString('en-GB', {
       day: '2-digit', month: '2-digit', year: '2-digit'
     }).replace(/\//g, '.');
@@ -388,7 +391,7 @@
     const dispatchersField = document.getElementById('dispatchers');
 
     document.querySelectorAll('input[name="areas"]').forEach(checkbox => {
-      checkbox.addEventListener('change', function() {
+      checkbox.addEventListener('change', function () {
         if (this.checked) {
           if (!selectedAreas.includes(this.value)) {
             selectedAreas.push(this.value);
@@ -399,7 +402,7 @@
       });
     });
 
-    document.getElementById('confirmDetailsBtn').addEventListener('click', function() {
+    document.getElementById('confirmDetailsBtn').addEventListener('click', function () {
       const deliveryDate = document.getElementById('deliveryDate').value;
       if (!deliveryDate) {
         alert('Please select a delivery date');
@@ -423,9 +426,9 @@
 
       document.querySelector('.form-container').style.display = 'none';
       document.getElementById('podTableContainer').style.display = 'block';
-      
+
       document.getElementById('scanSection').style.display = 'block';
-      
+
       generateTableHeader();
       document.getElementById('scanInput').focus();
     });
@@ -437,7 +440,7 @@
       const deliveryDateFormatted = new Date(podData.deliveryDate).toLocaleDateString('en-GB', {
         day: '2-digit', month: '2-digit', year: '2-digit'
       }).replace(/\//g, '.');
-      
+
       thead.innerHTML = `
         <tr id="headerRow1">
           <td colspan="3" rowspan="2" class="logo-cell"><img src="/images/logo.png" alt="Logo"></td>
@@ -480,13 +483,13 @@
 
     function addRowToTable(item, index) {
       const tbody = document.getElementById('podTableBody');
-      
+
       const row = tbody.insertRow();
       row.setAttribute('data-tracking', item.trackingNumber);
-      
+
       row.insertCell(0).textContent = index + 1;
       row.insertCell(1).textContent = item.fridge || '';
-      
+
       const trackingCell = row.insertCell(2);
       trackingCell.innerHTML = `
         <div class="barcode-container">
@@ -494,7 +497,7 @@
             <div class="tracking-number">${item.trackingNumber}</div>
         </div>
       `;
-      
+
       row.insertCell(3).textContent = item.deliverToCollectFrom || '';
       row.insertCell(4).textContent = item.address || '';
       row.insertCell(5).textContent = item.phoneNumber || '';
@@ -503,22 +506,22 @@
       row.insertCell(8).textContent = item.totalPrice || '';
       row.insertCell(9).textContent = item.paymentMode || '';
       row.insertCell(10).textContent = item.remarks || '';
-      
+
       const remarksOffice = row.insertCell(11);
       remarksOffice.setAttribute('contenteditable', 'true');
       remarksOffice.textContent = item.grRemark || '';
-      
+
       const financeCell = row.insertCell(12);
       financeCell.setAttribute('contenteditable', 'true');
       financeCell.textContent = '';
-      
+
       row.insertCell(13).textContent = '';
-      
+
       const actionCell = row.insertCell(14);
       if (!podData.isSaved) {
         actionCell.innerHTML = '<button class="delete-row-btn" onclick="deleteRow(this)">Delete</button>';
       }
-      
+
       setTimeout(() => {
         JsBarcode(`#barcode-${item.trackingNumber.replace(/[^a-zA-Z0-9]/g, '')}`, item.trackingNumber, {
           format: "CODE128",
@@ -528,28 +531,28 @@
           displayValue: false
         });
       }, 10);
-      
+
       updateRowNumbers();
     }
 
-    window.deleteRow = function(button) {
+    window.deleteRow = function (button) {
       if (podData.isSaved) return;
-      
+
       const row = button.closest('tr');
       const trackingNumber = row.getAttribute('data-tracking');
-      
+
       const index = podData.trackingNumbers.findIndex(item => item.trackingNumber === trackingNumber);
       if (index !== -1) {
         podData.trackingNumbers.splice(index, 1);
-        
+
         podData.products.clear();
         podData.trackingNumbers.forEach(item => {
           if (item.product) podData.products.add(item.product);
         });
-        
+
         updateProductDisplay();
       }
-      
+
       row.remove();
       updateRowNumbers();
     };
@@ -605,14 +608,14 @@
     async function scanTrackingNumber(trackingNumber) {
       const scanInput = document.getElementById('scanInput');
       const scanMessage = document.getElementById('scanMessage');
-      
+
       if (!trackingNumber || trackingNumber.length < 5) {
         scanMessage.innerHTML = '<div class="alert alert-warning">Please enter a valid tracking number (minimum 5 characters)</div>';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
         scanInput.focus();
         return;
       }
-      
+
       if (podData.trackingNumbers.some(item => item.trackingNumber === trackingNumber)) {
         scanMessage.innerHTML = '<div class="alert alert-warning">Duplicate tracking number!</div>';
         scanInput.value = '';
@@ -620,22 +623,22 @@
         scanInput.focus();
         return;
       }
-      
+
       scanMessage.innerHTML = '<div class="alert alert-info">Fetching data from database...</div>';
-      
+
       try {
         const response = await axios.get(`/api/order-details/${trackingNumber}`);
         const order = response.data;
-        
+
         console.log('Raw order data from API:', order);
-        
+
         if (!order) {
           throw new Error('Order not found in database');
         }
-        
+
         const product = getProductFromMongoDB(order.product);
         const totalPrice = order.totalPrice || order.paymentAmount || 0;
-        
+
         const newItem = {
           trackingNumber: order.doTrackingNumber || trackingNumber,
           deliverToCollectFrom: order.receiverName || '',
@@ -650,26 +653,26 @@
           product: product,
           fridge: ''
         };
-        
+
         console.log('New item being added:', newItem);
-        
+
         podData.trackingNumbers.push(newItem);
         podData.products.add(product);
-        
+
         addRowToTable(newItem, podData.trackingNumbers.length - 1);
         updateProductDisplay();
-        
+
         scanMessage.innerHTML = '<div class="alert alert-success">✓ Order added successfully!</div>';
         scanInput.value = '';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 1500);
-        
+
       } catch (error) {
         console.error('Error fetching order:', error);
         scanMessage.innerHTML = '<div class="alert alert-danger">✗ Order not found in database. Please check tracking number.</div>';
         scanInput.value = '';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 3000);
       }
-      
+
       scanInput.focus();
     }
 
@@ -681,14 +684,14 @@
         setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
         return false;
       }
-      
+
       if (podData.trackingNumbers.some(item => item.trackingNumber === trackingNumber)) {
         const scanMessage = document.getElementById('scanMessage');
         scanMessage.innerHTML = '<div class="alert alert-warning">Duplicate tracking number!</div>';
         setTimeout(() => { scanMessage.innerHTML = ''; }, 2000);
         return false;
       }
-      
+
       scanTrackingNumber(trackingNumber);
       return true;
     }
@@ -696,17 +699,17 @@
     const scanInput = document.getElementById('scanInput');
 
     // Handle Enter key - works for typed, pasted, and scanned values
-    scanInput.addEventListener('keypress', function(e) {
+    scanInput.addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        
+
         let trackingNumber = this.value.trim().toUpperCase();
-        
+
         if (!trackingNumber && scanBuffer.length > 0) {
           trackingNumber = scanBuffer.trim().toUpperCase();
           scanBuffer = '';
         }
-        
+
         if (trackingNumber) {
           processTrackingNumber(trackingNumber);
           this.value = '';
@@ -719,21 +722,21 @@
     });
 
     // Barcode scanner buffer handling
-    scanInput.addEventListener('keydown', function(e) {
+    scanInput.addEventListener('keydown', function (e) {
       const now = Date.now();
-      
+
       if (now - lastKeyTime > 100) {
         scanBuffer = '';
       }
       lastKeyTime = now;
-      
+
       if (scanTimeout) {
         clearTimeout(scanTimeout);
       }
-      
+
       if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
         scanBuffer += e.key;
-        
+
         scanTimeout = setTimeout(() => {
           if (scanBuffer.length > 5 && !scanInput.value) {
             const trackingNumber = scanBuffer.trim().toUpperCase();
@@ -743,7 +746,7 @@
           }
         }, 50);
       }
-      
+
       if (e.key === 'Enter') {
         scanBuffer = '';
         if (scanTimeout) {
@@ -752,47 +755,47 @@
       }
     });
 
-    document.getElementById('saveButton').addEventListener('click', async function() {
+    document.getElementById('saveButton').addEventListener('click', async function () {
       if (podData.trackingNumbers.length === 0) {
         alert('No tracking numbers to save!');
         return;
       }
-      
+
       if (confirm('Save this POD?')) {
         const saveBtn = document.getElementById('saveButton');
         const printBtn = document.getElementById('printButton');
         const originalText = saveBtn.textContent;
-        
+
         saveBtn.textContent = 'Saving...';
         saveBtn.disabled = true;
-        
+
         try {
           podData.isSaved = true;
-          
+
           document.querySelectorAll('.delete-row-btn').forEach(btn => btn.remove());
           document.getElementById('scanInput').disabled = true;
-          
+
           const tableElement = document.getElementById('podTable');
           const tableClone = tableElement.cloneNode(true);
-          
+
           const allRows = tableClone.querySelectorAll('tr');
           allRows.forEach(row => {
             if (row.cells.length > 0) {
               row.removeChild(row.cells[row.cells.length - 1]);
             }
           });
-          
+
           const tableHTML = tableClone.outerHTML;
-          
+
           const deliveryDateFormatted = new Date(podData.deliveryDate).toLocaleDateString('en-GB', {
             day: '2-digit', month: '2-digit', year: '2-digit'
           }).replace(/\//g, '.');
-          
+
           const dispatcherUpper = podData.dispatcher.toUpperCase();
           const areasUpper = podData.areas.join(', ').toUpperCase();
           const podName = `${dispatcherUpper} ${areasUpper} ${deliveryDateFormatted}`;
           const productList = Array.from(podData.products).join(', ');
-          
+
           const saveData = {
             podName: podName,
             product: productList,
@@ -804,13 +807,13 @@
             htmlContent: tableHTML,
             rowCount: podData.trackingNumbers.length.toString()
           };
-          
+
           const response = await fetch('/save-pod', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(saveData)
           });
-          
+
           if (response.ok) {
             alert('POD saved successfully!');
             saveBtn.disabled = true;
@@ -834,17 +837,17 @@
       }
     });
 
-    document.getElementById('printButton').addEventListener('click', function() {
+    document.getElementById('printButton').addEventListener('click', function () {
       const originalTable = document.getElementById('podTable');
       const tableClone = originalTable.cloneNode(true);
-      
+
       const allRows = tableClone.querySelectorAll('tr');
       allRows.forEach(row => {
         if (row.cells.length > 0) {
           row.removeChild(row.cells[row.cells.length - 1]);
         }
       });
-      
+
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
         <!DOCTYPE html>
