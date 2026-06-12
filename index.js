@@ -1082,8 +1082,8 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
-            "Sowdeq", "Leo", "Hairol",
-            "Hamidin", "Wafi", "Edey", "Zura", "Hjazam", "Syazwan", "Selfcollect"
+            "Sowdeq", "Leo",
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Selfcollect"
         ];
 
         // Since history.dateUpdated is a STRING, we need to fetch all orders and filter in JavaScript
@@ -1869,8 +1869,8 @@ app.post('/api/vehicle-report', async (req, res) => {
 
         // Define allowed staff/driver/dispatcher names
         const allowedStaff = [
-            "Sowdeq", "Leo", "Hairol",
-            "Hamidin", "Wafi", "Edey", "Zura", "Hjazam", "Syazwan"
+            "Sowdeq", "Leo",
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan"
         ];
 
         // 1️⃣ Fetch report data for that date
@@ -2366,8 +2366,8 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
 
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
-            "Sowdeq", "Leo", "Hairol",
-            "Hamidin", "Wafi", "Edey", "Zura", "Hjazam", "Syazwan", "Selfcollect"
+            "Sowdeq", "Leo",
+            "Hamidin", "Wafi", "Edey", "Zura", "Hjazam", "Adiwardi", "Selfcollect"
         ];
 
         // Fetch completed orders for the selected date directly
