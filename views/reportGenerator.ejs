@@ -177,13 +177,13 @@
                 <!-- <option value="Tommy">Tommy</option> -->
               </optgroup>
               <!-- <optgroup label="Belts"> -->
-                <!-- <option value="Aiedil">Aiedil</option> -->
-                <!-- <option value="Haiqal">Haiqal</option> -->
-                <!-- <option value="Hardy">Hardy</option> -->
-                <!-- <option value="Hazif">Hazif</option> -->
-                <!-- <option value="Rizal">Rizal</option> -->
-                <!-- <option value="Zainul">Zainul</option> -->
-                <!-- <option value="Zakwan">Zakwan</option> -->
+              <!-- <option value="Aiedil">Aiedil</option> -->
+              <!-- <option value="Haiqal">Haiqal</option> -->
+              <!-- <option value="Hardy">Hardy</option> -->
+              <!-- <option value="Hazif">Hazif</option> -->
+              <!-- <option value="Rizal">Rizal</option> -->
+              <!-- <option value="Zainul">Zainul</option> -->
+              <!-- <option value="Zakwan">Zakwan</option> -->
               <!-- </optgroup> -->
               <optgroup label="Others">
                 <option value="Agung">Agung</option>
@@ -1096,9 +1096,14 @@
         }
       }
 
-      async function loadWarehouseTable(date) {
+      async function loadWarehouseTable(date, forceRefresh = false, retryCount = 0) {
+        const maxRetries = 3;
+        const retryDelay = 3000; // 3 seconds
+
         if (!reportContainer) return console.error('reportContainer not found');
-        if (warehouseDataCache && lastWarehouseDate === date) {
+
+        // Check if we have cached data in memory
+        if (!forceRefresh && warehouseDataCache && lastWarehouseDate === date) {
           console.log('Using cached warehouse data');
           const existingWH = document.querySelector('#warehouseReportContainer');
           if (existingWH) existingWH.remove();
@@ -1113,59 +1118,175 @@
           warehouseTables.forEach(table => applyProductMappingToTable(table));
           return;
         }
+
         if (isWarehouseLoading) {
           console.log('Warehouse report already loading, skipping...');
           return;
         }
+
         isWarehouseLoading = true;
         const loadingDiv = document.createElement('div');
         loadingDiv.id = 'warehouseLoading';
-        loadingDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p>Loading warehouse report... This may take up to 30 seconds.</p></div>';
-        reportContainer.appendChild(loadingDiv);
-        try {
-          // Increase timeout to 45 seconds
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-          const res = await fetch('/api/warehouseTableGenerate', {
+        const refreshMsg = forceRefresh ? 'Refreshing warehouse report (getting latest data)...' : 'Loading warehouse report...';
+        loadingDiv.innerHTML = `<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p>${refreshMsg}</p><small class="text-muted">This may take 15-30 seconds for first load</small></div>`;
+        reportContainer.appendChild(loadingDiv);
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+          let url = '/api/warehouseTableGenerate';
+          let fetchOptions = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ date }),
             signal: controller.signal
-          });
+          };
+
+          // If force refresh, clear cache first
+          if (forceRefresh) {
+            await fetch('/api/clear-warehouse-cache', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ date })
+            });
+            // Reset cache in memory
+            warehouseDataCache = null;
+            lastWarehouseDate = null;
+          }
+
+          const res = await fetch(url, fetchOptions);
           clearTimeout(timeoutId);
 
+          // Handle 503 with retry
+          if (res.status === 503 && retryCount < maxRetries) {
+            console.log(`Service unavailable, retrying (${retryCount + 1}/${maxRetries})...`);
+            const loadingElem = document.getElementById('warehouseLoading');
+            if (loadingElem) {
+              loadingElem.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p>Server is busy, retrying (${retryCount + 1}/${maxRetries})...</p>
+                        <small class="text-muted">Waiting ${retryDelay / 1000} seconds before retry</small>
+                    </div>
+                `;
+            }
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            isWarehouseLoading = false; // Reset flag for retry
+            return loadWarehouseTable(date, forceRefresh, retryCount + 1);
+          }
+
           if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+          // Read cache headers
+          const cacheStatus = res.headers.get('X-Cache');
+          const cacheAge = res.headers.get('X-Cache-Age');
+
           const html = await res.text();
 
           warehouseDataCache = html;
           lastWarehouseDate = date;
+
           const loadingElem = document.getElementById('warehouseLoading');
           if (loadingElem) loadingElem.remove();
+
           const existingWH = document.querySelector('#warehouseReportContainer');
           if (existingWH) existingWH.remove();
+
           const spacer = document.createElement("div");
           spacer.style.marginTop = "30px";
           reportContainer.appendChild(spacer);
+
           const whContainer = document.createElement("div");
           whContainer.id = 'warehouseReportContainer';
           whContainer.innerHTML = html;
           reportContainer.appendChild(whContainer);
+
           const warehouseTables = whContainer.querySelectorAll('table');
           warehouseTables.forEach(table => applyProductMappingToTable(table));
+
+          // Show cache warning if data is stale
+          if (cacheAge) {
+            showCacheAgeWarning(parseInt(cacheAge));
+          }
+
+          // Show cache status in console
+          console.log(`Warehouse data loaded - Cache: ${cacheStatus || 'unknown'}, Age: ${cacheAge || 'unknown'}`);
+
         } catch (err) {
+          // Retry on timeout or network errors
+          if (retryCount < maxRetries && (err.name === 'AbortError' || err.message.includes('503') || err.message.includes('timeout'))) {
+            console.log(`Request failed, retrying (${retryCount + 1}/${maxRetries})...`);
+            const loadingElem = document.getElementById('warehouseLoading');
+            if (loadingElem) {
+              loadingElem.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p>Request timed out, retrying (${retryCount + 1}/${maxRetries})...</p>
+                        <small class="text-muted">Waiting ${retryDelay / 1000} seconds before retry</small>
+                    </div>
+                `;
+            }
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            isWarehouseLoading = false;
+            return loadWarehouseTable(date, forceRefresh, retryCount + 1);
+          }
+
           console.error('Error loading Warehouse table:', err);
           const loadingElem = document.getElementById('warehouseLoading');
           if (loadingElem) {
-            if (err.name === 'AbortError') {
-              loadingElem.innerHTML = `<div class="alert alert-warning">Warehouse report is taking longer than expected. The server might be busy. Please try again or select a more recent date.</div>`;
+            if (err.name === 'AbortError' || err.message.includes('503') || err.message.includes('timeout')) {
+              loadingElem.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>⏳ The server is currently busy processing your request.</strong><br>
+                        This usually happens when the warehouse data is being generated for the first time.<br><br>
+                        Please try:
+                        <ul>
+                            <li>Waiting a few minutes and refreshing the page</li>
+                            <li>Selecting a more recent date</li>
+                            <li>Try again later</li>
+                        </ul>
+                        <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">🔄 Refresh Page</button>
+                        <button class="btn btn-secondary btn-sm mt-2 ms-2" onclick="document.getElementById('warehouseLoading').remove()">✖ Close</button>
+                    </div>
+                `;
             } else {
-              loadingElem.innerHTML = `<div class="alert alert-danger">Failed to load warehouse data: ${err.message}. Please try again.</div>`;
+              loadingElem.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>❌ Failed to load warehouse data:</strong><br>
+                        ${err.message}<br><br>
+                        <button class="btn btn-primary btn-sm mt-2" onclick="location.reload()">🔄 Refresh Page</button>
+                        <button class="btn btn-secondary btn-sm mt-2 ms-2" onclick="document.getElementById('warehouseLoading').remove()">✖ Close</button>
+                    </div>
+                `;
             }
-            setTimeout(() => { if (loadingElem) loadingElem.remove(); }, 8000);
+            // Don't auto-remove on error, let user decide
           }
         } finally {
           isWarehouseLoading = false;
+        }
+      }
+
+      // Helper function to show cache age warning
+      function showCacheAgeWarning(cacheAgeSeconds) {
+        const existingWarning = document.querySelector('.cache-warning');
+        if (existingWarning) existingWarning.remove();
+
+        if (cacheAgeSeconds > 300) { // More than 5 minutes
+          const warningDiv = document.createElement('div');
+          warningDiv.className = 'alert alert-warning cache-warning';
+          warningDiv.style.marginTop = '10px';
+          warningDiv.innerHTML = `
+            <small>
+                ⚠️ Warehouse data is ${Math.floor(cacheAgeSeconds / 60)} minutes old. 
+                <a href="#" onclick="location.reload(); return false;">Refresh page to get latest data</a>
+            </small>
+        `;
+          const warehouseContainer = document.querySelector('#warehouseReportContainer');
+          if (warehouseContainer && warehouseContainer.parentNode) {
+            warehouseContainer.parentNode.insertBefore(warningDiv, warehouseContainer.nextSibling);
+          }
         }
       }
 

@@ -82,11 +82,36 @@ const codBtCache = new NodeCache({ stdTTL: 600 });  // 10 min
 const grWebsiteCache = new NodeCache({ stdTTL: 60 });   // 1 min
 const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min
 
+// Add these new caches for warehouse report
+const warehouseReportCache = new NodeCache({ stdTTL: 60 }); // 1 min initial TTL
+const pendingRefreshes = new Map(); // Track background refreshes
+
 // ==================================================
 // 🚀 App Config
 // ==================================================
 const app = express();
 const port = process.env.PORT || 3000;
+
+// ==================================================
+// ⏱️ TIMEOUT CONFIGURATION (MUST BE BEFORE ROUTES)
+// ==================================================
+
+// 1. Increase Node.js server timeout (handles slow requests)
+app.use((req, res, next) => {
+    // Set timeout for the request to 120 seconds
+    req.setTimeout(120000, () => {
+        console.log(`Request timeout for ${req.method} ${req.url}`);
+        res.status(503).send('Service unavailable. Please try again.');
+    });
+    
+    // Set timeout for the response to 120 seconds
+    res.setTimeout(120000, () => {
+        console.log(`Response timeout for ${req.method} ${req.url}`);
+        res.status(503).send('Service unavailable. Please try again.');
+    });
+    
+    next();
+});
 
 // ==================================================
 // 🛠 Middleware
@@ -1473,279 +1498,278 @@ ${products.map(_ => `<th>Cash</th><th>BT</th><th>Total Amount</th>`).join('')}
     }
 });
 
-app.post('/api/warehouseTableGenerate', async (req, res) => {
-    try {
-        const { date } = req.body;
-        if (!date) return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+// ==================================================
+// 📦 Warehouse Report Generation with Stale-While-Revalidate Cache
+// ==================================================
 
-        console.log('=== Starting Warehouse Report Generation ===');
-        console.log(`Selected date: ${date}`);
-        const startTime = Date.now();
+// ==================================================
+// 📦 Warehouse Report Generation with Stale-While-Revalidate Cache
+// ==================================================
 
-        const allAreas = ["JT", "G", "B", "TUTONG", "KB", "TEMBURONG", "N/A"];
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Main warehouse report generation function
+async function generateWarehouseReport(date) {
+    const startTime = Date.now();
+    const allAreas = ["JT", "G", "B", "TUTONG", "KB", "TEMBURONG", "N/A"];
+    const awbProducts = ["mglobal", "ewe", "pdu", "gdex", "gdext"];
+    
+    const selectedDate = new Date(date + "T23:59:59+08:00");
+    const thirtyDaysAgo = new Date(selectedDate);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    console.log(`[Warehouse Report] Generating for ${date}, range: ${thirtyDaysAgo.toISOString()} to ${selectedDate.toISOString()}`);
+
+    // Get ALL warehouse orders
+    const relevantOrders = await ORDERS.find({
+        currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] },
+        warehouseEntryDateTime: { $exists: true, $ne: null }
+    })
+    .select('product mawbNo latestLocation currentStatus jobDate area warehouseEntryDateTime')
+    .lean()
+    .maxTimeMS(20000);
+
+    console.log(`Total warehouse orders found: ${relevantOrders.length}`);
+
+    if (relevantOrders.length === 0) {
+        return `<div style="padding: 20px;">
+            <h3>No Warehouse Data Found</h3>
+            <p>Selected Date: ${date}</p>
+            <p>No orders with status 'At Warehouse' or 'Return to Warehouse' found.</p>
+        </div>`;
+    }
+
+    // Filter in memory with proper date parsing
+    const filteredOrders = [];
+    
+    for (const order of relevantOrders) {
+        let parsedEntryDate = null;
         
-        // AWB products that need special lookup for total jobs
-        const awbProducts = ["mglobal", "ewe", "pdu", "gdex", "gdext"];
-
-        // Get ALL warehouse orders (no date filter in query - we'll filter in JS)
-        const relevantOrders = await ORDERS.find({
-            currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] },
-            warehouseEntryDateTime: { $exists: true, $ne: null }
-        })
-        .select('product mawbNo latestLocation currentStatus jobDate area warehouseEntryDateTime')
-        .lean()
-        .maxTimeMS(20000);
-
-        console.log(`Total warehouse orders found: ${relevantOrders.length}`);
-
-        if (relevantOrders.length === 0) {
-            return res.send(`<div style="padding: 20px;"><h3>No Warehouse Data Found</h3><p>Selected Date: ${date}</p><p>No orders with status 'At Warehouse' or 'Return to Warehouse' found.</p></div>`);
-        }
-
-        // Calculate date boundaries
-        // IMPORTANT: selectedDate is the END of the selected day (23:59:59)
-        const selectedDate = new Date(date + "T23:59:59+08:00");
-        const thirtyDaysAgo = new Date(selectedDate);
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        thirtyDaysAgo.setHours(0, 0, 0, 0);  // Start of day 30 days ago
-
-        console.log(`Date range: ${thirtyDaysAgo.toISOString()} to ${selectedDate.toISOString()}`);
-
-        // Filter in memory with proper date parsing
-        const filteredOrders = [];
-        
-        for (const order of relevantOrders) {
-            let parsedEntryDate = null;
-            
-            // Handle different date formats
-            if (order.warehouseEntryDateTime) {
-                if (typeof order.warehouseEntryDateTime === 'number') {
-                    parsedEntryDate = new Date(order.warehouseEntryDateTime);
-                } else if (typeof order.warehouseEntryDateTime === 'string') {
-                    parsedEntryDate = new Date(order.warehouseEntryDateTime);
-                    if (isNaN(parsedEntryDate.getTime())) {
-                        const moment = require('moment');
-                        const momentDate = moment(order.warehouseEntryDateTime);
-                        if (momentDate.isValid()) {
-                            parsedEntryDate = momentDate.toDate();
-                        }
+        if (order.warehouseEntryDateTime) {
+            if (typeof order.warehouseEntryDateTime === 'number') {
+                parsedEntryDate = new Date(order.warehouseEntryDateTime);
+            } else if (typeof order.warehouseEntryDateTime === 'string') {
+                parsedEntryDate = new Date(order.warehouseEntryDateTime);
+                if (isNaN(parsedEntryDate.getTime())) {
+                    const moment = require('moment');
+                    const momentDate = moment(order.warehouseEntryDateTime);
+                    if (momentDate.isValid()) {
+                        parsedEntryDate = momentDate.toDate();
                     }
-                } else if (order.warehouseEntryDateTime instanceof Date) {
-                    parsedEntryDate = order.warehouseEntryDateTime;
                 }
-            }
-            
-            if (!parsedEntryDate || isNaN(parsedEntryDate.getTime())) {
-                console.log(`Invalid date for order: ${order._id}, value: ${order.warehouseEntryDateTime}`);
-                continue;
-            }
-            
-            // Check if within last 30 days (including the selected date)
-            const isWithinRange = parsedEntryDate >= thirtyDaysAgo && parsedEntryDate <= selectedDate;
-            
-            if (isWithinRange) {
-                const daysInWarehouse = Math.floor((selectedDate - parsedEntryDate) / (1000 * 60 * 60 * 24));
-                filteredOrders.push({
-                    ...order,
-                    parsedEntryDate,
-                    daysInWarehouse: daysInWarehouse
-                });
+            } else if (order.warehouseEntryDateTime instanceof Date) {
+                parsedEntryDate = order.warehouseEntryDateTime;
             }
         }
-
-        console.log(`Filtered to ${filteredOrders.length} orders within last 30 days`);
         
-        // Check specifically for icarus
-        const icarusOrders = filteredOrders.filter(o => o.product && o.product.toLowerCase() === 'icarus');
-        console.log(`Icarus orders in filtered results: ${icarusOrders.length}`);
+        if (!parsedEntryDate || isNaN(parsedEntryDate.getTime())) {
+            continue;
+        }
         
-        if (icarusOrders.length > 0) {
-            console.log(`Sample Icarus order date: ${icarusOrders[0].warehouseEntryDateTime}, days in warehouse: ${icarusOrders[0].daysInWarehouse}`);
-        }
-
-        if (filteredOrders.length === 0) {
-            return res.send(`
-                <div style="padding: 20px;">
-                    <h3>No Warehouse Data Found in Last 30 Days</h3>
-                    <p>Selected Date: ${date}</p>
-                    <p>Total warehouse orders: ${relevantOrders.length}</p>
-                    <p>Filtered to last 30 days: 0</p>
-                    <p>Try selecting a more recent date (within the last 30 days).</p>
-                </div>
-            `);
-        }
-
-        // Process the filtered orders
-        const warehouseDataMap = new Map();
+        const isWithinRange = parsedEntryDate >= thirtyDaysAgo && parsedEntryDate <= selectedDate;
         
-        for (const order of filteredOrders) {
-            const product = order.product || "N/A";
-            const mawb = order.mawbNo || "-";
-            const key = `${product}|${mawb}`;
-            const daysInWarehouse = order.daysInWarehouse;
+        if (isWithinRange) {
+            filteredOrders.push({
+                ...order,
+                parsedEntryDate,
+                daysInWarehouse: Math.floor((selectedDate - parsedEntryDate) / (1000 * 60 * 60 * 24))
+            });
+        }
+    }
 
-            let group = warehouseDataMap.get(key);
-            if (!group) {
-                group = {
-                    _id: { product, mawb },
-                    warehouseCount: 0,
-                    k1: 0,
-                    k2: 0,
-                    returned: 0,
-                    daysList: [],
-                    areaJT: 0,
-                    areaG: 0,
-                    areaB: 0,
-                    areaTutong: 0,
-                    areaKB: 0,
-                    areaTemburong: 0,
-                    areaNA: 0
-                };
-                warehouseDataMap.set(key, group);
-            }
+    console.log(`Filtered to ${filteredOrders.length} orders within last 30 days`);
 
-            group.warehouseCount++;
-            if (order.latestLocation === "Warehouse K1") group.k1++;
-            if (order.latestLocation === "Warehouse K2") group.k2++;
-            if (order.currentStatus === "Return to Warehouse" && order.jobDate === date) group.returned++;
-            group.daysList.push(daysInWarehouse);
+    if (filteredOrders.length === 0) {
+        return `<div style="padding: 20px;">
+            <h3>No Warehouse Data Found in Last 30 Days</h3>
+            <p>Selected Date: ${date}</p>
+            <p>Total warehouse orders: ${relevantOrders.length}</p>
+            <p>Filtered to last 30 days: 0</p>
+            <p>Try selecting a more recent date (within the last 30 days).</p>
+        </div>`;
+    }
 
-            const area = order.area || "N/A";
-            switch(area) {
-                case "JT": group.areaJT++; break;
-                case "G": group.areaG++; break;
-                case "B": group.areaB++; break;
-                case "TUTONG": group.areaTutong++; break;
-                case "KB": group.areaKB++; break;
-                case "TEMBURONG": group.areaTemburong++; break;
-                default: group.areaNA++;
-            }
+    // Process the filtered orders
+    const warehouseDataMap = new Map();
+    
+    for (const order of filteredOrders) {
+        const product = order.product || "N/A";
+        const mawb = order.mawbNo || "-";
+        const key = `${product}|${mawb}`;
+        const daysInWarehouse = order.daysInWarehouse;
+
+        let group = warehouseDataMap.get(key);
+        if (!group) {
+            group = {
+                _id: { product, mawb },
+                warehouseCount: 0,
+                k1: 0,
+                k2: 0,
+                returned: 0,
+                daysList: [],
+                areaJT: 0,
+                areaG: 0,
+                areaB: 0,
+                areaTutong: 0,
+                areaKB: 0,
+                areaTemburong: 0,
+                areaNA: 0
+            };
+            warehouseDataMap.set(key, group);
         }
 
-        const warehouseData = Array.from(warehouseDataMap.values());
-        console.log(`Processed into ${warehouseData.length} groups`);
+        group.warehouseCount++;
+        if (order.latestLocation === "Warehouse K1") group.k1++;
+        if (order.latestLocation === "Warehouse K2") group.k2++;
+        if (order.currentStatus === "Return to Warehouse" && order.jobDate === date) group.returned++;
+        group.daysList.push(daysInWarehouse);
 
-        // Only fetch AWB data for products that need it
-        const awbGroups = warehouseData.filter(g => awbProducts.includes(g._id.product.toLowerCase()));
-        const allAwbs = [...new Set(awbGroups.map(g => g._id.mawb).filter(m => m && m !== "-"))];
+        const area = order.area || "N/A";
+        switch(area) {
+            case "JT": group.areaJT++; break;
+            case "G": group.areaG++; break;
+            case "B": group.areaB++; break;
+            case "TUTONG": group.areaTutong++; break;
+            case "KB": group.areaKB++; break;
+            case "TEMBURONG": group.areaTemburong++; break;
+            default: group.areaNA++;
+        }
+    }
 
-        let totalJobsMap = new Map();
-        let completedCountsMap = new Map();
-        let deliveredMap = new Map();
+    const warehouseData = Array.from(warehouseDataMap.values());
+    console.log(`Processed into ${warehouseData.length} groups`);
 
-        if (allAwbs.length > 0) {
-            console.log(`Fetching AWB data for ${allAwbs.length} AWBs`);
-            
-            const [totalJobsResults, completedResults, deliveredResults] = await Promise.all([
-                ORDERS.aggregate([
-                    { $match: { $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
-                    { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
-                ]),
-                ORDERS.aggregate([
-                    { $match: { currentStatus: "Completed", $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
-                    { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
-                ]),
-                ORDERS.aggregate([
-                    { $match: { jobDate: date, currentStatus: "Completed" } },
-                    { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
-                ])
-            ]);
-            
-            totalJobsMap = new Map(totalJobsResults.map(x => [x._id, x.count]));
-            completedCountsMap = new Map(completedResults.map(x => [x._id, x.count]));
-            deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
-        } else {
-            // Still need delivered map for non-AWB products
-            const deliveredResults = await ORDERS.aggregate([
+    // Only fetch AWB data for products that need it
+    const awbGroups = warehouseData.filter(g => awbProducts.includes(g._id.product.toLowerCase()));
+    const allAwbs = [...new Set(awbGroups.map(g => g._id.mawb).filter(m => m && m !== "-"))];
+
+    let totalJobsMap = new Map();
+    let completedCountsMap = new Map();
+    let deliveredMap = new Map();
+
+    if (allAwbs.length > 0) {
+        console.log(`Fetching AWB data for ${allAwbs.length} AWBs`);
+        
+        const [totalJobsResults, completedResults, deliveredResults] = await Promise.all([
+            ORDERS.aggregate([
+                { $match: { $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
+                { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
+            ]),
+            ORDERS.aggregate([
+                { $match: { currentStatus: "Completed", $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
+                { $group: { _id: { $cond: [{ $and: [{ $ne: ["$mawbNo", ""] }, { $in: ["$mawbNo", allAwbs] }] }, "$mawbNo", "$hawbNo"] }, count: { $sum: 1 } } }
+            ]),
+            ORDERS.aggregate([
                 { $match: { jobDate: date, currentStatus: "Completed" } },
                 { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
-            ]);
-            deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
+            ])
+        ]);
+        
+        totalJobsMap = new Map(totalJobsResults.map(x => [x._id, x.count]));
+        completedCountsMap = new Map(completedResults.map(x => [x._id, x.count]));
+        deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
+    } else {
+        // Still need delivered map for non-AWB products
+        const deliveredResults = await ORDERS.aggregate([
+            { $match: { jobDate: date, currentStatus: "Completed" } },
+            { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
+        ]);
+        deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
+    }
+
+    // Process groups and calculate stats
+    const productGroups = new Map();
+    const productHighestAging = new Map();
+
+    for (const group of warehouseData) {
+        const product = group._id.product;
+        const mawb = group._id.mawb;
+        const isAwbProduct = awbProducts.includes(product.toLowerCase());
+
+        const daysList = group.daysList;
+        delete group.daysList;
+        
+        const minDays = Math.min(...daysList);
+        const maxDays = Math.max(...daysList);
+        group.agingDisplay = minDays === maxDays ? `${minDays}` : `${minDays}-${maxDays}`;
+        group.agingValue = maxDays;
+
+        const currentHighest = productHighestAging.get(product) || 0;
+        if (maxDays > currentHighest) {
+            productHighestAging.set(product, maxDays);
         }
 
-        // Process groups and calculate stats
-        const productGroups = new Map();
-        const productHighestAging = new Map();
-
-        for (const group of warehouseData) {
-            const product = group._id.product;
-            const mawb = group._id.mawb;
-            const isAwbProduct = awbProducts.includes(product.toLowerCase());
-
-            const daysList = group.daysList;
-            delete group.daysList;
-            
-            const minDays = Math.min(...daysList);
-            const maxDays = Math.max(...daysList);
-            group.agingDisplay = minDays === maxDays ? `${minDays}` : `${minDays}-${maxDays}`;
-            group.agingValue = maxDays;
-
-            const currentHighest = productHighestAging.get(product) || 0;
-            if (maxDays > currentHighest) {
-                productHighestAging.set(product, maxDays);
-            }
-
-            let totalJobs = group.warehouseCount;
-            if (isAwbProduct && mawb !== "-") {
-                totalJobs = totalJobsMap.get(mawb) || group.warehouseCount;
-            }
-            group.totalJobs = totalJobs;
-
-            let completedJobs = "-";
-            if (isAwbProduct && mawb !== "-") {
-                completedJobs = completedCountsMap.get(mawb) || 0;
-            }
-            group.completedJobs = completedJobs;
-
-            group.delivered = deliveredMap.get(`${product}|${mawb}`) || 0;
-            group.totalInStore = (group.k1 || 0) + (group.k2 || 0);
-
-            group.areaCounts = {
-                "JT": group.areaJT || 0, "G": group.areaG || 0, "B": group.areaB || 0,
-                "TUTONG": group.areaTutong || 0, "KB": group.areaKB || 0,
-                "TEMBURONG": group.areaTemburong || 0, "N/A": group.areaNA || 0
-            };
-
-            delete group.areaJT;
-            delete group.areaG;
-            delete group.areaB;
-            delete group.areaTutong;
-            delete group.areaKB;
-            delete group.areaTemburong;
-            delete group.areaNA;
-
-            if (!productGroups.has(product)) productGroups.set(product, []);
-            productGroups.get(product).push(group);
+        let totalJobs = group.warehouseCount;
+        if (isAwbProduct && mawb !== "-") {
+            totalJobs = totalJobsMap.get(mawb) || group.warehouseCount;
         }
+        group.totalJobs = totalJobs;
 
-        // Sort within each product
-        for (const [product, groups] of productGroups.entries()) {
-            const isAwbProduct = awbProducts.includes(product.toLowerCase());
-            if (isAwbProduct) {
-                groups.sort((a, b) => (b.agingValue || 0) - (a.agingValue || 0));
-            } else {
-                groups.sort((a, b) => a._id.mawb.localeCompare(b._id.mawb));
-            }
+        let completedJobs = "-";
+        if (isAwbProduct && mawb !== "-") {
+            completedJobs = completedCountsMap.get(mawb) || 0;
         }
+        group.completedJobs = completedJobs;
 
-        // Sort products by highest aging
-        const sortedProducts = Array.from(productGroups.keys()).sort((a, b) => {
-            const aIsAwb = awbProducts.includes(a.toLowerCase());
-            const bIsAwb = awbProducts.includes(b.toLowerCase());
-            const highestAgingA = productHighestAging.get(a) || 0;
-            const highestAgingB = productHighestAging.get(b) || 0;
+        group.delivered = deliveredMap.get(`${product}|${mawb}`) || 0;
+        group.totalInStore = (group.k1 || 0) + (group.k2 || 0);
 
-            if (highestAgingA !== highestAgingB) {
-                return highestAgingB - highestAgingA;
-            }
-            if (aIsAwb && !bIsAwb) return -1;
-            if (!aIsAwb && bIsAwb) return 1;
-            return a.localeCompare(b);
-        });
+        group.areaCounts = {
+            "JT": group.areaJT || 0, "G": group.areaG || 0, "B": group.areaB || 0,
+            "TUTONG": group.areaTutong || 0, "KB": group.areaKB || 0,
+            "TEMBURONG": group.areaTemburong || 0, "N/A": group.areaNA || 0
+        };
 
-        // Build HTML
-        const htmlParts = [];
-        htmlParts.push(`<table id="warehouseTable" class="table table-bordered" style="width:100%">
+        delete group.areaJT;
+        delete group.areaG;
+        delete group.areaB;
+        delete group.areaTutong;
+        delete group.areaKB;
+        delete group.areaTemburong;
+        delete group.areaNA;
+
+        if (!productGroups.has(product)) productGroups.set(product, []);
+        productGroups.get(product).push(group);
+    }
+
+    // Sort within each product
+    for (const [product, groups] of productGroups.entries()) {
+        const isAwbProduct = awbProducts.includes(product.toLowerCase());
+        if (isAwbProduct) {
+            groups.sort((a, b) => (b.agingValue || 0) - (a.agingValue || 0));
+        } else {
+            groups.sort((a, b) => a._id.mawb.localeCompare(b._id.mawb));
+        }
+    }
+
+    // Sort products by highest aging
+    const sortedProducts = Array.from(productGroups.keys()).sort((a, b) => {
+        const aIsAwb = awbProducts.includes(a.toLowerCase());
+        const bIsAwb = awbProducts.includes(b.toLowerCase());
+        const highestAgingA = productHighestAging.get(a) || 0;
+        const highestAgingB = productHighestAging.get(b) || 0;
+
+        if (highestAgingA !== highestAgingB) {
+            return highestAgingB - highestAgingA;
+        }
+        if (aIsAwb && !bIsAwb) return -1;
+        if (!aIsAwb && bIsAwb) return 1;
+        return a.localeCompare(b);
+    });
+
+    // Build HTML
+    const htmlParts = [];
+    htmlParts.push(`<table id="warehouseTable" class="table table-bordered" style="width:100%">
 <thead>
 <tr style="background-color: lightblue; font-weight: bold;">
 <th colspan="${10 + allAreas.length + 1}" style="text-align:left;">4. Warehouse (Last 30 days from ${date})</th>
@@ -1769,95 +1793,158 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
 </thead>
 <tbody>`);
 
-        for (const product of sortedProducts) {
-            const groups = productGroups.get(product);
-            const totalRows = groups.length;
-            const highestAging = productHighestAging.get(product) || 0;
-            const agingBadge = highestAging > 0 ? `<span style="font-size:0.8em; color:#666;"> (max: ${highestAging}d)</span>` : '';
+    for (const product of sortedProducts) {
+        const groups = productGroups.get(product);
+        const totalRows = groups.length;
+        const highestAging = productHighestAging.get(product) || 0;
+        const agingBadge = highestAging > 0 ? `<span style="font-size:0.8em; color:#666;"> (max: ${highestAging}d)</span>` : '';
 
-            for (let i = 0; i < groups.length; i++) {
-                const group = groups[i];
-                
-                htmlParts.push(`<tr>`);
-                
-                if (i === 0) {
-                    htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}${agingBadge}</td>`);
-                }
-                
-                htmlParts.push(`
-                    <td>${escapeHtml(group._id.mawb)}</td>
-                    <td>${group.agingDisplay}</td>
-                    <td>${group.totalJobs}</td>
-                    <td>${group.completedJobs}</td>
-                    <td>${group.k1}</td>
-                    <td>${group.k2}</td>
-                    <td>${group.totalInStore}</td>
-                    ${allAreas.map(area => `<td>${group.areaCounts[area] || 0}</td>`).join('')}
-                    <td>${group.delivered}</td>
-                    <td>${group.returned}</td>
-                    <td><button class="btn btn-sm btn-danger removeWarehouseRowBtn">🗑️</button></td>
-                `);
-                
-                htmlParts.push(`</tr>`);
+        for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            
+            htmlParts.push(`<tr>`);
+            
+            if (i === 0) {
+                htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}${agingBadge}</td>`);
             }
+            
+            htmlParts.push(`
+                <td>${escapeHtml(group._id.mawb)}</td>
+                <td>${group.agingDisplay}</td>
+                <td>${group.totalJobs}</td>
+                <td>${group.completedJobs}</td>
+                <td>${group.k1}</td>
+                <td>${group.k2}</td>
+                <td>${group.totalInStore}</td>
+                ${allAreas.map(area => `<td>${group.areaCounts[area] || 0}</td>`).join('')}
+                <td>${group.delivered}</td>
+                <td>${group.returned}</td>
+                <td><button class="btn btn-sm btn-danger removeWarehouseRowBtn">🗑️</button></td>
+            `);
+            
+            htmlParts.push(`</tr>`);
         }
+    }
 
-        htmlParts.push(`</tbody>
+    htmlParts.push(`</tbody>
 </table>`);
 
-        const totalTime = Date.now() - startTime;
-        console.log(`✅ Warehouse report generated in ${totalTime}ms`);
-        console.log(`📊 Products in report: ${sortedProducts.join(', ')}`);
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ Warehouse report generated in ${totalTime}ms`);
+    console.log(`📊 Products in report: ${sortedProducts.join(', ')}`);
 
-        res.setHeader('Cache-Control', 'private, max-age=300');
-        res.send(htmlParts.join(''));
+    return htmlParts.join('');
+}
 
+// Main endpoint with Stale-While-Revalidate caching
+app.post('/api/warehouseTableGenerate', async (req, res) => {
+    const { date } = req.body;
+    if (!date) {
+        return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+    }
+    
+    const cacheKey = `warehouse_${date}`;
+    const cachedData = warehouseReportCache.get(cacheKey);
+    
+    // Check if cache exists and get its age
+    const cacheCreatedAt = warehouseReportCache.get(`${cacheKey}_timestamp`);
+    const cacheAge = cacheCreatedAt ? Date.now() - cacheCreatedAt : null;
+    const isStale = cacheAge !== null && cacheAge > 300000; // 5 minutes = 300,000ms
+    
+    // If we have cached data and it's not stale OR we're already refreshing
+    if (cachedData && (!isStale || pendingRefreshes.has(cacheKey))) {
+        // Return cached data immediately
+        const cacheAgeSeconds = Math.floor(cacheAge / 1000);
+        res.setHeader('X-Cache', isStale ? 'STALE' : 'HIT');
+        res.setHeader('X-Cache-Age', `${cacheAgeSeconds}s`);
+        
+        console.log(`[Cache] Returning ${isStale ? 'STALE' : 'FRESH'} cached data for ${date} (age: ${cacheAgeSeconds}s)`);
+        
+        // If stale and not already refreshing, trigger background refresh
+        if (isStale && !pendingRefreshes.has(cacheKey)) {
+            console.log(`[Cache] Triggering background refresh for ${date}`);
+            
+            const refreshPromise = (async () => {
+                try {
+                    const freshData = await generateWarehouseReport(date);
+                    warehouseReportCache.set(cacheKey, freshData);
+                    warehouseReportCache.set(`${cacheKey}_timestamp`, Date.now());
+                    console.log(`[Cache] Background refresh completed for ${date}`);
+                    return freshData;
+                } catch (err) {
+                    console.error(`[Cache] Background refresh failed for ${date}:`, err);
+                    return null;
+                } finally {
+                    pendingRefreshes.delete(cacheKey);
+                }
+            })();
+            
+            pendingRefreshes.set(cacheKey, refreshPromise);
+            
+            // Don't await - let it run in background
+            refreshPromise.catch(err => console.error('Background refresh error:', err));
+        }
+        
+        return res.send(cachedData);
+    }
+    
+    // Check if there's a pending refresh we can wait for
+    if (pendingRefreshes.has(cacheKey)) {
+        console.log(`[Cache] Waiting for pending refresh for ${date}`);
+        try {
+            const freshData = await pendingRefreshes.get(cacheKey);
+            if (freshData) {
+                res.setHeader('X-Cache', 'PENDING');
+                return res.send(freshData);
+            }
+        } catch (err) {
+            console.error(`[Cache] Pending refresh failed:`, err);
+        }
+    }
+    
+    // No cache at all - generate fresh data
+    console.log(`[Cache] No cache found for ${date}, generating fresh report`);
+    res.setHeader('X-Cache', 'MISS');
+    
+    try {
+        const result = await generateWarehouseReport(date);
+        
+        // Store in cache
+        warehouseReportCache.set(cacheKey, result);
+        warehouseReportCache.set(`${cacheKey}_timestamp`, Date.now());
+        
+        // Set response cache headers for browser
+        res.setHeader('Cache-Control', 'private, max-age=60'); // Browser can cache for 1 minute
+        
+        res.send(result);
     } catch (err) {
-        console.error('Error in warehouseTableGenerate:', err);
+        console.error('Error generating warehouse report:', err);
         res.status(500).send(`<div class="alert alert-danger">Error generating warehouse report: ${err.message}</div>`);
     }
 });
 
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-// Add this helper function at the top of your file
-function escapeHtml(text) {
-    if (!text) return '';
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+// Optional: Endpoint to manually clear cache for a specific date
+app.post('/api/clear-warehouse-cache', ensureAuthenticated, async (req, res) => {
+    const { date } = req.body;
+    
+    if (date) {
+        const cacheKey = `warehouse_${date}`;
+        warehouseReportCache.del(cacheKey);
+        warehouseReportCache.del(`${cacheKey}_timestamp`);
+        console.log(`[Cache] Cleared cache for ${date}`);
+        res.json({ success: true, message: `Cache cleared for ${date}` });
+    } else {
+        // Clear all warehouse cache
+        const keys = warehouseReportCache.keys();
+        keys.forEach(key => {
+            if (key.startsWith('warehouse_')) {
+                warehouseReportCache.del(key);
+            }
+        });
+        console.log(`[Cache] Cleared all warehouse cache`);
+        res.json({ success: true, message: 'All warehouse cache cleared' });
+    }
+});
 
 app.post('/api/vehicle-report', async (req, res) => {
     try {
