@@ -2454,7 +2454,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Hjazam", "Adiwardi", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Selfcollect"
         ];
 
         // Fetch completed orders for the selected date directly
