@@ -1009,7 +1009,6 @@
 
             const updateCode = document.getElementById('updateCode').value;
 
-            // Handle SBR (Scan Manifest Seal) one-by-one
             if (updateCode === 'SBR') {
                 const mawbSelect = document.getElementById('mawbNum');
                 const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
@@ -1024,6 +1023,9 @@
                 const duplicateCheck = trackDuplicate(trackingNumber, updateCode, 'onebyone');
                 if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
                     showScanAlert(`⚠️ Duplicate manifest seal: ${trackingNumber} (skipped)`, 'info');
+                    // Update duplicate count in the summary cards
+                    scanResults.duplicateCount = (scanResults.duplicateCount || 0) + 1;
+                    updateBulkStyleResults(); // NEW: Update the summary cards
                     this.focus();
                     return;
                 }
@@ -1061,6 +1063,8 @@
                         flashError(this);
                     }
 
+                    // NEW: Update the bulk-style summary cards
+                    updateBulkStyleResults();
                     updateScanResultsDisplay();
 
                 } catch (error) {
@@ -1070,6 +1074,7 @@
                         result: 'Error: ' + error.message
                     });
                     scanResults.notUpdatedCount++;
+                    updateBulkStyleResults();
                     updateScanResultsDisplay();
                     flashError(this);
                 } finally {
@@ -1582,6 +1587,40 @@
             scanResultsDiv.innerHTML = html;
             scanResultsDiv.style.display = 'block';
             scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
+        }
+
+        // NEW: Update the bulk-style summary cards for one-by-one SBR
+        function updateBulkStyleResults() {
+            // Update the summary cards if they exist in the DOM
+            const updatedCountElem = document.getElementById('updatedCount');
+            const failedCountElem = document.getElementById('failedCount');
+            const totalCountElem = document.getElementById('totalCount');
+            const duplicateCountElem = document.getElementById('duplicateCount');
+            const delayedCountElem = document.getElementById('delayedCount');
+
+            if (updatedCountElem) {
+                updatedCountElem.textContent = scanResults.updatedCount || 0;
+            }
+            if (failedCountElem) {
+                failedCountElem.textContent = scanResults.notUpdatedCount || 0;
+            }
+            if (totalCountElem) {
+                const total = (scanResults.updatedCount || 0) + (scanResults.notUpdatedCount || 0);
+                totalCountElem.textContent = total;
+            }
+            if (duplicateCountElem) {
+                duplicateCountElem.textContent = scanResults.duplicateCount || 0;
+            }
+            if (delayedCountElem) {
+                delayedCountElem.textContent = scanResults.delayedCount || 0;
+            }
+
+            // If the bulk results section is visible, update it
+            const bulkResults = document.getElementById('bulkResults');
+            if (bulkResults && bulkResults.style.display === 'block') {
+                // The displayBulkResults function will handle the full update
+                // We just need to make sure the counts are updated
+            }
         }
 
         // Helper function to get recent duplicates
@@ -3935,9 +3974,16 @@ EXAMPLE004\t\t
             }
         }
 
+        // ==================================================
+        // 📊 SBR RESULTS DISPLAY FUNCTIONS
+        // ==================================================
+
         function displaySBRResults(result) {
             const bulkResults = document.getElementById('bulkResults');
-            if (!bulkResults) return;
+            if (!bulkResults) {
+                console.error('bulkResults element not found');
+                return;
+            }
 
             bulkResults.style.display = 'block';
 
@@ -3945,17 +3991,81 @@ EXAMPLE004\t\t
             const updatedCountElem = document.getElementById('updatedCount');
             const failedCountElem = document.getElementById('failedCount');
             const totalCountElem = document.getElementById('totalCount');
+            const duplicateCountElem = document.getElementById('duplicateCount');
+            const delayedCountElem = document.getElementById('delayedCount');
 
-            if (updatedCountElem) updatedCountElem.textContent = result.successful?.length || 0;
-            if (failedCountElem) failedCountElem.textContent = result.failed?.length || 0;
-            if (totalCountElem) totalCountElem.textContent = (result.successful?.length || 0) + (result.failed?.length || 0);
+            // Get counts from result
+            const successCount = result.successful?.length || 0;
+            const failedCount = result.failed?.length || 0;
+            const duplicateCount = result.duplicate?.length || 0;
+            const total = successCount + failedCount + duplicateCount;
+
+            if (updatedCountElem) updatedCountElem.textContent = successCount;
+            if (failedCountElem) failedCountElem.textContent = failedCount;
+            if (duplicateCountElem) duplicateCountElem.textContent = duplicateCount;
+            if (delayedCountElem) delayedCountElem.textContent = 0; // SBR doesn't have delayed
+            if (totalCountElem) totalCountElem.textContent = total;
 
             const resultsContainer = document.getElementById('resultsContainer');
-            if (!resultsContainer) return;
+            if (!resultsContainer) {
+                console.error('resultsContainer element not found');
+                return;
+            }
 
             resultsContainer.innerHTML = '';
 
-            // Success table
+            // Check if there are any results at all
+            const hasResults = (result.successful && result.successful.length > 0) ||
+                (result.failed && result.failed.length > 0) ||
+                (result.duplicate && result.duplicate.length > 0);
+
+            if (!hasResults) {
+                const noResults = document.createElement('div');
+                noResults.className = 'alert alert-info mt-4';
+                noResults.innerHTML = '<strong>No results to display.</strong> Please check the input and try again.';
+                resultsContainer.appendChild(noResults);
+                return;
+            }
+
+            // ==================================================
+            // DUPLICATES TABLE (if any)
+            // ==================================================
+            if (result.duplicate && result.duplicate.length > 0) {
+                const duplicateTable = document.createElement('div');
+                duplicateTable.innerHTML = `
+            <h4 class="text-info mt-4">Duplicate Seals (${result.duplicate.length})</h4>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> These manifest seals were already scanned in the GDEX system.
+            </div>
+            <div class="table-responsive">
+                <table class="table table-info table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Manifest Seal Number</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${result.duplicate.map((item, index) => `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td><code>${escapeHtml(item.sealNumber)}</code></td>
+                                <td><span class="badge bg-info">Duplicate</span></td>
+                                <td>${escapeHtml(item.message || 'Already scanned')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                resultsContainer.appendChild(duplicateTable);
+            }
+
+            // ==================================================
+            // SUCCESS TABLE (if any)
+            // ==================================================
             if (result.successful && result.successful.length > 0) {
                 const successTable = document.createElement('div');
                 successTable.innerHTML = `
@@ -3964,14 +4074,16 @@ EXAMPLE004\t\t
                 <table class="table table-success table-striped">
                     <thead>
                         <tr>
+                            <th>#</th>
                             <th>Manifest Seal Number</th>
                             <th>Status</th>
                             <th>Message</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${result.successful.map(item => `
+                        ${result.successful.map((item, index) => `
                             <tr>
+                                <td>${index + 1}</td>
                                 <td><code>${escapeHtml(item.sealNumber)}</code></td>
                                 <td><span class="badge bg-success">Success</span></td>
                                 <td>${escapeHtml(item.message || 'Scanned successfully')}</td>
@@ -3984,7 +4096,9 @@ EXAMPLE004\t\t
                 resultsContainer.appendChild(successTable);
             }
 
-            // Failed table
+            // ==================================================
+            // FAILED TABLE (if any)
+            // ==================================================
             if (result.failed && result.failed.length > 0) {
                 const failedTable = document.createElement('div');
                 failedTable.innerHTML = `
@@ -3993,14 +4107,16 @@ EXAMPLE004\t\t
                 <table class="table table-danger table-striped">
                     <thead>
                         <tr>
+                            <th>#</th>
                             <th>Manifest Seal Number</th>
                             <th>Status</th>
                             <th>Error Message</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${result.failed.map(item => `
+                        ${result.failed.map((item, index) => `
                             <tr>
+                                <td>${index + 1}</td>
                                 <td><code>${escapeHtml(item.sealNumber)}</code></td>
                                 <td><span class="badge bg-danger">Failed</span></td>
                                 <td>${escapeHtml(item.message || 'Unknown error')}</td>
@@ -4013,23 +4129,64 @@ EXAMPLE004\t\t
                 resultsContainer.appendChild(failedTable);
             }
 
-            // Summary alert
+            // ==================================================
+            // SUMMARY ALERT WITH MAWB INFO
+            // ==================================================
             if (result.summary) {
                 const summaryAlert = document.createElement('div');
-                summaryAlert.className = `alert alert-${result.summary.hasFailures ? 'warning' : 'success'} mt-3`;
+                const hasFailures = (result.failed && result.failed.length > 0) ||
+                    (result.duplicate && result.duplicate.length > 0 && result.successful && result.successful.length === 0);
+                const alertType = hasFailures ? 'warning' : 'success';
+
+                summaryAlert.className = `alert alert-${alertType} mt-3`;
                 summaryAlert.innerHTML = `
             <strong>Summary:</strong> ${result.summary.message}
-            <br>MAWB: ${result.mawbNum}
-            <br>Total: ${result.summary.total} | Success: ${result.summary.success} | Failed: ${result.summary.failures}
+            <br>MAWB: <strong>${escapeHtml(result.mawbNum)}</strong>
+            <br>Total: ${result.summary.total} | Success: ${result.summary.success || 0} | Duplicates: ${result.summary.duplicates || 0} | Failed: ${result.summary.failures || 0}
+            <br><small>Environment: ${result.environment || 'UAT'}</small>
+            ${result.scanDateTime ? `<br><small>Scan Date/Time: ${result.scanDateTime}</small>` : ''}
         `;
                 resultsContainer.prepend(summaryAlert);
             }
 
-            // Auto-scroll to results
+            // ==================================================
+            // SCROLL TO RESULTS
+            // ==================================================
             setTimeout(() => {
-                bulkResults.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+                bulkResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
         }
+
+        // ==================================================
+        // 🔄 SBR LOADING STATES
+        // ==================================================
+
+        function showSBRLoading(show, message = 'Processing manifest seals...', current = 0, total = 0) {
+            const loading = document.getElementById('loading');
+            if (!loading) return;
+
+            if (show) {
+                loading.style.display = 'block';
+                const progress = total > 0 ? Math.round((current / total) * 100) : 0;
+                loading.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">${message}</p>
+            <div class="progress mt-3" style="height: 25px; width: 80%; margin: 0 auto;">
+                <div id="sbrProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: ${progress}%; font-weight: bold;">${progress}%</div>
+            </div>
+            <p id="sbrProgressText" class="mt-2">${total > 0 ? `Processing ${current}/${total} seals...` : 'Connecting to GDEX...'}</p>
+        `;
+            } else {
+                loading.style.display = 'none';
+            }
+        }
+
+        // ==================================================
+        // 🛡️ ESCAPE HTML FUNCTION
+        // ==================================================
 
         function escapeHtml(text) {
             if (!text) return '';
@@ -4038,7 +4195,228 @@ EXAMPLE004\t\t
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+                .replace(/'/g, '&#39;')
+                .replace(/\n/g, '<br>');
+        }
+
+        // ==================================================
+        // 📊 UPDATE BULK STYLE RESULTS (for one-by-one SBR)
+        // ==================================================
+
+        function updateBulkStyleResults() {
+            // Update the summary cards if they exist in the DOM
+            const updatedCountElem = document.getElementById('updatedCount');
+            const failedCountElem = document.getElementById('failedCount');
+            const totalCountElem = document.getElementById('totalCount');
+            const duplicateCountElem = document.getElementById('duplicateCount');
+            const delayedCountElem = document.getElementById('delayedCount');
+
+            // Use global scanResults object
+            if (typeof scanResults !== 'undefined') {
+                if (updatedCountElem) {
+                    updatedCountElem.textContent = scanResults.updatedCount || 0;
+                }
+                if (failedCountElem) {
+                    failedCountElem.textContent = scanResults.notUpdatedCount || 0;
+                }
+                if (totalCountElem) {
+                    const total = (scanResults.updatedCount || 0) + (scanResults.notUpdatedCount || 0) + (scanResults.duplicateCount || 0);
+                    totalCountElem.textContent = total;
+                }
+                if (duplicateCountElem) {
+                    duplicateCountElem.textContent = scanResults.duplicateCount || 0;
+                }
+                if (delayedCountElem) {
+                    delayedCountElem.textContent = scanResults.delayedCount || 0;
+                }
+            }
+        }
+
+        // ==================================================
+        // 📊 DISPLAY SCAN RESULTS (for one-by-one SBR)
+        // ==================================================
+
+        function updateScanResultsDisplay() {
+            const scanResultsDiv = document.getElementById('scanResults');
+            if (!scanResultsDiv) {
+                console.error('scanResults element not found');
+                return;
+            }
+
+            let html = `
+        <h3>Scanning Results</h3>
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Updated</h5>
+                        <p class="card-text display-4">${scanResults.updatedCount || 0}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-danger">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Failed</h5>
+                        <p class="card-text display-4">${scanResults.notUpdatedCount || 0}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Delayed</h5>
+                        <p class="card-text display-4">${scanResults.delayedCount || 0}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Duplicates</h5>
+                        <p class="card-text display-4">${scanResults.duplicateCount || 0}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+            // Show latest result at the top
+            const allResults = [...(scanResults.successful || []), ...(scanResults.failed || []), ...(scanResults.delayed || [])];
+            const latestResult = allResults[allResults.length - 1];
+
+            if (latestResult) {
+                const isSuccess = scanResults.successful && scanResults.successful.includes(latestResult);
+                const isDelayed = scanResults.delayed && scanResults.delayed.includes(latestResult);
+
+                let alertClass = 'alert-danger';
+                let icon = '❌';
+                let status = 'Failed';
+
+                if (isSuccess) {
+                    alertClass = 'alert-success';
+                    icon = '✅';
+                    status = 'Success';
+                } else if (isDelayed) {
+                    alertClass = 'alert-warning';
+                    icon = '⏰';
+                    status = 'Delayed';
+                }
+
+                html += `
+            <div class="alert ${alertClass} alert-dismissible fade show">
+                <strong>${icon} ${status}:</strong> 
+                ${escapeHtml(latestResult.trackingNumber || latestResult.sealNumber || 'N/A')} - ${escapeHtml(latestResult.result || latestResult.message || 'No result message')}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+            }
+
+            // Add successful jobs table if any
+            if (scanResults.successful && scanResults.successful.length > 0) {
+                const recentSuccessful = scanResults.successful.slice(-10).reverse();
+                html += `
+            <h4 class="text-success">Recently Updated</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-success table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking/Seal Number</th>
+                            <th>Result</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentSuccessful.map(item => `
+                            <tr>
+                                <td><small>${escapeHtml(item.trackingNumber || item.sealNumber || 'N/A')}</small></td>
+                                <td><small>${escapeHtml(item.result || item.message || 'Updated')}</small></td>
+                                <td><small><span class="badge bg-success">Success</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            // Add duplicate jobs table if any duplicates
+            if (scanResults.duplicateCount && scanResults.duplicateCount > 0) {
+                html += `
+            <h4 class="text-info">Duplicates Skipped</h4>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Duplicate tracking/seal numbers were skipped and not processed again.
+            </div>
+        `;
+            }
+
+            // Add delayed jobs table if any
+            if (scanResults.delayed && scanResults.delayed.length > 0) {
+                const recentDelayed = scanResults.delayed.slice(-10).reverse();
+                html += `
+            <h4 class="text-warning">Recently Delayed</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-warning table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentDelayed.map(item => `
+                            <tr>
+                                <td><small>${escapeHtml(item.trackingNumber || 'N/A')}</small></td>
+                                <td><small>${escapeHtml(item.scheduledTime || '30 mins delay')}</small></td>
+                                <td><small><span class="badge bg-warning">Scheduled</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            // Add failed jobs table if any
+            if (scanResults.failed && scanResults.failed.length > 0) {
+                const recentFailed = scanResults.failed.slice(-10).reverse();
+                html += `
+            <h4 class="text-danger">Recent Failures</h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking/Seal Number</th>
+                            <th>Result</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recentFailed.map(item => `
+                            <tr>
+                                <td><small>${escapeHtml(item.trackingNumber || item.sealNumber || 'N/A')}</small></td>
+                                <td><small>${escapeHtml(item.result || item.message || 'Failed')}</small></td>
+                                <td><small><span class="badge bg-danger">Failed</span></small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            scanResultsDiv.innerHTML = html;
+            scanResultsDiv.style.display = 'block';
+            scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
+        }
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
         }
     </script>
 </body>

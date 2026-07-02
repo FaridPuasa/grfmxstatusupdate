@@ -97,6 +97,8 @@ const port = process.env.PORT || 3000;
 // ==================================================
 
 // 1. Increase Node.js server timeout (handles slow requests)
+// COMMENTED OUT - Causing issues with long-running SBR requests
+/*
 app.use((req, res, next) => {
     // Set timeout for the request to 120 seconds
     req.setTimeout(120000, () => {
@@ -112,6 +114,7 @@ app.use((req, res, next) => {
     
     next();
 });
+*/
 
 // ==================================================
 // 🛠 Middleware
@@ -1522,7 +1525,7 @@ async function generateWarehouseReport(date) {
     const startTime = Date.now();
     const allAreas = ["JT", "G", "B", "TUTONG", "KB", "TEMBURONG", "N/A"];
     const awbProducts = ["mglobal", "ewe", "pdu", "gdex", "gdext"];
-    
+
     const selectedDate = new Date(date + "T23:59:59+08:00");
     const thirtyDaysAgo = new Date(selectedDate);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -1535,9 +1538,9 @@ async function generateWarehouseReport(date) {
         currentStatus: { $in: ["At Warehouse", "Return to Warehouse"] },
         warehouseEntryDateTime: { $exists: true, $ne: null }
     })
-    .select('product mawbNo latestLocation currentStatus jobDate area warehouseEntryDateTime')
-    .lean()
-    .maxTimeMS(20000);
+        .select('product mawbNo latestLocation currentStatus jobDate area warehouseEntryDateTime')
+        .lean()
+        .maxTimeMS(20000);
 
     console.log(`Total warehouse orders found: ${relevantOrders.length}`);
 
@@ -1551,10 +1554,10 @@ async function generateWarehouseReport(date) {
 
     // Filter in memory with proper date parsing
     const filteredOrders = [];
-    
+
     for (const order of relevantOrders) {
         let parsedEntryDate = null;
-        
+
         if (order.warehouseEntryDateTime) {
             if (typeof order.warehouseEntryDateTime === 'number') {
                 parsedEntryDate = new Date(order.warehouseEntryDateTime);
@@ -1571,13 +1574,13 @@ async function generateWarehouseReport(date) {
                 parsedEntryDate = order.warehouseEntryDateTime;
             }
         }
-        
+
         if (!parsedEntryDate || isNaN(parsedEntryDate.getTime())) {
             continue;
         }
-        
+
         const isWithinRange = parsedEntryDate >= thirtyDaysAgo && parsedEntryDate <= selectedDate;
-        
+
         if (isWithinRange) {
             filteredOrders.push({
                 ...order,
@@ -1601,7 +1604,7 @@ async function generateWarehouseReport(date) {
 
     // Process the filtered orders
     const warehouseDataMap = new Map();
-    
+
     for (const order of filteredOrders) {
         const product = order.product || "N/A";
         const mawb = order.mawbNo || "-";
@@ -1635,7 +1638,7 @@ async function generateWarehouseReport(date) {
         group.daysList.push(daysInWarehouse);
 
         const area = order.area || "N/A";
-        switch(area) {
+        switch (area) {
             case "JT": group.areaJT++; break;
             case "G": group.areaG++; break;
             case "B": group.areaB++; break;
@@ -1659,7 +1662,7 @@ async function generateWarehouseReport(date) {
 
     if (allAwbs.length > 0) {
         console.log(`Fetching AWB data for ${allAwbs.length} AWBs`);
-        
+
         const [totalJobsResults, completedResults, deliveredResults] = await Promise.all([
             ORDERS.aggregate([
                 { $match: { $or: [{ mawbNo: { $in: allAwbs } }, { hawbNo: { $in: allAwbs } }] } },
@@ -1674,7 +1677,7 @@ async function generateWarehouseReport(date) {
                 { $group: { _id: { product: { $ifNull: ["$product", "N/A"] }, mawb: { $ifNull: ["$mawbNo", "-"] } }, count: { $sum: 1 } } }
             ])
         ]);
-        
+
         totalJobsMap = new Map(totalJobsResults.map(x => [x._id, x.count]));
         completedCountsMap = new Map(completedResults.map(x => [x._id, x.count]));
         deliveredMap = new Map(deliveredResults.map(x => [`${x._id.product}|${x._id.mawb}`, x.count]));
@@ -1698,7 +1701,7 @@ async function generateWarehouseReport(date) {
 
         const daysList = group.daysList;
         delete group.daysList;
-        
+
         const minDays = Math.min(...daysList);
         const maxDays = Math.max(...daysList);
         group.agingDisplay = minDays === maxDays ? `${minDays}` : `${minDays}-${maxDays}`;
@@ -1801,13 +1804,13 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
 
         for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
-            
+
             htmlParts.push(`<tr>`);
-            
+
             if (i === 0) {
                 htmlParts.push(`<td rowspan="${totalRows}" style="vertical-align: middle;">${escapeHtml(product)}${agingBadge}</td>`);
             }
-            
+
             htmlParts.push(`
                 <td>${escapeHtml(group._id.mawb)}</td>
                 <td>${group.agingDisplay}</td>
@@ -1821,7 +1824,7 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
                 <td>${group.returned}</td>
                 <td><button class="btn btn-sm btn-danger removeWarehouseRowBtn">🗑️</button></td>
             `);
-            
+
             htmlParts.push(`</tr>`);
         }
     }
@@ -1842,28 +1845,28 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
     if (!date) {
         return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
     }
-    
+
     const cacheKey = `warehouse_${date}`;
     const cachedData = warehouseReportCache.get(cacheKey);
-    
+
     // Check if cache exists and get its age
     const cacheCreatedAt = warehouseReportCache.get(`${cacheKey}_timestamp`);
     const cacheAge = cacheCreatedAt ? Date.now() - cacheCreatedAt : null;
     const isStale = cacheAge !== null && cacheAge > 300000; // 5 minutes = 300,000ms
-    
+
     // If we have cached data and it's not stale OR we're already refreshing
     if (cachedData && (!isStale || pendingRefreshes.has(cacheKey))) {
         // Return cached data immediately
         const cacheAgeSeconds = Math.floor(cacheAge / 1000);
         res.setHeader('X-Cache', isStale ? 'STALE' : 'HIT');
         res.setHeader('X-Cache-Age', `${cacheAgeSeconds}s`);
-        
+
         console.log(`[Cache] Returning ${isStale ? 'STALE' : 'FRESH'} cached data for ${date} (age: ${cacheAgeSeconds}s)`);
-        
+
         // If stale and not already refreshing, trigger background refresh
         if (isStale && !pendingRefreshes.has(cacheKey)) {
             console.log(`[Cache] Triggering background refresh for ${date}`);
-            
+
             const refreshPromise = (async () => {
                 try {
                     const freshData = await generateWarehouseReport(date);
@@ -1878,16 +1881,16 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
                     pendingRefreshes.delete(cacheKey);
                 }
             })();
-            
+
             pendingRefreshes.set(cacheKey, refreshPromise);
-            
+
             // Don't await - let it run in background
             refreshPromise.catch(err => console.error('Background refresh error:', err));
         }
-        
+
         return res.send(cachedData);
     }
-    
+
     // Check if there's a pending refresh we can wait for
     if (pendingRefreshes.has(cacheKey)) {
         console.log(`[Cache] Waiting for pending refresh for ${date}`);
@@ -1901,21 +1904,21 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
             console.error(`[Cache] Pending refresh failed:`, err);
         }
     }
-    
+
     // No cache at all - generate fresh data
     console.log(`[Cache] No cache found for ${date}, generating fresh report`);
     res.setHeader('X-Cache', 'MISS');
-    
+
     try {
         const result = await generateWarehouseReport(date);
-        
+
         // Store in cache
         warehouseReportCache.set(cacheKey, result);
         warehouseReportCache.set(`${cacheKey}_timestamp`, Date.now());
-        
+
         // Set response cache headers for browser
         res.setHeader('Cache-Control', 'private, max-age=60'); // Browser can cache for 1 minute
-        
+
         res.send(result);
     } catch (err) {
         console.error('Error generating warehouse report:', err);
@@ -1926,7 +1929,7 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
 // Optional: Endpoint to manually clear cache for a specific date
 app.post('/api/clear-warehouse-cache', ensureAuthenticated, async (req, res) => {
     const { date } = req.body;
-    
+
     if (date) {
         const cacheKey = `warehouse_${date}`;
         warehouseReportCache.del(cacheKey);
@@ -5482,7 +5485,6 @@ const gdexTokenCache = {
     env: null // Track which environment the token is for
 };
 
-// Add retry logic to getGDEXToken
 async function getGDEXToken(retries = 3) {
     // Check if we have a valid cached token for current environment
     const now = Date.now();
@@ -5521,22 +5523,46 @@ async function getGDEXToken(retries = 3) {
 
                 return response.data.result;
             } else {
-                console.error(`GDEX ${GDEX_ENV.toUpperCase()} Authentication failed:`, response.data.error);
+                const errorMsg = response.data.error || 'Authentication failed';
+                console.error(`GDEX ${GDEX_ENV.toUpperCase()} Authentication failed:`, errorMsg);
+
+                // NEW: More user-friendly error
                 if (attempt < retries) {
                     await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                     continue;
                 }
-                return null;
+
+                // NEW: Return null with error details
+                const authError = new Error(`GDEX authentication failed: ${errorMsg}`);
+                authError.details = {
+                    environment: GDEX_ENV,
+                    attempt: attempt,
+                    error: errorMsg
+                };
+                throw authError;
             }
         } catch (error) {
             console.error(`Error getting GDEX ${GDEX_ENV.toUpperCase()} token (attempt ${attempt}):`, error.message);
+
+            // NEW: More user-friendly error
+            if (error.response) {
+                error.message = `GDEX API error (${error.response.status}): ${error.response.data?.error || 'Unknown error'}`;
+            } else if (error.code === 'ECONNABORTED') {
+                error.message = 'GDEX connection timeout - please check network';
+            }
+
             if (attempt < retries) {
                 await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                 continue;
             }
-            return null;
+            throw error;
         }
     }
+
+    // NEW: If we get here, all retries failed
+    const finalError = new Error('Failed to authenticate with GDEX after all retries');
+    finalError.environment = GDEX_ENV;
+    throw finalError;
 }
 
 async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescription, locationDescription, token, reasoncode = "", epod = "", returnflag = false) {
@@ -5552,14 +5578,22 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
         }
         // else: empty array
 
+        // ==================================================
+        // 🕐 TEMPORARY FIX: Use specific date/time
+        // Date: June 13, 2026 at 8:32 AM Brunei time
+        // ==================================================
+        const fixedDateTime = moment.tz('2026-06-13 08:32:00', 'Asia/Brunei').format('YYYY-MM-DDTHH:mm:ss');
+        console.log(`📅 TEMPORARY: Using FIXED date/time: ${fixedDateTime} (2026-06-13 08:32:00)`);
+        // ==================================================
+
         const trackingData = {
             consignmentno: consignmentID,
             statuscode: statusCode,
             statusdescription: statusDescription,
-            statusdatetime: moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
+            statusdatetime: fixedDateTime, // Using fixed time instead of current time
             reasoncode: reasoncode,
             locationdescription: locationDescription,
-            epod: epodArray, // ARRAY of Base64 strings
+            epod: epodArray,
             deliverypartner: "gorush",
             returnflag: returnflag
         };
@@ -5567,6 +5601,7 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
         console.log(`POD format: ${epodArray.length > 0 ? 'Array with ' + epodArray.length + ' images' : 'Empty array'}`);
         console.log(`Return flag: ${returnflag ? 'TRUE (return goods)' : 'FALSE (normal delivery)'}`);
+        console.log(`Using fixed date/time: ${fixedDateTime}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -5593,9 +5628,21 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
     }
 }
 
-// Enhanced helper function with full request/response logging
 async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, token) {
     try {
+        // ==================================================
+        // 🕐 TEMPORARY FIX: Use specific date/time
+        // Date: June 13, 2026 at 8:32 AM Brunei time
+        // ==================================================
+        const fixedDateTime = moment.tz('2026-06-13 08:32:00', 'Asia/Brunei').format('YYYY-MM-DDTHH:mm:ss');
+        console.log(`📅 TEMPORARY: Using FIXED date/time: ${fixedDateTime} (2026-06-13 08:32:00)`);
+
+        // Override the datetime in trackingData
+        if (trackingData) {
+            trackingData.statusdatetime = fixedDateTime;
+        }
+        // ==================================================
+
         // ========== LOG FULL REQUEST ==========
         console.log(`\n📤 ===== COMPLETE REQUEST TO GDEX =====`);
         console.log(`URL: ${gdexConfig.trackingUrl}`);
@@ -5608,6 +5655,7 @@ async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, toke
         console.log(`========================================\n`);
 
         console.log(`📡 Sending GDEX webhook for ${consignmentID}: ${trackingData.statuscode} - ${trackingData.statusdescription}`);
+        console.log(`Using fixed date/time: ${fixedDateTime}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -6410,6 +6458,14 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
         let statusCode, statusDescription, reasonCode, locationDescription, epodArray = [];
 
+        // ==================================================
+        // 🕐 TEMPORARY FIX: Use specific date/time
+        // Date: June 13, 2026 at 8:32 AM Brunei time
+        // ==================================================
+        const fixedDateTime = moment.tz('2026-06-13 08:32:00', 'Asia/Brunei').format('YYYY-MM-DDTHH:mm:ss');
+        console.log(`📅 TEMPORARY: Using FIXED date/time for clear job: ${fixedDateTime} (2026-06-13 08:32:00)`);
+        // ==================================================
+
         // Check if job is completed or failed
         if (detrackData.status === 'completed') {
             statusCode = "FD";
@@ -6566,12 +6622,12 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
             }
         }
 
-        // Prepare tracking data
+        // Prepare tracking data with FIXED datetime
         const trackingData = {
             consignmentno: consignmentID,
             statuscode: statusCode,
             statusdescription: statusDescription,
-            statusdatetime: moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
+            statusdatetime: fixedDateTime, // Using fixed time
             reasoncode: reasonCode,
             locationdescription: locationDescription,
             epod: epodArray,
@@ -6581,6 +6637,7 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
         console.log(`Reason code: ${reasonCode}`);
+        console.log(`Using fixed date/time: ${fixedDateTime}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -13343,40 +13400,40 @@ function parseBirthDate(dateString) {
 
     // Clean the string
     let clean = dateString.toString().trim();
-    
+
     // Remove ordinal indicators (st, nd, rd, th)
     clean = clean.replace(/(\d)(st|nd|rd|th)/gi, '$1');
-    
+
     // Remove any non-numeric and non-separator characters
     clean = clean.replace(/[^0-9\/\.\-\\\s]/g, '');
-    
+
     // Replace various separators with a standard separator
     let normalized = clean
         .replace(/[\/\.\-\\\s]+/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
-    
+
     const parts = normalized.split('-').filter(p => p.length > 0);
-    
+
     if (parts.length !== 3) {
         return null;
     }
-    
+
     // Detect format based on patterns
     let day, month, year;
-    
+
     // Check if it's ddmmyyyy format (8 digits)
     if (parts.length === 1 && parts[0].length === 8 && /^\d{8}$/.test(parts[0])) {
         day = parseInt(parts[0].substring(0, 2));
         month = parseInt(parts[0].substring(2, 4));
         year = parseInt(parts[0].substring(4, 8));
-    } 
+    }
     // Standard 3-part format
     else if (parts.length === 3) {
         let p1 = parseInt(parts[0]);
         let p2 = parseInt(parts[1]);
         let p3 = parseInt(parts[2]);
-        
+
         // Year is usually the largest number or 4 digits
         if (p3 > 31 && p3 < 2100) {
             // Year is last
@@ -13400,7 +13457,7 @@ function parseBirthDate(dateString) {
                 day = p1;
                 month = p2;
             }
-        } 
+        }
         else if (p1 > 31 && p1 < 2100) {
             // Year is first
             year = p1;
@@ -13416,7 +13473,7 @@ function parseBirthDate(dateString) {
         else {
             // No clear year indicator
             year = p3 > 1000 ? p3 : (2000 + p3);
-            
+
             // Ambiguous day/month
             if (p1 <= 12 && p2 <= 31) {
                 // Could be MM-DD or DD-MM
@@ -13432,13 +13489,13 @@ function parseBirthDate(dateString) {
             }
         }
     }
-    
+
     // Validate
     if (!day || !month || !year) return null;
     if (day < 1 || day > 31) return null;
     if (month < 1 || month > 12) return null;
     if (year < 1900 || year > new Date().getFullYear()) return null;
-    
+
     return {
         day: day,
         month: month,
@@ -13450,34 +13507,34 @@ function parseBirthDate(dateString) {
 // Check if today is birthday
 function isBirthdayToday(birthDateObj) {
     if (!birthDateObj || !birthDateObj.isValid) return false;
-    
+
     const today = new Date();
     const todayMonth = today.getMonth() + 1;
     const todayDay = today.getDate();
-    
+
     return birthDateObj.month === todayMonth && birthDateObj.day === todayDay;
 }
 
 // Clean phone number for WhatsApp - MUST have + prefix for Make/Integromat
 function cleanPhoneNumberForBirthday(phoneNumber) {
     if (!phoneNumber) return null;
-    
+
     let cleaned = phoneNumber.toString().trim();
     cleaned = cleaned.replace(/\D/g, '');
-    
+
     // Remove leading 0
     if (cleaned.startsWith('0')) {
         cleaned = cleaned.substring(1);
     }
-    
+
     // Add country code if missing (7 digits = Brunei number)
     if (cleaned.length === 7) {
         cleaned = '673' + cleaned;
     }
-    
+
     // CRITICAL: Add + prefix for Make/Integromat
     cleaned = '+' + cleaned.replace(/^\+/, '');
-    
+
     return cleaned;
 }
 
@@ -13485,9 +13542,9 @@ function cleanPhoneNumberForBirthday(phoneNumber) {
 async function sendBirthdayGreeting(phoneNumber, name, dateOfBirth) {
     try {
         console.log(`🎂 Sending birthday greeting to ${name} (${phoneNumber})`);
-        
+
         const webhookUrl = 'https://hook.eu1.make.com/u0pit5afuwjdvo8ykyd3i4me55azhkrx';
-        
+
         const payload = {
             phone: phoneNumber,  // Will have + prefix
             name: name || 'Valued Customer',
@@ -13495,19 +13552,19 @@ async function sendBirthdayGreeting(phoneNumber, name, dateOfBirth) {
             event: 'birthday_greeting',
             timestamp: new Date().toISOString()
         };
-        
+
         console.log(`📤 Make webhook payload:`, JSON.stringify(payload, null, 2));
-        
+
         const response = await axios.post(webhookUrl, payload, {
             headers: {
                 'Content-Type': 'application/json'
             },
             timeout: 10000
         });
-        
+
         console.log(`✅ Birthday greeting sent to ${phoneNumber} - Response: ${response.status}`);
         return { success: true, status: response.status, data: response.data };
-        
+
     } catch (error) {
         console.error(`❌ Failed to send birthday greeting to ${phoneNumber}:`, error.message);
         if (error.response) {
@@ -13521,63 +13578,63 @@ async function sendBirthdayGreeting(phoneNumber, name, dateOfBirth) {
 async function checkAndSendBirthdayGreetings() {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    
+
     console.log(`\n🎂 ========== BIRTHDAY CHECKER ==========`);
     console.log(`📅 Date: ${todayStr}`);
     console.log(`⏰ Time: ${today.toLocaleTimeString()}`);
-    
+
     try {
         // Fetch all orders with dateOfBirth field
         const orders = await ORDERS.find({
             dateOfBirth: { $exists: true, $ne: null, $ne: '', $ne: 'N/A' }
         }).select('dateOfBirth receiverPhoneNumber receiverName updatedAt')
-          .sort({ updatedAt: -1 }); // Sort by newest first
-        
+            .sort({ updatedAt: -1 }); // Sort by newest first
+
         console.log(`📊 Total orders with dateOfBirth: ${orders.length}`);
-        
+
         // Use Map to keep only the latest order per unique phone number
         const uniquePhoneMap = new Map();
-        
+
         for (const order of orders) {
             const phoneNumber = order.receiverPhoneNumber;
-            
+
             // Skip if no phone number
             if (!phoneNumber) continue;
-            
+
             // Only keep the first (latest) order for this phone number
             // Since we sorted by updatedAt descending, first encounter is the latest
             if (!uniquePhoneMap.has(phoneNumber)) {
                 uniquePhoneMap.set(phoneNumber, order);
             }
         }
-        
+
         const uniqueOrders = Array.from(uniquePhoneMap.values());
         console.log(`📊 Unique phone numbers after deduplication: ${uniqueOrders.length}`);
-        
+
         let birthdayCount = 0;
         let invalidFormatCount = 0;
         let noPhoneCount = 0;
         let sentCount = 0;
         let failedCount = 0;
         const results = [];
-        
+
         for (const order of uniqueOrders) {
             // Parse the birth date
             const birthDateObj = parseBirthDate(order.dateOfBirth);
-            
+
             if (!birthDateObj || !birthDateObj.isValid) {
                 invalidFormatCount++;
                 console.log(`⚠️ Invalid date format: "${order.dateOfBirth}" for customer ${order.receiverName}`);
                 continue;
             }
-            
+
             // Check if birthday is today
             if (isBirthdayToday(birthDateObj)) {
                 birthdayCount++;
-                
+
                 // Clean phone number
                 const cleanedPhone = cleanPhoneNumberForBirthday(order.receiverPhoneNumber);
-                
+
                 if (!cleanedPhone || cleanedPhone.length < 11) {
                     noPhoneCount++;
                     console.log(`⚠️ No valid phone number for ${order.receiverName}: "${order.receiverPhoneNumber}"`);
@@ -13590,14 +13647,14 @@ async function checkAndSendBirthdayGreetings() {
                     });
                     continue;
                 }
-                
+
                 // Send birthday greeting
                 const sendResult = await sendBirthdayGreeting(
                     cleanedPhone,
                     order.receiverName,
                     order.dateOfBirth
                 );
-                
+
                 if (sendResult.success) {
                     sentCount++;
                     console.log(`✅ Birthday wish sent to ${order.receiverName} (${cleanedPhone}) - DOB: ${order.dateOfBirth}`);
@@ -13619,12 +13676,12 @@ async function checkAndSendBirthdayGreetings() {
                         error: sendResult.error
                     });
                 }
-                
+
                 // Small delay to avoid rate limiting
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
-        
+
         // Summary log
         console.log(`\n📊 BIRTHDAY SUMMARY:`);
         console.log(`   ├── Total orders checked: ${orders.length}`);
@@ -13634,7 +13691,7 @@ async function checkAndSendBirthdayGreetings() {
         console.log(`   ├── No valid phone: ${noPhoneCount}`);
         console.log(`   ├── Successfully sent: ${sentCount}`);
         console.log(`   └── Failed to send: ${failedCount}`);
-        
+
         // Log unique customers who received greetings
         if (sentCount > 0) {
             console.log(`\n📱 Customers who received birthday greetings:`);
@@ -13642,7 +13699,7 @@ async function checkAndSendBirthdayGreetings() {
                 console.log(`   ├── ${r.name} (${r.phone})`);
             });
         }
-        
+
         return {
             success: true,
             date: todayStr,
@@ -13655,7 +13712,7 @@ async function checkAndSendBirthdayGreetings() {
             noPhoneCount,
             results
         };
-        
+
     } catch (error) {
         console.error(`❌ Birthday checker error:`, error);
         return {
@@ -13671,31 +13728,31 @@ function scheduleBirthdayChecker() {
     const scheduleNext = () => {
         const now = moment().tz("Asia/Brunei");
         let nextRun = moment().tz("Asia/Brunei").set({ hour: 10, minute: 0, second: 0 });
-        
+
         if (now.isAfter(nextRun)) {
             nextRun.add(1, 'day');
         }
-        
+
         const delayMs = nextRun.diff(now);
         const timeStr = nextRun.format('YYYY-MM-DD HH:mm:ss');
-        
+
         console.log(`🎂 Next birthday checker scheduled: ${timeStr} (Brunei Time)`);
-        
+
         setTimeout(async () => {
             console.log(`\n🎂 Running scheduled birthday checker at ${moment().tz("Asia/Brunei").format('YYYY-MM-DD HH:mm:ss')}`);
             const result = await checkAndSendBirthdayGreetings();
-            
+
             if (result.success) {
                 console.log(`✅ Birthday checker completed: ${result.sentCount} greetings sent to ${result.uniqueCustomers} unique customers`);
             } else {
                 console.error(`❌ Birthday checker failed: ${result.error}`);
             }
-            
+
             // Schedule next run
             scheduleNext();
         }, delayMs);
     };
-    
+
     scheduleNext();
 }
 
@@ -13761,16 +13818,16 @@ app.get('/test-birthday-syahmi', async (req, res) => {
     const phoneNumber = '6738758135';
     const name = 'Syahmi Ghafar';
     const dateOfBirth = '13-05-1993'; // 13th May 1993
-    
+
     console.log(`\n🎂 TESTING BIRTHDAY FOR SYAHMI`);
     console.log(`📱 Phone: ${phoneNumber}`);
     console.log(`👤 Name: ${name}`);
     console.log(`📅 DOB: ${dateOfBirth}`);
-    
+
     // Clean the phone number (will add + prefix)
     const cleanedPhone = cleanPhoneNumberForBirthday(phoneNumber);
     console.log(`📞 Formatted for Make: ${cleanedPhone}`);
-    
+
     if (!cleanedPhone || cleanedPhone.length < 11) {
         return res.status(400).json({
             success: false,
@@ -13780,10 +13837,10 @@ app.get('/test-birthday-syahmi', async (req, res) => {
             requiredFormat: '+673XXXXXXXX (e.g., +6738758135)'
         });
     }
-    
+
     // Send the birthday greeting via Make webhook
     const result = await sendBirthdayGreeting(cleanedPhone, name, dateOfBirth);
-    
+
     // Return HTML response for easy viewing
     res.send(`
         <!DOCTYPE html>
@@ -13901,12 +13958,12 @@ app.get('/test-birthday-syahmi', async (req, res) => {
                 
                 <h3>📤 Webhook Payload Sent to Make:</h3>
                 <pre>${JSON.stringify({
-                    phone: cleanedPhone,
-                    name: name,
-                    dateOfBirth: dateOfBirth,
-                    event: 'birthday_greeting',
-                    timestamp: new Date().toISOString()
-                }, null, 2)}</pre>
+        phone: cleanedPhone,
+        name: name,
+        dateOfBirth: dateOfBirth,
+        event: 'birthday_greeting',
+        timestamp: new Date().toISOString()
+    }, null, 2)}</pre>
                 
                 <h3>📥 Response from Make Webhook:</h3>
                 <pre>${JSON.stringify(result, null, 2)}</pre>
@@ -13928,14 +13985,14 @@ app.get('/test-birthday-json', async (req, res) => {
     const phoneNumber = req.query.phone || '6738758135';
     const name = req.query.name || 'Syahmi Ghafar';
     const dateOfBirth = req.query.dob || '13-05-1993';
-    
+
     console.log(`\n🎂 JSON TEST REQUEST`);
     console.log(`📱 Phone: ${phoneNumber}`);
     console.log(`👤 Name: ${name}`);
     console.log(`📅 DOB: ${dateOfBirth}`);
-    
+
     const cleanedPhone = cleanPhoneNumberForBirthday(phoneNumber);
-    
+
     if (!cleanedPhone || cleanedPhone.length < 11) {
         return res.status(400).json({
             success: false,
@@ -13944,9 +14001,9 @@ app.get('/test-birthday-json', async (req, res) => {
             cleanedPhone: cleanedPhone
         });
     }
-    
+
     const result = await sendBirthdayGreeting(cleanedPhone, name, dateOfBirth);
-    
+
     res.json({
         success: result.success,
         message: result.success ? 'Birthday greeting sent successfully!' : 'Failed to send',
@@ -19659,13 +19716,13 @@ function determineProductType(groupName, jobOwner) {
 
 // Add timeout handling for Heroku's 30-second limit
 // Increase timeout for all routes (Heroku specific)
-app.use((req, res, next) => {
+/* app.use((req, res, next) => {
     res.setTimeout(120000, () => { // 120 seconds timeout
         console.log('Request has timed out.');
         res.status(503).send('Service unavailable. Please try again.');
     });
     next();
-});
+}); */
 
 // ==================================================
 // 🧹 Job Cleanup (Memory Management)
@@ -22932,17 +22989,59 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Scan Manifest Seal (SBR) for GDEX
 app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) => {
+    // Track if response has been sent
+    let responseSent = false;
+    let isFinished = false;
+
+    // Function to safely send response
+    const safeSend = (status, data) => {
+        if (responseSent) {
+            return null;
+        }
+
+        if (res.headersSent) {
+            return null;
+        }
+
+        try {
+            responseSent = true;
+            isFinished = true;
+            return res.status(status).json(data);
+        } catch (error) {
+            console.error('❌ Error sending response:', error.message);
+            return null;
+        }
+    };
+
     try {
         const { mawbNum, manifestSeals, updateMethod } = req.body;
 
         if (!mawbNum || mawbNum.trim() === '') {
-            return res.status(400).json({ error: 'MAWB Number is required' });
+            return safeSend(400, {
+                error: 'MAWB Number is required',
+                message: 'Please select a MAWB Number first'
+            });
         }
 
         if (!manifestSeals || manifestSeals.length === 0) {
-            return res.status(400).json({ error: 'Manifest seal numbers are required' });
+            return safeSend(400, {
+                error: 'Manifest seal numbers are required',
+                message: 'Please enter at least one manifest seal number'
+            });
+        }
+
+        // Validate MAWB exists
+        const mawbExists = await ORDERS.findOne({
+            mawbNo: mawbNum.trim().toUpperCase(),
+            product: { $in: ['gdex', 'gdext'] }
+        });
+
+        if (!mawbExists) {
+            return safeSend(400, {
+                error: 'Invalid MAWB number',
+                message: `MAWB "${mawbNum}" not found or is not a GDEX/GDEXT shipment`
+            });
         }
 
         // Clean manifest seal numbers
@@ -22951,152 +23050,192 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
             .filter(seal => seal !== '');
 
         if (cleanSeals.length === 0) {
-            return res.status(400).json({ error: 'No valid manifest seal numbers' });
+            return safeSend(400, {
+                error: 'No valid manifest seal numbers',
+                message: 'Please enter valid manifest seal numbers'
+            });
         }
 
-        // Remove duplicates
         const uniqueSeals = [...new Set(cleanSeals)];
 
-        console.log(`📦 Processing SBR for MAWB: ${mawbNum}`);
-        console.log(`   Seals: ${uniqueSeals.join(', ')}`);
-        console.log(`   Method: ${updateMethod}`);
+        // Check for existing seals in database
+        const existingDoc = await GDEXMANIFESTSEALTAGS.findOne({
+            mawbNo: mawbNum.trim().toUpperCase()
+        });
+
+        let alreadyScannedSeals = [];
+        let newSeals = [];
+
+        if (existingDoc && existingDoc.manifestsealtags) {
+            const existingSealsSet = new Set(existingDoc.manifestsealtags);
+            uniqueSeals.forEach(seal => {
+                if (existingSealsSet.has(seal)) {
+                    alreadyScannedSeals.push(seal);
+                } else {
+                    newSeals.push(seal);
+                }
+            });
+        } else {
+            newSeals = uniqueSeals;
+        }
+
+        console.log(`📊 Seals status check:`);
+        console.log(`   Total: ${uniqueSeals.length}`);
+        console.log(`   Already scanned in DB: ${alreadyScannedSeals.length}`);
+        console.log(`   New to scan: ${newSeals.length}`);
+
+        // If all seals are already scanned
+        if (newSeals.length === 0) {
+            const results = {
+                successful: [],
+                failed: [],
+                duplicate: alreadyScannedSeals.map(seal => ({
+                    sealNumber: seal,
+                    message: 'Already scanned (duplicate)'
+                })),
+                mawbNum: mawbNum,
+                updateMethod: updateMethod,
+                summary: {
+                    total: uniqueSeals.length,
+                    success: 0,
+                    duplicates: alreadyScannedSeals.length,
+                    failures: 0,
+                    message: `All ${uniqueSeals.length} manifest seals already scanned (duplicates)`
+                }
+            };
+            return safeSend(200, results);
+        }
+
+        // ==================================================
+        // ✅ USE CURRENT BRUNEI TIME (UTC+8)
+        // ==================================================
+        const currentDateTime = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+        console.log(`📅 Using CURRENT Brunei time (UTC+8): ${currentDateTime}`);
+        // ==================================================
 
         // Get GDEX token
-        const token = await getGDEXToken();
-        if (!token) {
-            return res.status(500).json({
-                error: 'Failed to get GDEX authentication token'
-            });
-        }
-
-        // Prepare request body for GDEX API
-        const requestBody = {
-            cBr: "GOR",
-            sdtm: moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
-            mnList: uniqueSeals,
-            deliverypartner: "GOR"
-        };
-
-        console.log(`📤 Sending request to GDEX Manifest API:`);
-        console.log(`   URL: ${gdexManifestConfig.manifestUrl}`);
-        console.log(`   Body:`, JSON.stringify(requestBody, null, 2));
-
-        // Call GDEX API
-        let gdexResponse;
+        let token;
         try {
-            gdexResponse = await axios.post(gdexManifestConfig.manifestUrl, requestBody, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                timeout: 15000
-            });
-
-            console.log(`📥 GDEX Response Status: ${gdexResponse.status}`);
-            console.log(`📥 GDEX Response Data:`, JSON.stringify(gdexResponse.data, null, 2));
-
-        } catch (error) {
-            console.error(`❌ GDEX API error:`, error.message);
-            if (error.response) {
-                console.error(`   Status: ${error.response.status}`);
-                console.error(`   Data:`, JSON.stringify(error.response.data, null, 2));
-            }
-
-            return res.status(500).json({
-                error: 'GDEX API request failed',
-                message: error.message,
-                details: error.response?.data
+            token = await getGDEXToken();
+        } catch (authError) {
+            return safeSend(500, {
+                error: 'GDEX Authentication Failed',
+                message: `Unable to authenticate with GDEX: ${authError.message}`
             });
         }
 
-        // Process GDEX response
+        if (!token) {
+            return safeSend(500, {
+                error: 'GDEX Authentication Failed',
+                message: 'Failed to get GDEX authentication token.'
+            });
+        }
+
+        console.log(`✅ GDEX Token obtained`);
+
+        // Process results
         const results = {
             successful: [],
             failed: [],
+            duplicate: alreadyScannedSeals.map(seal => ({
+                sealNumber: seal,
+                message: 'Already scanned (duplicate)'
+            })),
             mawbNum: mawbNum,
-            updateMethod: updateMethod
+            updateMethod: updateMethod,
+            scanDateTime: currentDateTime
         };
 
-        if (gdexResponse.data && gdexResponse.data.success === true) {
-            // API call was successful overall
-            const resultData = gdexResponse.data.result;
+        console.log(`📦 Processing ${newSeals.length} seals individually...`);
 
-            if (resultData && resultData.success === true) {
-                // All seals were successful
-                console.log(`✅ All ${uniqueSeals.length} manifest seals accepted by GDEX`);
+        // Process each seal
+        for (let i = 0; i < newSeals.length; i++) {
+            const seal = newSeals[i];
+            console.log(`\n🔄 Processing ${i + 1}/${newSeals.length}: ${seal}`);
 
-                for (const seal of uniqueSeals) {
-                    results.successful.push({
-                        sealNumber: seal,
-                        message: 'Manifest seal scanned successfully'
-                    });
-                }
+            const requestBody = {
+                cBr: "GOR",
+                sdtm: currentDateTime,  // Using current Brunei time (UTC+8)
+                mnList: [seal],
+                deliverypartner: "GOR"
+            };
 
-                // Save to MongoDB
-                await saveManifestSealsToDatabase(mawbNum, uniqueSeals, updateMethod);
+            try {
+                const gdexResponse = await axios.post(gdexManifestConfig.manifestUrl, requestBody, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    timeout: 30000
+                });
 
-            } else if (resultData && resultData.error) {
-                // Some seals failed - check error message for duplicate
-                const errorMessage = resultData.error.message || '';
-                const duplicateMatch = errorMessage.match(/Duplicate Manifest: (\S+)/);
-
-                if (duplicateMatch) {
-                    const duplicateSeal = duplicateMatch[1];
-                    console.log(`⚠️ Duplicate manifest seal detected: ${duplicateSeal}`);
-
-                    // Process each seal individually to determine which succeeded/failed
-                    for (const seal of uniqueSeals) {
-                        if (seal === duplicateSeal) {
-                            results.failed.push({
+                if (gdexResponse.data && gdexResponse.data.success === true) {
+                    const resultData = gdexResponse.data.result;
+                    if (resultData && resultData.success === true) {
+                        console.log(`✅ Seal ${seal} accepted`);
+                        results.successful.push({
+                            sealNumber: seal,
+                            message: 'Manifest seal scanned successfully'
+                        });
+                        await saveManifestSealsToDatabase(mawbNum, [seal], currentDateTime);
+                    } else if (resultData && resultData.error) {
+                        const errorMsg = resultData.error.message || '';
+                        if (errorMsg.includes('Duplicate Manifest')) {
+                            console.log(`⚠️ Seal ${seal} is a duplicate`);
+                            results.duplicate.push({
                                 sealNumber: seal,
-                                message: `Duplicate manifest seal: Already scanned`
+                                message: 'Duplicate manifest seal'
                             });
                         } else {
-                            // For now, assume others succeeded
-                            // In production, you might want to make individual API calls
-                            results.successful.push({
+                            console.log(`❌ Seal ${seal} failed: ${errorMsg}`);
+                            results.failed.push({
                                 sealNumber: seal,
-                                message: 'Manifest seal scanned successfully'
+                                message: errorMsg
                             });
                         }
                     }
-
-                    // Save successful seals to database
-                    const successfulSeals = results.successful.map(s => s.sealNumber);
-                    if (successfulSeals.length > 0) {
-                        await saveManifestSealsToDatabase(mawbNum, successfulSeals, updateMethod);
-                    }
-                } else {
-                    // Other error - all failed
-                    console.log(`❌ GDEX returned error: ${errorMessage}`);
-                    for (const seal of uniqueSeals) {
+                } else if (gdexResponse.data && gdexResponse.data.success === false) {
+                    const errorMsg = gdexResponse.data.error?.message || 'Unknown error';
+                    if (errorMsg.includes('Duplicate Manifest')) {
+                        console.log(`⚠️ Seal ${seal} is a duplicate`);
+                        results.duplicate.push({
+                            sealNumber: seal,
+                            message: 'Duplicate manifest seal'
+                        });
+                    } else {
+                        console.log(`❌ Seal ${seal} failed: ${errorMsg}`);
                         results.failed.push({
                             sealNumber: seal,
-                            message: errorMessage || 'GDEX API returned error'
+                            message: errorMsg
                         });
                     }
                 }
+
+            } catch (error) {
+                console.error(`❌ Error for ${seal}:`, error.message);
+
+                if (error.response?.data?.error?.message?.includes('Duplicate Manifest')) {
+                    results.duplicate.push({
+                        sealNumber: seal,
+                        message: 'Duplicate manifest seal'
+                    });
+                } else if (error.code === 'ECONNABORTED') {
+                    results.failed.push({
+                        sealNumber: seal,
+                        message: 'Timeout - GDEX did not respond'
+                    });
+                } else {
+                    results.failed.push({
+                        sealNumber: seal,
+                        message: error.message || 'Unknown error'
+                    });
+                }
             }
 
-        } else if (gdexResponse.data && gdexResponse.data.success === false) {
-            // API call failed
-            const errorMsg = gdexResponse.data.error?.message || 'Unknown GDEX error';
-            console.log(`❌ GDEX API call failed: ${errorMsg}`);
-
-            for (const seal of uniqueSeals) {
-                results.failed.push({
-                    sealNumber: seal,
-                    message: errorMsg
-                });
-            }
-        } else {
-            // Unexpected response format
-            console.log(`⚠️ Unexpected GDEX response format`);
-            for (const seal of uniqueSeals) {
-                results.failed.push({
-                    sealNumber: seal,
-                    message: 'Unexpected response from GDEX API'
-                });
+            // Delay between requests
+            if (i < newSeals.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
 
@@ -23104,90 +23243,99 @@ app.post('/updateJob/scanManifestSeal', ensureAuthenticated, async (req, res) =>
         results.summary = {
             total: uniqueSeals.length,
             success: results.successful.length,
+            duplicates: results.duplicate.length,
             failures: results.failed.length,
-            hasFailures: results.failed.length > 0,
-            message: `${results.successful.length} of ${uniqueSeals.length} manifest seals processed successfully`
+            message: `${results.successful.length} scanned, ${results.duplicate.length} duplicates, ${results.failed.length} failed`,
+            scanDateTime: currentDateTime
         };
 
-        console.log(`📊 SBR Results: ${results.summary.success} success, ${results.summary.failures} failed`);
+        console.log(`\n📊 SBR Complete:`);
+        console.log(`   Success: ${results.successful.length}`);
+        console.log(`   Duplicates: ${results.duplicate.length}`);
+        console.log(`   Failed: ${results.failed.length}`);
+        console.log(`📅 Scan Date/Time used (UTC+8): ${currentDateTime}`);
 
-        // For bulk updates, return results directly
-        if (updateMethod === 'bulk') {
-            return res.json(results);
+        if (responseSent || res.headersSent) {
+            console.log('⚠️ Response already sent, skipping final send');
+            return;
         }
 
-        // For one-by-one, return single result
-        if (updateMethod === 'onebyone' && uniqueSeals.length === 1) {
-            const seal = uniqueSeals[0];
-            const isSuccess = results.successful.some(s => s.sealNumber === seal);
-
-            return res.json({
-                success: isSuccess,
-                message: isSuccess ? 'Manifest seal scanned successfully' : (results.failed[0]?.message || 'Scan failed'),
-                sealNumber: seal,
-                mawbNum: mawbNum
-            });
-        }
-
-        return res.json(results);
+        return safeSend(200, results);
 
     } catch (error) {
-        console.error('❌ Error in SBR route:', error);
-        res.status(500).json({
+        console.error('❌ SBR Error:', error);
+
+        if (responseSent || res.headersSent) {
+            console.log('⚠️ Response already sent, skipping error send');
+            return;
+        }
+
+        return safeSend(500, {
             error: 'Server error',
-            message: error.message
+            message: error.message || 'An unexpected error occurred'
         });
     }
 });
 
-// Helper function to save manifest seals to database
-async function saveManifestSealsToDatabase(mawbNum, manifestSeals, updateMethod) {
+async function saveManifestSealsToDatabase(mawbNum, manifestSeals, currentDateTime) {
     try {
         console.log(`💾 Saving manifest seals to database for MAWB: ${mawbNum}`);
         console.log(`   Seals: ${manifestSeals.join(', ')}`);
-        console.log(`   Method: ${updateMethod}`);
+        console.log(`   Date/Time: ${currentDateTime} (UTC+8)`);
 
-        const now = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+        if (!manifestSeals || manifestSeals.length === 0) {
+            console.log(`⚠️ No seals to save`);
+            return false;
+        }
 
-        // Find existing document
-        const existingDoc = await GDEXMANIFESTSEALTAGS.findOne({ mawbNo: mawbNum });
+        const mawbNo = mawbNum.trim().toUpperCase();
+
+        let existingDoc = await GDEXMANIFESTSEALTAGS.findOne({ mawbNo: mawbNo });
 
         if (existingDoc) {
-            // Add new seals to existing array (avoid duplicates)
-            const existingSeals = new Set(existingDoc.manifestsealtags || []);
+            if (!existingDoc.manifestsealtags || !Array.isArray(existingDoc.manifestsealtags)) {
+                existingDoc.manifestsealtags = [];
+            }
+
+            const existingSeals = new Set(existingDoc.manifestsealtags);
             const newSeals = manifestSeals.filter(seal => !existingSeals.has(seal));
 
             if (newSeals.length > 0) {
                 const updatedSeals = [...existingDoc.manifestsealtags, ...newSeals];
+
                 await GDEXMANIFESTSEALTAGS.updateOne(
-                    { mawbNo: mawbNum },
+                    { mawbNo: mawbNo },
                     {
                         $set: {
                             manifestsealtags: updatedSeals,
-                            lastUpdateDateTime: now
+                            lastUpdateDateTime: currentDateTime  // Current Brunei time (UTC+8)
                         }
                     }
                 );
+
                 console.log(`✅ Updated existing document: added ${newSeals.length} new seals`);
+                console.log(`   Total seals now: ${updatedSeals.length}`);
+                console.log(`   lastUpdateDateTime set to: ${currentDateTime} (UTC+8)`);
             } else {
-                console.log(`ℹ️ No new seals to add (all already exist)`);
+                console.log(`ℹ️ No new seals to add (all ${manifestSeals.length} already exist)`);
             }
+
+            return true;
         } else {
-            // Create new document
             const newDoc = new GDEXMANIFESTSEALTAGS({
-                mawbNo: mawbNum,
+                mawbNo: mawbNo,
                 manifestsealtags: manifestSeals,
-                lastUpdateDateTime: now
+                lastUpdateDateTime: currentDateTime  // Current Brunei time (UTC+8)
             });
+
             await newDoc.save();
             console.log(`✅ Created new document with ${manifestSeals.length} seals`);
+            console.log(`   lastUpdateDateTime set to: ${currentDateTime} (UTC+8)`);
+            return true;
         }
-
-        return true;
 
     } catch (error) {
         console.error(`❌ Error saving manifest seals to database:`, error);
-        // Don't throw - just log error, as the GDEX API call was successful
         return false;
     }
 }
