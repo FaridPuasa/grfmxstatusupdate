@@ -4185,7 +4185,7 @@ EXAMPLE004\t\t
         }
 
         // ==================================================
-        // 🛡️ ESCAPE HTML FUNCTION
+        // 🛡️ ESCAPE HTML FUNCTION (STANDALONE)
         // ==================================================
 
         function escapeHtml(text) {
@@ -4409,14 +4409,6 @@ EXAMPLE004\t\t
             scanResultsDiv.innerHTML = html;
             scanResultsDiv.style.display = 'block';
             scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
-        }
-        if (!text) return '';
-        return String(text)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
         }
     </script>
 </body>
