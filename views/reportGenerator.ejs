@@ -105,6 +105,35 @@
       transform: scale(1.05);
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
+
+    #freelancerJobCountResultsContainer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .freelancerJobCountTableWrapper {
+      flex: 0 0 auto;
+      width: 48%;
+      box-sizing: border-box;
+    }
+
+    .freelancerJobCountTableWrapper table {
+      width: 100%;
+      margin-bottom: 0;
+    }
+
+    .freelancerJobCountTableWrapper th.freelancerNameHeader {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .freelancerJobCountTableWrapper th.dateDeliveredHeader {
+      background-color: lightblue !important;
+      color: #000000 !important;
+    }
   </style>
 </head>
 
@@ -128,6 +157,7 @@
         <option value="Operation Morning Report">Operation Morning Report</option>
         <option value="Operation End of Day Report">Operation End of Day Report</option>
         <option value="Freelancer End of Day Report">Freelancer End of Day Report</option>
+        <option value="Freelancer Job Completed Count Report">Freelancer Job Completed Count Report</option>
       </select>
     </div>
 
@@ -275,6 +305,35 @@
       </div>
     </div>
 
+    <div id="freelancerJobCompletedCountReportSection" class="hidden">
+      <div id="freelancerJobCountReportContainer">
+        <form id="freelancerJobCountForm">
+          <div class="row mb-3">
+            <div class="col-md-3">
+              <label for="freelancerJobCountStartDate" class="form-label">Start Date</label>
+              <input type="date" id="freelancerJobCountStartDate" name="freelancerJobCountStartDate"
+                class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label for="freelancerJobCountEndDate" class="form-label">End Date</label>
+              <input type="date" id="freelancerJobCountEndDate" name="freelancerJobCountEndDate" class="form-control"
+                required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <button type="button" class="btn btn-primary" id="freelancerJobCountGenerateBtn">Generate</button>
+            <button type="button" class="btn btn-success hidden" id="freelancerJobCountSaveBtn" disabled>Save</button>
+            <button type="button" class="btn btn-secondary hidden" id="freelancerJobCountPrintBtn">Print</button>
+            <button type="button" class="btn btn-danger hidden" id="freelancerJobCountResetBtn">Reset</button>
+          </div>
+        </form>
+
+        <div id="freelancerJobCountLogoHeader" class="text-center mb-3"></div>
+        <div id="freelancerJobCountResultsContainer"></div>
+        <div id="freelancerJobCountCheckedByContainer"></div>
+      </div>
+    </div>
+
     <div id="loadingSpinner"
       style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.7); z-index:9999; justify-content: center; align-items: center;">
       <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
@@ -364,6 +423,10 @@
       const morningReportDate = document.getElementById('reportDate');
       const endOfDayReportDate = document.getElementById('endReportDate');
       const freelancerReportDate = document.getElementById('freelancerReportDate');
+      const freelancerJobCountStartDate = document.getElementById('freelancerJobCountStartDate');
+      const freelancerJobCountEndDate = document.getElementById('freelancerJobCountEndDate');
+      configureDatePicker(freelancerJobCountStartDate);
+      configureDatePicker(freelancerJobCountEndDate);
       configureDatePicker(morningReportDate);
       configureDatePicker(endOfDayReportDate);
       configureDatePicker(freelancerReportDate);
@@ -388,6 +451,14 @@
       const morningReportSection = document.getElementById('morningReportSection');
       const endOfDayReportSection = document.getElementById('endOfDayReportSection');
       const reportContainer = document.getElementById('reportContainer');
+      const freelancerJobCountSection = document.getElementById('freelancerJobCompletedCountReportSection');
+      const freelancerJobCountGenerateBtn = document.getElementById('freelancerJobCountGenerateBtn');
+      const freelancerJobCountSaveBtn = document.getElementById('freelancerJobCountSaveBtn');
+      const freelancerJobCountPrintBtn = document.getElementById('freelancerJobCountPrintBtn');
+      const freelancerJobCountResetBtn = document.getElementById('freelancerJobCountResetBtn');
+      const freelancerJobCountLogoHeader = document.getElementById('freelancerJobCountLogoHeader');
+      const freelancerJobCountResultsContainer = document.getElementById('freelancerJobCountResultsContainer');
+      const freelancerJobCountCheckedByContainer = document.getElementById('freelancerJobCountCheckedByContainer');
 
       let isReportSaved = false;
 
@@ -503,26 +574,30 @@
         printBtn.classList.add('hidden');
         resetBtn.classList.add('hidden');
 
+        morningReportSection.classList.add('hidden');
+        endOfDayReportSection.classList.add('hidden');
+        freelancerEndOfDaySection.classList.add('hidden');
+        freelancerJobCountSection.classList.add('hidden');
+
         if (reportTypeEl.value === 'Operation Morning Report') {
           morningReportSection.classList.remove('hidden');
-          endOfDayReportSection.classList.add('hidden');
-          freelancerEndOfDaySection.classList.add('hidden');
         } else if (reportTypeEl.value === 'Operation End of Day Report') {
-          morningReportSection.classList.add('hidden');
           endOfDayReportSection.classList.remove('hidden');
-          freelancerEndOfDaySection.classList.add('hidden');
         } else if (reportTypeEl.value === 'Freelancer End of Day Report') {
-          morningReportSection.classList.add('hidden');
-          endOfDayReportSection.classList.add('hidden');
           freelancerEndOfDaySection.classList.remove('hidden');
           freelancerReportLogoHeader.innerHTML = '';
           freelancerJobsHeader.innerHTML = '';
           freelancerJobsTable.querySelector('tbody').innerHTML = '';
           freelancerCheckedByContainer.innerHTML = '';
-        } else {
-          morningReportSection.classList.add('hidden');
-          endOfDayReportSection.classList.add('hidden');
-          freelancerEndOfDaySection.classList.add('hidden');
+        } else if (reportTypeEl.value === 'Freelancer Job Completed Count Report') {
+          freelancerJobCountSection.classList.remove('hidden');
+          freelancerJobCountLogoHeader.innerHTML = '';
+          freelancerJobCountResultsContainer.innerHTML = '';
+          freelancerJobCountCheckedByContainer.innerHTML = '';
+          freelancerJobCountGenerateBtn.style.display = 'block';
+          freelancerJobCountSaveBtn.classList.add('hidden');
+          freelancerJobCountPrintBtn.classList.add('hidden');
+          freelancerJobCountResetBtn.classList.add('hidden');
         }
       });
 
@@ -675,6 +750,184 @@
       });
 
       freelancerResetBtn.addEventListener('click', () => {
+        if (confirm("Are you sure you want to reset the report?")) {
+          location.reload();
+        }
+      });
+
+      // ======================= FREELANCER JOB COMPLETED COUNT REPORT =======================
+      freelancerJobCountGenerateBtn.addEventListener('click', async () => {
+        const startDate = freelancerJobCountStartDate.value;
+        const endDate = freelancerJobCountEndDate.value;
+        if (!startDate || !endDate) {
+          alert('Please pick both start and end dates');
+          return;
+        }
+        if (startDate > endDate) {
+          alert('Start date cannot be after end date');
+          return;
+        }
+        showLoading();
+        freelancerJobCountGenerateBtn.style.display = "none";
+        try {
+          const res = await fetch(`/api/freelancer-job-completed-count-report?startDate=${startDate}&endDate=${endDate}`);
+          const data = await res.json();
+
+          if (!data.results || data.results.length === 0) {
+            alert('No completed jobs found for freelancers in this date range');
+            freelancerJobCountGenerateBtn.style.display = "block";
+            hideLoading();
+            return;
+          }
+
+          const formatDateDMY = (d) => new Date(d).toLocaleDateString('en-GB').replace(/\//g, '.');
+          const reportTitle = startDate === endDate
+            ? `Freelancer Job Completed Count Report ${formatDateDMY(startDate)}`
+            : `Freelancer Job Completed Count Report ${formatDateDMY(startDate)} - ${formatDateDMY(endDate)}`;
+
+          window.currentFreelancerJobCountReportName = reportTitle;
+
+          freelancerJobCountLogoHeader.innerHTML = `
+      <img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;">
+      <h2>${reportTitle}</h2>
+    `;
+
+          freelancerJobCountResultsContainer.innerHTML = '';
+          data.results.forEach(freelancer => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'freelancerJobCountTableWrapper';
+
+            const table = document.createElement('table');
+            table.className = 'table table-bordered';
+
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+    <tr><th colspan="2" class="freelancerNameHeader">${freelancer.staff}</th></tr>
+    <tr><th class="dateDeliveredHeader">Date</th><th class="dateDeliveredHeader">Delivered</th></tr>
+  `;
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            freelancer.dates.forEach(d => {
+              const row = document.createElement('tr');
+              row.innerHTML = `<td contenteditable="true">${formatDateDMY(d.date)}</td><td contenteditable="true">${d.count}</td>`;
+              tbody.appendChild(row);
+            });
+
+            const totalRow = document.createElement('tr');
+            totalRow.style.fontWeight = 'bold';
+            totalRow.innerHTML = `<td>Total</td><td>${freelancer.total}</td>`;
+            tbody.appendChild(totalRow);
+
+            table.appendChild(tbody);
+            wrapper.appendChild(table);
+            freelancerJobCountResultsContainer.appendChild(wrapper);
+          });
+
+          freelancerJobCountCheckedByContainer.innerText = `Checked and prepared by: ${userId}`;
+          freelancerJobCountCheckedByContainer.style.fontWeight = 'bold';
+          freelancerJobCountCheckedByContainer.style.marginTop = '10px';
+
+          freelancerJobCountSaveBtn.classList.remove('hidden');
+          freelancerJobCountResetBtn.classList.remove('hidden');
+          freelancerJobCountPrintBtn.classList.add('hidden');
+          freelancerJobCountSaveBtn.removeAttribute('disabled');
+        } catch (err) {
+          console.error('Error generating freelancer job completed count report:', err);
+          alert('Error fetching report data: ' + err.message);
+        } finally {
+          hideLoading();
+          freelancerJobCountGenerateBtn.style.display = "block";
+        }
+      });
+
+      freelancerJobCountSaveBtn.addEventListener('click', async () => {
+        const startDate = freelancerJobCountStartDate.value;
+        const endDate = freelancerJobCountEndDate.value;
+        if (!startDate || !endDate) {
+          alert('Please select a date range first.');
+          return;
+        }
+        showLoading();
+        const reportName = window.currentFreelancerJobCountReportName;
+        const reportContent = freelancerJobCountSection.innerHTML;
+        const reportType = "Freelancer Job Completed Count Report";
+
+        async function saveReport(forceReplace = false) {
+          try {
+            const res = await fetch('/api/saveReport', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reportType, reportName, reportContent, createdBy: userId, forceReplace })
+            });
+            const result = await res.json();
+            if (result.success) {
+              alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+              freelancerJobCountSaveBtn.classList.add('hidden');
+              freelancerJobCountPrintBtn.classList.remove('hidden');
+            } else if (result.duplicate) {
+              const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+              if (confirmReplace) await saveReport(true);
+            } else {
+              alert('Failed to save report: ' + result.message);
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Error saving report');
+          } finally {
+            hideLoading();
+          }
+        }
+        await saveReport();
+      });
+
+      freelancerJobCountPrintBtn.addEventListener('click', () => {
+        showLoading();
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, "0");
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const yyyy = today.getFullYear();
+        const fileName = window.currentFreelancerJobCountReportName || `Freelancer Job Completed Count Report ${dd}.${mm}.${yyyy}`;
+        const style = `<style>
+  body { font-family: Arial, sans-serif; padding: 25px; }
+  h2 { text-align: center; margin: 10px 0 20px; }
+  #freelancerJobCountResultsContainer { display: flex; flex-wrap: wrap; gap: 15px; }
+  .freelancerJobCountTableWrapper { flex: 0 0 auto; width: 48%; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  th, td { border: 1px solid #000; padding: 6px 8px; font-size: 14px; text-align: center; vertical-align: middle; }
+  th.freelancerNameHeader {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  th.dateDeliveredHeader {
+    background-color: lightblue !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  img { display: block; margin: 0 auto; max-height: 80px; }
+  .checked-by { font-weight: bold; margin-top: 10px; }
+  @media print { body { zoom: 90%; } }
+</style>`;
+        const printHTML = `<html><head><title>${fileName}</title>${style}</head><body>${freelancerJobCountLogoHeader.outerHTML}${freelancerJobCountResultsContainer.outerHTML}<div class="checked-by">${freelancerJobCountCheckedByContainer.innerText}</div></body></html>`;
+        printWindow.document.open();
+        printWindow.document.write(printHTML);
+        printWindow.document.close();
+        printWindow.onload = function () {
+          printWindow.document.title = fileName;
+          printWindow.focus();
+          printWindow.print();
+          hideLoading();
+        };
+      });
+
+      freelancerJobCountResetBtn.addEventListener('click', () => {
         if (confirm("Are you sure you want to reset the report?")) {
           location.reload();
         }

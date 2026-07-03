@@ -2457,7 +2457,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Selfcollect"
         ];
 
         // Fetch completed orders for the selected date directly
@@ -2603,6 +2603,62 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
 
     } catch (err) {
         console.error('Freelancer delivery result report error:', err);
+        res.status(500).json({ error: "Server error: " + err.message });
+    }
+});
+
+app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        if (!startDate || !endDate) {
+            return res.status(400).json({ error: "Missing startDate or endDate" });
+        }
+
+        const excludedNames = [
+            "Sowdeq", "Leo",
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Selfcollect"
+        ];
+
+        // jobDate is stored as "YYYY-MM-DD" string, which sorts/compares correctly lexicographically
+        const orders = await ORDERS.find({
+            currentStatus: "Completed",
+            jobDate: { $gte: startDate, $lte: endDate }
+        }).lean();
+
+        const freelancerMap = {};
+
+        for (const order of orders) {
+            const freelancer = order.assignedTo || "Unassigned";
+            if (!freelancer || freelancer.trim() === "" || freelancer === "Unassigned") continue;
+
+            const isExcluded = excludedNames.some(excluded => freelancer.includes(excluded));
+            if (isExcluded) continue;
+
+            const jobDate = order.jobDate;
+            if (!jobDate) continue;
+
+            if (!freelancerMap[freelancer]) {
+                freelancerMap[freelancer] = { dates: {}, total: 0 };
+            }
+            if (!freelancerMap[freelancer].dates[jobDate]) {
+                freelancerMap[freelancer].dates[jobDate] = 0;
+            }
+            freelancerMap[freelancer].dates[jobDate]++;
+            freelancerMap[freelancer].total++;
+        }
+
+        const results = Object.entries(freelancerMap)
+            .map(([staff, data]) => {
+                const dates = Object.entries(data.dates)
+                    .map(([date, count]) => ({ date, count }))
+                    .sort((a, b) => a.date.localeCompare(b.date));
+                return { staff, dates, total: data.total };
+            })
+            .sort((a, b) => a.staff.localeCompare(b.staff));
+
+        res.json({ results });
+    } catch (err) {
+        console.error('Freelancer job completed count report error:', err);
         res.status(500).json({ error: "Server error: " + err.message });
     }
 });
@@ -13778,7 +13834,7 @@ app.get('/api/birthday/today', ensureAuthenticated, ensureAdmin, async (req, res
 // ==================================================
 
 // Start the birthday checker scheduler
-scheduleBirthdayChecker();
+/* scheduleBirthdayChecker(); */
 
 console.log(`
 ╔════════════════════════════════════════════════════════════════════════╗
