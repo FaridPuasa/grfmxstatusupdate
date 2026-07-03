@@ -1111,7 +1111,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam", "Selfcollect"
         ];
 
         // Since history.dateUpdated is a STRING, we need to fetch all orders and filter in JavaScript
@@ -1960,7 +1960,7 @@ app.post('/api/vehicle-report', async (req, res) => {
         // Define allowed staff/driver/dispatcher names
         const allowedStaff = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam"
         ];
 
         // 1️⃣ Fetch report data for that date
@@ -2457,7 +2457,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam", "Selfcollect"
         ];
 
         // Fetch completed orders for the selected date directly
@@ -2607,6 +2607,9 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
     }
 });
 
+// Cache for freelancer job completed count report (5 min TTL)
+const freelancerJobCountCache = new NodeCache({ stdTTL: 300 });
+
 app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
@@ -2614,37 +2617,50 @@ app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async
             return res.status(400).json({ error: "Missing startDate or endDate" });
         }
 
+        const cacheKey = `freelancerJobCount_${startDate}_${endDate}`;
+        const cached = freelancerJobCountCache.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam", "Selfcollect"
         ];
 
-        // jobDate is stored as "YYYY-MM-DD" string, which sorts/compares correctly lexicographically
-        const orders = await ORDERS.find({
-            currentStatus: "Completed",
-            jobDate: { $gte: startDate, $lte: endDate }
-        }).lean();
+        // Let MongoDB do the grouping - only jobDate/currentStatus/assignedTo are scanned,
+        // and only the grouped (freelancer, date) counts come back to Node instead of full order docs.
+        const grouped = await ORDERS.aggregate([
+            {
+                $match: {
+                    currentStatus: "Completed",
+                    jobDate: { $gte: startDate, $lte: endDate },
+                    assignedTo: { $nin: [null, "", "Unassigned"] }
+                }
+            },
+            {
+                $group: {
+                    _id: { assignedTo: "$assignedTo", jobDate: "$jobDate" },
+                    count: { $sum: 1 }
+                }
+            }
+        ]).allowDiskUse(true);
 
         const freelancerMap = {};
 
-        for (const order of orders) {
-            const freelancer = order.assignedTo || "Unassigned";
-            if (!freelancer || freelancer.trim() === "" || freelancer === "Unassigned") continue;
+        for (const g of grouped) {
+            const freelancer = g._id.assignedTo;
+            const jobDate = g._id.jobDate;
+            if (!freelancer || !jobDate) continue;
 
             const isExcluded = excludedNames.some(excluded => freelancer.includes(excluded));
             if (isExcluded) continue;
 
-            const jobDate = order.jobDate;
-            if (!jobDate) continue;
-
             if (!freelancerMap[freelancer]) {
                 freelancerMap[freelancer] = { dates: {}, total: 0 };
             }
-            if (!freelancerMap[freelancer].dates[jobDate]) {
-                freelancerMap[freelancer].dates[jobDate] = 0;
-            }
-            freelancerMap[freelancer].dates[jobDate]++;
-            freelancerMap[freelancer].total++;
+            freelancerMap[freelancer].dates[jobDate] = (freelancerMap[freelancer].dates[jobDate] || 0) + g.count;
+            freelancerMap[freelancer].total += g.count;
         }
 
         const results = Object.entries(freelancerMap)
@@ -2656,7 +2672,10 @@ app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async
             })
             .sort((a, b) => a.staff.localeCompare(b.staff));
 
-        res.json({ results });
+        const responseData = { results };
+        freelancerJobCountCache.set(cacheKey, responseData);
+
+        res.json(responseData);
     } catch (err) {
         console.error('Freelancer job completed count report error:', err);
         res.status(500).json({ error: "Server error: " + err.message });
