@@ -2457,7 +2457,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam"
         ];
 
         // Fetch completed orders for the selected date directly
@@ -2625,7 +2625,7 @@ app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async
 
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam"
         ];
 
         // Let MongoDB do the grouping - only jobDate/currentStatus/assignedTo are scanned,
