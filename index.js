@@ -49,6 +49,7 @@ const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 const flash = require('connect-flash');
 
 // ==================================================
@@ -191,20 +192,45 @@ const upload = multer({ storage });
 // ==================================================
 // 🔑 Session & Authentication
 // ==================================================
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
+
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    rolling: true, // refresh the 30-min expiry on every request (page loads, AJAX, heartbeat)
+    store: MongoStore.create({
+        mongoUrl: dbURI,
+        dbName: 'GR_DMS',
+        collectionName: 'sessions',
+        ttl: SESSION_IDLE_TIMEOUT_MS / 1000
+    }),
+    cookie: {
+        maxAge: SESSION_IDLE_TIMEOUT_MS
+    }
 }));
-
-app.use((req, res, next) => {
-    console.log(req.session); // Debug session
-    next();
-});
 
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
+
+// Force logout once the calendar day (Asia/Brunei) rolls over, regardless of activity
+app.use((req, res, next) => {
+    if (req.isAuthenticated() && req.session.loginDate) {
+        const today = moment().tz('Asia/Brunei').format('YYYY-MM-DD');
+        if (req.session.loginDate !== today) {
+            return req.logout((err) => {
+                req.session.destroy(() => {
+                    if (req.xhr || (req.headers.accept || '').includes('json')) {
+                        return res.status(401).json({ message: 'Session expired at day change, please log in again' });
+                    }
+                    res.redirect('/login');
+                });
+            });
+        }
+    }
+    next();
+});
 
 // Passport config
 passport.use(new LocalStrategy({ usernameField: 'email' }, (email, password, done) => {
@@ -3087,10 +3113,17 @@ app.get('/login', ensureNotAuthenticated, (req, res) => {
 });
 
 app.post('/login', ensureNotAuthenticated, (req, res, next) => {
-    passport.authenticate('local', {
-        successRedirect: '/',
-        failureRedirect: '/login',
-        failureFlash: true
+    passport.authenticate('local', (err, user, info) => {
+        if (err) return next(err);
+        if (!user) {
+            req.flash('error_msg', (info && info.message) || 'Login failed');
+            return res.redirect('/login');
+        }
+        req.logIn(user, (err) => {
+            if (err) return next(err);
+            req.session.loginDate = moment().tz('Asia/Brunei').format('YYYY-MM-DD');
+            return res.redirect('/');
+        });
     })(req, res, next);
 });
 
@@ -3111,6 +3144,12 @@ app.get('/logout', ensureAuthenticated, (req, res) => {
             });
         }
     });
+});
+
+// Keeps the rolling 30-min session alive while the user is active on the page
+// (e.g. scanning, clicking) without needing a full page navigation.
+app.post('/session/heartbeat', ensureAuthenticated, (req, res) => {
+    res.sendStatus(204);
 });
 
 // Restricting routes to "admin" role
@@ -13853,7 +13892,7 @@ app.get('/api/birthday/today', ensureAuthenticated, ensureAdmin, async (req, res
 // ==================================================
 
 // Start the birthday checker scheduler
-/* scheduleBirthdayChecker(); */
+scheduleBirthdayChecker();
 
 console.log(`
 ╔════════════════════════════════════════════════════════════════════════╗
