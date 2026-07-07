@@ -6970,8 +6970,156 @@ async function increaseDetrackAttempt(consignmentID, apiKey, detrackUpdateDataAt
     }
 }
 
+// |All| Fix GDEX Job: replay a GDEXT tracking number's Detrack milestone history (within a chosen
+// Brunei-time window) into GDEX, one push per distinct status change, in chronological order.
+const FGA_TRACKED_MILESTONE_MAP = {
+    on_hold: { statuscode: "K", statusdescription: "Hold", reasoncode: "H31", locationdescription: "Brunei Customs" },
+    in_sorting_area: { statuscode: "AL1", statusdescription: "Received by Branch", reasoncode: "", locationdescription: "Go Rush Warehouse" },
+    out_for_delivery: { statuscode: "AL2", statusdescription: "Out for Delivery", reasoncode: "", locationdescription: "Go Rush Driver" },
+};
+const FGA_TRACKED_STATUSES = [...Object.keys(FGA_TRACKED_MILESTONE_MAP), 'failed', 'completed'];
+
+async function handleFixGdexJobAll(req, res) {
+    const consignmentIDs = (req.body.consignmentIDs || '').trim().split('\n').map((id) => id.trim().toUpperCase()).filter(Boolean);
+    const uniqueConsignmentIDs = Array.from(new Set(consignmentIDs));
+
+    const startDateTime = req.body.fgaStartDateTime ? moment.tz(req.body.fgaStartDateTime, 'Asia/Brunei') : null;
+    const endDateTime = req.body.fgaEndDateTime ? moment.tz(req.body.fgaEndDateTime, 'Asia/Brunei') : null;
+
+    if (!startDateTime || !endDateTime || !startDateTime.isValid() || !endDateTime.isValid() || endDateTime.isBefore(startDateTime)) {
+        processingResults.push({
+            consignmentID: 'N/A',
+            status: 'Error: Please provide a valid start and end date/time range.',
+        });
+        return res.redirect('/successUpdate');
+    }
+
+    for (const consignmentID of uniqueConsignmentIDs) {
+        try {
+            const token = await getGDEXToken();
+            if (!token) {
+                processingResults.push({ consignmentID, status: 'Error: Failed to get GDEX token.' });
+                continue;
+            }
+
+            const response1 = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
+                headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey }
+            });
+
+            const jobData = response1.data.data;
+
+            if (!jobData || !Array.isArray(jobData.milestones)) {
+                processingResults.push({ consignmentID, status: 'Error: No milestone history found in Detrack.' });
+                continue;
+            }
+
+            if (jobData.group_name !== 'GDEXT') {
+                processingResults.push({ consignmentID, status: `Skipped: group_name is "${jobData.group_name}", not GDEXT.` });
+                continue;
+            }
+
+            // Rule 2: drop any tracked milestone whose pod_at falls outside the selected Brunei time window
+            const inRangeMilestones = jobData.milestones
+                .filter((m) => {
+                    if (!FGA_TRACKED_STATUSES.includes(m.status) || !m.pod_at) return false;
+                    const podAt = moment(m.pod_at);
+                    return podAt.isValid() && podAt.isBetween(startDateTime, endDateTime, null, '[]');
+                })
+                // Sort chronologically by pod_at so pushes always follow the real status timeline
+                // (e.g. in_sorting_area before on_hold), regardless of the order Detrack returned them in.
+                .sort((a, b) => moment(a.pod_at).valueOf() - moment(b.pod_at).valueOf());
+
+            // Rule 1: collapse consecutive repeats of the same status, keeping only the first occurrence of each run
+            // Rule 4: once a "completed" milestone is reached, ignore anything after it and stop building runs
+            const runs = [];
+            for (const m of inRangeMilestones) {
+                const lastRun = runs[runs.length - 1];
+                if (lastRun && lastRun.status === m.status) continue;
+                runs.push(m);
+                if (m.status === 'completed') break;
+            }
+
+            if (runs.length === 0) {
+                processingResults.push({ consignmentID, status: 'Skipped: No relevant status changes found within the given date/time range.' });
+                continue;
+            }
+
+            const pushSummary = [];
+
+            for (const milestone of runs) {
+                try {
+                    let success = false;
+
+                    if (milestone.status === 'completed') {
+                        // Rule: treat exactly like updateGDEXClearJob, including its ORDERS/MongoDB POD persistence
+                        success = await updateGDEXClearJob(consignmentID, {
+                            status: 'completed',
+                            reason: '',
+                            address: jobData.address,
+                            updated_at: milestone.pod_at,
+                            podAlreadyConverted: false
+                        }, token, false);
+                        pushSummary.push(`FD${success ? '' : ' (failed)'}`);
+                    } else if (milestone.status === 'failed') {
+                        // Rule: treat like updateGDEXClearJob, which maps milestone.reason -> GDEX reason code
+                        success = await updateGDEXClearJob(consignmentID, {
+                            status: 'failed',
+                            reason: milestone.reason || '',
+                            address: jobData.address,
+                            updated_at: milestone.pod_at
+                        }, token, false);
+                        pushSummary.push(`DF${success ? '' : ' (failed)'}`);
+                    } else {
+                        const mapping = FGA_TRACKED_MILESTONE_MAP[milestone.status];
+                        const trackingData = {
+                            consignmentno: consignmentID,
+                            statuscode: mapping.statuscode,
+                            statusdescription: mapping.statusdescription,
+                            statusdatetime: moment(milestone.pod_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss'),
+                            reasoncode: mapping.reasoncode,
+                            locationdescription: mapping.locationdescription,
+                            epod: [],
+                            deliverypartner: "gorush",
+                            returnflag: false
+                        };
+                        const webhookResult = await sendGDEXTrackingWebhookWithData(consignmentID, trackingData, token);
+                        success = !!(webhookResult && webhookResult.success);
+                        pushSummary.push(`${mapping.statuscode}${success ? '' : ' (failed)'}`);
+                    }
+                    // Rule 3: if GDEX responds with an error, don't force it - just move on to the next status
+                } catch (pushError) {
+                    console.error(`🔥 FGA push error for ${consignmentID} (${milestone.status}):`, pushError.message);
+                    pushSummary.push(`${milestone.status} (error)`);
+                }
+
+                // Small delay so sequential pushes for the same tracking number land in order at GDEX
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            processingResults.push({
+                consignmentID,
+                status: `Fix GDEX Job processed: ${pushSummary.join(' → ')}`
+            });
+
+        } catch (error) {
+            console.error(`🔥 Error processing Fix GDEX Job for ${consignmentID}:`, error.message);
+            if (error.response && error.response.status === 404) {
+                processingResults.push({ consignmentID, status: 'Error: Tracking Number does not exist in Detrack' });
+            } else {
+                processingResults.push({ consignmentID, status: `Error: ${error.message}` });
+            }
+        }
+    }
+
+    res.redirect('/successUpdate');
+}
+
 // Handle form submission
 app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    if (req.body.statusCode === 'FGA') {
+        return await handleFixGdexJobAll(req, res);
+    }
+
     let accessToken = null; // Initialize the accessToken variable
 
     const consignmentIDs = req.body.consignmentIDs.trim().split('\n').map((id) => id.trim().toUpperCase());

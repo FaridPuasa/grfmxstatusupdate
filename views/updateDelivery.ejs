@@ -153,8 +153,25 @@
                             <option value="47">3. Dispose Job</option>
                             <!-- <option value="FA">|All| Fix Job</option> -->
                             <!-- <option value="SFJA">|All| Complete Job</option> -->
+                            <!-- <option value="FGA">|All| Fix GDEX Job</option> -->
                         </optgroup>
                     </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="fgaStartDateTimeWrapper">
+                    <label for="fgaStartDateTime" class="form-label">Start Date/Time (Brunei Time):</label>
+                    <input type="datetime-local" id="fgaStartDateTime" name="fgaStartDateTime" class="form-control"
+                        disabled>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="fgaEndDateTimeWrapper">
+                    <label for="fgaEndDateTime" class="form-label">End Date/Time (Brunei Time):</label>
+                    <input type="datetime-local" id="fgaEndDateTime" name="fgaEndDateTime" class="form-control"
+                        disabled>
+                    <strong><small>*Only Detrack status changes within this range (Brunei time) will be pushed to
+                            GDEX.</small></strong>
                 </div>
             </div>
             <div class="mb-3">
@@ -450,6 +467,8 @@
 
             // Let's keep references and modify updateFieldStatus function after its definition.
 
+            $("#fgaStartDateTimeWrapper").hide();
+            $("#fgaEndDateTimeWrapper").hide();
             $("#assignDateWrapper").hide();
             $("#dispatchersWrapper").hide();
             $("#freelancerNameWrapper").hide();
@@ -472,6 +491,8 @@
             $("#grRemarkWrapper").hide();
 
             // Get references to the fields
+            const fgaStartDateTimeField = document.getElementById('fgaStartDateTime');
+            const fgaEndDateTimeField = document.getElementById('fgaEndDateTime');
             const dispatchersField = document.getElementById('dispatchers');
             const freelancerNameField = document.getElementById('freelancerName');
             const additionalReasonField = document.getElementById('additionalReason');
@@ -593,6 +614,8 @@
             function updateFieldStatus() {
                 const selectedStatusCode = statusCodeSelect.value;
 
+                fgaStartDateTimeField.value = '';
+                fgaEndDateTimeField.value = '';
                 assignDateField.value = '';
                 dispatchersField.value = '';
                 additionalReasonField.value = '';
@@ -614,6 +637,10 @@
                 fridgeField.value = '';
                 grRemarkField.value = '';
 
+                fgaStartDateTimeField.disabled = true; fgaStartDateTimeField.required = false;
+                fgaEndDateTimeField.disabled = true; fgaEndDateTimeField.required = false;
+                $("#fgaStartDateTimeWrapper").hide();
+                $("#fgaEndDateTimeWrapper").hide();
                 $("#assignDateWrapper").hide();
                 $("#dispatchersWrapper").hide();
                 $("#additionalReasonWrapper").hide();
@@ -635,7 +662,16 @@
                 $("#grRemarkWrapper").hide();
                 $("#fridgeWrapper").hide();
 
-                if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
+                if (selectedStatusCode === 'FGA') {
+                    $("#fgaStartDateTimeWrapper").fadeIn();
+                    $("#fgaEndDateTimeWrapper").fadeIn();
+                    fgaStartDateTimeField.disabled = false;
+                    fgaStartDateTimeField.required = true;
+                    fgaEndDateTimeField.disabled = false;
+                    fgaEndDateTimeField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
                     assignDateField.disabled = false;
                     dispatchersField.disabled = false;
                     additionalReasonField.disabled = true;
