@@ -5692,19 +5692,13 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
         }
         // else: empty array
 
-        // ==================================================
-        // 🕐 TEMPORARY FIX: Use specific date/time
-        // Date: June 13, 2026 at 8:32 AM Brunei time
-        // ==================================================
-        const fixedDateTime = moment.tz('2026-06-13 08:32:00', 'Asia/Brunei').format('YYYY-MM-DDTHH:mm:ss');
-        console.log(`📅 TEMPORARY: Using FIXED date/time: ${fixedDateTime} (2026-06-13 08:32:00)`);
-        // ==================================================
+        const fixedDateTime = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
 
         const trackingData = {
             consignmentno: consignmentID,
             statuscode: statusCode,
             statusdescription: statusDescription,
-            statusdatetime: fixedDateTime, // Using fixed time instead of current time
+            statusdatetime: fixedDateTime,
             reasoncode: reasoncode,
             locationdescription: locationDescription,
             epod: epodArray,
@@ -5715,7 +5709,6 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
         console.log(`Sending GDEX webhook for ${consignmentID}: ${statusCode} - ${statusDescription}`);
         console.log(`POD format: ${epodArray.length > 0 ? 'Array with ' + epodArray.length + ' images' : 'Empty array'}`);
         console.log(`Return flag: ${returnflag ? 'TRUE (return goods)' : 'FALSE (normal delivery)'}`);
-        console.log(`Using fixed date/time: ${fixedDateTime}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -5744,18 +5737,11 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
 
 async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, token) {
     try {
-        // ==================================================
-        // 🕐 TEMPORARY FIX: Use specific date/time
-        // Date: June 13, 2026 at 8:32 AM Brunei time
-        // ==================================================
-        const fixedDateTime = moment.tz('2026-06-13 08:32:00', 'Asia/Brunei').format('YYYY-MM-DDTHH:mm:ss');
-        console.log(`📅 TEMPORARY: Using FIXED date/time: ${fixedDateTime} (2026-06-13 08:32:00)`);
-
-        // Override the datetime in trackingData
-        if (trackingData) {
-            trackingData.statusdatetime = fixedDateTime;
+        // Respect a statusdatetime the caller already computed (e.g. from Detrack's "updated_at");
+        // only fall back to now if none was provided.
+        if (trackingData && !trackingData.statusdatetime) {
+            trackingData.statusdatetime = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
         }
-        // ==================================================
 
         // ========== LOG FULL REQUEST ==========
         console.log(`\n📤 ===== COMPLETE REQUEST TO GDEX =====`);
@@ -5769,7 +5755,7 @@ async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, toke
         console.log(`========================================\n`);
 
         console.log(`📡 Sending GDEX webhook for ${consignmentID}: ${trackingData.statuscode} - ${trackingData.statusdescription}`);
-        console.log(`Using fixed date/time: ${fixedDateTime}`);
+        console.log(`Using status date/time: ${trackingData.statusdatetime}`);
 
         const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
             headers: {
@@ -6572,13 +6558,8 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
 
         let statusCode, statusDescription, reasonCode, locationDescription, epodArray = [];
 
-        // ==================================================
-        // 🕐 TEMPORARY FIX: Use specific date/time
-        // Date: June 13, 2026 at 8:32 AM Brunei time
-        // ==================================================
-        const fixedDateTime = moment.tz('2026-06-13 08:32:00', 'Asia/Brunei').format('YYYY-MM-DDTHH:mm:ss');
-        console.log(`📅 TEMPORARY: Using FIXED date/time for clear job: ${fixedDateTime} (2026-06-13 08:32:00)`);
-        // ==================================================
+        // Use Detrack's own "updated_at" as the status datetime; fall back to now if it's missing
+        const fixedDateTime = moment(detrackData.updated_at).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
 
         // Check if job is completed or failed
         if (detrackData.status === 'completed') {
@@ -12334,7 +12315,19 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     // Get token and call updateGDEXClearJob
                     const token = await getGDEXToken();
                     if (token) {
-                        const gdexSuccess = await updateGDEXClearJob(consignmentID, detrackData, token);
+                        // NOTE: the outer `detrackData` (declared near the top of this loop) is never
+                        // populated before this point — build it fresh from the Detrack response instead.
+                        const clearJobDetrackData = {
+                            status: data.data.status,
+                            reason: data.data.reason || '',
+                            address: data.data.address,
+                            photo_1_file_url: data.data.photo_1_file_url,
+                            photo_2_file_url: data.data.photo_2_file_url,
+                            photo_3_file_url: data.data.photo_3_file_url,
+                            podAlreadyConverted: false,
+                            updated_at: data.data.updated_at
+                        };
+                        const gdexSuccess = await updateGDEXClearJob(consignmentID, clearJobDetrackData, token);
                         if (gdexSuccess) {
                             console.log(`✅ GDEX clear job completed with ALL 3 PODs for ${consignmentID}`);
                         } else {
@@ -12485,6 +12478,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         status: 'failed',
                         reason: failReasonDescription,
                         address: data.data.address,
+                        updated_at: data.data.updated_at,
                         gdexFailReason: gdexFailReason  // AB, AF, AG, AN, or BA
                     };
 
