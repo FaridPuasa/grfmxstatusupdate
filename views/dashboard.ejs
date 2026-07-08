@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         .navbar-nav.flex-row {
             flex-direction: row !important;
@@ -77,6 +78,150 @@
     max-height: 25px;
   }
 }
+
+/* ===== Dashboard redesign ===== */
+:root {
+    --gr-warehouse: #475569;
+    --gr-progress: #16a34a;
+    --gr-neworders: #2563eb;
+    --gr-bg: #f3f5f9;
+    --gr-radius: 14px;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--gr-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+h1.text-center {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* KPI summary strip */
+.kpi-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.kpi-tile {
+    flex: 1 1 130px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.65rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.kpi-tile .kpi-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #1e293b;
+}
+
+.kpi-tile .kpi-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+
+.kpi-tile.kpi-warn .kpi-value { color: #b45309; }
+.kpi-tile.kpi-danger .kpi-value { color: #b91c1c; }
+.kpi-tile.kpi-dark .kpi-value { color: #111827; }
+.kpi-tile.kpi-muted .kpi-value { color: #6b7280; }
+
+/* Card polish */
+.card {
+    border: 1px solid #e5e7eb;
+    border-radius: var(--gr-radius);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+.card > .card-header:first-child {
+    border-top-left-radius: var(--gr-radius);
+    border-top-right-radius: var(--gr-radius);
+}
+
+#section-warehouse > .card-header { border-left: 4px solid var(--gr-warehouse); }
+#section-progress > .card-header { border-left: 4px solid var(--gr-progress); }
+#section-neworders > .card-header { border-left: 4px solid var(--gr-neworders); }
+
+.toggle-header {
+    transition: background 0.12s ease;
+}
+
+.toggle-header:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+/* Rotate the collapse caret based on aria-expanded, set automatically by Bootstrap */
+.bi-caret-down-fill {
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.toggle-header[aria-expanded="true"] .bi-caret-down-fill,
+i.bi-caret-down-fill[aria-expanded="true"] {
+    transform: rotate(180deg);
+}
+
+/* Tables: sticky header + zebra striping within their own scroll area */
+.table-responsive {
+    max-height: 480px;
+}
+
+.table-responsive thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    box-shadow: inset 0 -1px 0 #e2e8f0;
+}
+
+.table-hover tbody tr:hover,
+.table tbody tr:hover {
+    background-color: rgba(37, 99, 235, 0.04);
+}
+
+/* Copy/Export toolbar */
+.section-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-btn {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+    white-space: nowrap;
+}
+
+/* Back to top */
+#backToTopBtn {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1040;
+    display: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
     </style>
 
       <!-- Favicon -->
@@ -103,11 +248,51 @@
             <% } %>
 
                 <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
-                    <div class="card my-4">
+                    <div class="card my-4" id="section-warehouse">
   <div class="card-header bg-dark text-white">
     <h5 class="mb-0">Warehouse</h5>
   </div>
   <div class="card-body">
+
+    <%
+        function trackCount(map) {
+            let total = 0;
+            Object.keys(map).forEach(location => {
+                Object.keys(map[location]).forEach(product => {
+                    Object.keys(map[location][product]).forEach(area => {
+                        total += map[location][product][area].length;
+                    });
+                });
+            });
+            return total;
+        }
+        function methodCount(map, filterFn) {
+            let total = 0;
+            Object.keys(map).forEach(product => {
+                Object.keys(map[product]).forEach(method => {
+                    const arr = map[product][method];
+                    total += filterFn ? arr.filter(filterFn).length : arr.length;
+                });
+            });
+            return total;
+        }
+        const kpi = {
+            current: trackCount(currentMap),
+            plannedSelfCollect: methodCount(plannedSelfCollectMap),
+            urgent: methodCount(urgentMap),
+            overdue: methodCount(overdueMap),
+            maxAttempt: methodCount(maxAttemptMap, o => o.age < 30),
+            archived: methodCount(archivedMap)
+        };
+    %>
+    <div class="kpi-strip">
+        <div class="kpi-tile"><span class="kpi-value"><%= kpi.current %></span><span class="kpi-label">Current</span></div>
+        <div class="kpi-tile"><span class="kpi-value"><%= kpi.plannedSelfCollect %></span><span class="kpi-label">Planned Self Collect</span></div>
+        <div class="kpi-tile kpi-warn"><span class="kpi-value"><%= kpi.urgent %></span><span class="kpi-label">Urgent</span></div>
+        <div class="kpi-tile kpi-danger"><span class="kpi-value"><%= kpi.overdue %></span><span class="kpi-label">Overdue</span></div>
+        <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.maxAttempt %></span><span class="kpi-label">Max Attempt</span></div>
+        <div class="kpi-tile kpi-muted"><span class="kpi-value"><%= kpi.archived %></span><span class="kpi-label">Archived</span></div>
+    </div>
 
     <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -169,13 +354,21 @@
                             });
                         %>
                             <div class="card my-3">
-                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
-                                    style="cursor: pointer;" data-bs-toggle="collapse"
-                                    data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>">
-                                    <strong><%= location.toUpperCase() %></strong>
-                                    <div>
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div class="toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>">
+                                        <strong><%= location.toUpperCase() %></strong>
+                                    </div>
+                                    <div class="section-toolbar">
                                         <span class="badge bg-primary"><%= locCount %> orders</span>
-                                        <i class="bi bi-caret-down-fill"></i>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>"
+                                            data-section-name="<%= location.toUpperCase() %>">📋 Copy</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>"
+                                            data-section-name="<%= location.toUpperCase() %>">📊 Excel</button>
+                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                            data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>"></i>
                                     </div>
                                 </div>
                                 <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>">
@@ -188,14 +381,22 @@
                                             });
                                         %>
                                             <div class="card my-2 mx-3">
-                                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
-                                                    style="cursor: pointer;"
-                                                    data-bs-toggle="collapse"
-                                                    data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
-                                                    <strong><%= product.toUpperCase() %></strong>
-                                                    <div>
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <div class="toggle-header" style="cursor: pointer;"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
+                                                        <strong><%= product.toUpperCase() %></strong>
+                                                    </div>
+                                                    <div class="section-toolbar">
                                                         <span class="badge bg-success"><%= prodCount %> orders</span>
-                                                        <i class="bi bi-caret-down-fill"></i>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"
+                                                            data-section-name="<%= location.toUpperCase() %> - <%= product.toUpperCase() %>">📋 Copy</button>
+                                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"
+                                                            data-section-name="<%= location.toUpperCase() %> - <%= product.toUpperCase() %>">📊 Excel</button>
+                                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                                            data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"></i>
                                                     </div>
                                                 </div>
                                                 <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
@@ -205,14 +406,22 @@
                                                             const areaCount = map[location][product][area].length;
                                                         %>
                                                             <div class="card my-2 mx-4">
-                                                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
-                                                                    style="cursor: pointer;"
-                                                                    data-bs-toggle="collapse"
-                                                                    data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
-                                                                    <strong><%= area %></strong>
-                                                                    <div>
+                                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                                    <div class="toggle-header" style="cursor: pointer;"
+                                                                        data-bs-toggle="collapse"
+                                                                        data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
+                                                                        <strong><%= area %></strong>
+                                                                    </div>
+                                                                    <div class="section-toolbar">
                                                                         <span class="badge bg-warning text-dark"><%= areaCount %> orders</span>
-                                                                        <i class="bi bi-caret-down-fill"></i>
+                                                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>"
+                                                                            data-section-name="<%= area %>">📋 Copy</button>
+                                                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>"
+                                                                            data-section-name="<%= area %>">📊 Excel</button>
+                                                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                                                            data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>"></i>
                                                                     </div>
                                                                 </div>
                                                                 <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
@@ -242,7 +451,7 @@
                                                                                             <%= order.age %> days
                                                                                         </span>
                                                                                     </td>
-                                                                                    <td><%= order.doTrackingNumber %></td>
+                                                                                    <td class="track-no"><%= order.doTrackingNumber %></td>
                                                                                     <td><%= order.attempt %></td>
                                                                                     <td><%= order.latestReason %></td>
                                                                                     <td><%= order.area %></td>
@@ -273,12 +482,13 @@
 
                         <% Object.keys(map).forEach((product, index) => { %>
                             <div class="card my-3">
-                                <div class="card-header d-flex justify-content-between align-items-center toggle-header"
-                                    style="cursor: pointer;"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#collapse-<%= id %>-<%= index %>">
-                                    <div><strong><%= product.toUpperCase() %></strong></div>
-                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                                    <div class="toggle-header" style="cursor: pointer;"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse-<%= id %>-<%= index %>">
+                                        <strong><%= product.toUpperCase() %></strong>
+                                    </div>
+                                    <div class="section-toolbar">
                                         <div class="badge bg-danger">
                                             <%= Object.values(map[product]).flat().length %> orders
                                         </div>
@@ -294,7 +504,14 @@
                                                     <%= method %>: <%= methodCount %>
                                                 </span>
                                         <% } }) %>
-                                        <i class="bi bi-caret-down-fill"></i>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                            data-target="#collapse-<%= id %>-<%= index %>"
+                                            data-section-name="<%= product.toUpperCase() %>">📋 Copy</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                            data-target="#collapse-<%= id %>-<%= index %>"
+                                            data-section-name="<%= product.toUpperCase() %>">📊 Excel</button>
+                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                            data-bs-target="#collapse-<%= id %>-<%= index %>"></i>
                                     </div>
                                 </div>
                                 <div class="collapse" id="collapse-<%= id %>-<%= index %>">
@@ -330,7 +547,7 @@
                                                                         <%= order.age %> days
                                                                     </span>
                                                                 </td>
-                                                                <td><%= order.doTrackingNumber %></td>
+                                                                <td class="track-no"><%= order.doTrackingNumber %></td>
                                                                 <td><%= order.location || '-' %></td>
                                                                 <td><%= order.attempt %></td>
                                                                 <td><%= order.latestReason %></td>
@@ -362,7 +579,7 @@
   </div>
 
 
-<div class="card my-4">
+<div class="card my-4" id="section-progress">
   <div class="card-header bg-success text-white">
     <h5 class="mb-0">In Progress / Completed</h5>
   </div>
@@ -419,13 +636,12 @@
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary"><%= dateCount %> jobs</span>
-                            <button class="btn btn-sm btn-outline-secondary copy-tracking-btn" 
-                                    data-copy-type="date" 
-                                    data-date-index="<%= dateIndex %>"
-                                    data-date="<%= date %>"
-                                    style="cursor: pointer;">
-                                📋 Copy Tracking No
-                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                    data-target="#collapse-activejobs-<%= dateIndex %>"
+                                    data-section-name="Active Jobs - <%= date %>">📋 Copy</button>
+                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                    data-target="#collapse-activejobs-<%= dateIndex %>"
+                                    data-section-name="Active Jobs - <%= date %>">📊 Excel</button>
                             <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>"></i>
                         </div>
                     </div>
@@ -462,15 +678,12 @@
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
                                             <span class="badge bg-success"><%= assigneeCount %> jobs</span>
-                                            <button class="btn btn-sm btn-outline-secondary copy-tracking-btn" 
-                                                    data-copy-type="dispatcher"
-                                                    data-date-index="<%= dateIndex %>"
-                                                    data-dispatcher-index="<%= assignIndex %>"
-                                                    data-dispatcher-name="<%= disp.name %>"
-                                                    data-date="<%= date %>"
-                                                    style="cursor: pointer;">
-                                                📋 Copy Tracking No
-                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>"
+                                                    data-section-name="<%= disp.name %> (<%= date %>)">📋 Copy</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>"
+                                                    data-section-name="<%= disp.name %> (<%= date %>)">📊 Excel</button>
                                             <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>"></i>
                                         </div>
                                     </div>
@@ -488,17 +701,12 @@
                                                         </div>
                                                         <div class="d-flex align-items-center gap-2">
                                                             <span class="badge bg-warning text-dark"><%= productCount %> jobs</span>
-                                                            <button class="btn btn-sm btn-outline-secondary copy-tracking-btn" 
-                                                                    data-copy-type="product"
-                                                                    data-date-index="<%= dateIndex %>"
-                                                                    data-dispatcher-index="<%= assignIndex %>"
-                                                                    data-product-index="<%= prodIndex %>"
-                                                                    data-product-name="<%= product %>"
-                                                                    data-dispatcher-name="<%= disp.name %>"
-                                                                    data-date="<%= date %>"
-                                                                    style="cursor: pointer;">
-                                                                📋 Copy Tracking No
-                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"
+                                                                    data-section-name="<%= disp.name %> - <%= product.toUpperCase() %>">📋 Copy</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"
+                                                                    data-section-name="<%= disp.name %> - <%= product.toUpperCase() %>">📊 Excel</button>
                                                             <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"></i>
                                                         </div>
                                                     </div>
@@ -519,7 +727,7 @@
                                                             <tbody>
                                                                 <% disp.data.__products[product].forEach(order => { %>
                                                                     <tr>
-                                                                        <td><%= order.doTrackingNumber %></td>
+                                                                        <td class="track-no"><%= order.doTrackingNumber %></td>
                                                                         <td><%= order.area || '-' %></td>
                                                                         <td><%= order.receiverName %></td>
                                                                         <td><%= order.receiverPhoneNumber %></td>
@@ -554,13 +762,12 @@
                                             <span class="badge bg-success">
                                                 <%= availableJobMethods.reduce((acc, method) => acc + statuses[method].length, 0) %> jobs
                                             </span>
-                                            <button class="btn btn-sm btn-outline-secondary copy-tracking-btn" 
-                                                    data-copy-type="selfcollect"
-                                                    data-date-index="<%= dateIndex %>"
-                                                    data-date="<%= date %>"
-                                                    style="cursor: pointer;">
-                                                📋 Copy Tracking No
-                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect"
+                                                    data-section-name="Selfcollect (<%= date %>)">📋 Copy</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect"
+                                                    data-section-name="Selfcollect (<%= date %>)">📊 Excel</button>
                                             <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect"></i>
                                         </div>
                                     </div>
@@ -578,15 +785,12 @@
                                                         </div>
                                                         <div class="d-flex align-items-center gap-2">
                                                             <span class="badge bg-success"><%= jobs.length %> jobs</span>
-                                                            <button class="btn btn-sm btn-outline-secondary copy-tracking-btn" 
-                                                                    data-copy-type="selfcollect-method"
-                                                                    data-date-index="<%= dateIndex %>"
-                                                                    data-method-index="<%= statusIndex %>"
-                                                                    data-method-name="<%= jobMethod %>"
-                                                                    data-date="<%= date %>"
-                                                                    style="cursor: pointer;">
-                                                                📋 Copy Tracking No
-                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>"
+                                                                    data-section-name="Selfcollect - <%= jobMethod %>">📋 Copy</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>"
+                                                                    data-section-name="Selfcollect - <%= jobMethod %>">📊 Excel</button>
                                                             <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>"></i>
                                                         </div>
                                                     </div>
@@ -606,7 +810,7 @@
                                                             <tbody>
                                                                 <% jobs.forEach(order => { %>
                                                                     <tr>
-                                                                        <td><%= order.doTrackingNumber %></td>
+                                                                        <td class="track-no"><%= order.doTrackingNumber %></td>
                                                                         <td><%= order.receiverName %></td>
                                                                         <td><%= order.receiverPhoneNumber %></td>
                                                                         <td><%= order.grRemark %></td>
@@ -632,12 +836,20 @@
 
         <!-- COD/BT Collected Tab -->
         <div class="tab-pane fade" id="codbt-content" role="tabpanel" aria-labelledby="codbt-tab">
-            <div class="row mt-3">
+            <div class="row mt-3 align-items-center">
                 <div class="col-md-4">
                     <input type="date" id="codbt-date-picker" class="form-control" />
                 </div>
                 <div class="col-md-2">
                     <button id="refresh-codbt-btn" class="btn btn-primary w-100" disabled>Refresh</button>
+                </div>
+                <div class="col-md-6 mt-2 mt-md-0 d-flex justify-content-md-end">
+                    <div class="section-toolbar">
+                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                            data-target="#codbt-table-body" data-section-name="COD/BT Collected">📋 Copy Tracking No</button>
+                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                            data-target="#codbt-table-body" data-section-name="COD/BT Collected">📊 Export Excel</button>
+                    </div>
                 </div>
             </div>
 
@@ -662,9 +874,15 @@
             </div>
         </div>
         <div class="tab-pane fade" id="completed-jobs" role="tabpanel" aria-labelledby="completed-jobs-tab">
-    <div class="d-flex align-items-center my-2">
+    <div class="d-flex align-items-center flex-wrap my-2 gap-2">
         <input type="date" id="completed-jobs-date-picker" class="form-control me-2" style="max-width: 200px;">
         <button class="btn btn-primary" id="refresh-completed-jobs-btn">Refresh</button>
+        <div class="section-toolbar ms-md-auto">
+            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                data-target="#completed-jobs-table-body" data-section-name="Completed Jobs">📋 Copy Tracking No</button>
+            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                data-target="#completed-jobs-table-body" data-section-name="Completed Jobs">📊 Export Excel</button>
+        </div>
     </div>
     <div class="table-responsive">
     <table class="table table-hover table-bordered">
@@ -690,7 +908,7 @@
     </div>
   </div>
 
-    <div class="card my-4">
+    <div class="card my-4" id="section-neworders">
   <div class="card-header bg-primary text-white">
     <h5 class="mb-0">New Orders</h5>
   </div>
@@ -736,11 +954,16 @@
                     <% } %>
     </div>
 
+    <button type="button" id="backToTopBtn" class="btn btn-dark" title="Back to top">
+        <i class="bi bi-arrow-up"></i>
+    </button>
+
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-alpha1/dist/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
     let codBtData = null;
@@ -840,7 +1063,7 @@ function renderCompletedJobsTable(data) {
                             <tbody>
                                 ${d.inProgress.map(job => `
                                     <tr>
-                                        <td>${job.doTrackingNumber || '-'}</td>
+                                        <td class="track-no">${job.doTrackingNumber || '-'}</td>
                                         <td>${job.product || '-'}</td>
                                         <td>${job.jobMethod || '-'}</td>
                                     </tr>
@@ -874,7 +1097,7 @@ function renderCompletedJobsTable(data) {
                             <tbody>
                                 ${d.completed.map(job => `
                                     <tr>
-                                        <td>${job.doTrackingNumber || '-'}</td>
+                                        <td class="track-no">${job.doTrackingNumber || '-'}</td>
                                         <td>${job.product || '-'}</td>
                                         <td>${job.jobMethod || '-'}</td>
                                     </tr>
@@ -909,7 +1132,7 @@ function renderCompletedJobsTable(data) {
                             <tbody>
                                 ${d.failed.map(job => `
                                     <tr>
-                                        <td>${job.doTrackingNumber || '-'}</td>
+                                        <td class="track-no">${job.doTrackingNumber || '-'}</td>
                                         <td>${job.product || '-'}</td>
                                         <td>${job.jobMethod || '-'}</td>
                                         <td>${job.reason || '-'}</td>
@@ -1094,7 +1317,7 @@ async function loadCodBtData() {
                                 <tbody>
                                     ${sortedJobs.map(job => `
                                         <tr>
-                                            <td>${job.doTrackingNumber}</td>
+                                            <td class="track-no">${job.doTrackingNumber}</td>
                                             <td>${job.product}</td>
                                             <td>${job.jobMethod}</td>
                                             <td>${job.paymentMethod}</td>
@@ -1166,7 +1389,7 @@ async function loadCodBtData() {
                                 <tbody>
                                     ${sortedJobs.map(job => `
                                         <tr>
-                                            <td>${job.doTrackingNumber}</td>
+                                            <td class="track-no">${job.doTrackingNumber}</td>
                                             <td>${job.product}</td>
                                             <td>${job.jobMethod}</td>
                                             <td>${job.paymentMethod}</td>
@@ -1300,11 +1523,18 @@ async function fetchGRWebsiteOrders(date) {
 
       // Product header (collapsible)
       const header = document.createElement('div');
-      header.classList.add('card-header', 'bg-secondary', 'text-white');
-      header.setAttribute('data-bs-toggle', 'collapse');
-      header.setAttribute('data-bs-target', `#${productId}`);
-      header.style.cursor = 'pointer';
-      header.innerHTML = `${product} <span class="badge bg-light text-dark float-end">${orders.length}</span>`;
+      header.classList.add('card-header', 'bg-secondary', 'text-white', 'd-flex', 'justify-content-between', 'align-items-center', 'flex-wrap');
+      header.innerHTML = `
+        <div class="toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#${productId}">
+          <strong>${product}</strong>
+        </div>
+        <div class="section-toolbar">
+          <span class="badge bg-light text-dark">${orders.length}</span>
+          <button type="button" class="btn btn-sm btn-outline-light toolbar-btn copy-tracking-btn" data-target="#${productId}" data-section-name="${product}">📋 Copy</button>
+          <button type="button" class="btn btn-sm btn-outline-light toolbar-btn export-excel-btn" data-target="#${productId}" data-section-name="${product}">📊 Excel</button>
+          <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#${productId}"></i>
+        </div>
+      `;
       productCard.appendChild(header);
 
       // Collapsible body
@@ -1334,7 +1564,7 @@ async function fetchGRWebsiteOrders(date) {
         const row = document.createElement('tr');
         if (["pharmacymoh","pharmacyjpmc","pharmacyphc","localdelivery"].includes(product.toLowerCase())) {
           row.innerHTML = `
-            <td>${order.doTrackingNumber || '-'}</td>
+            <td class="track-no">${order.doTrackingNumber || '-'}</td>
             <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
             <td>${order.jobMethod || '-'}</td>
             <td>${order.area || '-'}</td>
@@ -1343,7 +1573,7 @@ async function fetchGRWebsiteOrders(date) {
           `;
         } else if (product.toLowerCase() === "cbsl") {
           row.innerHTML = `
-            <td>${order.doTrackingNumber || '-'}</td>
+            <td class="track-no">${order.doTrackingNumber || '-'}</td>
             <td>${order.parcelTrackingNum || '-'}</td>
             <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
             <td>${order.jobMethod || '-'}</td>
@@ -1353,7 +1583,7 @@ async function fetchGRWebsiteOrders(date) {
           `;
         } else {
           row.innerHTML = `
-            <td>${order.doTrackingNumber || '-'}</td>
+            <td class="track-no">${order.doTrackingNumber || '-'}</td>
             <td>${order.dateUpdated ? moment(order.dateUpdated).utcOffset(8).format("h:mm a") : '-'}</td>
             <td>${order.jobMethod || '-'}</td>
             <td>${order.area || '-'}</td>
@@ -1396,19 +1626,17 @@ document.getElementById('grWebsiteDate').addEventListener('change', e => {
 </script>
 
 <script>
-// Function to copy tracking numbers to clipboard
+// Copy a list of tracking numbers to the clipboard
 async function copyTrackingNumbers(trackingNumbers, sectionName) {
     if (!trackingNumbers || trackingNumbers.length === 0) {
         alert(`No tracking numbers found to copy from ${sectionName}.`);
         return;
     }
-    
-    // Join tracking numbers with new line
+
     const textToCopy = trackingNumbers.join('\n');
-    
+
     try {
         await navigator.clipboard.writeText(textToCopy);
-        alert(`✅ Copied ${trackingNumbers.length} tracking number(s) from ${sectionName}!\n\n${textToCopy.substring(0, 200)}${textToCopy.length > 200 ? '...' : ''}`);
     } catch (err) {
         console.error('Failed to copy: ', err);
         // Fallback for older browsers
@@ -1418,164 +1646,113 @@ async function copyTrackingNumbers(trackingNumbers, sectionName) {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        alert(`✅ Copied ${trackingNumbers.length} tracking number(s) from ${sectionName}!\n\n${textToCopy.substring(0, 200)}${textToCopy.length > 200 ? '...' : ''}`);
     }
+
+    alert(`✅ Copied ${trackingNumbers.length} tracking number(s) from ${sectionName}!\n\n${textToCopy.substring(0, 200)}${textToCopy.length > 200 ? '...' : ''}`);
 }
 
-// Function to collect tracking numbers based on the section
-function collectTrackingNumbers(type, params) {
+// Generic: collect every tracking number (td.track-no) inside a section and copy them
+function copyTrackingNumbersFrom(targetSelector, sectionName) {
+    const container = document.querySelector(targetSelector);
     const trackingNumbers = [];
-    let sectionName = '';
-    
-    if (type === 'date') {
-        // Get all tracking numbers under a specific date
-        const dateIndex = params.dateIndex;
-        const collapseDiv = document.getElementById(`collapse-activejobs-${dateIndex}`);
-        sectionName = `date: ${params.date}`;
-        if (collapseDiv) {
-            const allTables = collapseDiv.querySelectorAll('table');
-            allTables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.trim()) {
-                        trackingNumbers.push(firstCell.textContent.trim());
-                    }
-                });
-            });
-        }
-    } 
-    else if (type === 'dispatcher') {
-        // Get all tracking numbers under a specific dispatcher
-        const { dateIndex, dispatcherIndex } = params;
-        const collapseDiv = document.getElementById(`collapse-activejobs-${dateIndex}-${dispatcherIndex}`);
-        sectionName = `dispatcher: ${params.dispatcherName}`;
-        if (collapseDiv) {
-            const allTables = collapseDiv.querySelectorAll('table');
-            allTables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.trim()) {
-                        trackingNumbers.push(firstCell.textContent.trim());
-                    }
-                });
-            });
-        }
+    if (container) {
+        container.querySelectorAll('td.track-no').forEach(cell => {
+            const value = cell.textContent.trim();
+            if (value && value !== '-') trackingNumbers.push(value);
+        });
     }
-    else if (type === 'product') {
-        // Get all tracking numbers under a specific product
-        const { dateIndex, dispatcherIndex, productIndex } = params;
-        const collapseDiv = document.getElementById(`collapse-activejobs-${dateIndex}-${dispatcherIndex}-${productIndex}`);
-        sectionName = `product: ${params.productName} (${params.dispatcherName})`;
-        if (collapseDiv) {
-            const tables = collapseDiv.querySelectorAll('table');
-            tables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.trim()) {
-                        trackingNumbers.push(firstCell.textContent.trim());
-                    }
-                });
-            });
-        }
-    }
-    else if (type === 'selfcollect') {
-        // Get all tracking numbers under Selfcollect section for a date
-        const { dateIndex } = params;
-        const collapseDiv = document.getElementById(`collapse-activejobs-${dateIndex}-selfcollect`);
-        sectionName = `Selfcollect (${params.date})`;
-        if (collapseDiv) {
-            const allTables = collapseDiv.querySelectorAll('table');
-            allTables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.trim()) {
-                        trackingNumbers.push(firstCell.textContent.trim());
-                    }
-                });
-            });
-        }
-    }
-    else if (type === 'selfcollect-method') {
-        // Get all tracking numbers under a specific Selfcollect method
-        const { dateIndex, methodIndex } = params;
-        const collapseDiv = document.getElementById(`collapse-activejobs-${dateIndex}-selfcollect-${methodIndex}`);
-        sectionName = `Selfcollect - ${params.methodName}`;
-        if (collapseDiv) {
-            const tables = collapseDiv.querySelectorAll('table');
-            tables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.trim()) {
-                        trackingNumbers.push(firstCell.textContent.trim());
-                    }
-                });
-            });
-        }
-    }
-    
-    return { trackingNumbers, sectionName };
+    copyTrackingNumbers(trackingNumbers, sectionName);
 }
 
-// Add click event listeners to all copy buttons
-document.addEventListener('DOMContentLoaded', function() {
-    // Use event delegation for dynamically loaded content
-    document.body.addEventListener('click', function(e) {
-        const button = e.target.closest('.copy-tracking-btn');
-        if (!button) return;
-        
-        // STOP PROPAGATION - multiple ways to ensure it doesn't trigger collapse
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        e.preventDefault();
-        
-        // Also prevent default behavior
-        if (e.preventDefault) {
-            e.preventDefault();
+// Generic: export every <table> inside a section into one Excel workbook (one sheet per table)
+function exportSectionToExcel(targetSelector, sectionName) {
+    const container = document.querySelector(targetSelector);
+    if (!container) return;
+
+    const tables = container.querySelectorAll('table');
+    if (!tables.length) {
+        alert(`No data found to export from ${sectionName}.`);
+        return;
+    }
+
+    const usedNames = new Set();
+    function sheetNameFor(table, idx) {
+        let name = '';
+
+        // Prefer a method-style label directly above the table (e.g. "Standard", "Express")
+        const responsiveWrap = table.closest('.table-responsive');
+        const methodLabel = responsiveWrap && responsiveWrap.previousElementSibling &&
+            responsiveWrap.previousElementSibling.querySelector('strong');
+        if (methodLabel) name = methodLabel.textContent.trim();
+
+        // Otherwise use the nearest card's title
+        if (!name) {
+            const card = table.closest('.card');
+            const titleEl = card && card.querySelector(':scope > .card-header .toggle-header strong');
+            if (titleEl) name = titleEl.textContent.trim();
         }
-        
-        const copyType = button.getAttribute('data-copy-type');
-        const params = {};
-        
-        // Collect parameters based on button type
-        if (copyType === 'date') {
-            params.dateIndex = button.getAttribute('data-date-index');
-            params.date = button.getAttribute('data-date');
+
+        // Otherwise (flat tables like Completed Jobs / COD-BT) use the preceding summary row's label
+        if (!name) {
+            const tr = table.closest('tr');
+            const labelRow = tr && tr.previousElementSibling;
+            const firstCell = labelRow && labelRow.querySelector('td');
+            if (firstCell) name = firstCell.textContent.trim();
         }
-        else if (copyType === 'dispatcher') {
-            params.dateIndex = button.getAttribute('data-date-index');
-            params.dispatcherIndex = button.getAttribute('data-dispatcher-index');
-            params.dispatcherName = button.getAttribute('data-dispatcher-name');
-            params.date = button.getAttribute('data-date');
+
+        if (!name) name = `Sheet${idx + 1}`;
+        name = name.replace(/\s+/g, ' ').replace(/[\\/*?:\[\]]/g, ' ').slice(0, 31).trim() || `Sheet${idx + 1}`;
+
+        let unique = name;
+        let n = 2;
+        while (usedNames.has(unique)) {
+            unique = `${name.slice(0, 28)} ${n}`;
+            n++;
         }
-        else if (copyType === 'product') {
-            params.dateIndex = button.getAttribute('data-date-index');
-            params.dispatcherIndex = button.getAttribute('data-dispatcher-index');
-            params.productIndex = button.getAttribute('data-product-index');
-            params.productName = button.getAttribute('data-product-name');
-            params.dispatcherName = button.getAttribute('data-dispatcher-name');
-        }
-        else if (copyType === 'selfcollect') {
-            params.dateIndex = button.getAttribute('data-date-index');
-            params.date = button.getAttribute('data-date');
-        }
-        else if (copyType === 'selfcollect-method') {
-            params.dateIndex = button.getAttribute('data-date-index');
-            params.methodIndex = button.getAttribute('data-method-index');
-            params.methodName = button.getAttribute('data-method-name');
-            params.date = button.getAttribute('data-date');
-        }
-        
-        const { trackingNumbers, sectionName } = collectTrackingNumbers(copyType, params);
-        copyTrackingNumbers(trackingNumbers, sectionName);
-        
-        // Return false to be extra safe
-        return false;
+        usedNames.add(unique);
+        return unique;
+    }
+
+    const wb = XLSX.utils.book_new();
+    tables.forEach((table, idx) => {
+        const ws = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, sheetNameFor(table, idx));
     });
+
+    const safeFileName = sectionName.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80);
+    XLSX.writeFile(wb, `${safeFileName}_${moment().format('YYYY-MM-DD_HHmm')}.xlsx`);
+}
+
+// Delegated click handling for every Copy/Export button on the page, including dynamically loaded content
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('click', function(e) {
+        const copyBtn = e.target.closest('.copy-tracking-btn');
+        const exportBtn = e.target.closest('.export-excel-btn');
+        const button = copyBtn || exportBtn;
+        if (!button) return;
+
+        e.stopPropagation();
+
+        const targetSelector = button.getAttribute('data-target');
+        const sectionName = button.getAttribute('data-section-name') || 'section';
+
+        if (copyBtn) {
+            copyTrackingNumbersFrom(targetSelector, sectionName);
+        } else {
+            exportSectionToExcel(targetSelector, sectionName);
+        }
+    });
+
+    // Back to top button
+    const backToTopBtn = document.getElementById('backToTopBtn');
+    if (backToTopBtn) {
+        window.addEventListener('scroll', () => {
+            backToTopBtn.style.display = window.scrollY > 400 ? 'block' : 'none';
+        });
+        backToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
 });
 </script>
 
