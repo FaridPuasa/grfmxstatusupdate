@@ -1137,7 +1137,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
         // For Operation End of Day Report - only show these staff
         const operationStaff = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam", "Selfcollect"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam", "Selfcollect"
         ];
 
         // Since history.dateUpdated is a STRING, we need to fetch all orders and filter in JavaScript
@@ -1986,7 +1986,7 @@ app.post('/api/vehicle-report', async (req, res) => {
         // Define allowed staff/driver/dispatcher names
         const allowedStaff = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"
         ];
 
         // 1️⃣ Fetch report data for that date
@@ -2483,7 +2483,7 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
         // Excluded names (won't be shown in freelancer report)
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"
         ];
 
         // Fetch completed orders for the selected date directly
@@ -2651,7 +2651,7 @@ app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async
 
         const excludedNames = [
             "Sowdeq", "Leo",
-            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Syazwan", "Hjazam"
+            "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"
         ];
 
         // Let MongoDB do the grouping - only jobDate/currentStatus/assignedTo are scanned,
@@ -7416,6 +7416,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Clear Job"
             }
 
+            if (req.body.statusCode == 'RGP') {
+                appliedStatus = "Resend POD"
+            }
+
             if (req.body.statusCode == 'FSJ') {
                 appliedStatus = "Fix Stuck Job"
             }
@@ -7504,7 +7508,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if ((req.body.statusCode == 'IR') || (req.body.statusCode == 'CP') || (req.body.statusCode == 'DC') || (req.body.statusCode == 38) || (req.body.statusCode == 35) || (req.body.statusCode == 'SD')
                 || (req.body.statusCode == 'NC') || (req.body.statusCode == 'CSSC') || (req.body.statusCode == 'AJ') || (req.body.statusCode == 47)
-                || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
+                || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'RGP') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
                 || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')
                 || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')
@@ -9487,6 +9491,128 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     completeRun = 1;
                     portalUpdate = "Portal status updated to Completed. ";
                 }
+            }
+
+            if (req.body.statusCode == 'RGP') {
+                // Resend POD to GDEX for an already-completed job. GDEX API + MongoDB only - no Detrack push.
+                if ((product !== 'GDEX') && (product !== 'GDEXT')) {
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: Resend POD is only available for GDEX/GDEXT products. This is ${product}`,
+                    });
+                    continue;
+                }
+
+                if (data.data.status !== 'completed') {
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: Resend POD only applies to completed jobs. Current Detrack status: ${currentDetrackStatus}`,
+                    });
+                    continue;
+                }
+
+                const rgpCompletedTimestamp = data.data.updated_at;
+                const rgpFormattedTimestamp = moment(rgpCompletedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+
+                let rgpLatestLocation = '';
+                if (data.data.assign_to === 'Selfcollect') {
+                    rgpLatestLocation = 'Go Rush Kiulap Office';
+                } else {
+                    rgpLatestLocation = data.data.address || 'Customer Address';
+                }
+
+                const rgpPhoto1 = data.data.photo_1_file_url;
+                const rgpPhoto2 = data.data.photo_2_file_url;
+                const rgpPhoto3 = data.data.photo_3_file_url;
+
+                if (!rgpPhoto1 || !rgpPhoto2 || !rgpPhoto3) {
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: GDEX order requires all 3 POD images. Missing: ${!rgpPhoto1 ? 'Photo1,' : ''}${!rgpPhoto2 ? 'Photo2,' : ''}${!rgpPhoto3 ? 'Photo3' : ''}`.replace(/,$/, ''),
+                    });
+                    continue;
+                }
+
+                const rgpDetrackData = {
+                    status: data.data.status,
+                    reason: data.data.reason || '',
+                    address: data.data.address,
+                    assign_to: data.data.assign_to,
+                    photo_1_file_url: rgpPhoto1,
+                    photo_2_file_url: rgpPhoto2,
+                    photo_3_file_url: rgpPhoto3,
+                    podAlreadyConverted: false,
+                    completed_time: rgpFormattedTimestamp
+                };
+
+                try {
+                    console.log(`📥 RESEND POD: downloading FRESH ALL 3 PODs from Detrack for ${consignmentID}...`);
+                    const rgpSavedPODs = await saveAllPODsToDatabase(consignmentID, rgpDetrackData, 3);
+
+                    if (rgpSavedPODs.length !== 3) {
+                        throw new Error(`Expected 3 PODs, got ${rgpSavedPODs.length}`);
+                    }
+
+                    const rgpToken = await getGDEXToken();
+                    if (!rgpToken) {
+                        throw new Error('Failed to get GDEX token');
+                    }
+
+                    const rgpTrackingData = {
+                        consignmentno: consignmentID,
+                        statuscode: "FD",
+                        statusdescription: "Delivered",
+                        statusdatetime: rgpFormattedTimestamp,
+                        reasoncode: "",
+                        locationdescription: rgpLatestLocation,
+                        epod: rgpSavedPODs,
+                        deliverypartner: "gorush",
+                        returnflag: false
+                    };
+
+                    const rgpResult = await sendGDEXTrackingWebhookWithData(consignmentID, rgpTrackingData, rgpToken);
+
+                    if (rgpResult && rgpResult.success === true) {
+                        console.log(`✅ GDEX API resend POD successful for ${consignmentID}`);
+
+                        await ORDERS.findOneAndUpdate(
+                            { doTrackingNumber: consignmentID },
+                            {
+                                lastUpdateDateTime: rgpFormattedTimestamp,
+                                lastUpdatedBy: req.user.name,
+                                $push: {
+                                    history: {
+                                        statusHistory: "POD Resent to GDEX",
+                                        dateUpdated: rgpFormattedTimestamp,
+                                        updatedBy: req.user.name,
+                                        lastAssignedTo: data.data.assign_to,
+                                        lastLocation: rgpLatestLocation,
+                                    }
+                                }
+                            },
+                            { upsert: false }
+                        );
+
+                        processingResults.push({
+                            consignmentID,
+                            status: `✅ Success: POD resent to GDEX. Location: ${rgpLatestLocation}`,
+                        });
+                    } else {
+                        console.error(`❌ GDEX API resend POD failed for ${consignmentID}`);
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: GDEX API call failed. MongoDB not updated. ${rgpResult?.error || ''}`,
+                        });
+                    }
+                } catch (rgpError) {
+                    console.error(`❌ RGP resend POD failed: ${rgpError.message}`);
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: Resend POD failed - ${rgpError.message}`,
+                    });
+                }
+
+                continue;
             }
 
             if (req.body.statusCode == 'CSSC') {
