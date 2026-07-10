@@ -76,6 +76,18 @@
 
     <main class="container mt-4">
         <h1 class="text-center mt-4">List of Pharmacy Forms</h1>
+        <form action="/listofpharmacyMOHForms" method="get" class="row justify-content-center mb-3">
+            <div class="col-auto">
+                <input type="text" name="search" class="form-control" placeholder="Search by Tracking Number"
+                    value="<%= searchValue %>">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Search</button>
+                <% if (searchValue) { %>
+                    <a href="/listofpharmacyMOHForms" class="btn btn-secondary">Clear</a>
+                <% } %>
+            </div>
+        </form>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="formTable">
                 <thead class="table-primary">

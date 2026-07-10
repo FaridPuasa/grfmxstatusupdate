@@ -4270,8 +4270,17 @@ app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, as
 
 app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
+        const searchValue = req.query.search?.trim();
+
         // Use the new query syntax to find documents with selected fields
-        const forms = await PharmacyFORM.find({})
+        let query = {};
+
+        if (searchValue) {
+            // Search for the tracking number inside htmlContent
+            query = { htmlContent: new RegExp(searchValue, 'i') };
+        }
+
+        const forms = await PharmacyFORM.find(query)
             .select([
                 '_id',
                 'formName',
@@ -4287,7 +4296,7 @@ app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (re
             .sort({ _id: -1 });
 
         // Render the EJS template with the pods containing the selected fields
-        res.render('listofpharmacyMOHForms', { forms, user: req.user });
+        res.render('listofpharmacyMOHForms', { forms, user: req.user, searchValue: searchValue || '' });
     } catch (error) {
         console.error('Error:', error);
         // Handle the error and send an error response
