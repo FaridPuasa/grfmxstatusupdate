@@ -60,6 +60,11 @@
             vertical-align: middle;
             /* Center-align table contents vertically */
         }
+
+        /* Hide the Tracking No. column immediately, before DataTables JS initializes */
+        #formTable .tracking-col {
+            display: none;
+        }
     </style>
 </head>
 
@@ -76,18 +81,6 @@
 
     <main class="container mt-4">
         <h1 class="text-center mt-4">List of Pharmacy Forms</h1>
-        <form action="/listofpharmacyMOHForms" method="get" class="row justify-content-center mb-3">
-            <div class="col-auto">
-                <input type="text" name="search" class="form-control" placeholder="Search by Tracking Number"
-                    value="<%= searchValue %>">
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary">Search</button>
-                <% if (searchValue) { %>
-                    <a href="/listofpharmacyMOHForms" class="btn btn-secondary">Clear</a>
-                <% } %>
-            </div>
-        </form>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="formTable">
                 <thead class="table-primary">
@@ -101,6 +94,7 @@
                         <th class="header">First No.</th>
                         <th class="header">Last No.</th>
                         <th class="header">Actions</th> <!-- Add Actions column -->
+                        <th class="header tracking-col">Tracking No.</th> <!-- Hidden: searchable tracking numbers -->
                     </tr>
                 </thead>
                 <tbody>
@@ -138,6 +132,9 @@
                                 <button class="btn btn-danger btn-sm"
                                     onclick="confirmDelete('<%= form._id %>')">Delete</button>
                             </td>
+                            <td class="tracking-col">
+                                <%= form.htmlContent ? form.htmlContent.replace(/<[^>]+>/g, ' ') : '' %>
+                            </td>
                         </tr>
                         <% }); %>
                 </tbody>
@@ -151,7 +148,10 @@
         $(document).ready(function () {
             const table = $('#formTable').DataTable({
                 "ordering": false,  // Disable client-side sorting
-                "iDisplayLength": 10  // Set the default number of entries to 100
+                "iDisplayLength": 10,  // Set the default number of entries to 100
+                "columnDefs": [
+                    { "targets": 9, "visible": false } // Hide Tracking No. column but keep it searchable
+                ]
             });
         });
     </script>
