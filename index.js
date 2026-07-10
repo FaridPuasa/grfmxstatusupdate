@@ -4268,10 +4268,47 @@ app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, as
     }
 });
 
-app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (req, res) => {
+app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, (req, res) => {
+    // Data is loaded via server-side DataTables (see /api/listofpharmacyMOHForms)
+    res.render('listofpharmacyMOHForms', { user: req.user });
+});
+
+app.get('/api/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (req, res) => {
     try {
-        // Use the new query syntax to find documents with selected fields
-        const forms = await PharmacyFORM.find({})
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { formName: regex },
+                { mohForm: regex },
+                { formCreator: regex },
+                { formDate: regex },
+                { batchNo: regex },
+                { htmlContent: regex } // for tracking number search
+            ];
+        }
+
+        let sort = {};
+        if (order && columns) {
+            const colName = columns[order.column].data;
+            const dir = order.dir === 'desc' ? -1 : 1;
+            sort[colName] = dir;
+        } else {
+            sort = { _id: -1 };
+        }
+
+        const total = await PharmacyFORM.countDocuments({});
+        const filtered = await PharmacyFORM.countDocuments(query);
+
+        const forms = await PharmacyFORM.find(query)
             .select([
                 '_id',
                 'formName',
@@ -4282,17 +4319,21 @@ app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async (re
                 'creationDate',
                 'mohForm',
                 'numberOfForms',
-                'formCreator',
-                'htmlContent'
+                'formCreator'
             ])
-            .sort({ _id: -1 });
+            .sort(sort)
+            .skip(start)
+            .limit(length);
 
-        // Render the EJS template with the pods containing the selected fields
-        res.render('listofpharmacyMOHForms', { forms, user: req.user });
+        res.json({
+            draw,
+            recordsTotal: total,
+            recordsFiltered: filtered,
+            data: forms
+        });
     } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch Pharmacy Form data');
+        console.error('Error loading Pharmacy Forms:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
