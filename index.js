@@ -172,6 +172,8 @@ const ORDERCOUNTER = mainConn.model('ORDERCOUNTER', require('./models/ORDERCOUNT
 const REPORTS = mainConn.model('REPORTS', require('./models/REPORTS'));
 const UnifiedPOD = mainConn.model('UnifiedPOD', require('./models/UnifiedPOD'));
 const GDEXMANIFESTSEALTAGS = mainConn.model('GDEXMANIFESTSEALTAGS', require('./models/GDEXMANIFESTSEALTAGS'));
+const PharmacyFormBatch = mainConn.model('PharmacyFormBatch', require('./models/PharmacyFormBatch'));
+const PHARMACYFORMCOUNTER = mainConn.model('PHARMACYFORMCOUNTER', require('./models/PHARMACYFORMCOUNTER'));
 
 // Vehicle DB
 const VEHICLE = vehicleConn.model('VEHICLE', require('./models/VEHICLE'));
@@ -4367,6 +4369,339 @@ app.get('/deletePharmacyForm/:formId', ensureAuthenticated, ensureMOHForm, async
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to delete Pharmacy Form');
+    }
+});
+
+// ==================================================
+// 💊 Pharmacy Form Batch Generator
+// ==================================================
+
+const PHARMACY_FORM_TYPE_CONFIG = {
+    '1': { key: 'STDEXPIMM', sendOrderTo: 'OPD', deliveryTypeCodes: ['STD', 'EXP', 'IMM'] },
+    '2': { key: 'IMM', sendOrderTo: 'OPD', deliveryTypeCodes: ['IMM'] },
+    '3': { key: 'TTG', sendOrderTo: 'PMMH', deliveryTypeCodes: ['STD'] },
+    '4': { key: 'KB', sendOrderTo: 'SSBH', deliveryTypeCodes: ['STD'] },
+};
+
+const PHARMACY_FORM_PREFIX = { STD: 'S', EXP: 'E', IMM: 'IMM', TTG: 'T', KB: 'K' };
+
+async function getPharmacyFormCounter() {
+    let counter = await PHARMACYFORMCOUNTER.findOne({});
+    if (!counter) {
+        counter = await PHARMACYFORMCOUNTER.create({});
+    }
+    return counter;
+}
+
+function pharmacyFormBrunei(date) {
+    return date ? moment(date).utcOffset('+08:00') : moment().utcOffset('+08:00');
+}
+
+// Save-time-only restrictions (generation/preview is never restricted).
+function getPharmacyFormSaveRestriction(formType) {
+    const nowBrunei = pharmacyFormBrunei();
+    const dayOfWeek = nowBrunei.day(); // 0=Sunday, 1=Monday, ..., 5=Friday, 6=Saturday
+
+    if (dayOfWeek === 5 || dayOfWeek === 0) {
+        return 'Pharmacy forms cannot be saved on Fridays or Sundays.';
+    }
+
+    if (formType === '3' || formType === '4') {
+        const isMonOrWed = dayOfWeek === 1 || dayOfWeek === 3;
+        if (!isMonOrWed) {
+            return 'TTG and KB forms can only be saved on Monday and Wednesday.';
+        }
+    }
+
+    return null;
+}
+
+async function fetchEligiblePharmacyOrders(sendOrderTo, deliveryTypeCodes) {
+    const rawOrders = await ORDERS.find({
+        product: 'pharmacymoh',
+        pharmacyFormCreated: 'No',
+        sendOrderTo: sendOrderTo,
+        deliveryTypeCode: { $in: deliveryTypeCodes }
+    }).select([
+        'doTrackingNumber', 'receiverName', 'receiverAddress', 'area', 'patientNumber',
+        'icPassNum', 'receiverPhoneNumber', 'additionalPhoneNumber', 'remarks',
+        'deliveryTypeCode', 'dateTimeSubmission'
+    ]);
+
+    const now = moment();
+    const withParsedDate = rawOrders
+        .map(order => ({
+            order,
+            parsedDate: moment(order.dateTimeSubmission, 'DD-MM-YYYY hh:mm a', true)
+        }))
+        .filter(entry => entry.parsedDate.isValid() && now.diff(entry.parsedDate, 'days') <= 7);
+
+    withParsedDate.sort((a, b) => a.parsedDate.valueOf() - b.parsedDate.valueOf());
+
+    return withParsedDate.map(entry => entry.order);
+}
+
+function buildPharmacyFormEntry(order, formNumber) {
+    return {
+        formNumber,
+        doTrackingNumber: order.doTrackingNumber,
+        receiverName: order.receiverName,
+        receiverAddress: order.receiverAddress,
+        area: order.area,
+        patientNumber: order.patientNumber,
+        icPassNum: order.icPassNum,
+        receiverPhoneNumber: order.receiverPhoneNumber,
+        additionalPhoneNumber: order.additionalPhoneNumber,
+        remarks: order.remarks,
+        deliveryTypeCode: order.deliveryTypeCode,
+    };
+}
+
+function assignPharmacyFormNumbers(orders, prefix, base) {
+    return orders.map((order, index) => buildPharmacyFormEntry(order, `${prefix}${base + index + 1}`));
+}
+
+async function computeNextPharmacyBatchNumber(nowBrunei) {
+    const startOfDay = nowBrunei.clone().startOf('day').toDate();
+    const endOfDay = nowBrunei.clone().endOf('day').toDate();
+    const count = await PharmacyFormBatch.countDocuments({
+        formDate: { $gte: startOfDay, $lte: endOfDay },
+        formName: { $regex: /\sB\d+\s\d{2}\.\d{2}\.\d{4}$/ }
+    });
+    return count + 1;
+}
+
+app.get('/pharmacyformgenerator', ensureAuthenticated, ensureMOHForm, (req, res) => {
+    res.render('pharmacyformgenerator', { results: null, noResultsMessage: null, user: req.user });
+});
+
+app.post('/pharmacyformgenerator', ensureAuthenticated, ensureMOHForm, async (req, res) => {
+    try {
+        const { formType } = req.body;
+        const config = PHARMACY_FORM_TYPE_CONFIG[formType];
+
+        if (!config) {
+            return res.render('pharmacyformgenerator', { results: null, noResultsMessage: 'Invalid selection. Please try again.', user: req.user });
+        }
+
+        const nowBrunei = pharmacyFormBrunei();
+        const dateDisplay = nowBrunei.format('DD.MM.YYYY');
+        const counter = await getPharmacyFormCounter();
+        const counterUpdatedBrunei = pharmacyFormBrunei(counter.datetimeUpdated);
+        const isSameDay = nowBrunei.format('YYYY-MM-DD') === counterUpdatedBrunei.format('YYYY-MM-DD');
+
+        let orderedEntries;
+        let counterUpdates;
+        let formName;
+
+        if (config.key === 'STDEXPIMM') {
+            const orders = await fetchEligiblePharmacyOrders(config.sendOrderTo, config.deliveryTypeCodes);
+
+            if (orders.length === 0) {
+                return res.render('pharmacyformgenerator', { results: null, noResultsMessage: 'No records found for this option. Please try again later.', user: req.user });
+            }
+
+            const buckets = { IMM: [], EXP: [], STD: [] };
+            orders.forEach(order => buckets[order.deliveryTypeCode].push(order));
+
+            const baseIMM = isSameDay ? counter.IMM : 0;
+            const baseEXP = isSameDay ? counter.EXP : 0;
+            const baseSTD = isSameDay ? counter.STD : 0;
+
+            const immEntries = assignPharmacyFormNumbers(buckets.IMM, PHARMACY_FORM_PREFIX.IMM, baseIMM);
+            const expEntries = assignPharmacyFormNumbers(buckets.EXP, PHARMACY_FORM_PREFIX.EXP, baseEXP);
+            const stdEntries = assignPharmacyFormNumbers(buckets.STD, PHARMACY_FORM_PREFIX.STD, baseSTD);
+
+            orderedEntries = immEntries.concat(expEntries, stdEntries);
+
+            counterUpdates = {
+                IMM: baseIMM + immEntries.length,
+                EXP: baseEXP + expEntries.length,
+                STD: baseSTD + stdEntries.length,
+            };
+
+            const presentLabels = ['STD', 'EXP', 'IMM'].filter(label => buckets[label].length > 0);
+            const batchNum = await computeNextPharmacyBatchNumber(nowBrunei);
+            formName = `${presentLabels.join(' ')} B${batchNum} ${nowBrunei.format('DD.MM.YYYY')}`;
+        } else {
+            const typeKey = config.key; // 'IMM' | 'TTG' | 'KB'
+            const orders = await fetchEligiblePharmacyOrders(config.sendOrderTo, config.deliveryTypeCodes);
+
+            if (orders.length === 0) {
+                return res.render('pharmacyformgenerator', { results: null, noResultsMessage: 'No records found for this option. Please try again later.', user: req.user });
+            }
+
+            // IMM is shared with the combined STD/EXP/IMM option and resets daily; TTG/KB never reset.
+            const resetsDaily = typeKey === 'IMM';
+            const base = resetsDaily ? (isSameDay ? counter[typeKey] : 0) : counter[typeKey];
+
+            orderedEntries = assignPharmacyFormNumbers(orders, PHARMACY_FORM_PREFIX[typeKey], base);
+            counterUpdates = { [typeKey]: base + orderedEntries.length };
+            formName = `${typeKey} ${nowBrunei.format('DD.MM.YYYY')}`;
+        }
+
+        const trackingNumbers = orderedEntries.map(entry => entry.doTrackingNumber);
+
+        const results = {
+            formType,
+            formName,
+            dateDisplay,
+            orders: orderedEntries,
+            trackingNumbers,
+            counterUpdates,
+        };
+
+        res.render('pharmacyformgenerator', { results, noResultsMessage: null, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to generate Pharmacy Form');
+    }
+});
+
+app.post('/api/pharmacyformgenerator/save', ensureAuthenticated, ensureMOHForm, async (req, res) => {
+    try {
+        const { formType, formName, orders, trackingNumbers, counterUpdates } = req.body;
+
+        if (!formName || !Array.isArray(orders) || orders.length === 0 || !Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
+            return res.status(400).json({ message: 'Invalid form data' });
+        }
+
+        const restrictionMessage = getPharmacyFormSaveRestriction(formType);
+        if (restrictionMessage) {
+            return res.status(403).json({ message: restrictionMessage });
+        }
+
+        const allowedCounterFields = ['STD', 'EXP', 'IMM', 'TTG', 'KB'];
+        const safeCounterUpdates = {};
+        if (counterUpdates && typeof counterUpdates === 'object') {
+            allowedCounterFields.forEach(field => {
+                if (typeof counterUpdates[field] === 'number') {
+                    safeCounterUpdates[field] = counterUpdates[field];
+                }
+            });
+        }
+
+        await ORDERS.updateMany(
+            { doTrackingNumber: { $in: trackingNumbers } },
+            { $set: { pharmacyFormCreated: 'Yes' } }
+        );
+
+        await PHARMACYFORMCOUNTER.updateOne(
+            {},
+            { $set: { ...safeCounterUpdates, datetimeUpdated: new Date() } },
+            { upsert: true }
+        );
+
+        const newBatch = await PharmacyFormBatch.create({
+            formName,
+            formDate: new Date(),
+            createdBy: (req.user.name || '').toUpperCase(),
+            orders,
+        });
+
+        res.status(200).json({ message: 'Form data saved successfully', id: newBatch._id });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Failed to save Form data' });
+    }
+});
+
+function derivePharmacyFormFor(orders) {
+    const prefixOrder = ['S', 'E', 'IMM', 'T', 'K'];
+    const labelMap = { S: 'STD', E: 'EXP', IMM: 'IMM', T: 'TTG', K: 'KB' };
+    const present = new Set();
+
+    (orders || []).forEach(order => {
+        const match = /^([A-Z]+)/.exec(order.formNumber || '');
+        if (match) present.add(match[1]);
+    });
+
+    return prefixOrder.filter(p => present.has(p)).map(p => labelMap[p]).join(' ');
+}
+
+function derivePharmacyBatchNo(formName) {
+    const match = /\sB(\d+)\s/.exec(formName || '');
+    return match ? match[1] : 'N/A';
+}
+
+// When a batch mixes delivery codes (e.g. STD+EXP+IMM), show the first/last form number of each
+// code present, in a fixed STD/EXP/IMM/TTG/KB order, rather than just the first/last of the whole array.
+function derivePharmacyFirstLastNo(orders) {
+    const prefixOrder = ['S', 'E', 'IMM', 'T', 'K'];
+    const firsts = [];
+    const lasts = [];
+
+    prefixOrder.forEach(prefix => {
+        const regex = new RegExp('^' + prefix + '\\d+$');
+        const matching = (orders || []).filter(order => regex.test(order.formNumber || ''));
+        if (matching.length) {
+            firsts.push(matching[0].formNumber);
+            lasts.push(matching[matching.length - 1].formNumber);
+        }
+    });
+
+    return { firstNo: firsts.join(', '), lastNo: lasts.join(', ') };
+}
+
+app.get('/pharmacyformlist', ensureAuthenticated, ensureMOHForm, async (req, res) => {
+    try {
+        const forms = await PharmacyFormBatch.find({}).sort({ formDate: -1 });
+
+        const rows = forms.map(form => {
+            const { firstNo, lastNo } = derivePharmacyFirstLastNo(form.orders);
+            return {
+                _id: form._id,
+                formName: form.formName,
+                formFor: derivePharmacyFormFor(form.orders),
+                createdBy: form.createdBy,
+                formDateDisplay: moment(form.formDate).format('DD.MM.YYYY'),
+                batchNo: derivePharmacyBatchNo(form.formName),
+                numberOfForms: form.orders.length,
+                firstNo,
+                lastNo,
+                trackingNumbers: form.orders.map(order => order.doTrackingNumber).join(' '),
+            };
+        });
+
+        res.render('pharmacyformlist', { forms: rows, user: req.user });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to fetch Pharmacy Form Batch data');
+    }
+});
+
+app.get('/api/pharmacyformlist/view/:id', ensureAuthenticated, ensureMOHForm, async (req, res) => {
+    try {
+        const form = await PharmacyFormBatch.findById(req.params.id);
+
+        if (!form) {
+            return res.status(404).json({ error: 'Form not found' });
+        }
+
+        res.json({
+            formName: form.formName,
+            formDate: form.formDate,
+            createdBy: form.createdBy,
+            orders: form.orders,
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Failed to fetch Form data' });
+    }
+});
+
+app.get('/deletePharmacyFormBatch/:id', ensureAuthenticated, ensureMOHForm, async (req, res) => {
+    try {
+        const deletedForm = await PharmacyFormBatch.findByIdAndDelete(req.params.id);
+
+        if (deletedForm) {
+            res.redirect('/pharmacyformlist');
+        } else {
+            res.status(404).send('Pharmacy Form Batch not found');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Failed to delete Pharmacy Form Batch');
     }
 });
 

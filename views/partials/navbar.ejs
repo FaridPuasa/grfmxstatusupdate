@@ -71,19 +71,21 @@
                   <% } %>
                   <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                     <div class="dropdown-divider"></div>
-                    <div class="dropdown-header">POD (New)</div>
+                    <div class="dropdown-header">POD</div>
                     <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                   <% } %>
                   <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/listPOD">Saved POD</a>
                     <% } %>
+                    <!--
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD (Legacy)</div>
                     <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
                     <a class="dropdown-item" href="/listofnoncodPod">EWE/PDU/MGLOBAL</a>
                     <a class="dropdown-item" href="/listofldPod">LD/Pure51/KPT/ICARUS</a>
                     <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
+                    -->
                   <% } %>
                 </div>
               </li>
@@ -98,15 +100,33 @@
                   <% } %>
                   <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
+                    <!--
                     <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms</a>
+                    -->
+                    <a class="dropdown-item" href="/pharmacyformgenerator">Form Generator</a>
+                    <a class="dropdown-item" href="/pharmacyformlist">Forms (New)</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms (Old)</a>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">Warga Emas</div>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
+                  <% } %>
+                </div>
+              </li>
+            <% } %>
+            <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="desktopOthersDropdown" role="button"
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Others</a>
+                <div class="dropdown-menu" aria-labelledby="desktopOthersDropdown">
+                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+                    <a class="dropdown-item" href="https://www.vehicle.gorushbn.com/">Fleet System</a>
+                  <% } %>
+                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn'].includes(user.email)) { %>
+                    <a class="dropdown-item" href="https://analyticsdispatch.gorushbn.com/">Dispatch Analytics</a>
                   <% } %>
                 </div>
               </li>
@@ -164,19 +184,21 @@
                   <% } %>
                   <% if (['cs', 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                     <div class="dropdown-divider"></div>
-                    <div class="dropdown-header">POD (New)</div>
+                    <div class="dropdown-header">POD</div>
                     <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                     <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
                   <a class="dropdown-item" href="/listPOD">Saved POD</a>
                   <% } %>
                   <% } %>
+                    <!--
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD (Legacy)</div>
                     <a class="dropdown-item" href="/listofpharmacyPod">Pharmacy</a>
                     <a class="dropdown-item" href="/listofnoncodPod">EWE/PDU/MGLOBAL</a>
                     <a class="dropdown-item" href="/listofldPod">LD/Pure51/KPT/ICARUS</a>
                     <a class="dropdown-item" href="/listofcbslPod">Cross Border Service (Limbang)</a>
+                    -->
                   <% } %>
                 </div>
               </li>
@@ -191,15 +213,33 @@
                   <% } %>
                   <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
+                    <!--
                     <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms</a>
+                    -->
+                    <a class="dropdown-item" href="/pharmacyformgenerator">Form Generator</a>
+                    <a class="dropdown-item" href="/pharmacyformlist">Forms (New)</a>
+                    <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms (Old)</a>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">Warga Emas</div>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
+                  <% } %>
+                </div>
+              </li>
+            <% } %>
+            <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="mobileOthersDropdown" role="button"
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Others</a>
+                <div class="dropdown-menu" aria-labelledby="mobileOthersDropdown">
+                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+                    <a class="dropdown-item" href="https://www.vehicle.gorushbn.com/">Fleet System</a>
+                  <% } %>
+                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn'].includes(user.email)) { %>
+                    <a class="dropdown-item" href="https://analyticsdispatch.gorushbn.com/">Dispatch Analytics</a>
                   <% } %>
                 </div>
               </li>

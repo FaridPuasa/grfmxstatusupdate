@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy Form Generator</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.16.9/dist/xlsx.full.min.js"></script>
+
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .button-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #6e9e9e;
+            font-weight: bold;
+        }
+
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        .navbar {
+            background-color: transparent;
+        }
+
+        .container-bg {
+            background-color: #333;
+        }
+
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            max-height: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                height: 30px;
+                max-height: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo {
+                height: 25px;
+                max-height: 25px;
+            }
+        }
+    </style>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+
+<body>
+    <div class="container-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <%- include('partials/navbar') %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="container mt-4">
+        <h1 class="text-center mt-4">Pharmacy Form Generator</h1>
+
+        <% if (!results && !noResultsMessage) { %>
+            <form method="POST" action="/pharmacyformgenerator">
+                <div class="form-group col-md-4 mx-auto">
+                    <label for="formType">Select Form Type</label>
+                    <select class="form-control" id="formType" name="formType" required
+                        onchange="document.getElementById('generateBtn').style.display = this.value ? 'inline-block' : 'none';">
+                        <option value="">-- Select --</option>
+                        <option value="1">STD, EXP &amp; IMM</option>
+                        <option value="2">IMM</option>
+                        <option value="3">TTG</option>
+                        <option value="4">KB</option>
+                    </select>
+                </div>
+                <div class="text-center mt-3">
+                    <button type="submit" id="generateBtn" class="btn btn-primary" style="display:none;">Generate</button>
+                </div>
+            </form>
+        <% } %>
+
+        <% if (noResultsMessage) { %>
+            <div class="alert alert-warning text-center mt-3">
+                <%= noResultsMessage %>
+            </div>
+            <div class="text-center">
+                <a href="/pharmacyformgenerator" class="btn btn-secondary">Back</a>
+            </div>
+        <% } %>
+
+        <% if (results) { %>
+            <h5 class="text-center mt-3"><%= results.formName %></h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Form Number</th>
+                            <th>Tracking No.</th>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Area</th>
+                            <th>BruHIMS No</th>
+                            <th>IC No</th>
+                            <th>Phone No</th>
+                            <th>Additional Phone No</th>
+                            <th>Remark</th>
+                            <th>Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% results.orders.forEach(function(order) { %>
+                            <tr>
+                                <td><%= results.dateDisplay %></td>
+                                <td><%= order.formNumber %></td>
+                                <td id="trackingNumber"><%= order.doTrackingNumber %></td>
+                                <td><%= order.receiverName %></td>
+                                <td><%= order.receiverAddress %></td>
+                                <td><%= order.area %></td>
+                                <td><%= order.patientNumber %></td>
+                                <td style="mso-number-format:'\@';"><%= order.icPassNum %></td>
+                                <td><%= order.receiverPhoneNumber %></td>
+                                <td><%= order.additionalPhoneNumber %></td>
+                                <td><%= order.remarks %></td>
+                                <td><%= order.deliveryTypeCode %></td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="button-container">
+                <button id="saveButton" class="btn btn-success">Save Form</button>
+                <button id="exportExcelButton" class="btn btn-success" style="display:none;">Export Excel</button>
+                <button id="resetButton" class="btn btn-secondary">Reset</button>
+                <a id="downloadTemplateLink" href="/templates/PRINT%20PHARMACY%20ORDERS%20TEMPLATE.docx"
+                    class="btn btn-info" download="PRINT PHARMACY ORDERS.docx" style="display:none;">Download Template</a>
+            </div>
+        <% } %>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <% if (results) { %>
+        <script>
+            const formPayload = <%- JSON.stringify(results) %>;
+
+            document.getElementById('saveButton').addEventListener('click', function () {
+                if (!confirm('Are you sure you want to save this list?')) {
+                    return;
+                }
+
+                fetch('/api/pharmacyformgenerator/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formPayload)
+                })
+                    .then(function (response) {
+                        if (response.ok) {
+                            document.getElementById('saveButton').style.display = 'none';
+                            document.getElementById('exportExcelButton').style.display = 'inline-block';
+                            document.getElementById('downloadTemplateLink').style.display = 'inline-block';
+                            alert('Form data saved successfully!');
+                        } else {
+                            response.json().then(function (data) {
+                                alert('Failed to save Form data: ' + (data.message || ''));
+                            }).catch(function () {
+                                alert('Failed to save Form data.');
+                            });
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error('Error:', error);
+                        alert('Failed to save Form data.');
+                    });
+            });
+
+            document.getElementById('exportExcelButton').addEventListener('click', function () {
+                const wb = XLSX.utils.book_new();
+                const table = document.querySelector('#resultsTable');
+                const ws = XLSX.utils.table_to_sheet(table, { raw: true });
+
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                    // Force Date column (0) to plain text so Excel doesn't reinterpret "dd.mm.yyyy" as a date/time value
+                    const dateCellRef = XLSX.utils.encode_cell({ c: 0, r: R });
+                    const dateCell = ws[dateCellRef];
+                    if (dateCell && typeof dateCell.v !== 'undefined') {
+                        dateCell.t = 's';
+                        dateCell.v = dateCell.v.toString();
+                    }
+
+                    // Force IC No column (7) to text and keep leading zeros
+                    const icCellRef = XLSX.utils.encode_cell({ c: 7, r: R });
+                    const icCell = ws[icCellRef];
+                    if (icCell && typeof icCell.v !== 'undefined') {
+                        icCell.t = 's';
+                        icCell.v = icCell.v.toString().padStart(8, '0');
+                    }
+                }
+
+                XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+                XLSX.writeFile(wb, formPayload.formName + '.xlsx');
+            });
+
+            document.getElementById('resetButton').addEventListener('click', function () {
+                if (!confirm('Are you sure you want to reset? Any unsaved list will be lost.')) {
+                    return;
+                }
+                window.location.href = '/pharmacyformgenerator';
+            });
+        </script>
+    <% } %>
+</body>
+
+</html>
