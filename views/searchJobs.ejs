@@ -1369,8 +1369,11 @@ $(document).ready(function() {
           setManifestHeaders(table);
         }
       },
-      error: function() {
-        alert('Error fetching jobs');
+      error: function(xhr) {
+        const msg = xhr.responseJSON && xhr.responseJSON.error
+          ? xhr.responseJSON.error
+          : 'Error fetching jobs';
+        alert(msg);
       },
       complete: function() { $('#loadingOverlay').hide(); }
     });
@@ -1393,7 +1396,7 @@ $(document).ready(function() {
     const currentTime = moment().hour();
 
     function isExpressAvailable() {
-      if (currentDay === 4 && currentTime >= 11) return false; 
+      if (currentDay === 4 && currentTime >= 11) return false;
       if (currentDay === 5 || currentDay === 6) return false;
       return true;
     }

@@ -111,4 +111,23 @@ const orderSchema = new mongoose.Schema({
     podSource: String        // 'detrack' or other source
 }, { collection: 'orders' });
 
+// Indexes for /searchJobs filters (see buildQuery in index.js) — without these,
+// every search does a full collection scan and can exceed Heroku's 30s router timeout.
+orderSchema.index({ doTrackingNumber: 1 });
+orderSchema.index({ parcelTrackingNum: 1 });
+orderSchema.index({ mawbNo: 1 });
+orderSchema.index({ receiverPostalCode: 1 });
+orderSchema.index({ icPassNum: 1 });
+orderSchema.index({ patientNumber: 1 });
+orderSchema.index({ jobMethod: 1 });
+orderSchema.index({ product: 1 });
+orderSchema.index({ assignedTo: 1 });
+orderSchema.index({ area: 1 });
+orderSchema.index({ currentStatus: 1 });
+orderSchema.index({ latestReason: 1 });
+orderSchema.index({ paymentMethod: 1 });
+orderSchema.index({ latestLocation: 1 });
+orderSchema.index({ jobDate: 1 });
+orderSchema.index({ creationDate: 1 });
+
 module.exports = orderSchema; // schema only

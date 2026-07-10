@@ -2726,15 +2726,44 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
         const filters = req.body;
         const query = buildQuery(filters);
 
+        if (Object.keys(query).length === 0) {
+            return res.status(400).json({ error: 'Please enter at least one search filter.' });
+        }
+
         const cacheKey = JSON.stringify(query);
         if (searchJobsCache.has(cacheKey)) {
             return res.json(searchJobsCache.get(cacheKey));
         }
 
-        // Fetch from DB
-        const orders = await ORDERS.find(query).sort({ _id: -1 }).lean();
+        // Fetch from DB — project only the fields the table below actually uses.
+        // Notably excludes podBase64/podBase64_2/podBase64_3/history, which can be
+        // large per document and were previously pulled over the wire for nothing.
+        const SEARCH_RESULT_PROJECTION = {
+            doTrackingNumber: 1, product: 1, currentStatus: 1, latestLocation: 1,
+            warehouseEntry: 1, warehouseEntryDateTime: 1, area: 1, jobMethod: 1,
+            jobDate: 1, assignedTo: 1, paymentMethod: 1, paymentAmount: 1,
+            receiverName: 1, receiverAddress: 1, receiverPostalCode: 1,
+            receiverPhoneNumber: 1, additionalPhoneNumber: 1, creationDate: 1,
+            remarks: 1, grRemark: 1, mawbNo: 1, parcelTrackingNum: 1, icPassNum: 1,
+            patientNumber: 1, screenshotInvoice: 1, cargoPrice: 1, items: 1,
+            parcelWeight: 1, attempt: 1
+        };
+        // No .sort() here on purpose: sorting by _id forces Mongo to fetch every
+        // matching document before it can apply a limit (confirmed ~17x slower
+        // on a jobDate-range search), and the results table re-sorts client-side
+        // anyway (see DataTables `order` option in searchJobs.ejs).
+        const orders = await ORDERS.find(query, SEARCH_RESULT_PROJECTION)
+            .maxTimeMS(20000)
+            .lean();
 
         const today = new Date();
+        const todayStr = today.toISOString().slice(0, 10); // matches <input type="date"> value format
+
+        // Searches bounded to a job date strictly before today won't have their
+        // statuses change anymore, so they're safe to cache far longer than the
+        // 5-minute default used for searches that can include today's live jobs.
+        const isHistoricalSearch = !!(filters.jobDateTo && filters.jobDateTo < todayStr);
+        const cacheTTL = isHistoricalSearch ? 3600 : 300;
 
         // Flatten objects for DataTable and calculate Age
         const formattedOrders = orders.map(o => {
@@ -2848,12 +2877,15 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
             };
         });
 
-        searchJobsCache.set(cacheKey, formattedOrders);
+        searchJobsCache.set(cacheKey, formattedOrders, cacheTTL);
 
         return res.json(formattedOrders);
 
     } catch (err) {
         console.error(err);
+        if (err.code === 50 || /exceeded time limit/i.test(err.message || '')) {
+            return res.status(504).json({ error: 'Search took too long — please narrow your filters (e.g. add a date range) and try again.' });
+        }
         return res.status(500).json({ error: 'Server Error' });
     }
 });
