@@ -4728,7 +4728,7 @@ app.get('/pharmacyformlist', ensureAuthenticated, ensureMOHForm, async (req, res
                 formName: form.formName,
                 formFor: derivePharmacyFormFor(form.orders),
                 createdBy: form.createdBy,
-                formDateDisplay: moment(form.formDate).format('DD.MM.YYYY'),
+                formDateDisplay: pharmacyFormBrunei(form.formDate).format('DD.MM.YYYY'),
                 batchNo: derivePharmacyBatchNo(form.formName),
                 numberOfForms: form.orders.length,
                 firstNo,
