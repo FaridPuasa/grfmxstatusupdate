@@ -4506,7 +4506,7 @@ async function fetchEligiblePharmacyOrders(sendOrderTo, deliveryTypeCodes) {
     const withParsedDate = rawOrders
         .map(order => ({
             order,
-            parsedDate: moment(order.dateTimeSubmission, 'DD-MM-YYYY hh:mm a', true)
+            parsedDate: moment(order.dateTimeSubmission, 'DD-MM-YYYY h:m a', true)
         }))
         .filter(entry => entry.parsedDate.isValid() && now.diff(entry.parsedDate, 'days') <= 7);
 
