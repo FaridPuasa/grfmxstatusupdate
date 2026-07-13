@@ -85,7 +85,14 @@ const completedJobsCache = new NodeCache({ stdTTL: 60 }); // 1 min
 const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min
 
 // Add these new caches for warehouse report
-const warehouseReportCache = new NodeCache({ stdTTL: 60 }); // 1 min initial TTL
+// stdTTL: 0 = entries never auto-expire from node-cache. Freshness is governed
+// entirely by the app's own timestamp check below (isStale after 5 min, with
+// background refresh) plus the manual /api/clear-warehouse-cache endpoint. A
+// short node-cache TTL here would evict entries out from under that logic,
+// forcing a synchronous regenerate on the request thread far more often than
+// intended - risky since that path can take 15-30s and Heroku's router hard-
+// times-out requests at 30s.
+const warehouseReportCache = new NodeCache({ stdTTL: 0 });
 const pendingRefreshes = new Map(); // Track background refreshes
 
 // ==================================================
@@ -1881,6 +1888,39 @@ ${allAreas.map(a => `<th>${a}</th>`).join('')}
     return htmlParts.join('');
 }
 
+// Kicks off generateWarehouseReport in the background (or reuses an already
+// in-flight run for the same date) and returns the promise. Callers race this
+// against a short grace period instead of awaiting it directly, so a slow
+// generation never holds an HTTP request open long enough to hit Heroku's
+// router-level 30s timeout (that timeout is enforced outside the app and
+// can't be worked around with req/res timeout settings).
+function triggerWarehouseGeneration(date, cacheKey) {
+    if (pendingRefreshes.has(cacheKey)) return pendingRefreshes.get(cacheKey);
+
+    const genPromise = (async () => {
+        try {
+            const freshData = await generateWarehouseReport(date);
+            warehouseReportCache.set(cacheKey, freshData);
+            warehouseReportCache.set(`${cacheKey}_timestamp`, Date.now());
+            warehouseReportCache.del(`${cacheKey}_error`);
+            console.log(`[Cache] Warehouse report generated for ${date}`);
+            return freshData;
+        } catch (err) {
+            console.error(`[Cache] Warehouse report generation failed for ${date}:`, err);
+            // Short-lived error marker so polling clients can surface the failure
+            // instead of polling forever once this pending entry is cleared below.
+            warehouseReportCache.set(`${cacheKey}_error`, err.message || 'Failed to generate warehouse report', 300);
+            throw err;
+        } finally {
+            pendingRefreshes.delete(cacheKey);
+        }
+    })();
+
+    pendingRefreshes.set(cacheKey, genPromise);
+    genPromise.catch(() => {}); // avoid unhandled rejection when no caller awaits this in time
+    return genPromise;
+}
+
 // Main endpoint with Stale-While-Revalidate caching
 app.post('/api/warehouseTableGenerate', async (req, res) => {
     const { date } = req.body;
@@ -1890,82 +1930,83 @@ app.post('/api/warehouseTableGenerate', async (req, res) => {
 
     const cacheKey = `warehouse_${date}`;
     const cachedData = warehouseReportCache.get(cacheKey);
-
-    // Check if cache exists and get its age
     const cacheCreatedAt = warehouseReportCache.get(`${cacheKey}_timestamp`);
     const cacheAge = cacheCreatedAt ? Date.now() - cacheCreatedAt : null;
     const isStale = cacheAge !== null && cacheAge > 300000; // 5 minutes = 300,000ms
 
-    // If we have cached data and it's not stale OR we're already refreshing
-    if (cachedData && (!isStale || pendingRefreshes.has(cacheKey))) {
-        // Return cached data immediately
+    if (cachedData && !isStale) {
         const cacheAgeSeconds = Math.floor(cacheAge / 1000);
-        res.setHeader('X-Cache', isStale ? 'STALE' : 'HIT');
+        res.setHeader('X-Cache', 'HIT');
         res.setHeader('X-Cache-Age', `${cacheAgeSeconds}s`);
-
-        console.log(`[Cache] Returning ${isStale ? 'STALE' : 'FRESH'} cached data for ${date} (age: ${cacheAgeSeconds}s)`);
-
-        // If stale and not already refreshing, trigger background refresh
-        if (isStale && !pendingRefreshes.has(cacheKey)) {
-            console.log(`[Cache] Triggering background refresh for ${date}`);
-
-            const refreshPromise = (async () => {
-                try {
-                    const freshData = await generateWarehouseReport(date);
-                    warehouseReportCache.set(cacheKey, freshData);
-                    warehouseReportCache.set(`${cacheKey}_timestamp`, Date.now());
-                    console.log(`[Cache] Background refresh completed for ${date}`);
-                    return freshData;
-                } catch (err) {
-                    console.error(`[Cache] Background refresh failed for ${date}:`, err);
-                    return null;
-                } finally {
-                    pendingRefreshes.delete(cacheKey);
-                }
-            })();
-
-            pendingRefreshes.set(cacheKey, refreshPromise);
-
-            // Don't await - let it run in background
-            refreshPromise.catch(err => console.error('Background refresh error:', err));
-        }
-
         return res.send(cachedData);
     }
 
-    // Check if there's a pending refresh we can wait for
-    if (pendingRefreshes.has(cacheKey)) {
-        console.log(`[Cache] Waiting for pending refresh for ${date}`);
-        try {
-            const freshData = await pendingRefreshes.get(cacheKey);
-            if (freshData) {
-                res.setHeader('X-Cache', 'PENDING');
-                return res.send(freshData);
-            }
-        } catch (err) {
-            console.error(`[Cache] Pending refresh failed:`, err);
+    if (cachedData && isStale) {
+        // Serve stale data immediately; refresh in the background regardless of
+        // whether a refresh for this date is already in flight.
+        const cacheAgeSeconds = Math.floor(cacheAge / 1000);
+        res.setHeader('X-Cache', 'STALE');
+        res.setHeader('X-Cache-Age', `${cacheAgeSeconds}s`);
+        console.log(`[Cache] Triggering background refresh for ${date}`);
+        triggerWarehouseGeneration(date, cacheKey).catch(() => {});
+        return res.send(cachedData);
+    }
+
+    // No usable cache at all - kick off (or reuse) generation, but only wait a
+    // short grace period here. If it's not done in time, tell the client to
+    // poll /api/warehouseTableGenerate/status instead of blocking the request.
+    console.log(`[Cache] No cache found for ${date}, generating fresh report`);
+    const genPromise = triggerWarehouseGeneration(date, cacheKey);
+    const GRACE_MS = 8000;
+    const timedOut = Symbol('timed-out');
+
+    try {
+        const result = await Promise.race([
+            genPromise,
+            new Promise(resolve => setTimeout(() => resolve(timedOut), GRACE_MS))
+        ]);
+
+        if (result === timedOut) {
+            res.setHeader('X-Cache', 'MISS');
+            return res.status(202).json({ pending: true, date });
+        }
+
+        res.setHeader('X-Cache', 'MISS');
+        res.setHeader('Cache-Control', 'private, max-age=60');
+        return res.send(result);
+    } catch (err) {
+        console.error('Error generating warehouse report:', err);
+        return res.status(500).send(`<div class="alert alert-danger">Error generating warehouse report: ${err.message}</div>`);
+    }
+});
+
+// Polling endpoint: client hits this every few seconds after a 202 pending
+// response until the report is ready or an error is recorded.
+app.get('/api/warehouseTableGenerate/status', async (req, res) => {
+    const { date } = req.query;
+    if (!date) {
+        return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+    }
+
+    const cacheKey = `warehouse_${date}`;
+    const cachedData = warehouseReportCache.get(cacheKey);
+
+    if (cachedData) {
+        const cacheCreatedAt = warehouseReportCache.get(`${cacheKey}_timestamp`);
+        const cacheAge = cacheCreatedAt ? Date.now() - cacheCreatedAt : null;
+        res.setHeader('X-Cache', 'READY');
+        if (cacheAge !== null) res.setHeader('X-Cache-Age', `${Math.floor(cacheAge / 1000)}s`);
+        return res.send(cachedData);
+    }
+
+    if (!pendingRefreshes.has(cacheKey)) {
+        const errorMsg = warehouseReportCache.get(`${cacheKey}_error`);
+        if (errorMsg) {
+            return res.status(500).json({ error: errorMsg });
         }
     }
 
-    // No cache at all - generate fresh data
-    console.log(`[Cache] No cache found for ${date}, generating fresh report`);
-    res.setHeader('X-Cache', 'MISS');
-
-    try {
-        const result = await generateWarehouseReport(date);
-
-        // Store in cache
-        warehouseReportCache.set(cacheKey, result);
-        warehouseReportCache.set(`${cacheKey}_timestamp`, Date.now());
-
-        // Set response cache headers for browser
-        res.setHeader('Cache-Control', 'private, max-age=60'); // Browser can cache for 1 minute
-
-        res.send(result);
-    } catch (err) {
-        console.error('Error generating warehouse report:', err);
-        res.status(500).send(`<div class="alert alert-danger">Error generating warehouse report: ${err.message}</div>`);
-    }
+    return res.status(202).json({ pending: true, date });
 });
 
 // Optional: Endpoint to manually clear cache for a specific date
@@ -1976,6 +2017,7 @@ app.post('/api/clear-warehouse-cache', ensureAuthenticated, async (req, res) => 
         const cacheKey = `warehouse_${date}`;
         warehouseReportCache.del(cacheKey);
         warehouseReportCache.del(`${cacheKey}_timestamp`);
+        warehouseReportCache.del(`${cacheKey}_error`);
         console.log(`[Cache] Cleared cache for ${date}`);
         res.json({ success: true, message: `Cache cleared for ${date}` });
     } else {
