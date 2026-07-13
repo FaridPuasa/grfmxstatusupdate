@@ -81,6 +81,7 @@ const NodeCache = require('node-cache');
 const urgentCache = new NodeCache({ stdTTL: 60 });   // 1 min
 const codBtCache = new NodeCache({ stdTTL: 600 });  // 10 min
 const grWebsiteCache = new NodeCache({ stdTTL: 60 });   // 1 min
+const completedJobsCache = new NodeCache({ stdTTL: 60 }); // 1 min
 const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min
 
 // Add these new caches for warehouse report
@@ -2154,13 +2155,29 @@ app.get('/api/completed-jobs', async (req, res) => {
         const dateParam = req.query.date;
         if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
 
+        const cached = completedJobsCache.get(dateParam);
+        if (cached) return res.json(cached);
+
         const startOfDay = moment(dateParam).startOf('day');
         const endOfDay = moment(dateParam).endOf('day');
 
-        // Fetch all orders with failed histories
+        // dateUpdated is stored as moment().format() (ISO string with a timezone offset), so we can't
+        // safely bound it with exact $gte/$lte on the day in Mongo without risking off-by-one errors at
+        // midnight. Instead, narrow with a generous +/-1 day lexicographic window on the same $elemMatch
+        // element (a buffer far wider than any real timezone offset), then apply the exact isBetween check
+        // below unchanged. Without this, the query fetched every order that ever had a failed history entry
+        // across all time, regardless of the selected date.
+        const roughLowerBound = moment(dateParam).subtract(1, 'day').format('YYYY-MM-DD');
+        const roughUpperBound = moment(dateParam).add(2, 'day').format('YYYY-MM-DD');
+
         const orders = await ORDERS.find({
             product: { $nin: [null, ""] },
-            "history.statusHistory": { $in: ["Failed Delivery", "Failed Collection"] }
+            history: {
+                $elemMatch: {
+                    statusHistory: { $in: ["Failed Delivery", "Failed Collection"] },
+                    dateUpdated: { $gte: roughLowerBound, $lt: roughUpperBound }
+                }
+            }
         }).lean();
 
         const failedJobs = [];
@@ -2247,6 +2264,8 @@ app.get('/api/completed-jobs', async (req, res) => {
                 failed,
             };
         });
+
+        completedJobsCache.set(dateParam, result);
 
         return res.json(result);
 
@@ -2929,14 +2948,21 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
         );
 
+        // Precompute age once per order — categorize() below runs 5x over allOrders (urgent/overdue/archived/
+        // maxAttempt/plannedSelfCollect) and groupByCurrentLocation runs once more; without this each order's
+        // moment(refDate).diff() would be recomputed up to 6 times.
+        allOrders.forEach(order => {
+            const refDate = order.warehouseEntryDateTime || order.creationDate;
+            order._age = refDate ? now.diff(moment(refDate), 'days') : null;
+        });
+
         const categorize = (orders, filterFn) => {
             const map = {};
             orders.forEach(order => {
-                const { product, jobMethod, warehouseEntryDateTime, creationDate } = order;
+                const { product, jobMethod } = order;
                 const method = jobMethod || 'Unknown';
-                const refDate = warehouseEntryDateTime || creationDate;
-                if (!refDate) return;
-                const age = now.diff(moment(refDate), 'days');
+                const age = order._age;
+                if (age === null || age === undefined) return;
                 if (!filterFn(order, age)) return;
                 if (!map[product]) map[product] = {};
                 if (!map[product][method]) map[product][method] = [];
@@ -2971,10 +2997,9 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                     const product = order.product || 'Unknown';
                     const area = order.area || 'Unknown';
 
-                    const refDate = order.warehouseEntryDateTime || order.creationDate;
-                    const age = refDate ? now.diff(moment(refDate), 'days') : '-';
+                    const age = order._age;
 
-                    if (age === '-' || age >= 30) return;
+                    if (age === null || age === undefined || age >= 30) return;
 
                     if (!map[location]) map[location] = {};
                     if (!map[location][product]) map[location][product] = {};

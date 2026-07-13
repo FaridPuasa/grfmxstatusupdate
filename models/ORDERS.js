@@ -129,5 +129,6 @@ orderSchema.index({ paymentMethod: 1 });
 orderSchema.index({ latestLocation: 1 });
 orderSchema.index({ jobDate: 1 });
 orderSchema.index({ creationDate: 1 });
+orderSchema.index({ 'history.statusHistory': 1, 'history.dateUpdated': 1 });
 
 module.exports = orderSchema; // schema only
