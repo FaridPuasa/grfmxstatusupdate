@@ -979,7 +979,7 @@ app.post('/api/getEndOfDaySummary', async (req, res) => {
 
 app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
     try {
-        let { reportType, reportName, reportContent, assignedDispatchers, forceReplace } = req.body;
+        let { reportType, reportName, reportContent, assignedDispatchers, assignedFreelancers, forceReplace } = req.body;
 
         if (!reportType || !reportContent || !reportName) {
             return res.json({ success: false, message: 'Missing data' });
@@ -997,6 +997,17 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
             );
         } else {
             assignedDispatchers = [];
+        }
+
+        if (Array.isArray(assignedFreelancers)) {
+            assignedFreelancers = assignedFreelancers.filter(f =>
+                f &&
+                typeof f === 'object' &&
+                f.freelancerName &&
+                !f.freelancerName.toLowerCase().includes('grand total')
+            );
+        } else {
+            assignedFreelancers = [];
         }
 
         // --- Extract date from reportName for duplicate checking ---
@@ -1031,6 +1042,7 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
             existingReport.reportName = reportName;
             existingReport.reportContent = reportContent;
             existingReport.assignedDispatchers = assignedDispatchers;
+            existingReport.assignedFreelancers = assignedFreelancers;
             existingReport.createdBy = req.user.username || req.user.name || req.user.id || 'Unknown';
             existingReport.datetimeUpdated = new Date();
             await existingReport.save();
@@ -1043,6 +1055,7 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
             reportName,
             reportContent,
             assignedDispatchers,
+            assignedFreelancers,
             createdBy: req.user.username || req.user.name || req.user.id || 'Unknown',
             datetimeUpdated: new Date()
         });

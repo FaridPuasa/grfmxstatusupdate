@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Report Generator</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <style>
     #formSection {
       margin-top: 20px;
@@ -158,6 +158,7 @@
         <option value="Operation End of Day Report">Operation End of Day Report</option>
         <option value="Freelancer End of Day Report">Freelancer End of Day Report</option>
         <option value="Freelancer Job Completed Count Report">Freelancer Job Completed Count Report</option>
+        <option value="Freelancer Opening Report">Freelancer Opening Report</option>
       </select>
     </div>
 
@@ -334,6 +335,43 @@
       </div>
     </div>
 
+    <div id="freelancerOpeningReportSection" class="hidden">
+      <div id="freelancerOpeningReportContainer">
+        <form id="freelancerOpeningForm">
+          <div class="row mb-3">
+            <div class="col-md-3">
+              <label for="freelancerOpeningDate" class="form-label">Date</label>
+              <input type="date" id="freelancerOpeningDate" name="freelancerOpeningDate" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label for="freelancerOpeningName" class="form-label">Freelancer</label>
+              <select id="freelancerOpeningName" class="form-select" required>
+                <option value="">-- Select Freelancer --</option>
+                <option value="Bob">Bob</option>
+                <option value="Ermi">Ermi</option>
+                <option value="Feeza">Feeza</option>
+                <option value="Ikha">Ikha</option>
+                <option value="Jon">Jon</option>
+                <option value="Qui">Qui</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <button type="button" class="btn btn-primary" id="freelancerOpeningGenerateBtn">Generate</button>
+            <button type="button" class="btn btn-success hidden" id="freelancerOpeningSaveBtn">Save</button>
+            <button type="button" class="btn btn-secondary hidden" id="freelancerOpeningPrintBtn">Print</button>
+            <button type="button" class="btn btn-danger hidden" id="freelancerOpeningResetBtn">Reset</button>
+          </div>
+        </form>
+
+        <div id="freelancerOpeningLogoHeader" class="text-center mb-3"></div>
+        <table id="freelancerOpeningTable" class="table table-bordered">
+          <thead id="freelancerOpeningHeader"></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
     <div id="loadingSpinner"
       style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.7); z-index:9999; justify-content: center; align-items: center;">
       <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
@@ -343,7 +381,7 @@
   </div>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://unpkg.com/bootstrap@5.0.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -425,11 +463,13 @@
       const freelancerReportDate = document.getElementById('freelancerReportDate');
       const freelancerJobCountStartDate = document.getElementById('freelancerJobCountStartDate');
       const freelancerJobCountEndDate = document.getElementById('freelancerJobCountEndDate');
+      const freelancerOpeningDate = document.getElementById('freelancerOpeningDate');
       configureDatePicker(freelancerJobCountStartDate);
       configureDatePicker(freelancerJobCountEndDate);
       configureDatePicker(morningReportDate);
       configureDatePicker(endOfDayReportDate);
       configureDatePicker(freelancerReportDate);
+      configureDatePicker(freelancerOpeningDate);
 
       // ======================= ELEMENTS =======================
       const reportTypeEl = document.getElementById('reportType');
@@ -578,6 +618,7 @@
         endOfDayReportSection.classList.add('hidden');
         freelancerEndOfDaySection.classList.add('hidden');
         freelancerJobCountSection.classList.add('hidden');
+        freelancerOpeningReportSection.classList.add('hidden');
 
         if (reportTypeEl.value === 'Operation Morning Report') {
           morningReportSection.classList.remove('hidden');
@@ -598,6 +639,16 @@
           freelancerJobCountSaveBtn.classList.add('hidden');
           freelancerJobCountPrintBtn.classList.add('hidden');
           freelancerJobCountResetBtn.classList.add('hidden');
+        } else if (reportTypeEl.value === 'Freelancer Opening Report') {
+          freelancerOpeningReportSection.classList.remove('hidden');
+          freelancerOpeningLogoHeader.innerHTML = '';
+          freelancerOpeningHeader.innerHTML = '';
+          freelancerOpeningTable.querySelector('tbody').innerHTML = '';
+          freelancerOpeningDate.removeAttribute('disabled');
+          freelancerOpeningGenerateBtn.style.display = 'block';
+          freelancerOpeningSaveBtn.classList.add('hidden');
+          freelancerOpeningPrintBtn.classList.add('hidden');
+          freelancerOpeningResetBtn.classList.add('hidden');
         }
       });
 
@@ -928,6 +979,185 @@
       });
 
       freelancerJobCountResetBtn.addEventListener('click', () => {
+        if (confirm("Are you sure you want to reset the report?")) {
+          location.reload();
+        }
+      });
+
+      // ======================= FREELANCER OPENING REPORT =======================
+      const freelancerOpeningReportSection = document.getElementById('freelancerOpeningReportSection');
+      const freelancerOpeningName = document.getElementById('freelancerOpeningName');
+      const freelancerOpeningGenerateBtn = document.getElementById('freelancerOpeningGenerateBtn');
+      const freelancerOpeningSaveBtn = document.getElementById('freelancerOpeningSaveBtn');
+      const freelancerOpeningPrintBtn = document.getElementById('freelancerOpeningPrintBtn');
+      const freelancerOpeningResetBtn = document.getElementById('freelancerOpeningResetBtn');
+      const freelancerOpeningLogoHeader = document.getElementById('freelancerOpeningLogoHeader');
+      const freelancerOpeningTable = document.getElementById('freelancerOpeningTable');
+      const freelancerOpeningHeader = document.getElementById('freelancerOpeningHeader');
+      const freelancerOpeningBody = freelancerOpeningTable.querySelector('tbody');
+
+      function clearFreelancerOpeningReport() {
+        freelancerOpeningLogoHeader.innerHTML = '';
+        freelancerOpeningHeader.innerHTML = '';
+        freelancerOpeningBody.innerHTML = '';
+        freelancerOpeningDate.removeAttribute('disabled');
+      }
+
+      function updateFreelancerOpeningGrandTotal() {
+        const existingFooter = freelancerOpeningBody.querySelector('tr.grandTotal');
+        if (existingFooter) existingFooter.remove();
+        const grandTotal = Array.from(freelancerOpeningBody.querySelectorAll('tr'))
+          .filter(tr => !tr.classList.contains('grandTotal'))
+          .reduce((sum, tr) => sum + (parseInt(tr.children[3]?.innerText || 0, 10) || 0), 0);
+        const footerRow = document.createElement('tr');
+        footerRow.classList.add('grandTotal');
+        footerRow.style.fontWeight = 'bold';
+        footerRow.innerHTML = `<td colspan="3" style="text-align:right">Grand Total:</td><td>${grandTotal}</td><td></td>`;
+        freelancerOpeningBody.appendChild(footerRow);
+      }
+
+      freelancerOpeningGenerateBtn.addEventListener('click', async () => {
+        const date = freelancerOpeningDate.value;
+        const freelancer = freelancerOpeningName.value;
+        if (!date || !freelancer) { alert('Please pick a date and freelancer'); return; }
+        freelancerOpeningDate.setAttribute('disabled', 'true');
+        showLoading();
+        try {
+          const res = await fetch('/api/getDispatcherJobSummary', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dispatcher: freelancer, date })
+          });
+          const data = await res.json();
+          const formattedDate = new Date(date).toLocaleDateString('en-GB').replace(/\//g, '.');
+          const reportName = `Freelancer Opening Report ${formattedDate}`;
+          window.currentFreelancerOpeningReportName = reportName;
+          freelancerOpeningLogoHeader.innerHTML = `<img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;"><h2>${reportName}</h2>`;
+          freelancerOpeningHeader.innerHTML = `
+            <tr style="background:yellow;font-weight:bold;text-align:center;"><th colspan="5">Freelancer Assigned Tasks</th></tr>
+            <tr><th>Freelancer</th><th>Assigned Task</th><th>Area</th><th>Total Delivery</th><th>Action</th></tr>
+          `;
+          let assignedJobContent = '';
+          if (data.totalOrders > 0) {
+            assignedJobContent = Object.entries(data.productCounts).map(([p, c]) => `- Deliver ${getProductDisplayName(p)} (${c})`).join('\n');
+          }
+          const areaContent = data.totalOrders > 0 ? (data.areas.join(',') || '') : '';
+          const totalJobsCount = data.totalOrders || 0;
+          if (!assignedJobContent && totalJobsCount === 0) {
+            alert('No assigned jobs found for this freelancer on this date');
+            freelancerOpeningDate.removeAttribute('disabled');
+            hideLoading();
+            return;
+          }
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td contenteditable="true">${freelancer}</td>
+            <td contenteditable="true" style="white-space: pre-line;">${assignedJobContent}</td>
+            <td contenteditable="true">${areaContent}</td>
+            <td>${totalJobsCount}</td>
+            <td><button type="button" class="btn btn-danger btn-sm removeRow">Remove</button></td>
+          `;
+          row.querySelector('td:last-child').removeAttribute('contenteditable');
+          freelancerOpeningBody.appendChild(row);
+          row.querySelector('.removeRow').addEventListener('click', () => {
+            row.remove();
+            updateFreelancerOpeningGrandTotal();
+            if (freelancerOpeningBody.children.length === 0) clearFreelancerOpeningReport();
+          });
+          updateFreelancerOpeningGrandTotal();
+          freelancerOpeningName.value = '';
+          freelancerOpeningSaveBtn.classList.remove('hidden');
+          freelancerOpeningResetBtn.classList.remove('hidden');
+          freelancerOpeningPrintBtn.classList.add('hidden');
+        } catch (err) {
+          console.error(err);
+          alert('Failed to fetch job summary');
+        } finally { hideLoading(); }
+      });
+
+      freelancerOpeningSaveBtn.addEventListener('click', async () => {
+        if (freelancerOpeningBody.children.length === 0) {
+          alert('No report to save');
+          return;
+        }
+        showLoading();
+        const dateStr = freelancerOpeningDate.value;
+        const formattedDate = new Date(dateStr).toLocaleDateString('en-GB').replace(/\//g, '.');
+        const reportName = `Freelancer Opening Report ${formattedDate}`;
+        const assignedFreelancers = [];
+        Array.from(freelancerOpeningBody.querySelectorAll('tr')).forEach(row => {
+          if (row.classList.contains('grandTotal')) return;
+          const freelancerName = row.children[0]?.innerText.trim();
+          const assignedJob = row.children[1]?.innerText.trim();
+          const area = row.children[2]?.innerText.trim();
+          if (freelancerName) {
+            assignedFreelancers.push({ freelancerName, assignedJob: assignedJob || '', area: area || '' });
+          }
+        });
+        const reportHTML = `<div>${freelancerOpeningLogoHeader.outerHTML}</div><div>${freelancerOpeningTable.outerHTML}</div>`;
+        const reportType = reportTypeEl.value;
+        async function saveReport(forceReplace = false) {
+          try {
+            const res = await fetch('/api/saveReport', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reportType, reportContent: reportHTML, reportName, createdBy: userId, assignedFreelancers, forceReplace })
+            });
+            const result = await res.json();
+            if (result.success) {
+              alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+              freelancerOpeningSaveBtn.classList.add('hidden');
+              freelancerOpeningPrintBtn.classList.remove('hidden');
+            } else if (result.duplicate) {
+              const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+              if (confirmReplace) await saveReport(true);
+            } else {
+              alert('Failed to save report: ' + result.message);
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Error saving report');
+          } finally {
+            hideLoading();
+          }
+        }
+        await saveReport();
+      });
+
+      freelancerOpeningPrintBtn.addEventListener('click', () => {
+        showLoading();
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        const fileName = window.currentFreelancerOpeningReportName || `Freelancer Opening Report ${dd}.${mm}.${yyyy}`;
+        const tableClone = freelancerOpeningTable.cloneNode(true);
+        Array.from(tableClone.querySelectorAll('tr')).forEach(tr => {
+          const cells = tr.children;
+          if (cells.length > 1) tr.removeChild(cells[cells.length - 1]);
+        });
+        const style = `<style>
+          body { font-family: Arial, sans-serif; padding: 25px; }
+          h2 { text-align: center; margin: 10px 0 20px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+          th, td { border: 1px solid #000; padding: 6px 8px; font-size: 14px; text-align: center; vertical-align: middle; white-space: pre-line; }
+          th { font-weight: bold; }
+          thead tr:first-child th { background: yellow; }
+          img { display: block; margin: 0 auto; max-height: 80px; }
+          @media print { body { zoom: 90%; } }
+        </style>`;
+        const printHTML = `<html><head><title>${fileName}</title>${style}</head><body>${freelancerOpeningLogoHeader.outerHTML}${tableClone.outerHTML}</body></html>`;
+        printWindow.document.open();
+        printWindow.document.write(printHTML);
+        printWindow.document.close();
+        printWindow.onload = function () {
+          printWindow.document.title = fileName;
+          printWindow.focus();
+          printWindow.print();
+          hideLoading();
+        };
+      });
+
+      freelancerOpeningResetBtn.addEventListener('click', () => {
         if (confirm("Are you sure you want to reset the report?")) {
           location.reload();
         }

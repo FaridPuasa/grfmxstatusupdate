@@ -8,13 +8,20 @@ const dispatcherSchema = new mongoose.Schema({
   area: { type: String }           // optional, can be empty
 }, { _id: false });
 
+const freelancerSchema = new mongoose.Schema({
+  freelancerName: { type: String, required: true },
+  assignedJob: { type: String },
+  area: { type: String }
+}, { _id: false });
+
 const reportSchema = new mongoose.Schema({
   reportType: { type: String, required: true },
   reportName: { type: String, required: true },
   reportContent: { type: String, required: true },
   datetimeUpdated: { type: Date, default: Date.now },
   createdBy: { type: String, required: true },
-  assignedDispatchers: { type: [dispatcherSchema], default: [] }
+  assignedDispatchers: { type: [dispatcherSchema], default: [] },
+  assignedFreelancers: { type: [freelancerSchema], default: [] }
 }, { collection: 'reports' });
 
 module.exports = reportSchema;
