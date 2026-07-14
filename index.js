@@ -1081,6 +1081,60 @@ app.get('/reportGenerator', ensureAuthenticated, async (req, res) => {
     }
 });
 
+// Extracts the dd.mm.yyyy (or dd.mm.yyyy - dd.mm.yyyy range) date embedded in a reportName
+function extractReportDateDisplay(reportName) {
+    const matches = (reportName || '').match(/\d{1,2}\.\d{1,2}\.\d{4}/g);
+    if (!matches || matches.length === 0) return '';
+    return matches.length > 1 ? matches.join(' - ') : matches[0];
+}
+
+// Report List page
+app.get('/reportList', ensureAuthenticated, async (req, res) => {
+    try {
+        const reports = await REPORTS.find({}).sort({ datetimeUpdated: -1 }).lean();
+        const rows = reports.map(report => ({
+            _id: report._id,
+            reportType: report.reportType,
+            reportDateDisplay: extractReportDateDisplay(report.reportName),
+            createdBy: report.createdBy
+        }));
+        res.render('reportList', { reports: rows, user: req.user });
+    } catch (err) {
+        console.error('Error loading reportList page:', err);
+        res.status(500).send('Failed to load report list');
+    }
+});
+
+app.get('/api/reportList/view/:id', ensureAuthenticated, async (req, res) => {
+    try {
+        const report = await REPORTS.findById(req.params.id).lean();
+        if (!report) return res.status(404).json({ error: 'Report not found' });
+        res.json({
+            reportName: report.reportName,
+            reportType: report.reportType,
+            reportContent: report.reportContent,
+            createdBy: report.createdBy
+        });
+    } catch (err) {
+        console.error('Error fetching report:', err);
+        res.status(500).json({ error: 'Failed to fetch report' });
+    }
+});
+
+app.get('/deleteReport/:id', ensureAuthenticated, async (req, res) => {
+    try {
+        const deletedReport = await REPORTS.findByIdAndDelete(req.params.id);
+        if (deletedReport) {
+            res.redirect('/reportList');
+        } else {
+            res.status(404).send('Report not found');
+        }
+    } catch (err) {
+        console.error('Error deleting report:', err);
+        res.status(500).send('Failed to delete report: ' + err.message);
+    }
+});
+
 //yes
 app.post('/api/getMorningMileage', ensureAuthenticated, async (req, res) => {
     try {
