@@ -1074,9 +1074,14 @@ function renderDispatcherSummaryCards(data) {
     if (!container) return;
     container.innerHTML = '';
 
+    const totalFor = (dispatcher) => {
+        const d = data[dispatcher];
+        return (d.inProgress || []).length + (d.completed || []).length + (d.failed || []).length;
+    };
+
     const activeDispatchers = Object.keys(data)
         .filter(dispatcher => (data[dispatcher].inProgress || []).length > 0)
-        .sort((a, b) => data[b].inProgress.length - data[a].inProgress.length);
+        .sort((a, b) => totalFor(b) - totalFor(a));
 
     if (activeDispatchers.length === 0) {
         container.innerHTML = '<p class="text-muted mb-0">No active jobs right now.</p>';
