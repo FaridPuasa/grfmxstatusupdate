@@ -108,12 +108,7 @@
                 "ordering": false,  // Disable client-side sorting
                 "iDisplayLength": 10,  // Set the default number of entries to 100
                 "columns": [
-                    {
-                        "data": "_id",
-                        "render": function (data, type, row) {
-                            return `<a href="/formpharmacyDetail/${data}">${row.formName}</a>`;
-                        }
-                    },
+                    { "data": "formName" },
                     { "data": "mohForm" },
                     { "data": "formCreator" },
                     { "data": "formDate" },
@@ -127,7 +122,6 @@
                         "searchable": false,
                         "render": function (data) {
                             return `
-                <a href="/editPharmacyForm/${data}" class="btn btn-primary btn-sm">Edit</a>
                 <button class="btn btn-danger btn-sm" onclick="confirmDelete('${data}')">Delete</button>
             `;
                         }

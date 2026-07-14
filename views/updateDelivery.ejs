@@ -113,15 +113,15 @@
                         </optgroup>
                         <% if (['manager' , 'admin' ].includes(user.role)) { %>
                             <optgroup label="GDEX On Hold Warehouse Flow">
-                                <option value="H3">Oversized Shipment</option>
+                                <!-- <option value="H3">Oversized Shipment</option>
                                 <option value="H9">Reject By Airport</option>
                                 <option value="H10">Consignee Office Closed</option>
                                 <option value="H17">Damage Shipment</option>
-                                <option value="H18">DG Shipment</option>
+                                <option value="H18">DG Shipment</option> -->
                                 <option value="H19">Prohibited Shipment</option>
                                 <option value="H27">Pending Custom Declaration</option>
                                 <option value="H31">Shipment rejected/confiscated by customs</option>
-                                <option value="H32">AWB not clear</option>
+                                <!-- <option value="H32">AWB not clear</option> -->
                             </optgroup>
                             <optgroup label="GDEX Return">
                                 <option value="RSAL2">Return to Shipper</option>
@@ -434,7 +434,24 @@
             <div class="spinner-border" role="status">
                 <span class="sr-only">Loading...</span>
             </div>
-            <p>Loading...</p>
+            <p id="loadingMessage">Loading...</p>
+            <div class="progress" style="height: 24px; max-width: 500px; margin: 0 auto;">
+                <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
+            </div>
+        </div>
+
+        <div id="resultsSection" style="display: none;" class="mt-4">
+            <h3>Update Results</h3>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Tracking Number</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTableBody"></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary" onclick="location.reload()">New Update</button>
         </div>
     </main>
 
@@ -522,11 +539,92 @@
             const statusCodeSelect = document.getElementById('statusCode');
             const submitButton = document.getElementById('submitButton');
 
-            function disableSubmitButton(event) {
-                submitButton.disabled = true;
-                document.getElementById('loading').style.display = 'block';
+            const loadingDiv = document.getElementById('loading');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const progressBar = document.getElementById('progressBar');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsTableBody = document.getElementById('resultsTableBody');
+
+            function renderResults(processingResults) {
+                resultsTableBody.innerHTML = '';
+                (processingResults || []).forEach(r => {
+                    const row = document.createElement('tr');
+                    const idCell = document.createElement('td');
+                    idCell.textContent = r.consignmentID;
+                    const statusCell = document.createElement('td');
+                    statusCell.textContent = r.status;
+                    row.appendChild(idCell);
+                    row.appendChild(statusCell);
+                    resultsTableBody.appendChild(row);
+                });
+                resultsSection.style.display = 'block';
             }
-            document.querySelector('form').addEventListener('submit', disableSubmitButton);
+
+            function pollJobStatus(jobId) {
+                const pollTimer = setInterval(async () => {
+                    try {
+                        const res = await fetch(`/updateDelivery/status/${jobId}`);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const job = await res.json();
+
+                        const total = job.total || 0;
+                        const processed = job.processed || 0;
+                        const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                        progressBar.style.width = pct + '%';
+                        progressBar.textContent = pct + '%';
+                        loadingMessage.textContent = `Processing ${processed} of ${total}...`;
+
+                        if (job.status === 'completed') {
+                            clearInterval(pollTimer);
+                            loadingDiv.style.display = 'none';
+                            renderResults(job.processingResults);
+                        } else if (job.status === 'failed') {
+                            clearInterval(pollTimer);
+                            loadingDiv.style.display = 'none';
+                            renderResults(job.processingResults);
+                            alert('Update job failed: ' + (job.error || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        console.error('Error polling job status:', error);
+                    }
+                }, 2000);
+            }
+
+            document.querySelector('form').addEventListener('submit', async function (event) {
+                event.preventDefault();
+                submitButton.disabled = true;
+                loadingDiv.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                resultsSection.style.display = 'none';
+
+                try {
+                    const formData = new FormData(event.target);
+                    const payload = Object.fromEntries(formData.entries());
+
+                    const res = await fetch('/updateDelivery', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!res.ok) {
+                        const errBody = await res.json().catch(() => ({}));
+                        throw new Error(errBody.error || `HTTP ${res.status}`);
+                    }
+
+                    const result = await res.json();
+                    if (!result.jobId) throw new Error('No job ID received from server');
+
+                    loadingMessage.textContent = `Processing 0 of ${result.total}...`;
+                    pollJobStatus(result.jobId);
+                } catch (error) {
+                    console.error('Error submitting update:', error);
+                    loadingDiv.style.display = 'none';
+                    submitButton.disabled = false;
+                    alert('Error starting update job: ' + error.message);
+                }
+            });
 
             function updateFreelancerNameField() {
                 const selectedDispatcher = dispatchersField.value;

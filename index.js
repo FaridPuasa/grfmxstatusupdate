@@ -1,4 +1,4 @@
-// ==================================================
+﻿// ==================================================
 // 🌐 Environment & Core Modules
 // ==================================================
 require('dotenv').config();
@@ -170,10 +170,6 @@ vehicleConn.on('error', err => console.error('Vehicle DB connection error:', err
 // Main DB
 const USERS = mainConn.model('USERS', require('./models/USERS'));
 const ORDERS = mainConn.model('ORDERS', require('./models/ORDERS'));
-const PharmacyPOD = mainConn.model('PharmacyPOD', require('./models/PharmacyPOD'));
-const LDPOD = mainConn.model('LDPOD', require('./models/LDPOD'));
-const CBSLPOD = mainConn.model('CBSLPOD', require('./models/CBSLPOD'));
-const NONCODPOD = mainConn.model('NONCODPOD', require('./models/NONCODPOD'));
 const WAORDERS = mainConn.model('WAORDERS', require('./models/WAORDERS'));
 const PharmacyFORM = mainConn.model('PharmacyFORM', require('./models/PharmacyFORM'));
 const ORDERCOUNTER = mainConn.model('ORDERCOUNTER', require('./models/ORDERCOUNTER'));
@@ -4054,332 +4050,6 @@ app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (r
     }
 });
 
-app.get('/listofpharmacyMOHEXPOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
-    try {
-        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
-        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "EXP" })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-                'paymentMethod',
-                'dateTimeSubmission',
-                'membership',
-                'pharmacyFormCreated',
-                'sendOrderTo',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'paymentAmount',
-                'lastUpdatedBy',
-                'lastAssignedTo',
-                'deliveryType',
-                'jobType',
-                'jobMethod'
-            ])
-            .sort({ _id: -1 })
-            .limit(1000);
-
-        const totalRecords = orders.length;
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHEXPOrders', { orders, totalRecords, moment: moment, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.get('/listofpharmacyMOHSTDOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
-    try {
-        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
-        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "OPD" })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-                'paymentMethod',
-                'dateTimeSubmission',
-                'membership',
-                'pharmacyFormCreated',
-                'sendOrderTo',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'paymentAmount',
-                'lastUpdatedBy',
-                'lastAssignedTo',
-                'deliveryType',
-                'jobType',
-                'jobMethod'
-            ])
-            .sort({ _id: -1 })
-            .limit(1000);
-
-        const totalRecords = orders.length;
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHSTDOrders', { orders, totalRecords, moment: moment, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.post('/createPharmacyFormSuccess', ensureAuthenticated, ensureMOHForm, async (req, res) => {
-    try {
-        // Extract data from the form submission
-        const { dateOfForm, batchChoice, b2Start, mohForm } = req.body;
-
-        let sendOrderToQuery;
-        let deliveryTypeCodeQuery;
-
-        switch (mohForm) {
-            case 'STD':
-                sendOrderToQuery = 'OPD';
-                deliveryTypeCodeQuery = 'STD';
-                break;
-            case 'EXP':
-                sendOrderToQuery = 'OPD';
-                deliveryTypeCodeQuery = 'EXP';
-                break;
-            case 'IMM':
-                sendOrderToQuery = 'OPD';
-                deliveryTypeCodeQuery = 'IMM';
-                break;
-            case 'TTG':
-                sendOrderToQuery = 'PMMH';
-                deliveryTypeCodeQuery = 'STD';
-                break;
-            case 'KB':
-                sendOrderToQuery = 'SSBH';
-                deliveryTypeCodeQuery = 'STD';
-                break;
-            default:
-                sendOrderToQuery = null;
-                deliveryTypeCodeQuery = null;
-                break;
-        }
-
-        // Query the database to find orders with pharmacyFormCreated set to "No" and matching sendOrderTo and deliveryTypeCode
-        const orders = await ORDERS.find({ pharmacyFormCreated: "No", sendOrderTo: sendOrderToQuery, deliveryTypeCode: deliveryTypeCodeQuery })
-            .select([
-                '_id',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-            ])
-            .sort({ _id: -1 });
-
-        // Render the "createPharmacyFormMOHSTDsuccess" page with the filtered data
-        res.render('createPharmacyFormSuccess', {
-            orders,
-            dateOfForm: moment(dateOfForm).format('DD.MM.YY'),
-            batchChoice,
-            b2Start,
-            mohForm: mohForm,
-            user: req.user
-        });
-
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to create Pharmacy Form');
-    }
-});
-
-app.get('/listofpharmacyMOHTTGOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
-    try {
-        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
-        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "PMMH" })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-                'paymentMethod',
-                'dateTimeSubmission',
-                'membership',
-                'pharmacyFormCreated',
-                'sendOrderTo',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'paymentAmount',
-                'lastUpdatedBy',
-                'lastAssignedTo',
-                'deliveryType',
-                'jobType',
-                'jobMethod'
-            ])
-            .sort({ _id: -1 });
-
-        const totalRecords = orders.length;
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHTTGOrders', { orders, totalRecords, moment: moment, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.get('/listofpharmacyMOHKBOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
-    try {
-        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
-        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "STD", sendOrderTo: "SSBH" })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-                'paymentMethod',
-                'dateTimeSubmission',
-                'membership',
-                'pharmacyFormCreated',
-                'sendOrderTo',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'paymentAmount',
-                'lastUpdatedBy',
-                'lastAssignedTo',
-                'deliveryType',
-                'jobType',
-                'jobMethod'
-            ])
-            .sort({ _id: -1 });
-
-        const totalRecords = orders.length;
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHKBOrders', { orders, totalRecords, moment: moment, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.get('/listofpharmacyMOHIMMOrders', ensureAuthenticated, ensureViewMOHJob, async (req, res) => {
-    try {
-        // Query the database to find orders with "product" value "pharmacymoh" and "deliveryTypeCode" value "EXP"
-        const orders = await ORDERS.find({ product: "pharmacymoh", deliveryTypeCode: "IMM" })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-                'paymentMethod',
-                'dateTimeSubmission',
-                'membership',
-                'pharmacyFormCreated',
-                'sendOrderTo',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'paymentAmount',
-                'lastUpdatedBy',
-                'lastAssignedTo',
-                'deliveryType',
-                'jobType',
-                'jobMethod'
-            ])
-            .sort({ _id: -1 });
-
-        const totalRecords = orders.length;
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHIMMOrders', { orders, totalRecords, moment: moment, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
 app.get('/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, (req, res) => {
     // Data is loaded via server-side DataTables (see /api/listofpharmacyMOHForms)
     res.render('listofpharmacyMOHForms', { user: req.user });
@@ -4447,65 +4117,6 @@ app.get('/api/listofpharmacyMOHForms', ensureAuthenticated, ensureMOHForm, async
         console.error('Error loading Pharmacy Forms:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
-});
-
-// Add a new route in your Express application
-app.get('/formpharmacyDetail/:formId', ensureAuthenticated, ensureMOHForm, async (req, res) => {
-    try {
-        const form = await PharmacyFORM.findById(req.params.formId);
-
-        if (!form) {
-            return res.status(404).send('Form not found');
-        }
-
-        // Render the podDetail.ejs template with the HTML content
-        res.render('formpharmacyDetail', { htmlContent: form.htmlContent, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch form data');
-    }
-});
-
-// Route to render the edit page for a specific POD
-app.get('/editPharmacyForm/:id', ensureAuthenticated, ensureMOHForm, (req, res) => {
-    const formId = req.params.id;
-
-    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
-    PharmacyFORM.findById(formId)
-        .then((form) => {
-            if (!form) {
-                return res.status(404).send('Form not found');
-            }
-
-            // Render the edit page, passing the found POD data
-            res.render('editPharmacyForm.ejs', { form, user: req.user });
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to retrieve POD data');
-        });
-});
-
-// Route to update the HTML content of a specific POD
-app.post('/updatePharmacyForm/:id', ensureAuthenticated, ensureMOHForm, (req, res) => {
-    const formId = req.params.id;
-    const newHtmlContent = req.body.htmlContent;
-
-    // Find the specific POD by ID
-    PharmacyFORM.findByIdAndUpdate(formId, { htmlContent: newHtmlContent })
-        .then((form) => {
-            if (!form) {
-                return res.status(404).send('Form not found');
-            }
-
-            // Successfully updated the HTML content
-            res.status(200).send('Form data updated successfully');
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to update Form data');
-        });
 });
 
 app.get('/deletePharmacyForm/:formId', ensureAuthenticated, ensureMOHForm, async (req, res) => {
@@ -4588,7 +4199,7 @@ async function fetchEligiblePharmacyOrders(sendOrderTo, deliveryTypeCodes) {
             order,
             parsedDate: moment(order.dateTimeSubmission, 'DD-MM-YYYY h:m a', true)
         }))
-        .filter(entry => entry.parsedDate.isValid() && now.diff(entry.parsedDate, 'days') <= 7);
+        .filter(entry => entry.parsedDate.isValid() && now.diff(entry.parsedDate, 'days') <= 60);
 
     withParsedDate.sort((a, b) => a.parsedDate.valueOf() - b.parsedDate.valueOf());
 
@@ -4859,691 +4470,6 @@ app.get('/deletePharmacyFormBatch/:id', ensureAuthenticated, ensureMOHForm, asyn
     }
 });
 
-app.get('/listofpharmacyPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const searchValue = req.query.search?.value?.trim();
-
-        let query = {};
-
-        if (searchValue) {
-            // Use regex to search for tracking number inside htmlContent
-            query = { htmlContent: new RegExp(searchValue, 'i') };
-        }
-
-        const pods = await PharmacyPOD.find(query)
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount'
-            ])
-            .sort({ _id: -1 });
-
-        res.render('listofpharmacyPod', { pods, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch Pharmacy POD data');
-    }
-});
-
-app.get('/api/listofpharmacyPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const draw = parseInt(req.query.draw) || 0;
-        const start = parseInt(req.query.start) || 0;
-        const length = parseInt(req.query.length) || 10;
-        const searchValue = req.query.search?.value?.trim();
-        const order = req.query.order?.[0];
-        const columns = req.query.columns;
-
-        // Build base query
-        let query = {};
-
-        if (searchValue) {
-            const searchRegex = new RegExp(searchValue, 'i');
-            query['$or'] = [
-                { podName: searchRegex },
-                { dispatcher: searchRegex },
-                { area: searchRegex },
-                { deliveryDate: searchRegex },
-                { podCreator: searchRegex },
-                { podDate: searchRegex },
-                { htmlContent: searchRegex } // search inside htmlContent too
-            ];
-        }
-
-        // Determine sorting
-        let sort = {};
-        if (order && columns) {
-            const columnIndex = order.column;
-            const sortColumn = columns[columnIndex].data;
-            const sortDir = order.dir === 'desc' ? -1 : 1;
-            sort[sortColumn] = sortDir;
-        } else {
-            sort = { _id: -1 }; // Default: latest first
-        }
-
-        // Query total counts
-        const totalRecords = await PharmacyPOD.countDocuments({});
-        const filteredRecords = await PharmacyPOD.countDocuments(query);
-
-        const pods = await PharmacyPOD.find(query)
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount'
-            ])
-            .sort(sort)
-            .skip(start)
-            .limit(length);
-
-        res.json({
-            draw,
-            recordsTotal: totalRecords,
-            recordsFiltered: filteredRecords,
-            data: pods
-        });
-
-    } catch (err) {
-        console.error("Error in server-side POD list:", err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.get('/listofldPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        // Use the new query syntax to find documents with selected fields
-        const pods = await LDPOD.find({})
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount'
-            ])
-            .sort({ _id: -1 });
-
-        // Render the EJS template with the pods containing the selected fields
-        res.render('listofldPod', { pods, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch Local Delivery POD data');
-    }
-});
-
-app.get('/api/listofldPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const draw = parseInt(req.query.draw) || 0;
-        const start = parseInt(req.query.start) || 0;
-        const length = parseInt(req.query.length) || 10;
-        const searchValue = req.query.search?.value?.trim();
-        const order = req.query.order?.[0];
-        const columns = req.query.columns;
-
-        let query = {};
-
-        if (searchValue) {
-            const regex = new RegExp(searchValue, 'i');
-            query['$or'] = [
-                { podName: regex },
-                { dispatcher: regex },
-                { area: regex },
-                { deliveryDate: regex },
-                { podCreator: regex },
-                { podDate: regex },
-                { htmlContent: regex } // for tracking number search
-            ];
-        }
-
-        let sort = {};
-        if (order && columns) {
-            const colName = columns[order.column].data;
-            const dir = order.dir === 'desc' ? -1 : 1;
-            sort[colName] = dir;
-        } else {
-            sort = { _id: -1 };
-        }
-
-        const total = await LDPOD.countDocuments({});
-        const filtered = await LDPOD.countDocuments(query);
-
-        const pods = await LDPOD.find(query)
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount'
-            ])
-            .sort(sort)
-            .skip(start)
-            .limit(length);
-
-        res.json({
-            draw,
-            recordsTotal: total,
-            recordsFiltered: filtered,
-            data: pods
-        });
-
-    } catch (error) {
-        console.error("Error loading LD PODs:", error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.get('/listofnoncodPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        // Use the new query syntax to find documents with selected fields
-        const pods = await NONCODPOD.find({})
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount',
-                'product'
-            ])
-            .sort({ _id: -1 });
-
-        // Render the EJS template with the pods containing the selected fields
-        res.render('listofnoncodPod', { pods, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch EWE/PDU/MGLOBAL POD data');
-    }
-});
-
-app.get('/api/listofnoncodPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const draw = parseInt(req.query.draw) || 0;
-        const start = parseInt(req.query.start) || 0;
-        const length = parseInt(req.query.length) || 10;
-        const searchValue = req.query.search?.value?.trim();
-        const order = req.query.order?.[0];
-        const columns = req.query.columns;
-
-        let query = {};
-
-        if (searchValue) {
-            const regex = new RegExp(searchValue, 'i');
-            query['$or'] = [
-                { podName: regex },
-                { product: regex },
-                { dispatcher: regex },
-                { area: regex },
-                { deliveryDate: regex },
-                { podCreator: regex },
-                { podDate: regex },
-                { htmlContent: regex }  // track by tracking number inside htmlContent
-            ];
-        }
-
-        let sort = {};
-        if (order && columns) {
-            const colName = columns[order.column].data;
-            const dir = order.dir === 'desc' ? -1 : 1;
-            sort[colName] = dir;
-        } else {
-            sort = { _id: -1 };
-        }
-
-        const total = await NONCODPOD.countDocuments({});
-        const filtered = await NONCODPOD.countDocuments(query);
-
-        const pods = await NONCODPOD.find(query)
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount',
-                'product'
-            ])
-            .sort(sort)
-            .skip(start)
-            .limit(length);
-
-        res.json({
-            draw,
-            recordsTotal: total,
-            recordsFiltered: filtered,
-            data: pods
-        });
-
-    } catch (error) {
-        console.error("Error loading NONCOD PODs:", error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.get('/listofcbslPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        // Use the new query syntax to find documents with selected fields
-        const pods = await CBSLPOD.find({})
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount'
-            ])
-            .sort({ _id: -1 });
-
-        // Render the EJS template with the pods containing the selected fields
-        res.render('listofcbslPod', { pods, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch FMX POD data');
-    }
-});
-
-app.get('/api/listofcbslPod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const draw = parseInt(req.query.draw) || 0;
-        const start = parseInt(req.query.start) || 0;
-        const length = parseInt(req.query.length) || 10;
-        const searchValue = req.query.search?.value?.trim();
-        const order = req.query.order?.[0];
-        const columns = req.query.columns;
-
-        let query = {};
-
-        if (searchValue) {
-            const regex = new RegExp(searchValue, 'i');
-            query['$or'] = [
-                { podName: regex },
-                { dispatcher: regex },
-                { area: regex },
-                { deliveryDate: regex },
-                { podCreator: regex },
-                { podDate: regex },
-                { htmlContent: regex } // for tracking number search
-            ];
-        }
-
-        let sort = {};
-        if (order && columns) {
-            const colName = columns[order.column].data;
-            const dir = order.dir === 'desc' ? -1 : 1;
-            sort[colName] = dir;
-        } else {
-            sort = { _id: -1 };
-        }
-
-        const total = await CBSLPOD.countDocuments({});
-        const filtered = await CBSLPOD.countDocuments(query);
-
-        const pods = await CBSLPOD.find(query)
-            .select([
-                '_id',
-                'podName',
-                'podDate',
-                'podCreator',
-                'deliveryDate',
-                'area',
-                'dispatcher',
-                'creationDate',
-                'rowCount'
-            ])
-            .sort(sort)
-            .skip(start)
-            .limit(length);
-
-        res.json({
-            draw,
-            recordsTotal: total,
-            recordsFiltered: filtered,
-            data: pods
-        });
-
-    } catch (error) {
-        console.error("Error loading CBSL PODs:", error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Add a new route in your Express application
-app.get('/podpharmacyDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const pod = await PharmacyPOD.findById(req.params.podId);
-
-        if (!pod) {
-            return res.status(404).send('POD not found');
-        }
-
-        // Render the podDetail.ejs template with the HTML content
-        res.render('podpharmacyDetail', { htmlContent: pod.htmlContent, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch POD data');
-    }
-});
-
-// Add a new route in your Express application
-app.get('/podldDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const pod = await LDPOD.findById(req.params.podId);
-
-        if (!pod) {
-            return res.status(404).send('POD not found');
-        }
-
-        // Render the podDetail.ejs template with the HTML content
-        res.render('podldDetail', { htmlContent: pod.htmlContent, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch POD data');
-    }
-});
-
-// Add a new route in your Express application
-app.get('/podnoncodDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const pod = await NONCODPOD.findById(req.params.podId);
-
-        if (!pod) {
-            return res.status(404).send('POD not found');
-        }
-
-        // Render the podDetail.ejs template with the HTML content
-        res.render('podnoncodDetail', { htmlContent: pod.htmlContent, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch POD data');
-    }
-});
-
-// Add a new route in your Express application
-app.get('/podcbslDetail/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const pod = await CBSLPOD.findById(req.params.podId);
-
-        if (!pod) {
-            return res.status(404).send('POD not found');
-        }
-
-        // Render the podDetail.ejs template with the HTML content
-        res.render('podcbslDetail', { htmlContent: pod.htmlContent, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        // Handle the error and send an error response
-        res.status(500).send('Failed to fetch POD data');
-    }
-});
-
-// Route to render the edit page for a specific POD
-app.get('/editPharmacyPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-
-    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
-    PharmacyPOD.findById(podId)
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Render the edit page, passing the found POD data
-            res.render('editPharmacyPod.ejs', { pod, user: req.user });
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to retrieve POD data');
-        });
-});
-
-// Route to update the HTML content of a specific POD
-app.post('/updatePharmacyPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-    const newHtmlContent = req.body.htmlContent;
-
-    // Find the specific POD by ID
-    PharmacyPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Successfully updated the HTML content
-            res.status(200).send('POD data updated successfully');
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to update POD data');
-        });
-});
-
-// Route to render the edit page for a specific POD
-app.get('/editLdPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-
-    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
-    LDPOD.findById(podId)
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Render the edit page, passing the found POD data
-            res.render('editLdPod.ejs', { pod, user: req.user });
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to retrieve POD data');
-        });
-});
-
-// Route to update the HTML content of a specific POD
-app.post('/updateLdPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-    const newHtmlContent = req.body.htmlContent;
-
-    // Find the specific POD by ID
-    LDPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Successfully updated the HTML content
-            res.status(200).send('POD data updated successfully');
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to update POD data');
-        });
-});
-
-// Route to render the edit page for a specific POD
-app.get('/editNoncodPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-
-    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
-    NONCODPOD.findById(podId)
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Render the edit page, passing the found POD data
-            res.render('editNoncodPod.ejs', { pod, user: req.user });
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to retrieve POD data');
-        });
-});
-
-// Route to render the edit page for a specific POD
-app.get('/editCbslPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-
-    // Find the specific POD by ID, assuming you have a MongoDB model for your PODs
-    CBSLPOD.findById(podId)
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Render the edit page, passing the found POD data
-            res.render('editCbslPod.ejs', { pod, user: req.user });
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to retrieve POD data');
-        });
-});
-
-// Route to update the HTML content of a specific POD
-app.post('/updateNoncodPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-    const newHtmlContent = req.body.htmlContent;
-
-    // Find the specific POD by ID
-    NONCODPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Successfully updated the HTML content
-            res.status(200).send('POD data updated successfully');
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to update POD data');
-        });
-});
-
-// Route to update the HTML content of a specific POD
-app.post('/updateCbslPod/:id', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const podId = req.params.id;
-    const newHtmlContent = req.body.htmlContent;
-
-    // Find the specific POD by ID
-    CBSLPOD.findByIdAndUpdate(podId, { htmlContent: newHtmlContent })
-        .then((pod) => {
-            if (!pod) {
-                return res.status(404).send('POD not found');
-            }
-
-            // Successfully updated the HTML content
-            res.status(200).send('POD data updated successfully');
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to update POD data');
-        });
-});
-
-app.get('/deletePharmacyPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const podId = req.params.podId;
-
-        // Use Mongoose to find and remove the document with the given ID
-        const deletedPod = await PharmacyPOD.findByIdAndRemove(podId);
-
-        if (deletedPod) {
-            res.redirect('/listofpharmacyPOD'); // Redirect to the list view after deletion
-        } else {
-            res.status(404).send('Pharmacy POD not found');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to delete Pharmacy POD');
-    }
-});
-
-app.get('/deleteLDPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const podId = req.params.podId;
-
-        // Use Mongoose to find and remove the document with the given ID
-        const deletedPod = await LDPOD.findByIdAndRemove(podId);
-
-        if (deletedPod) {
-            res.redirect('/listofldPod'); // Redirect to the list view after deletion
-        } else {
-            res.status(404).send('Local Delivery POD not found');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to delete Local Delivery POD');
-    }
-});
-
-app.get('/deleteNONCODPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const podId = req.params.podId;
-
-        // Use Mongoose to find and remove the document with the given ID
-        const deletedPod = await NONCODPOD.findByIdAndRemove(podId);
-
-        if (deletedPod) {
-            res.redirect('/listofNoncodPod'); // Redirect to the list view after deletion
-        } else {
-            res.status(404).send('EWE/PDU/MGLOBAL POD not found');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to delete EWE/PDU/MGLOBAL POD');
-    }
-});
-
-app.get('/deleteCBSLPod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const podId = req.params.podId;
-
-        // Use Mongoose to find and remove the document with the given ID
-        const deletedPod = await CBSLPOD.findByIdAndRemove(podId);
-
-        if (deletedPod) {
-            res.redirect('/listofcbslPod'); // Redirect to the list view after deletion
-        } else {
-            res.status(404).send('FMX POD not found');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to delete FMX POD');
-    }
-});
-// ...
 
 // Add this route to handle the saving of the PharmacyFORM and updating ORDERS collection
 app.post('/save-form', ensureAuthenticated, ensureMOHForm, (req, res) => {
@@ -7468,20 +6394,14 @@ const FGA_TRACKED_MILESTONE_MAP = {
 };
 const FGA_TRACKED_STATUSES = [...Object.keys(FGA_TRACKED_MILESTONE_MAP), 'failed', 'completed'];
 
-async function handleFixGdexJobAll(req, res) {
-    const consignmentIDs = (req.body.consignmentIDs || '').trim().split('\n').map((id) => id.trim().toUpperCase()).filter(Boolean);
-    const uniqueConsignmentIDs = Array.from(new Set(consignmentIDs));
-
-    const startDateTime = req.body.fgaStartDateTime ? moment.tz(req.body.fgaStartDateTime, 'Asia/Brunei') : null;
-    const endDateTime = req.body.fgaEndDateTime ? moment.tz(req.body.fgaEndDateTime, 'Asia/Brunei') : null;
-
-    if (!startDateTime || !endDateTime || !startDateTime.isValid() || !endDateTime.isValid() || endDateTime.isBefore(startDateTime)) {
-        processingResults.push({
-            consignmentID: 'N/A',
-            status: 'Error: Please provide a valid start and end date/time range.',
-        });
-        return res.redirect('/successUpdate');
-    }
+// Runs the Fix GDEX Job All batch as a background job (see deliveryJobs above).
+// Body is unchanged from the original handleFixGdexJobAll except: it reads/writes
+// deliveryJobs' per-job processingResults array instead of the module-level
+// global, it takes already-parsed inputs instead of req/res, and a `finally`
+// block reports per-item progress after every iteration (finally still runs
+// even when `continue` fires inside the try, so no other line needed to change).
+async function runFixGdexJobAll(jobId, uniqueConsignmentIDs, startDateTime, endDateTime) {
+    const processingResults = deliveryJobs.get(jobId).processingResults;
 
     for (const consignmentID of uniqueConsignmentIDs) {
         try {
@@ -7597,16 +6517,46 @@ async function handleFixGdexJobAll(req, res) {
             } else {
                 processingResults.push({ consignmentID, status: `Error: ${error.message}` });
             }
+        } finally {
+            patchJob(deliveryJobs, jobId, { processed: (deliveryJobs.get(jobId).processed || 0) + 1 });
         }
     }
 
-    res.redirect('/successUpdate');
+    patchJob(deliveryJobs, jobId, { status: 'completed' });
 }
 
 // Handle form submission
 app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     if (req.body.statusCode === 'FGA') {
-        return await handleFixGdexJobAll(req, res);
+        const consignmentIDs = (req.body.consignmentIDs || '').trim().split('\n').map((id) => id.trim().toUpperCase()).filter(Boolean);
+        const uniqueConsignmentIDs = Array.from(new Set(consignmentIDs));
+
+        const startDateTime = req.body.fgaStartDateTime ? moment.tz(req.body.fgaStartDateTime, 'Asia/Brunei') : null;
+        const endDateTime = req.body.fgaEndDateTime ? moment.tz(req.body.fgaEndDateTime, 'Asia/Brunei') : null;
+
+        if (!startDateTime || !endDateTime || !startDateTime.isValid() || !endDateTime.isValid() || endDateTime.isBefore(startDateTime)) {
+            return res.status(400).json({ error: 'Please provide a valid start and end date/time range.' });
+        }
+
+        const jobId = generateJobId();
+        deliveryJobs.set(jobId, {
+            status: 'queued',
+            total: uniqueConsignmentIDs.length,
+            processed: 0,
+            processingResults: [],
+            startTime: Date.now()
+        });
+
+        res.json({ jobId, status: 'queued', total: uniqueConsignmentIDs.length });
+
+        setTimeout(() => {
+            patchJob(deliveryJobs, jobId, { status: 'processing' });
+            runFixGdexJobAll(jobId, uniqueConsignmentIDs, startDateTime, endDateTime).catch((error) => {
+                console.error('FGA background job error:', error);
+                patchJob(deliveryJobs, jobId, { status: 'failed', error: error.message });
+            });
+        }, 100);
+        return;
     }
 
     let accessToken = null; // Initialize the accessToken variable
@@ -7623,7 +6573,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     // Convert the Set back to an array (if needed)
     const uniqueConsignmentIDsArray = Array.from(uniqueConsignmentIDs);
 
-    for (const consignmentID of uniqueConsignmentIDsArray) {
+    async function processSingleDeliveryUpdate(consignmentID, req, processingResults) {
         try {
             var DetrackAPIrun = 0;
             var mongoDBrun = 0;
@@ -7665,7 +6615,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             var GDEXAPIrun = 0;
 
             // Skip empty lines
-            if (!consignmentID) continue;
+            if (!consignmentID) return;
 
             // Step 2: Make the first API GET request to fetch data from Detrack
             const response1 = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
@@ -8504,7 +7454,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Skipped: FA option is only for PURE51 products. Current product: ${product}`,
                     });
-                    continue;
+                    return;
                 }
 
                 console.log(`\n🔧 FIXING PURE51 JOB: ${consignmentID} - Calculating correct attempts from Detrack milestones`);
@@ -8567,7 +7517,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     });
                 }
 
-                continue; // Skip to next consignment
+                return; // Skip to next consignment
             }
 
             // ==================================================
@@ -8584,7 +7534,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: Complete Job only available for GDEX/GDEXT products. This is ${product}`,
                     });
-                    continue;
+                    return;
                 }
 
                 // Check if job is completed in Detrack
@@ -8594,7 +7544,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: Job must be 'completed' in Detrack. Current status: ${data.data.status}`,
                     });
-                    continue;
+                    return;
                 }
 
                 try {
@@ -8606,7 +7556,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Failed to get GDEX token`,
                         });
-                        continue;
+                        return;
                     }
 
                     // Get completion timestamp from updated_at field (not milestones)
@@ -8628,7 +7578,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Missing POD images. Required: 3, Found: ${[photo1, photo2, photo3].filter(Boolean).length}`,
                         });
-                        continue;
+                        return;
                     }
 
                     console.log(`✅ All 3 POD URLs found, downloading and converting with retries...`);
@@ -8663,7 +7613,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Failed to download POD images after retries`,
                         });
-                        continue;
+                        return;
                     }
 
                     // Prepare tracking data for GDEX - matching their exact format
@@ -8738,7 +7688,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     });
                 }
 
-                continue; // Skip rest of the update delivery logic for this tracking number
+                return; // Skip rest of the update delivery logic for this tracking number
             }
 
             if ((req.body.statusCode == 'H3' || req.body.statusCode == 'H9' || req.body.statusCode == 'H10' ||
@@ -9054,7 +8004,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Failed job requires job_owner to be GDEX or GDEXT. Current job_owner: ${jobOwner}`,
                         });
-                        continue;
+                        return;
                     }
 
                     // Count available photos
@@ -9079,7 +8029,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Info: Failed job already has ${photoCount} photo(s). No fix needed.`,
                         });
-                        continue;
+                        return;
                     }
 
                 } else if (data.data.status === 'completed') {
@@ -9093,7 +8043,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Completed job requires job_owner to be GDEX or GDEXT. Current job_owner: ${jobOwner}`,
                         });
-                        continue;
+                        return;
                     }
 
                     // Count available photos
@@ -9118,7 +8068,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Info: Completed job already has all 3 photos. No fix needed.`,
                         });
-                        continue;
+                        return;
                     }
 
                 } else if (data.data.status === 'dispatched') {
@@ -9147,21 +8097,21 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Info: Dispatched job date is today (${jobDate}). No fix needed.`,
                         });
-                        continue;
+                        return;
                     } else if (jobDate && jobDateObj.isAfter(todayObj, 'day')) {
                         console.log(`ℹ️ Job date ${jobDate} is in the future - no fix needed`);
                         processingResults.push({
                             consignmentID,
                             status: `Info: Dispatched job date (${jobDate}) is in the future. No fix needed.`,
                         });
-                        continue;
+                        return;
                     } else {
                         console.log(`❌ No valid job date found or date format issue`);
                         processingResults.push({
                             consignmentID,
                             status: `Error: No valid job date found for dispatched job.`,
                         });
-                        continue;
+                        return;
                     }
 
                 } else {
@@ -9170,7 +8120,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: FSJ only works for 'failed', 'completed', or 'dispatched' status. Current status: ${data.data.status}`,
                     });
-                    continue;
+                    return;
                 }
 
                 // Process the fix if conditions are met
@@ -9261,7 +8211,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         });
                     }
 
-                    continue; // Skip the rest of the update delivery logic
+                    return; // Skip the rest of the update delivery logic
                 }
             }
 
@@ -9276,7 +8226,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Cannot clear job. Current status is "${mongoStatus}". Only "Out for Delivery" or "Self Collect" jobs can be cleared.`,
                         });
-                        continue;
+                        return;
                     }
 
                     if (mongoStatus === "Completed") {
@@ -9284,7 +8234,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: Job is already completed. No update needed.`,
                         });
-                        continue;
+                        return;
                     }
                 }
 
@@ -9319,7 +8269,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 consignmentID,
                                 status: `Error: GDEX failed order requires at least 1 POD image. No photos available.`,
                             });
-                            continue; // Skip this order entirely
+                            return; // Skip this order entirely
                         }
 
                         // Create detrackData with available photo URLs
@@ -9518,7 +8468,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 consignmentID,
                                 status: `Error: GDEX failed job processing failed - ${gdexError.message}`,
                             });
-                            continue;
+                            return;
                         }
 
                     } else {
@@ -9769,7 +8719,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 consignmentID,
                                 status: `Error: GDEX order requires all 3 POD images. Missing: ${!photo1 ? 'Photo1,' : ''}${!photo2 ? 'Photo2,' : ''}${!photo3 ? 'Photo3' : ''}`.replace(/,$/, ''),
                             });
-                            continue;
+                            return;
                         }
 
                         // Create detrackData with ALL FRESH photo URLs
@@ -9872,7 +8822,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 consignmentID,
                                 status: `Error: GDEX clear job failed - ${gdexError.message}`,
                             });
-                            continue;
+                            return;
                         }
 
                     } else {
@@ -9989,7 +8939,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: Resend POD is only available for GDEX/GDEXT products. This is ${product}`,
                     });
-                    continue;
+                    return;
                 }
 
                 if (data.data.status !== 'completed') {
@@ -9997,7 +8947,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: Resend POD only applies to completed jobs. Current Detrack status: ${currentDetrackStatus}`,
                     });
-                    continue;
+                    return;
                 }
 
                 const rgpCompletedTimestamp = data.data.updated_at;
@@ -10019,7 +8969,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: GDEX order requires all 3 POD images. Missing: ${!rgpPhoto1 ? 'Photo1,' : ''}${!rgpPhoto2 ? 'Photo2,' : ''}${!rgpPhoto3 ? 'Photo3' : ''}`.replace(/,$/, ''),
                     });
-                    continue;
+                    return;
                 }
 
                 const rgpDetrackData = {
@@ -10101,7 +9051,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     });
                 }
 
-                continue;
+                return;
             }
 
             if (req.body.statusCode == 'CSSC') {
@@ -10253,7 +9203,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 consignmentID,
                                 status: `Error: Failed to get GDEX authentication token for return to shipper`,
                             });
-                            continue; // Skip this consignment
+                            return; // Skip this consignment
                         }
 
                         // STEP 2: Send GDEX Return to Shipper API FIRST
@@ -10326,7 +9276,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 consignmentID,
                                 status: `Error: GDEX Return to Shipper API failed. MongoDB and Detrack were NOT updated.`,
                             });
-                            continue; // Skip to next consignment
+                            return; // Skip to next consignment
                         }
 
                     } else {
@@ -10335,7 +9285,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: GDEX job must be "at_warehouse", "in_sorting_area", "on_hold", or "completed" to mark as return. Current status: ${data.data.status}`,
                         });
-                        continue;
+                        return;
                     }
                 } else {
                     // Not GDEX/GDEXT product
@@ -10343,7 +9293,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: RSAL2 (Return to Shipper) only available for GDEX/GDEXT products. This is ${product}`,
                     });
-                    continue;
+                    return;
                 }
             }
 
@@ -12740,7 +11690,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                             consignmentID,
                             status: `Error: GDEX job must be "at_warehouse" or "in_sorting_area" to mark as failed. Current status: ${data.data.status}`,
                         });
-                        continue;
+                        return;
                     }
                 } else {
                     // Not GDEX/GDEXT product
@@ -12748,7 +11698,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                         consignmentID,
                         status: `Error: GDEX fail reason updates only available for GDEX/GDEXT products. This is ${product}`,
                     });
-                    continue;
+                    return;
                 }
             }
 
@@ -13500,10 +12450,54 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     status: 'Error: Tracking Number does not exist in Detrack',
                 });
             }
-            continue; // Move to the next consignmentID
+            return; // Move to the next consignmentID
         }
     }
-    res.redirect('/successUpdate'); // Redirect to the successUpdate page test
+    // Sequential, one-tracking-number-at-a-time background runner — deliberately
+    // NOT concurrent, so the order/timing of Detrack/GDEX/Mongo calls is identical
+    // to the original inline loop. This is what lets POST /updateDelivery respond
+    // immediately instead of blocking for the whole batch (avoiding Heroku's 30s
+    // router timeout) without changing what gets pushed anywhere.
+    async function processDeliveryUpdatesInBackground(jobId, consignmentIDs, req) {
+        const processingResults = deliveryJobs.get(jobId).processingResults;
+
+        for (const consignmentID of consignmentIDs) {
+            await processSingleDeliveryUpdate(consignmentID, req, processingResults);
+            patchJob(deliveryJobs, jobId, { processed: (deliveryJobs.get(jobId).processed || 0) + 1 });
+        }
+
+        patchJob(deliveryJobs, jobId, { status: 'completed' });
+    }
+
+    const jobId = generateJobId();
+    deliveryJobs.set(jobId, {
+        status: 'queued',
+        total: uniqueConsignmentIDsArray.length,
+        processed: 0,
+        processingResults: [],
+        startTime: Date.now()
+    });
+
+    res.json({ jobId, status: 'queued', total: uniqueConsignmentIDsArray.length });
+
+    setTimeout(() => {
+        patchJob(deliveryJobs, jobId, { status: 'processing' });
+        processDeliveryUpdatesInBackground(jobId, uniqueConsignmentIDsArray, req).catch((error) => {
+            console.error('Delivery update background job error:', error);
+            patchJob(deliveryJobs, jobId, { status: 'failed', error: error.message });
+        });
+    }, 100);
+});
+
+// Polling endpoint for both the FGA and main-loop /updateDelivery jobs above.
+// Unlike /updateJob/status/:jobId (which has no auth at all), this requires
+// login — deliberately not copying that gap.
+app.get('/updateDelivery/status/:jobId', ensureAuthenticated, (req, res) => {
+    const job = deliveryJobs.get(req.params.jobId);
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+    res.json(job);
 });
 
 app.post('/reorder', ensureAuthenticated, async (req, res) => {
@@ -15805,9 +14799,23 @@ function buildCompleteAddress(gdexData) {
 // In-memory store for background jobs (use Redis in production)
 const backgroundJobs = new Map();
 
+// Separate in-memory store for /updateDelivery jobs. Kept apart from
+// backgroundJobs (not sharing the Map) because cleanupOldJobs() below reaps
+// anything older than its maxAge regardless of status, and /updateDelivery
+// items are heavier (Detrack + GDEX + Mongo calls per tracking number) than
+// /updateJob's, so a large batch could still legitimately be "processing"
+// past backgroundJobs' 30-minute cutoff.
+const deliveryJobs = new Map();
+
 // Generate unique job ID
 function generateJobId() {
     return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Merge a patch into a stored job's state (used by deliveryJobs consumers to
+// report incremental progress to pollers).
+function patchJob(jobsMap, jobId, patch) {
+    jobsMap.set(jobId, { ...jobsMap.get(jobId), ...patch });
 }
 
 // Serve the update job page
@@ -20599,13 +19607,12 @@ function determineProductType(groupName, jobOwner) {
 // 🧹 Job Cleanup (Memory Management)
 // ==================================================
 
-// Clean up old completed jobs (keep last 50 jobs max)
-function cleanupOldJobs() {
+// Clean up old completed jobs (keep last 50 jobs max). Defaults preserve the
+// original backgroundJobs-only behavior for the existing setInterval call below.
+function cleanupOldJobs(jobsMap = backgroundJobs, maxAge = 30 * 60 * 1000, maxJobs = 50) {
     const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // 30 minutes
-    const maxJobs = 50; // Keep max 50 jobs in memory
 
-    let jobsArray = Array.from(backgroundJobs.entries());
+    let jobsArray = Array.from(jobsMap.entries());
 
     if (jobsArray.length > maxJobs) {
         // Sort by timestamp (jobId contains timestamp)
@@ -20617,14 +19624,14 @@ function cleanupOldJobs() {
 
         // Remove oldest jobs
         const jobsToKeep = jobsArray.slice(0, maxJobs);
-        backgroundJobs.clear();
-        jobsToKeep.forEach(([key, value]) => backgroundJobs.set(key, value));
+        jobsMap.clear();
+        jobsToKeep.forEach(([key, value]) => jobsMap.set(key, value));
     }
 
     // Remove jobs older than maxAge
     jobsArray.forEach(([jobId, jobData]) => {
         if (jobData.startTime && (now - jobData.startTime) > maxAge) {
-            backgroundJobs.delete(jobId);
+            jobsMap.delete(jobId);
             console.log(`Cleaned up old job: ${jobId}`);
         }
     });
@@ -20632,6 +19639,10 @@ function cleanupOldJobs() {
 
 // Run cleanup every 5 minutes
 setInterval(cleanupOldJobs, 5 * 60 * 1000);
+
+// /updateDelivery jobs get a longer max age (60 min) since each tracking
+// number does more sequential external calls than a typical /updateJob item.
+setInterval(() => cleanupOldJobs(deliveryJobs, 60 * 60 * 1000, 50), 10 * 60 * 1000);
 
 // ==================================================
 // 🔄 Chunk Processing Route
