@@ -29,13 +29,22 @@
       max-height: 25px;
     }
   }
+  .navbar-inner {
+    position: relative;
+  }
+  .navbar-logo-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 </style>
 
 <!-- Navbar HTML -->
 <div class="container-bg">
   <div class="container">
     <nav class="navbar navbar-expand-lg navbar-dark">
-      <div class="container d-flex align-items-center">
+      <div class="container d-flex align-items-center navbar-inner">
         <!-- Logo: left on mobile, center on desktop -->
         <a class="navbar-brand d-lg-none" href="/">
           <img src="/images/logoportalwhite.png" alt="Go Rush Logo" class="logo img-fluid">
@@ -129,7 +138,7 @@
           </ul>
 
           <!-- Center logo for desktop -->
-          <a class="navbar-brand mx-auto d-none d-lg-flex" href="/">
+          <a class="navbar-brand navbar-logo-center d-none d-lg-flex" href="/">
             <img src="/images/logoportalwhite.png" alt="Go Rush Logo" class="logo img-fluid">
           </a>
 
