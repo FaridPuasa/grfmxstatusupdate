@@ -3960,6 +3960,27 @@ app.get('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelive
     res.render('updateDelivery', { user: req.user });
 });
 
+// Looks up a single tracking number for the "Update Customer/Instructions Remark" flow
+// so the form can show the existing remarks before the user overwrites them.
+app.get('/updateDelivery/checkRemarks/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+    try {
+        const trackingNumber = (req.params.trackingNumber || '').trim().toUpperCase();
+        if (!trackingNumber) {
+            return res.status(400).json({ error: 'Tracking number is required' });
+        }
+
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber }, { doTrackingNumber: 1, remarks: 1 });
+        if (!existingOrder) {
+            return res.json({ exists: false });
+        }
+
+        res.json({ exists: true, remarks: existingOrder.remarks || '' });
+    } catch (error) {
+        console.error('Error checking tracking number remarks:', error);
+        res.status(500).json({ error: 'Failed to check tracking number' });
+    }
+});
+
 app.get('/podGenerator', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     // Render the form page with EJS
     res.render('podGenerator', { user: req.user });
@@ -6573,6 +6594,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
     // Convert the Set back to an array (if needed)
     const uniqueConsignmentIDsArray = Array.from(uniqueConsignmentIDs);
 
+    if (req.body.statusCode === 'UCDR' && uniqueConsignmentIDsArray.length !== 1) {
+        return res.status(400).json({ error: 'Update Customer/Instructions Remark can only be applied to one tracking number at a time.' });
+    }
+
     async function processSingleDeliveryUpdate(consignmentID, req, processingResults) {
         try {
             var DetrackAPIrun = 0;
@@ -6787,6 +6812,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 appliedStatus = "Update Go Rush Remark"
             }
 
+            if (req.body.statusCode == 'UCDR') {
+                appliedStatus = "Update Customer/Instructions Remark"
+            }
+
             if (req.body.statusCode == 'FCC') {
                 appliedStatus = "Update Fail due to Customer not available / cannot be contacted"
             }
@@ -6950,7 +6979,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 || (req.body.statusCode == 'SFJ') || (req.body.statusCode == 'RGP') || (req.body.statusCode == 'FA') || (req.body.statusCode == 'AJN') || (req.body.statusCode == 'UW') || (req.body.statusCode == 'UP')
                 || (req.body.statusCode == 'UD') || (req.body.statusCode == 'UAR') || (req.body.statusCode == 'UAS') || (req.body.statusCode == 'UPN')
                 || (req.body.statusCode == 'URN') || (req.body.statusCode == 'UPC') || (req.body.statusCode == 'UAB') || (req.body.statusCode == 'UJM')
-                || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR')
+                || (req.body.statusCode == 'UWL') || (req.body.statusCode == 'UFM') || (req.body.statusCode == 'UGR') || (req.body.statusCode == 'UCDR')
                 || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC') || (req.body.statusCode == 'FIA')
                 || (req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
@@ -11448,6 +11477,35 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 };
 
                 portalUpdate = "Go Rush Remark updated in Portal and Detrack. ";
+
+                mongoDBrun = 2;
+                DetrackAPIrun = 1;
+
+                completeRun = 1;
+            }
+
+            if (req.body.statusCode == 'UCDR') {
+                update = {
+                    lastUpdateDateTime: moment().format(),
+                    remarks: req.body.cdRemark,
+                    $push: {
+                        history: {
+                            dateUpdated: moment().format(),
+                            updatedBy: req.user.name,
+                            reason: "Customer/Instructions Remark updated as " + req.body.cdRemark + ".",
+                        }
+                    }
+                }
+
+                var detrackUpdateData = {
+                    do_number: consignmentID,
+                    data: {
+                        instructions: req.body.cdRemark,
+                        remarks: req.body.cdRemark
+                    }
+                };
+
+                portalUpdate = "Customer/Instructions Remark updated in Portal and Detrack. ";
 
                 mongoDBrun = 2;
                 DetrackAPIrun = 1;

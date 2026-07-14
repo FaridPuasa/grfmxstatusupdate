@@ -89,13 +89,6 @@
         <h1 class="text-center mt-4">Update Delivery</h1>
         <form action="/updateDelivery" method="post">
             <div class="mb-3">
-                <div class="field-wrapper" id="consignmentIDWrapper">
-                    <label for="consignmentID" class="form-label">Tracking Number(s):</label>
-                    <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2"
-                        required></textarea>
-                </div>
-            </div>
-            <div class="mb-3">
                 <div class="field-wrapper" id="statusCodeWrapper">
                     <label for="statusCode" class="form-label">Status Code:</label>
                     <select id="statusCode" name="statusCode" class="form-select" required>
@@ -142,6 +135,7 @@
                                         <optgroup label="Change Details">
                                             <option value="SD">Swap Dispatchers</option>
                                             <option value="UWL">Update Warehouse</option>
+                                            <option value="UCDR">Update Customer/Instructions Remark</option>
                                             <option value="UGR">Update Go Rush Remark</option>
                                             <option value="UD">Update Job Date</option>
                                             <option value="UJM">Update Job Method</option>
@@ -162,6 +156,13 @@
                                             <!-- <option value="SFJA">|All| Complete Job</option> -->
                                         </optgroup>
                     </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="consignmentIDWrapper">
+                    <label for="consignmentID" class="form-label">Tracking Number(s):</label>
+                    <textarea id="consignmentID" name="consignmentIDs" class="form-control" rows="2"
+                        required></textarea>
                 </div>
             </div>
             <div class="mb-3">
@@ -294,6 +295,29 @@
                     </select>
                     <small>Rack row number from 1-5 > Single Rack</small><br>
                     <small>Rack row number from 1-10 > Dual Rack</small><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="ucdrTrackingWrapper">
+                    <label for="ucdrTrackingNumber" class="form-label">Tracking Number:</label>
+                    <div class="input-group">
+                        <input type="text" id="ucdrTrackingNumber" class="form-control" disabled>
+                        <button type="button" id="ucdrCheckButton" class="btn btn-outline-secondary"
+                            disabled>Check</button>
+                    </div>
+                    <div id="ucdrCheckStatus" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="ucdrCurrentRemarksWrapper">
+                    <label class="form-label">Current Remarks:</label>
+                    <div id="ucdrCurrentRemarks" class="form-control" style="background-color:#e9ecef;"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="cdRemarkWrapper">
+                    <label for="cdRemark" class="form-label">Updated Customer/Instructions Remark:</label>
+                    <input type="text" id="cdRemark" name="cdRemark" class="form-control" disabled>
                 </div>
             </div>
             <div class="mb-3">
@@ -512,8 +536,12 @@
             $("#k2rowWrapper").hide();
             $("#fridgeWrapper").hide();
             $("#grRemarkWrapper").hide();
+            $("#ucdrTrackingWrapper").hide();
+            $("#ucdrCurrentRemarksWrapper").hide();
+            $("#cdRemarkWrapper").hide();
 
             // Get references to the fields
+            const consignmentIDField = document.getElementById('consignmentID');
             const fgaStartDateTimeField = document.getElementById('fgaStartDateTime');
             const fgaEndDateTimeField = document.getElementById('fgaEndDateTime');
             const dispatchersField = document.getElementById('dispatchers');
@@ -535,6 +563,11 @@
             const k2rowField = document.getElementById('k2row');
             const fridgeField = document.getElementById('fridge');
             const grRemarkField = document.getElementById('grRemark');
+            const ucdrTrackingNumberField = document.getElementById('ucdrTrackingNumber');
+            const ucdrCheckButton = document.getElementById('ucdrCheckButton');
+            const ucdrCheckStatusDiv = document.getElementById('ucdrCheckStatus');
+            const ucdrCurrentRemarksDiv = document.getElementById('ucdrCurrentRemarks');
+            const cdRemarkField = document.getElementById('cdRemark');
 
             const statusCodeSelect = document.getElementById('statusCode');
             const submitButton = document.getElementById('submitButton');
@@ -740,6 +773,16 @@
                 k2rowField.value = '';
                 fridgeField.value = '';
                 grRemarkField.value = '';
+                cdRemarkField.value = '';
+                ucdrTrackingNumberField.value = '';
+                ucdrCheckStatusDiv.textContent = '';
+                ucdrCurrentRemarksDiv.textContent = '';
+
+                $("#consignmentIDWrapper").hide();
+                consignmentIDField.required = false;
+                consignmentIDField.disabled = false;
+                $("#submitButton").show();
+                submitButton.disabled = false;
 
                 fgaStartDateTimeField.disabled = true; fgaStartDateTimeField.required = false;
                 fgaEndDateTimeField.disabled = true; fgaEndDateTimeField.required = false;
@@ -765,6 +808,13 @@
                 $("#k2rowWrapper").hide();
                 $("#grRemarkWrapper").hide();
                 $("#fridgeWrapper").hide();
+                $("#ucdrTrackingWrapper").hide();
+                $("#ucdrCurrentRemarksWrapper").hide();
+                $("#cdRemarkWrapper").hide();
+                ucdrTrackingNumberField.disabled = true;
+                ucdrCheckButton.disabled = true;
+                cdRemarkField.disabled = true;
+                cdRemarkField.required = false;
 
                 if (selectedStatusCode === 'FGA') {
                     $("#fgaStartDateTimeWrapper").fadeIn();
@@ -904,6 +954,17 @@
                     grRemarkField.required = true;
                     assignDateField.disabled = true;
                 }
+                else if (selectedStatusCode === 'UCDR') {
+                    $("#consignmentIDWrapper").hide();
+                    consignmentIDField.required = false;
+                    $("#submitButton").hide();
+                    submitButton.disabled = true;
+
+                    $("#ucdrTrackingWrapper").fadeIn();
+                    ucdrTrackingNumberField.disabled = false;
+                    ucdrCheckButton.disabled = false;
+                    assignDateField.disabled = true;
+                }
                 else {
                     assignDateField.disabled = true;
                     dispatchersField.disabled = true;
@@ -945,6 +1006,16 @@
                     fridgeField.required = false;
                     grRemarkField.required = false;
                 }
+
+                // Tracking Number(s) stays hidden until a status is chosen (UCDR uses its own
+                // single tracking number field instead, hidden further above).
+                if (selectedStatusCode === '') {
+                    $("#consignmentIDWrapper").hide();
+                    consignmentIDField.required = false;
+                } else if (selectedStatusCode !== 'UCDR') {
+                    $("#consignmentIDWrapper").fadeIn();
+                    consignmentIDField.required = true;
+                }
                 // Additional case for 'SD' or '35' already handled but ensure assign date readOnly and today
                 if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD') || (selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
                     setAssignDateTodayAndReadonly(true);
@@ -955,6 +1026,63 @@
                     assignDateField.required = false;
                 }
             }
+
+            function resetUcdrRemarkState() {
+                $("#ucdrCurrentRemarksWrapper").hide();
+                $("#cdRemarkWrapper").hide();
+                $("#submitButton").hide();
+                submitButton.disabled = true;
+                cdRemarkField.disabled = true;
+                cdRemarkField.required = false;
+                cdRemarkField.value = '';
+                ucdrCurrentRemarksDiv.textContent = '';
+                ucdrCheckStatusDiv.textContent = '';
+                ucdrCheckStatusDiv.className = 'mt-2';
+            }
+
+            ucdrTrackingNumberField.addEventListener('input', resetUcdrRemarkState);
+
+            ucdrCheckButton.addEventListener('click', async function () {
+                const trackingNumber = ucdrTrackingNumberField.value.trim().toUpperCase();
+                if (!trackingNumber) {
+                    alert('Please enter a tracking number.');
+                    return;
+                }
+
+                resetUcdrRemarkState();
+                ucdrCheckButton.disabled = true;
+                ucdrCheckStatusDiv.textContent = 'Checking...';
+
+                try {
+                    const res = await fetch(`/updateDelivery/checkRemarks/${encodeURIComponent(trackingNumber)}`);
+                    const result = await res.json();
+
+                    if (!res.ok || !result.exists) {
+                        ucdrCheckStatusDiv.textContent = 'Tracking number not found.';
+                        ucdrCheckStatusDiv.className = 'mt-2 text-danger';
+                    } else {
+                        ucdrCheckStatusDiv.textContent = '';
+                        consignmentIDField.value = trackingNumber;
+
+                        ucdrCurrentRemarksDiv.textContent = result.remarks ? result.remarks : 'No remarks available';
+                        $("#ucdrCurrentRemarksWrapper").fadeIn();
+
+                        cdRemarkField.value = result.remarks || '';
+                        cdRemarkField.disabled = false;
+                        cdRemarkField.required = true;
+                        $("#cdRemarkWrapper").fadeIn();
+
+                        $("#submitButton").fadeIn();
+                        submitButton.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Error checking tracking number:', error);
+                    ucdrCheckStatusDiv.textContent = 'Error checking tracking number. Please try again.';
+                    ucdrCheckStatusDiv.className = 'mt-2 text-danger';
+                } finally {
+                    ucdrCheckButton.disabled = false;
+                }
+            });
 
             statusCodeSelect.addEventListener('change', updateFieldStatus);
             paymentMethodField.addEventListener('change', updatePriceWrapper);
