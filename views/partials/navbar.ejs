@@ -67,6 +67,8 @@
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                   <% } %>
                   <% if (['manager' , 'finance', 'admin'].includes(user.role)) { %>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-header">Report</div>
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
                     <a class="dropdown-item" href="/reportList">Report List</a>
                   <% } %>
@@ -173,6 +175,8 @@
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                     <% } %>
                     <% if (['manager' , 'finance', 'admin'].includes(user.role)) { %>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-header">Report</div>
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
                     <a class="dropdown-item" href="/reportList">Report List</a>
                   <% } %>
