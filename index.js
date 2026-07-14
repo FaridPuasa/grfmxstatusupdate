@@ -3198,6 +3198,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             maxAttemptMap,
             deliveriesMap,
             plannedSelfCollectMap,
+            productMapping: PRODUCT_MAPPING,
             moment,
             user: req.user,
             orders: []

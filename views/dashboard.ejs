@@ -142,6 +142,48 @@ h1.text-center {
 .kpi-tile.kpi-dark .kpi-value { color: #111827; }
 .kpi-tile.kpi-muted .kpi-value { color: #6b7280; }
 
+/* Dispatcher/freelancer summary cards (In Progress / Completed section) */
+.dispatcher-summary-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.dispatcher-card {
+    flex: 1 1 170px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid var(--gr-progress);
+    border-radius: 12px;
+    padding: 0.65rem 0.9rem;
+}
+
+.dispatcher-card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.dispatcher-card-area {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin: 0.1rem 0 0.5rem;
+}
+
+.dispatcher-card-stats {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.dispatcher-card-stats .badge {
+    font-weight: 600;
+}
+
 /* Card polish */
 .card {
     border: 1px solid #e5e7eb;
@@ -267,6 +309,16 @@ i.bi-caret-down-fill[aria-expanded="true"] {
             });
             return total;
         }
+        function locationCount(map, location) {
+            if (!map[location]) return 0;
+            let total = 0;
+            Object.keys(map[location]).forEach(product => {
+                Object.keys(map[location][product]).forEach(area => {
+                    total += map[location][product][area].length;
+                });
+            });
+            return total;
+        }
         function methodCount(map, filterFn) {
             let total = 0;
             Object.keys(map).forEach(product => {
@@ -279,6 +331,8 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         }
         const kpi = {
             current: trackCount(currentMap),
+            warehouseK1: locationCount(currentMap, 'Warehouse K1'),
+            warehouseK2: locationCount(currentMap, 'Warehouse K2'),
             plannedSelfCollect: methodCount(plannedSelfCollectMap),
             urgent: methodCount(urgentMap),
             overdue: methodCount(overdueMap),
@@ -287,14 +341,21 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         };
     %>
     <div class="kpi-strip">
+        <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.warehouseK1 %></span><span class="kpi-label">Warehouse K1</span></div>
+        <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.warehouseK2 %></span><span class="kpi-label">Warehouse K2</span></div>
+    </div>
+    <div class="kpi-strip">
         <div class="kpi-tile"><span class="kpi-value"><%= kpi.current %></span><span class="kpi-label">Current</span></div>
         <div class="kpi-tile"><span class="kpi-value"><%= kpi.plannedSelfCollect %></span><span class="kpi-label">Planned Self Collect</span></div>
         <div class="kpi-tile kpi-warn"><span class="kpi-value"><%= kpi.urgent %></span><span class="kpi-label">Urgent</span></div>
         <div class="kpi-tile kpi-danger"><span class="kpi-value"><%= kpi.overdue %></span><span class="kpi-label">Overdue</span></div>
         <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.maxAttempt %></span><span class="kpi-label">Max Attempt</span></div>
-        <div class="kpi-tile kpi-muted"><span class="kpi-value"><%= kpi.archived %></span><span class="kpi-label">Archived</span></div>
     </div>
 
+    <button class="btn btn-sm btn-outline-primary toggle-section-btn mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#warehouse-tabs-collapse">Show</button>
+
+    <div class="collapse" id="warehouse-tabs-collapse">
     <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="current-tab" data-bs-toggle="tab"
@@ -321,12 +382,6 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                 data-bs-target="#archived" type="button" role="tab">Archived</button>
         </li>
     </ul>
-
-    <form action="/refresh-urgent" method="get" class="text-end mb-3">
-        <button class="btn btn-sm btn-outline-secondary" type="submit">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-    </form>
 
     <div class="tab-content">
         <% const tabData = [
@@ -386,16 +441,16 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                     <div class="toggle-header" style="cursor: pointer;"
                                                         data-bs-toggle="collapse"
                                                         data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
-                                                        <strong><%= product.toUpperCase() %></strong>
+                                                        <strong><%= (productMapping[product] || product.toUpperCase()) %></strong>
                                                     </div>
                                                     <div class="section-toolbar">
                                                         <span class="badge bg-success"><%= prodCount %> orders</span>
                                                         <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
                                                             data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"
-                                                            data-section-name="<%= location.toUpperCase() %> - <%= product.toUpperCase() %>">📋 Copy</button>
+                                                            data-section-name="<%= location.toUpperCase() %> - <%= (productMapping[product] || product.toUpperCase()) %>">📋 Copy</button>
                                                         <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
                                                             data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"
-                                                            data-section-name="<%= location.toUpperCase() %> - <%= product.toUpperCase() %>">📊 Excel</button>
+                                                            data-section-name="<%= location.toUpperCase() %> - <%= (productMapping[product] || product.toUpperCase()) %>">📊 Excel</button>
                                                         <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
                                                             data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"></i>
                                                     </div>
@@ -487,7 +542,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                     <div class="toggle-header" style="cursor: pointer;"
                                         data-bs-toggle="collapse"
                                         data-bs-target="#collapse-<%= id %>-<%= index %>">
-                                        <strong><%= product.toUpperCase() %></strong>
+                                        <strong><%= (productMapping[product] || product.toUpperCase()) %></strong>
                                     </div>
                                     <div class="section-toolbar">
                                         <div class="badge bg-danger">
@@ -507,10 +562,10 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                         <% } }) %>
                                         <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
                                             data-target="#collapse-<%= id %>-<%= index %>"
-                                            data-section-name="<%= product.toUpperCase() %>">📋 Copy</button>
+                                            data-section-name="<%= (productMapping[product] || product.toUpperCase()) %>">📋 Copy</button>
                                         <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
                                             data-target="#collapse-<%= id %>-<%= index %>"
-                                            data-section-name="<%= product.toUpperCase() %>">📊 Excel</button>
+                                            data-section-name="<%= (productMapping[product] || product.toUpperCase()) %>">📊 Excel</button>
                                         <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
                                             data-bs-target="#collapse-<%= id %>-<%= index %>"></i>
                                     </div>
@@ -576,6 +631,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
             </div>
         <% }) %>
     </div>
+    </div>
 </div>
   </div>
 
@@ -586,6 +642,14 @@ i.bi-caret-down-fill[aria-expanded="true"] {
   </div>
   <div class="card-body">
 
+    <div class="dispatcher-summary-strip" id="dispatcherSummaryStrip">
+        <p class="text-muted mb-0">Loading dispatcher summary…</p>
+    </div>
+
+    <button class="btn btn-sm btn-outline-primary toggle-section-btn mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#progress-tabs-collapse">Show</button>
+
+    <div class="collapse" id="progress-tabs-collapse">
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="activejobs-tab" data-bs-toggle="tab" data-bs-target="#activejobs-content" type="button" role="tab" aria-controls="activejobs-content" aria-selected="true">
@@ -698,16 +762,16 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                 <div class="card-header" style="padding: 0.75rem 1rem;">
                                                     <div class="d-flex align-items-center justify-content-between">
                                                         <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
-                                                            <strong><%= product.toUpperCase() %></strong>
+                                                            <strong><%= (productMapping[product] || product.toUpperCase()) %></strong>
                                                         </div>
                                                         <div class="d-flex align-items-center gap-2">
                                                             <span class="badge bg-warning text-dark"><%= productCount %> jobs</span>
                                                             <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
                                                                     data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"
-                                                                    data-section-name="<%= disp.name %> - <%= product.toUpperCase() %>">📋 Copy</button>
+                                                                    data-section-name="<%= disp.name %> - <%= (productMapping[product] || product.toUpperCase()) %>">📋 Copy</button>
                                                             <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
                                                                     data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"
-                                                                    data-section-name="<%= disp.name %> - <%= product.toUpperCase() %>">📊 Excel</button>
+                                                                    data-section-name="<%= disp.name %> - <%= (productMapping[product] || product.toUpperCase()) %>">📊 Excel</button>
                                                             <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"></i>
                                                         </div>
                                                     </div>
@@ -907,6 +971,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
 
 
     </div>
+    </div>
   </div>
 
     <div class="card my-4" id="section-neworders">
@@ -914,6 +979,14 @@ i.bi-caret-down-fill[aria-expanded="true"] {
     <h5 class="mb-0">New Orders</h5>
   </div>
   <div class="card-body">
+    <div class="kpi-strip" id="newOrdersSummary">
+        <p class="text-muted mb-0">Loading new orders summary…</p>
+    </div>
+
+    <button class="btn btn-sm btn-outline-primary toggle-section-btn mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#neworders-tabs-collapse">Show</button>
+
+    <div class="collapse" id="neworders-tabs-collapse">
     <!-- Tabs -->
     <ul class="nav nav-tabs" id="newOrdersTabs" role="tablist">
       <li class="nav-item" role="presentation">
@@ -925,11 +998,6 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         aria-selected="true">
   GR Website
 </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="ewe-tab" data-bs-toggle="tab" data-bs-target="#ewe" type="button" role="tab" aria-controls="ewe" aria-selected="false">
-          EWE x PDU x MGLOBAL
-        </button>
       </li>
     </ul>
 
@@ -944,11 +1012,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
       <!-- Products and orders will be loaded here -->
     </div>
   </div>
-
-      <!-- EWE x PDU x MGLOBAL -->
-      <div class="tab-pane fade" id="ewe" role="tabpanel" aria-labelledby="ewe-tab">
-        <p class="text-muted">No data yet for EWE x PDU x MGLOBAL.</p>
-      </div>
+    </div>
     </div>
   </div>
 </div>
@@ -989,16 +1053,57 @@ async function loadCompletedJobs() {
         const data = await response.json();
         completedJobsData = data;
 
+        renderDispatcherSummaryCards(data);
         renderCompletedJobsTable(data);
         completedJobsLoaded = true;
     } catch (error) {
         console.error('Failed to load completed jobs:', error);
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to load data.</td></tr>`;
+        const summaryEl = document.getElementById('dispatcherSummaryStrip');
+        if (summaryEl) summaryEl.innerHTML = '<p class="text-danger mb-0">Failed to load dispatcher summary.</p>';
     }
 }
 
 function createBadge(count, color='primary') {
     return `<span class="badge bg-${color} ms-2">${count}</span>`;
+}
+
+// Dispatcher/freelancer summary cards — only shown for dispatchers with active jobs right now
+function renderDispatcherSummaryCards(data) {
+    const container = document.getElementById('dispatcherSummaryStrip');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const activeDispatchers = Object.keys(data)
+        .filter(dispatcher => (data[dispatcher].inProgress || []).length > 0)
+        .sort((a, b) => data[b].inProgress.length - data[a].inProgress.length);
+
+    if (activeDispatchers.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No active jobs right now.</p>';
+        return;
+    }
+
+    activeDispatchers.forEach(dispatcher => {
+        const d = data[dispatcher];
+        const activeCount = d.inProgress.length;
+        const completedCount = (d.completed || []).length;
+        const failedCount = (d.failed || []).length;
+        const totalCount = activeCount + completedCount + failedCount;
+        const areas = [...new Set(d.inProgress.map(job => job.area).filter(Boolean))];
+
+        container.insertAdjacentHTML('beforeend', `
+            <div class="dispatcher-card">
+                <div class="dispatcher-card-name">${dispatcher}</div>
+                <div class="dispatcher-card-area">${areas.length ? areas.join(', ') : '-'}</div>
+                <div class="dispatcher-card-stats">
+                    <span class="badge bg-secondary">Total ${totalCount}</span>
+                    <span class="badge bg-info">Active ${activeCount}</span>
+                    <span class="badge bg-success">Completed ${completedCount}</span>
+                    <span class="badge bg-danger">Failed ${failedCount}</span>
+                </div>
+            </div>
+        `);
+    });
 }
 
 function renderCompletedJobsTable(data) {
@@ -1167,6 +1272,10 @@ function renderCompletedJobsTable(data) {
         </tr>
     `);
 }
+
+// Initial load, so the dispatcher summary cards are populated without needing to open the tab
+document.getElementById('completed-jobs-date-picker').value = moment().format('YYYY-MM-DD');
+loadCompletedJobs();
 
 // Event Listeners
 document.getElementById('completed-jobs-date-picker').addEventListener('change', () => {
@@ -1482,6 +1591,8 @@ document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
 </script>
 
 <script>
+const PRODUCT_MAPPING = <%- JSON.stringify(productMapping) %>;
+
 async function fetchGRWebsiteOrders(date) {
   const container = document.getElementById('grWebsiteContainer');
   container.innerHTML = `
@@ -1496,6 +1607,7 @@ async function fetchGRWebsiteOrders(date) {
     const data = await res.json();
 
     container.innerHTML = ''; // clear loading spinner
+    renderNewOrdersSummary(data);
 
     if (!data || Object.keys(data).length === 0) {
       container.innerHTML = '<p>No orders found for selected date.</p>';
@@ -1524,12 +1636,12 @@ async function fetchGRWebsiteOrders(date) {
       header.classList.add('card-header', 'bg-secondary', 'text-white', 'd-flex', 'justify-content-between', 'align-items-center', 'flex-wrap');
       header.innerHTML = `
         <div class="toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#${productId}">
-          <strong>${product}</strong>
+          <strong>${PRODUCT_MAPPING[product.toLowerCase()] || product.toUpperCase()}</strong>
         </div>
         <div class="section-toolbar">
           <span class="badge bg-light text-dark">${orders.length}</span>
-          <button type="button" class="btn btn-sm btn-outline-light toolbar-btn copy-tracking-btn" data-target="#${productId}" data-section-name="${product}">📋 Copy</button>
-          <button type="button" class="btn btn-sm btn-outline-light toolbar-btn export-excel-btn" data-target="#${productId}" data-section-name="${product}">📊 Excel</button>
+          <button type="button" class="btn btn-sm btn-outline-light toolbar-btn copy-tracking-btn" data-target="#${productId}" data-section-name="${PRODUCT_MAPPING[product.toLowerCase()] || product.toUpperCase()}">📋 Copy</button>
+          <button type="button" class="btn btn-sm btn-outline-light toolbar-btn export-excel-btn" data-target="#${productId}" data-section-name="${PRODUCT_MAPPING[product.toLowerCase()] || product.toUpperCase()}">📊 Excel</button>
           <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#${productId}"></i>
         </div>
       `;
@@ -1609,7 +1721,35 @@ wrapper.appendChild(table);
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p class="text-danger">Failed to load orders.</p>';
+    const summaryEl = document.getElementById('newOrdersSummary');
+    if (summaryEl) summaryEl.innerHTML = '<p class="text-danger mb-0">Failed to load new orders summary.</p>';
   }
+}
+
+// Product summary cards — number of new orders today per product
+function renderNewOrdersSummary(data) {
+  const container = document.getElementById('newOrdersSummary');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const products = Object.keys(data || {})
+    .map(name => ({ name, count: (data[name] || []).length }))
+    .filter(p => p.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  if (products.length === 0) {
+    container.innerHTML = '<p class="text-muted mb-0">No new orders for the selected date.</p>';
+    return;
+  }
+
+  products.forEach(p => {
+    container.insertAdjacentHTML('beforeend', `
+      <div class="kpi-tile">
+        <span class="kpi-value">${p.count}</span>
+        <span class="kpi-label">${PRODUCT_MAPPING[p.name.toLowerCase()] || p.name.toUpperCase()} orders</span>
+      </div>
+    `);
+  });
 }
 
 // Initial load
@@ -1751,6 +1891,14 @@ document.addEventListener('DOMContentLoaded', function() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
+
+    // Show/Hide toggle buttons for each section's tabs
+    document.querySelectorAll('.toggle-section-btn').forEach(btn => {
+        const target = document.querySelector(btn.getAttribute('data-bs-target'));
+        if (!target) return;
+        target.addEventListener('shown.bs.collapse', () => { btn.textContent = 'Hide'; });
+        target.addEventListener('hidden.bs.collapse', () => { btn.textContent = 'Show'; });
+    });
 });
 </script>
 
