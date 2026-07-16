@@ -476,7 +476,14 @@ async function checkStaleInfoReceivedJobs() {
 // ==================================================
 // 🔍 CHECK ACTIVE DELIVERIES STATUS - Automated job that runs every 10 minutes
 // ==================================================
+let isCheckingActiveDeliveries = false;
+
 async function checkActiveDeliveriesStatus() {
+    if (isCheckingActiveDeliveries) {
+        console.log('⏭️ Skipping checkActiveDeliveriesStatus run - previous run still in progress');
+        return;
+    }
+    isCheckingActiveDeliveries = true;
     try {
         // Set Brunei time explicitly
         const bruneiNow = moment().utcOffset(8); // Brunei is UTC+8
@@ -849,10 +856,12 @@ async function checkActiveDeliveriesStatus() {
 
     } catch (error) {
         console.error('Watcher encountered an error:', error);
+    } finally {
+        isCheckingActiveDeliveries = false;
     }
 }
 
-setInterval(checkActiveDeliveriesStatus, 600000);
+setInterval(checkActiveDeliveriesStatus, 180000);
 setInterval(checkStaleInfoReceivedJobs, 86400000);
 checkActiveDeliveriesStatus();
 checkStaleInfoReceivedJobs();
