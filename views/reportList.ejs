@@ -186,6 +186,25 @@
 
     <main class="container mt-4">
         <h1 class="text-center mt-4">Report List</h1>
+        <div class="d-flex justify-content-center mb-3">
+            <div style="max-width:400px; width:100%;">
+                <label for="reportTypeFilter" class="form-label fw-bold">Filter by Report Type</label>
+                <select id="reportTypeFilter" class="form-select">
+                    <option value="">All Report Types</option>
+                    <optgroup label="Category">
+                        <option value="category:Operation">Operation Reports (all)</option>
+                        <option value="category:Freelancer">Freelancer Reports (all)</option>
+                    </optgroup>
+                    <optgroup label="Specific Type">
+                        <option value="exact:Operation Morning Report">Operation Morning Report</option>
+                        <option value="exact:Operation End of Day Report">Operation End of Day Report</option>
+                        <option value="exact:Freelancer Opening Report">Freelancer Opening Report</option>
+                        <option value="exact:Freelancer End of Day Report">Freelancer End of Day Report</option>
+                        <option value="exact:Freelancer Job Completed Count Report">Freelancer Job Completed Count Report</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
         <div class="table-responsive">
             <table class="table table-bordered table-striped" id="reportTable">
                 <thead class="table-primary">
@@ -236,9 +255,25 @@
 
     <script>
         $(document).ready(function () {
-            $('#reportTable').DataTable({
+            const reportTable = $('#reportTable').DataTable({
                 "iDisplayLength": 10,
                 "order": [] // preserve server-side sort (newest first)
+            });
+
+            // "category:X" matches any type containing X (e.g. all Operation reports);
+            // "exact:X" matches only that specific report type.
+            $('#reportTypeFilter').on('change', function () {
+                const val = $(this).val();
+                if (!val) {
+                    reportTable.column(0).search('').draw();
+                    return;
+                }
+                const separatorIndex = val.indexOf(':');
+                const mode = val.slice(0, separatorIndex);
+                const value = val.slice(separatorIndex + 1);
+                const escaped = $.fn.dataTable.util.escapeRegex(value);
+                const pattern = mode === 'exact' ? '^' + escaped + '$' : escaped;
+                reportTable.column(0).search(pattern, true, false).draw();
             });
         });
 
