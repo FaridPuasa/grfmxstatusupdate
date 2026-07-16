@@ -4247,13 +4247,6 @@ function getPharmacyFormSaveRestriction(formType) {
         return 'Pharmacy forms cannot be saved on Fridays or Sundays.';
     }
 
-    if (formType === '3' || formType === '4') {
-        const isMonOrWed = dayOfWeek === 1 || dayOfWeek === 3;
-        if (!isMonOrWed) {
-            return 'TTG and KB forms can only be saved on Monday and Wednesday.';
-        }
-    }
-
     return null;
 }
 
