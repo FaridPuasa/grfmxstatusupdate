@@ -1205,6 +1205,22 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
         const moment = require('moment-timezone');
 
+        // history.dateUpdated is inconsistent: some entries carry an explicit UTC offset
+        // (e.g. "2026-07-03T02:04:04+00:00") and are genuine UTC instants that need
+        // converting to Brunei time; others have no offset at all (e.g.
+        // "2026-07-03T17:05:49") because they were already recorded as Brunei wall-clock
+        // time. Treating the latter as UTC and then shifting +8h for display (as plain
+        // `new Date(...)` + moment.tz(..., 'Asia/Brunei') would do) double-shifts them
+        // into the middle of the night. Detect which case we're in from the raw string.
+        function formatBruneiTime(rawDateStr) {
+            if (!rawDateStr) return null;
+            const hasExplicitOffset = /(Z|[+-]\d{2}:?\d{2})$/.test(rawDateStr.trim());
+            if (hasExplicitOffset) {
+                return moment.parseZone(rawDateStr).tz('Asia/Brunei').format('hh:mm A');
+            }
+            return moment(rawDateStr, 'YYYY-MM-DDTHH:mm:ss').format('hh:mm A');
+        }
+
         // Parse the date and create Brunei timezone range
         const bruneiDate = moment.tz(date, 'Asia/Brunei');
 
@@ -1318,6 +1334,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 const historyDate = new Date(h.dateUpdated);
                 if (!staffMap[staff].startTime || historyDate < staffMap[staff].startTime) {
                     staffMap[staff].startTime = historyDate;
+                    staffMap[staff].startTimeRaw = h.dateUpdated;
                 }
             });
 
@@ -1407,6 +1424,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
                         const historyDate = new Date(final.dateUpdated);
                         if (!staffMap[staff].endTime || historyDate > staffMap[staff].endTime) {
                             staffMap[staff].endTime = historyDate;
+                            staffMap[staff].endTimeRaw = final.dateUpdated;
                         }
                     } else if (final.statusHistory === "Failed Delivery") {
                         productData.failed++;
@@ -1461,11 +1479,11 @@ app.get('/api/delivery-result-report', async (req, res) => {
                 }
 
                 // Selfcollect has no dispatcher travel to time, so it's always N/A.
-                const startTime = staff !== "Selfcollect" && data.startTime
-                    ? moment.tz(data.startTime, 'Asia/Brunei').format('hh:mm A')
+                const startTime = staff !== "Selfcollect" && data.startTimeRaw
+                    ? formatBruneiTime(data.startTimeRaw)
                     : "N/A";
-                const endTime = staff !== "Selfcollect" && data.endTime
-                    ? moment.tz(data.endTime, 'Asia/Brunei').format('hh:mm A')
+                const endTime = staff !== "Selfcollect" && data.endTimeRaw
+                    ? formatBruneiTime(data.endTimeRaw)
                     : "N/A";
 
                 return {
