@@ -186,7 +186,7 @@
 
     <main class="container mt-4">
         <h1 class="text-center mt-4">Report List</h1>
-        <div class="d-flex justify-content-center mb-3">
+        <div class="d-flex justify-content-center mb-3 flex-wrap gap-3">
             <div style="max-width:400px; width:100%;">
                 <label for="reportTypeFilter" class="form-label fw-bold">Filter by Report Type</label>
                 <select id="reportTypeFilter" class="form-select">
@@ -203,6 +203,13 @@
                         <option value="exact:Freelancer Job Completed Count Report">Freelancer Job Completed Count Report</option>
                     </optgroup>
                 </select>
+            </div>
+            <div style="max-width:250px; width:100%;">
+                <label for="reportDateFilter" class="form-label fw-bold">Filter by Report Date</label>
+                <div class="input-group">
+                    <input type="date" id="reportDateFilter" class="form-control">
+                    <button type="button" class="btn btn-outline-secondary" id="reportDateFilterClear" title="Clear date filter">&times;</button>
+                </div>
             </div>
         </div>
         <div class="table-responsive">
@@ -254,6 +261,28 @@
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 
     <script>
+        // Report Date column holds a "dd.mm.yyyy" or "dd.mm.yyyy - dd.mm.yyyy" (range) string,
+        // not an ISO date, so it can't use DataTables' built-in column search - parse it instead.
+        function parseDMY(str) {
+            const parts = (str || '').trim().split('.');
+            if (parts.length !== 3) return null;
+            const [dd, mm, yyyy] = parts.map(Number);
+            if (!dd || !mm || !yyyy) return null;
+            return new Date(yyyy, mm - 1, dd);
+        }
+
+        let selectedReportDate = null;
+
+        $.fn.dataTable.ext.search.push(function (settings, data) {
+            if (!selectedReportDate) return true;
+            const cellText = data[1];
+            const [startText, endText] = cellText.split(' - ').map(s => s.trim());
+            const start = parseDMY(startText);
+            const end = endText ? parseDMY(endText) : start;
+            if (!start || !end) return false;
+            return selectedReportDate >= start && selectedReportDate <= end;
+        });
+
         $(document).ready(function () {
             const reportTable = $('#reportTable').DataTable({
                 "iDisplayLength": 10,
@@ -274,6 +303,18 @@
                 const escaped = $.fn.dataTable.util.escapeRegex(value);
                 const pattern = mode === 'exact' ? '^' + escaped + '$' : escaped;
                 reportTable.column(0).search(pattern, true, false).draw();
+            });
+
+            $('#reportDateFilter').on('change', function () {
+                const val = $(this).val();
+                selectedReportDate = val ? new Date(val + 'T00:00:00') : null;
+                reportTable.draw();
+            });
+
+            $('#reportDateFilterClear').on('click', function () {
+                $('#reportDateFilter').val('');
+                selectedReportDate = null;
+                reportTable.draw();
             });
         });
 
