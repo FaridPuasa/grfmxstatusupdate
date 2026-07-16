@@ -189,7 +189,6 @@ const MILEAGELOGS = vehicleConn.model('MILEAGELOGS', require('./models/MILEAGELO
 const COUNTER_ID = "68897ff1c0ccfbcb817e0c15";
 const orderWatch = ORDERS.watch();
 const apiKey = process.env.API_KEY;
-const processingResults = [];
 
 // File Upload (Multer)
 const storage = multer.memoryStorage();
@@ -4081,7 +4080,6 @@ app.post('/mohsearch', ensureAuthenticated, ensureSearchMOHJob, async (req, res)
 
 // Render the scanFMX page
 app.get('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    processingResults.length = 0;
     res.render('updateDelivery', { user: req.user });
 });
 
@@ -4113,10 +4111,6 @@ app.get('/podGenerator', ensureAuthenticated, ensureGeneratePODandUpdateDelivery
 
 app.get('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     res.render('addressAreaCheck', { user: req.user });
-});
-
-app.get('/successUpdate', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    res.render('successUpdate', { processingResults, user: req.user });
 });
 
 app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
