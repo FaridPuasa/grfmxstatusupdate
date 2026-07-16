@@ -342,18 +342,47 @@
         // Reports are saved with their live "Action" column (Remove buttons) still baked into
         // the table HTML. reportGenerator.ejs's own Print buttons strip that column before
         // printing (it's only useful while editing); do the same here so View/Print match.
+        // Some tables (e.g. the warehouse table) span the "Action" header over two thead rows
+        // with rowspan, so it doesn't sit in the last header row - search all header cells
+        // instead of assuming the last row. The tbody's Action cell is always the last <td> in
+        // each row regardless of rowspan quirks in earlier columns (e.g. grouped product rows).
         function stripActionColumns(root) {
             root.querySelectorAll('table').forEach(function (table) {
-                const headerRow = table.querySelector('thead tr:last-of-type') || table.querySelector('tr');
-                if (!headerRow) return;
-                const hasActionColumn = Array.from(headerRow.children).some(function (th) {
-                    return th.textContent.trim().toLowerCase() === 'action';
+                let hasActionColumn = false;
+                table.querySelectorAll('thead th').forEach(function (th) {
+                    if (th.textContent.trim().toLowerCase() === 'action') {
+                        hasActionColumn = true;
+                        th.remove();
+                    }
                 });
                 if (!hasActionColumn) return;
-                table.querySelectorAll('tr').forEach(function (row) {
+                table.querySelectorAll('tbody tr').forEach(function (row) {
                     const cells = row.children;
                     if (cells.length > 1) row.removeChild(cells[cells.length - 1]);
                 });
+            });
+        }
+
+        // Reports are saved with the live generator controls (date picker, Generate/Save/
+        // Print/Reset buttons, "Add Row" buttons) and the warehouse staleness warning baked
+        // into the HTML - none of those apply to a saved, read-only report. Strip them, and
+        // turn the mileage inputs (only real <input> elements left in the content) into plain
+        // text so they can't be edited from the view/print modal.
+        function sanitizeReportForDisplay(root) {
+            root.querySelectorAll('form').forEach(function (form) { form.remove(); });
+            root.querySelectorAll('#addStaffRowBtn, #addVehicleRowBtn').forEach(function (el) { el.remove(); });
+            root.querySelectorAll('.cache-warning').forEach(function (el) { el.remove(); });
+            root.querySelectorAll('input').forEach(function (input) {
+                const span = document.createElement('span');
+                span.textContent = input.value || '';
+                span.style.whiteSpace = 'pre-wrap';
+                input.parentNode.replaceChild(span, input);
+            });
+            root.querySelectorAll('select').forEach(function (sel) {
+                const span = document.createElement('span');
+                span.textContent = (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || '-';
+                span.style.whiteSpace = 'pre-wrap';
+                sel.parentNode.replaceChild(span, sel);
             });
         }
 
@@ -370,6 +399,7 @@
                     const container = document.getElementById('reportHtmlContainer');
                     container.innerHTML = data.reportContent;
                     stripActionColumns(container);
+                    sanitizeReportForDisplay(container);
                     openModal();
                 })
                 .catch(function (err) {
