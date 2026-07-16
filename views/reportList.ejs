@@ -417,7 +417,12 @@
                 <html>
                 <head>
                     <title>${currentReportName || 'Report'}</title>
-                    <style>${style}</style>
+                    <style>
+                        /* Browsers drop background colors when printing unless told otherwise -
+                           without this, every colored header/section bar prints as plain white. */
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+                        ${style}
+                    </style>
                 </head>
                 <body>
                     ${printContent}
