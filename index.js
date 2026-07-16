@@ -15093,12 +15093,14 @@ app.post('/updateJob', async (req, res) => {
                     successful: result.success && !result.delayed ? [{
                         trackingNumber: trackingNumber,
                         result: result.message,
-                        status: result.success ? "Updated" : "Failed"
+                        status: result.success ? "Updated" : "Failed",
+                        code: result.code
                     }] : [],
                     failed: !result.success && !result.delayed ? [{
                         trackingNumber: trackingNumber,
                         result: result.message,
-                        status: "Failed"
+                        status: "Failed",
+                        code: result.code
                     }] : [],
                     delayed: result.delayed ? [{
                         trackingNumber: trackingNumber,
@@ -17852,47 +17854,43 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
         console.log(`🔍 Starting Item in Warehouse update for ${trackingNumber} at ${warehouse}`);
 
         // ========== 0. SPECIAL HANDLING FOR CBSL ==========
-        // First, try to identify if this is CBSL by checking Detrack
+        // Run the CBSL probe and the main job lookup concurrently (was two sequential
+        // Detrack calls, plus a third identical getJobDetails call - see below)
         console.log(`🔄 Checking if ${trackingNumber} is CBSL...`);
 
-        try {
-            // Try as tracking_number first (CBSL first scan)
-            const cbslResponse = await axios.get(
-                `https://app.detrack.com/api/v2/dn/jobs/show/?tracking_number=${trackingNumber}`,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    timeout: 5000
-                }
-            );
-
-            if (cbslResponse.data.data && cbslResponse.data.data.group_name === 'cbsl') {
-                console.log(`✅ Identified as CBSL first scan`);
-                return await processCBSLFirstScan(trackingNumber, warehouse, req);
+        const cbslProbe = axios.get(
+            `https://app.detrack.com/api/v2/dn/jobs/show/?tracking_number=${trackingNumber}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey
+                },
+                timeout: 5000
             }
-        } catch (cbslError) {
+        ).catch(cbslError => {
             // Not CBSL or not found, continue with normal flow
             console.log(`ℹ️ Not CBSL or not found as tracking_number: ${cbslError.message}`);
+            return null;
+        });
+
+        const [cbslResponse, jobData] = await Promise.all([
+            cbslProbe,
+            getJobDetails(trackingNumber)
+        ]);
+
+        if (cbslResponse && cbslResponse.data.data && cbslResponse.data.data.group_name === 'cbsl') {
+            console.log(`✅ Identified as CBSL first scan`);
+            return await processCBSLFirstScan(trackingNumber, warehouse, req);
         }
 
-        // ========== 1. FIRST CHECK JOB EXISTS ==========
-        const jobExists = await checkJobExists(trackingNumber);
-        if (!jobExists) {
+        // ========== 1. CHECK JOB EXISTS (getJobDetails hits the same Detrack endpoint
+        // as checkJobExists and returns null under the same conditions, so a single
+        // call covers both checks) ==========
+        if (!jobData) {
             return {
                 success: false,
                 message: 'Job not found in Detrack',
                 code: 'DETRACK_NOT_FOUND'
-            };
-        }
-
-        const jobData = await getJobDetails(trackingNumber);
-        if (!jobData) {
-            return {
-                success: false,
-                message: 'Could not get job details',
-                code: 'DETRACK_NO_DETAILS'
             };
         }
 

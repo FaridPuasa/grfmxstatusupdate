@@ -911,43 +911,6 @@
     `;
         }
 
-        // Update one-by-one stats display
-        function updateMAWBOneByOneStatsDisplay() {
-            const statsDiv = document.getElementById('mawbOneByOneStats');
-            if (!statsDiv || !window.mawbScanningStats) return;
-
-            const stats = window.mawbScanningStats;
-
-            statsDiv.innerHTML = `
-        <h5><i class="fas fa-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
-        <div class="row">
-            <div class="col-md-4">
-                <p><strong>Total Jobs:</strong> ${stats.total}</p>
-                <p><strong>To Be Scanned:</strong> ${stats.unscanned - stats.newlyScanned} remaining</p>
-            </div>
-            <div class="col-md-4">
-                <p><strong>Already Scanned:</strong> ${stats.scanned} <span class="badge bg-success">At Warehouse</span></p>
-                <p><strong>Newly Scanned:</strong> ${stats.newlyScanned} <span class="badge bg-info">Just Updated</span></p>
-            </div>
-            <div class="col-md-4">
-                <p><strong>Skipped (Wrong MAWB):</strong> ${stats.invalid}</p>
-                <p><strong>Skipped (Already Scanned):</strong> ${stats.skipped}</p>
-            </div>
-        </div>
-        <div class="progress mt-2" style="height: 20px;">
-            <div class="progress-bar bg-success" style="width: ${(stats.scanned / stats.total) * 100}%">
-                Already Scanned (${stats.scanned})
-            </div>
-            <div class="progress-bar bg-info" style="width: ${(stats.newlyScanned / stats.total) * 100}%">
-                Newly Scanned (${stats.newlyScanned})
-            </div>
-            <div class="progress-bar bg-warning" style="width: ${((stats.unscanned - stats.newlyScanned) / stats.total) * 100}%">
-                Remaining (${stats.unscanned - stats.newlyScanned})
-            </div>
-        </div>
-    `;
-        }
-
         // Update the readyToScan event listener - FIXED VERSION
         document.getElementById('readyToScan').addEventListener('click', async function () {
             const updateCode = document.getElementById('updateCode').value;
@@ -1112,75 +1075,11 @@
                 return;
             }
 
-            // For IIW with MAWB validation
-            if (updateCode === 'IIW' && mawbNum !== '') {
-                // Check if tracking belongs to this MAWB
-                try {
-                    const response = await fetch('/updateJob/checkTrackingForMAWB', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            trackingNumber: trackingNumber,
-                            mawbNum: mawbNum
-                        })
-                    });
-
-                    if (response.ok) {
-                        const checkResult = await response.json();
-
-                        if (!checkResult.belongsToMAWB) {
-                            // Not part of this MAWB group
-                            if (window.mawbScanningStats) {
-                                window.mawbScanningStats.invalid++;
-                                updateMAWBOneByOneStatsDisplay();
-                            }
-
-                            scanResults.failed.push({
-                                trackingNumber: trackingNumber,
-                                result: `Not part of MAWB ${mawbNum} group`
-                            });
-                            scanResults.notUpdatedCount++;
-                            updateScanResultsDisplay();
-
-                            // Show alert
-                            showScanAlert(`❌ ${trackingNumber} is not part of MAWB ${mawbNum} group`, 'danger');
-
-                            this.focus();
-                            return;
-                        }
-
-                        // Check if already scanned
-                        if (checkResult.warehouseEntry === "Yes") {
-                            if (window.mawbScanningStats) {
-                                window.mawbScanningStats.skipped++;
-                                updateMAWBOneByOneStatsDisplay();
-                            }
-
-                            scanResults.failed.push({
-                                trackingNumber: trackingNumber,
-                                result: 'Already scanned (warehouseEntry: Yes)'
-                            });
-                            scanResults.notUpdatedCount++;
-                            updateScanResultsDisplay();
-
-                            showScanAlert(`⚠️ ${trackingNumber} already scanned`, 'warning');
-
-                            this.focus();
-                            return;
-                        }
-
-                        // Valid for scanning - update stats
-                        if (window.mawbScanningStats) {
-                            window.mawbScanningStats.newlyScanned++;
-                            updateMAWBOneByOneStatsDisplay();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error checking MAWB:', error);
-                }
-            }
+            // NOTE: IIW MAWB/already-scanned validation used to be a separate
+            // /updateJob/checkTrackingForMAWB round trip before the /updateJob call below.
+            // /updateJob already runs the same checks server-side (MAWB_MISMATCH,
+            // ALREADY_SCANNED codes), so the stats update now happens after that single
+            // call instead (see below) to avoid doing the check twice per scan.
 
             // Validation for different update codes
             if (updateCode === 'UAN' && !mawbNum) {
@@ -1248,6 +1147,24 @@
                 // FIX: Check if result is defined before accessing properties
                 if (!result) {
                     throw new Error('No result returned from server');
+                }
+
+                // Update MAWB scanning stats/alerts for IIW based on the update result
+                // (previously derived from the separate checkTrackingForMAWB pre-check)
+                if (updateCode === 'IIW' && window.mawbScanningStats) {
+                    if (result.successful && result.successful.length > 0) {
+                        window.mawbScanningStats.newlyScanned++;
+                    } else {
+                        const failCode = result.failed && result.failed[0] ? result.failed[0].code : null;
+                        if (failCode === 'MAWB_MISMATCH' || failCode === 'INVALID_MAWB') {
+                            window.mawbScanningStats.invalid++;
+                            showScanAlert(`❌ ${trackingNumber} is not part of MAWB ${mawbNum} group`, 'danger');
+                        } else if (failCode === 'ALREADY_SCANNED') {
+                            window.mawbScanningStats.skipped++;
+                            showScanAlert(`⚠️ ${trackingNumber} already scanned`, 'warning');
+                        }
+                    }
+                    updateMAWBOneByOneStatsDisplay();
                 }
 
                 // Handle the result properly with safe checks
@@ -1389,236 +1306,6 @@
             }
 
             scanResultsDiv.scrollTop = 0;
-        }
-
-        // Update updateScanResultsDisplay to include duplicates
-        function updateScanResultsDisplay() {
-            const scanResultsDiv = document.getElementById('scanResults');
-            if (!scanResultsDiv) {
-                console.error('scanResults element not found');
-                return;
-            }
-
-            let html = `
-        <h3>Scanning Results</h3>
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-white bg-success">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Updated</h5>
-                        <p class="card-text display-4">${scanResults.updatedCount}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-danger">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Failed</h5>
-                        <p class="card-text display-4">${scanResults.notUpdatedCount}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-warning">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Delayed</h5>
-                        <p class="card-text display-4">${scanResults.delayedCount}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-info">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Duplicates</h5>
-                        <p class="card-text display-4">${scanResults.duplicateCount || 0}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-            // Show latest result at the top
-            const allResults = [...scanResults.successful, ...scanResults.failed, ...scanResults.delayed];
-            const latestResult = allResults[allResults.length - 1];
-
-            if (latestResult) {
-                const isSuccess = scanResults.successful.includes(latestResult);
-                const isDelayed = scanResults.delayed.includes(latestResult);
-
-                let alertClass = 'alert-danger';
-                let icon = '❌';
-                let status = 'Failed';
-
-                if (isSuccess) {
-                    alertClass = 'alert-success';
-                    icon = '✅';
-                    status = 'Success';
-                } else if (isDelayed) {
-                    alertClass = 'alert-warning';
-                    icon = '⏰';
-                    status = 'Delayed';
-                }
-
-                html += `
-            <div class="alert ${alertClass} alert-dismissible fade show">
-                <strong>${icon} ${status}:</strong> 
-                ${latestResult.trackingNumber} - ${latestResult.result || 'No result message'}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-            }
-
-            // Add successful jobs table if any
-            if (scanResults.successful.length > 0) {
-                const recentSuccessful = scanResults.successful.slice(-10).reverse();
-                html += `
-            <h4 class="text-success">Recently Updated</h4>
-            <div class="table-responsive mb-3">
-                <table class="table table-success table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${recentSuccessful.map(item => `
-                            <tr>
-                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                                <td><small>${item.result || 'Updated'}</small></td>
-                                <td><small><span class="badge bg-success">Success</span></small></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            }
-
-            // Add duplicate jobs table if any duplicates
-            if (scanResults.duplicateCount > 0) {
-                html += `
-            <h4 class="text-info">Duplicates Skipped</h4>
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Duplicate tracking numbers were skipped and not processed again.
-            </div>
-            <div class="table-responsive mb-3">
-                <table class="table table-info table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Duplicate Count</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="duplicateTableBody">
-                        ${getRecentDuplicates().map(item => `
-                            <tr>
-                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                                <td><small>${item.count || 1}</small></td>
-                                <td><small><span class="badge bg-info">Duplicate</span></small></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            }
-
-            // In updateScanResultsDisplay function, update the delayed table
-            if (scanResults.delayed.length > 0) {
-                const recentDelayed = scanResults.delayed.slice(-10).reverse();
-                html += `
-        <h4 class="text-warning">Recently Delayed</h4>
-        <div class="table-responsive mb-3">
-            <table class="table table-warning table-striped table-sm">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Scheduled Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${recentDelayed.map(item => `
-                        <tr>
-                            <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                            <td><small>${item.scheduledTime || '30 mins delay'}</small></td>
-                            <td><small><span class="badge bg-warning">Scheduled</span></small></td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-            }
-
-            // Add failed jobs table if any
-            if (scanResults.failed.length > 0) {
-                const recentFailed = scanResults.failed.slice(-10).reverse();
-                html += `
-            <h4 class="text-danger">Recent Failures</h4>
-            <div class="table-responsive">
-                <table class="table table-danger table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${recentFailed.map(item => `
-                            <tr>
-                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                                <td><small>${item.result || 'Failed'}</small></td>
-                                <td><small><span class="badge bg-danger">Failed</span></small></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            }
-
-            scanResultsDiv.innerHTML = html;
-            scanResultsDiv.style.display = 'block';
-            scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
-        }
-
-        // NEW: Update the bulk-style summary cards for one-by-one SBR
-        function updateBulkStyleResults() {
-            // Update the summary cards if they exist in the DOM
-            const updatedCountElem = document.getElementById('updatedCount');
-            const failedCountElem = document.getElementById('failedCount');
-            const totalCountElem = document.getElementById('totalCount');
-            const duplicateCountElem = document.getElementById('duplicateCount');
-            const delayedCountElem = document.getElementById('delayedCount');
-
-            if (updatedCountElem) {
-                updatedCountElem.textContent = scanResults.updatedCount || 0;
-            }
-            if (failedCountElem) {
-                failedCountElem.textContent = scanResults.notUpdatedCount || 0;
-            }
-            if (totalCountElem) {
-                const total = (scanResults.updatedCount || 0) + (scanResults.notUpdatedCount || 0);
-                totalCountElem.textContent = total;
-            }
-            if (duplicateCountElem) {
-                duplicateCountElem.textContent = scanResults.duplicateCount || 0;
-            }
-            if (delayedCountElem) {
-                delayedCountElem.textContent = scanResults.delayedCount || 0;
-            }
-
-            // If the bulk results section is visible, update it
-            const bulkResults = document.getElementById('bulkResults');
-            if (bulkResults && bulkResults.style.display === 'block') {
-                // The displayBulkResults function will handle the full update
-                // We just need to make sure the counts are updated
-            }
         }
 
         // Helper function to get recent duplicates
@@ -2735,7 +2422,7 @@
                         setTimeout(() => {
                             const updatedCount = jobStatus ? (jobStatus.updatedCount || 0) : 0;
                             const failedCount = jobStatus ? (jobStatus.failedCount || 0) : 0;
-                            alert(`✅ Excel processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${updatedCount}\nFailed: ${failedCount}`);
+                            alert(`✅ Processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${updatedCount}\nFailed: ${failedCount}`);
                         }, 500);
                     } else if (jobStatus.status === 'failed') {
                         clearInterval(pollInterval);
@@ -2761,159 +2448,6 @@
                     }
                 }
             }, 2000);
-        }
-
-        function updateScanResultsDisplay() {
-            const scanResultsDiv = document.getElementById('scanResults');
-            if (!scanResultsDiv) {
-                console.error('scanResults element not found');
-                return;
-            }
-
-            let html = `
-        <h3>Scanning Results</h3>
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-white bg-success">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Updated</h5>
-                        <p class="card-text display-4">${scanResults.updatedCount}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-danger">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Failed</h5>
-                        <p class="card-text display-4">${scanResults.notUpdatedCount}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-warning">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Delayed</h5>
-                        <p class="card-text display-4">${scanResults.delayedCount}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-            // Show latest result at the top
-            const allResults = [...scanResults.successful, ...scanResults.failed, ...scanResults.delayed];
-            const latestResult = allResults[allResults.length - 1];
-
-            if (latestResult) {
-                const isSuccess = scanResults.successful.includes(latestResult);
-                const isDelayed = scanResults.delayed.includes(latestResult);
-
-                let alertClass = 'alert-danger';
-                let icon = '❌';
-                let status = 'Failed';
-
-                if (isSuccess) {
-                    alertClass = 'alert-success';
-                    icon = '✅';
-                    status = 'Success';
-                } else if (isDelayed) {
-                    alertClass = 'alert-warning';
-                    icon = '⏰';
-                    status = 'Delayed';
-                }
-
-                html += `
-            <div class="alert ${alertClass} alert-dismissible fade show">
-                <strong>${icon} ${status}:</strong> 
-                ${latestResult.trackingNumber} - ${latestResult.result || 'No result message'}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-            }
-
-            // Add successful jobs table if any
-            if (scanResults.successful.length > 0) {
-                const recentSuccessful = scanResults.successful.slice(-10).reverse();
-                html += `
-            <h4 class="text-success">Recently Updated</h4>
-            <div class="table-responsive mb-3">
-                <table class="table table-success table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${recentSuccessful.map(item => `
-                            <tr>
-                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                                <td><small>${item.result || 'Updated'}</small></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            }
-
-            // In updateScanResultsDisplay function, update the delayed table
-            if (scanResults.delayed.length > 0) {
-                const recentDelayed = scanResults.delayed.slice(-10).reverse();
-                html += `
-        <h4 class="text-warning">Recently Delayed</h4>
-        <div class="table-responsive mb-3">
-            <table class="table table-warning table-striped table-sm">
-                <thead>
-                    <tr>
-                        <th>Tracking Number</th>
-                        <th>Scheduled Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${recentDelayed.map(item => `
-                        <tr>
-                            <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                            <td><small>${item.scheduledTime || '30 mins delay'}</small></td>
-                            <td><small><span class="badge bg-warning">Scheduled</span></small></td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-            }
-
-            // Add failed jobs table if any
-            if (scanResults.failed.length > 0) {
-                const recentFailed = scanResults.failed.slice(-10).reverse();
-                html += `
-            <h4 class="text-danger">Recent Failures</h4>
-            <div class="table-responsive">
-                <table class="table table-danger table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th>Tracking Number</th>
-                            <th>Result</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${recentFailed.map(item => `
-                            <tr>
-                                <td><small>${item.trackingNumber || 'N/A'}</small></td>
-                                <td><small>${item.result || 'Failed'}</small></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-            }
-
-            scanResultsDiv.innerHTML = html;
-            scanResultsDiv.style.display = 'block';
-            scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
         }
 
         // Add this function to check and handle duplicates
