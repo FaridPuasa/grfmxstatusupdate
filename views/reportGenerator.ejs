@@ -1412,13 +1412,13 @@
           const headerRow = document.createElement("tr");
           headerRow.style.cssText = "background-color: lightblue; font-weight: bold;";
           const headerCell = document.createElement("th");
-          headerCell.colSpan = 2 + mappedProducts.length + 4;
+          headerCell.colSpan = 2 + mappedProducts.length + 6;
           headerCell.style.textAlign = "left";
           headerCell.innerText = "2. Job Result";
           headerRow.appendChild(headerCell);
           thead.appendChild(headerRow);
           const colRow = document.createElement("tr");
-          const headers = ["Staff", "Area", "Vehicle", "Jobs", ...mappedProducts, "Total", "Success Rate"];
+          const headers = ["Staff", "Area", "Vehicle", "Jobs", ...mappedProducts, "Total", "Success Rate", "Start Time", "End Time"];
           colRow.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
           thead.appendChild(colRow);
           table.appendChild(thead);
@@ -1431,6 +1431,14 @@
             const tdSR = document.createElement("td");
             tdSR.rowSpan = 3;
             tdSR.contentEditable = false;
+            const tdStartTime = document.createElement("td");
+            tdStartTime.rowSpan = 3;
+            tdStartTime.contentEditable = false;
+            tdStartTime.innerText = r.startTime || "N/A";
+            const tdEndTime = document.createElement("td");
+            tdEndTime.rowSpan = 3;
+            tdEndTime.contentEditable = false;
+            tdEndTime.innerText = r.endTime || "N/A";
             rowTypes.forEach((type, idx) => {
               const row = document.createElement("tr");
               if (idx === 0) {
@@ -1504,7 +1512,11 @@
               };
               calculateTotal();
               row.appendChild(tdTotal);
-              if (idx === 0) row.appendChild(tdSR);
+              if (idx === 0) {
+                row.appendChild(tdSR);
+                row.appendChild(tdStartTime);
+                row.appendChild(tdEndTime);
+              }
               tbody.appendChild(row);
             });
           });

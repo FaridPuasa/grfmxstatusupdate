@@ -1298,6 +1298,29 @@ app.get('/api/delivery-result-report', async (req, res) => {
 
             console.log(`Order ${order.doTrackingNumber} has ${relevantHistories.length} relevant histories`);
 
+            // Start Time = earliest "Out for Delivery" status change for the staff that day.
+            // This has to scan every relevant history entry (not just perDay's latest-per-day
+            // pick below) since we want the FIRST time the staff went out, not the last.
+            relevantHistories.forEach(h => {
+                if (h.statusHistory !== "Out for Delivery") return;
+
+                const staff = h.lastAssignedTo || "Unassigned";
+                const staffNames = staff.split('/').map(n => n.trim());
+                if (!staffNames.some(name => operationStaff.includes(name))) return;
+
+                if (!staffMap[staff]) {
+                    staffMap[staff] = {
+                        products: {},
+                        totals: { current: 0, completed: 0, failed: 0 }
+                    };
+                }
+
+                const historyDate = new Date(h.dateUpdated);
+                if (!staffMap[staff].startTime || historyDate < staffMap[staff].startTime) {
+                    staffMap[staff].startTime = historyDate;
+                }
+            });
+
             // Group by date to get latest status per day
             const perDay = new Map();
 
@@ -1379,6 +1402,12 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     if (final.statusHistory === "Completed") {
                         productData.completed++;
                         totals.completed++;
+
+                        // End Time = latest "Completed" status change for the staff that day.
+                        const historyDate = new Date(final.dateUpdated);
+                        if (!staffMap[staff].endTime || historyDate > staffMap[staff].endTime) {
+                            staffMap[staff].endTime = historyDate;
+                        }
                     } else if (final.statusHistory === "Failed Delivery") {
                         productData.failed++;
                         totals.failed++;
@@ -1431,6 +1460,14 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     }
                 }
 
+                // Selfcollect has no dispatcher travel to time, so it's always N/A.
+                const startTime = staff !== "Selfcollect" && data.startTime
+                    ? moment.tz(data.startTime, 'Asia/Brunei').format('hh:mm A')
+                    : "N/A";
+                const endTime = staff !== "Selfcollect" && data.endTime
+                    ? moment.tz(data.endTime, 'Asia/Brunei').format('hh:mm A')
+                    : "N/A";
+
                 return {
                     staff: reportStaffName,
                     vehicle,
@@ -1438,7 +1475,9 @@ app.get('/api/delivery-result-report', async (req, res) => {
                     productCounts,
                     totals: data.totals,
                     total,
-                    successRate
+                    successRate,
+                    startTime,
+                    endTime
                 };
             })
             .filter(result => {
