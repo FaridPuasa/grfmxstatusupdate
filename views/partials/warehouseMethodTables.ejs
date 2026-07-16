@@ -1,0 +1,48 @@
+<% /* Locals expected: methodData (object: method -> array of orders), tabId (string, for the maxattempt age filter) */ %>
+<% Object.keys(methodData).forEach(method => {
+    const orders = methodData[method].filter(o => tabId !== 'maxattempt' || o.age < 30);
+    if (orders.length > 0) { %>
+        <div class="px-3 pt-3"><strong><%= method %></strong></div>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0">
+            <thead>
+                <tr>
+                    <th>Age</th>
+                    <th>Tracking Number</th>
+                    <th>Location</th>
+                    <th>Attempt</th>
+                    <th>Latest Reason</th>
+                    <th>Area</th>
+                    <th>Name</th>
+                    <th>Main Phone</th>
+                    <th>Customer Remark</th>
+                    <th>Go Rush Remark</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% orders.forEach(order => { %>
+                    <tr>
+                        <td>
+                            <span class="badge
+                                <%= order.age >= 30 ? 'bg-dark' :
+                                    order.age >= 10 ? 'bg-danger' :
+                                    order.age >= 7 ? 'bg-warning text-dark' : 'bg-success' %>">
+                                <%= order.age %> days
+                            </span>
+                        </td>
+                        <td class="track-no"><%= order.doTrackingNumber %></td>
+                        <td><%= order.location || '-' %></td>
+                        <td><%= order.attempt %></td>
+                        <td><%= order.latestReason %></td>
+                        <td><%= order.area %></td>
+                        <td><%= order.receiverName %></td>
+                        <td><%= order.receiverPhoneNumber %></td>
+                        <td><%= order.remarks || '-' %></td>
+                        <td><%= order.grRemark || '-' %></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        </div>
+        <hr class="my-1">
+<% } }) %>

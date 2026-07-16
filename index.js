@@ -3111,7 +3111,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
         const allOrders = await ORDERS.find(
             { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1 }
+            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1 }
         );
 
         const deliveryOrders = await ORDERS.find(
@@ -3149,7 +3149,9 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                     latestLocation: order.latestLocation || '-',
                     remarks: order.remarks || '-',
                     grRemark: order.grRemark || '-',
-                    location: generateLocation(order)
+                    location: generateLocation(order),
+                    jobMethod: method,
+                    mawbNo: order.mawbNo || 'Unassigned'
                 });
             });
             for (const product in map) {
@@ -3187,7 +3189,8 @@ app.get('/', ensureAuthenticated, async (req, res) => {
                         additionalPhoneNumber: order.additionalPhoneNumber || '-',
                         jobMethod: order.jobMethod || '-',
                         remarks: order.remarks || '-',
-                        grRemark: order.grRemark || '-'
+                        grRemark: order.grRemark || '-',
+                        mawbNo: order.mawbNo || 'Unassigned'
                     });
                 }
             });
@@ -3319,6 +3322,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             deliveriesMap,
             plannedSelfCollectMap,
             productMapping: PRODUCT_MAPPING,
+            mawbProducts: MAWB_PRODUCTS,
             moment,
             user: req.user,
             orders: []

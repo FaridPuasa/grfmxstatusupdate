@@ -1,0 +1,66 @@
+<% /* Locals expected: idPrefix (string), areaData (object: area -> array of orders) */ %>
+<% Object.keys(areaData).forEach((area, areaIndex) => {
+    const areaCount = areaData[area].length;
+%>
+    <div class="card my-2 mx-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="toggle-header" style="cursor: pointer;"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-<%= idPrefix %>-area-<%= areaIndex %>">
+                <strong><%= area %></strong>
+            </div>
+            <div class="section-toolbar">
+                <span class="badge bg-warning text-dark"><%= areaCount %> orders</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                    data-target="#collapse-<%= idPrefix %>-area-<%= areaIndex %>"
+                    data-section-name="<%= area %>">📋 Copy</button>
+                <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                    data-target="#collapse-<%= idPrefix %>-area-<%= areaIndex %>"
+                    data-section-name="<%= area %>">📊 Excel</button>
+                <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                    data-bs-target="#collapse-<%= idPrefix %>-area-<%= areaIndex %>"></i>
+            </div>
+        </div>
+        <div class="collapse" id="collapse-<%= idPrefix %>-area-<%= areaIndex %>">
+            <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>Age</th>
+                        <th>Tracking Number</th>
+                        <th>Attempt</th>
+                        <th>Latest Reason</th>
+                        <th>Area</th>
+                        <th>Name</th>
+                        <th>Main Phone</th>
+                        <th>Customer Remark</th>
+                        <th>Go Rush Remark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% areaData[area].forEach(order => { %>
+                        <tr>
+                            <td>
+                                <span class="badge
+                                    <%= order.age >= 30 ? 'bg-dark' :
+                                        order.age >= 10 ? 'bg-danger' :
+                                        order.age >= 7 ? 'bg-warning text-dark' : 'bg-success' %>">
+                                    <%= order.age %> days
+                                </span>
+                            </td>
+                            <td class="track-no"><%= order.doTrackingNumber %></td>
+                            <td><%= order.attempt %></td>
+                            <td><%= order.latestReason %></td>
+                            <td><%= order.area %></td>
+                            <td><%= order.receiverName %></td>
+                            <td><%= order.receiverPhoneNumber %></td>
+                            <td><%= order.remarks || '-' %></td>
+                            <td><%= order.grRemark || '-' %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+<% }) %>

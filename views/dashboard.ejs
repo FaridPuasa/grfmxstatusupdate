@@ -435,6 +435,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                             Object.keys(map[location][product]).forEach(area => {
                                                 prodCount += map[location][product][area].length;
                                             });
+                                            const isMawbProduct = mawbProducts.includes(product);
                                         %>
                                             <div class="card my-2 mx-3">
                                                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -458,71 +459,55 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                 <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
                                                     <div class="card-body p-0">
 
-                                                        <% Object.keys(map[location][product]).forEach((area, areaIndex) => {
-                                                            const areaCount = map[location][product][area].length;
+                                                        <% if (isMawbProduct) {
+                                                            const mawbGroups = {};
+                                                            Object.keys(map[location][product]).forEach(area => {
+                                                                map[location][product][area].forEach(order => {
+                                                                    const m = order.mawbNo || 'Unassigned';
+                                                                    if (!mawbGroups[m]) mawbGroups[m] = [];
+                                                                    mawbGroups[m].push(order);
+                                                                });
+                                                            });
                                                         %>
-                                                            <div class="card my-2 mx-4">
-                                                                <div class="card-header d-flex justify-content-between align-items-center">
-                                                                    <div class="toggle-header" style="cursor: pointer;"
-                                                                        data-bs-toggle="collapse"
-                                                                        data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
-                                                                        <strong><%= area %></strong>
+                                                            <% Object.keys(mawbGroups).sort().forEach((mawb, mawbIndex) => {
+                                                                const mawbOrders = mawbGroups[mawb];
+                                                                const areaSubMap = {};
+                                                                mawbOrders.forEach(order => {
+                                                                    const a = order.area || 'Unknown';
+                                                                    if (!areaSubMap[a]) areaSubMap[a] = [];
+                                                                    areaSubMap[a].push(order);
+                                                                });
+                                                                const mawbIdPrefix = `${id}-loc-${locIndex}-prod-${prodIndex}-mawb-${mawbIndex}`;
+                                                            %>
+                                                                <div class="card my-2 mx-3">
+                                                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                                                        <div class="toggle-header" style="cursor: pointer;"
+                                                                            data-bs-toggle="collapse"
+                                                                            data-bs-target="#collapse-<%= mawbIdPrefix %>">
+                                                                            <strong>MAWB: <%= mawb %></strong>
+                                                                        </div>
+                                                                        <div class="section-toolbar">
+                                                                            <span class="badge bg-info"><%= mawbOrders.length %> orders</span>
+                                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                                data-target="#collapse-<%= mawbIdPrefix %>"
+                                                                                data-section-name="MAWB <%= mawb %>">📋 Copy</button>
+                                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                                data-target="#collapse-<%= mawbIdPrefix %>"
+                                                                                data-section-name="MAWB <%= mawb %>">📊 Excel</button>
+                                                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                                                                data-bs-target="#collapse-<%= mawbIdPrefix %>"></i>
+                                                                        </div>
                                                                     </div>
-                                                                    <div class="section-toolbar">
-                                                                        <span class="badge bg-warning text-dark"><%= areaCount %> orders</span>
-                                                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>"
-                                                                            data-section-name="<%= area %>">📋 Copy</button>
-                                                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>"
-                                                                            data-section-name="<%= area %>">📊 Excel</button>
-                                                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                                                            data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>"></i>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>-area-<%= areaIndex %>">
-                                                                    <div class="table-responsive">
-                                                                    <table class="table table-sm table-bordered mb-0">
-                                                                        <thead>
-                                                                            <tr>
-                                                                                <th>Age</th>
-                                                                                <th>Tracking Number</th>
-                                                                                <th>Attempt</th>
-                                                                                <th>Latest Reason</th>
-                                                                                <th>Area</th>
-                                                                                <th>Name</th>
-                                                                                <th>Main Phone</th>
-                                                                                <th>Customer Remark</th>
-                                                                                <th>Go Rush Remark</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            <% map[location][product][area].forEach(order => { %>
-                                                                                <tr>
-                                                                                    <td>
-                                                                                        <span class="badge
-                                                                                            <%= order.age >= 30 ? 'bg-dark' :
-                                                                                                order.age >= 10 ? 'bg-danger' :
-                                                                                                order.age >= 7 ? 'bg-warning text-dark' : 'bg-success' %>">
-                                                                                            <%= order.age %> days
-                                                                                        </span>
-                                                                                    </td>
-                                                                                    <td class="track-no"><%= order.doTrackingNumber %></td>
-                                                                                    <td><%= order.attempt %></td>
-                                                                                    <td><%= order.latestReason %></td>
-                                                                                    <td><%= order.area %></td>
-                                                                                    <td><%= order.receiverName %></td>
-                                                                                    <td><%= order.receiverPhoneNumber %></td>
-                                                                                    <td><%= order.remarks || '-' %></td>
-                                                                                    <td><%= order.grRemark || '-' %></td>
-                                                                                </tr>
-                                                                            <% }) %>
-                                                                        </tbody>
-                                                                    </table>
+                                                                    <div class="collapse" id="collapse-<%= mawbIdPrefix %>">
+                                                                        <div class="card-body p-0">
+                                                                            <%- include('partials/warehouseAreaCards', { idPrefix: mawbIdPrefix, areaData: areaSubMap }) %>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        <% }) %>
+                                                            <% }) %>
+                                                        <% } else { %>
+                                                            <%- include('partials/warehouseAreaCards', { idPrefix: `${id}-loc-${locIndex}-prod-${prodIndex}`, areaData: map[location][product] }) %>
+                                                        <% } %>
 
                                                     </div>
                                                 </div>
@@ -536,7 +521,9 @@ i.bi-caret-down-fill[aria-expanded="true"] {
 
                     <% } else { %>
 
-                        <% Object.keys(map).forEach((product, index) => { %>
+                        <% Object.keys(map).forEach((product, index) => {
+                            const isMawbProduct = mawbProducts.includes(product);
+                        %>
                             <div class="card my-3">
                                 <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
                                     <div class="toggle-header" style="cursor: pointer;"
@@ -572,53 +559,55 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                 </div>
                                 <div class="collapse" id="collapse-<%= id %>-<%= index %>">
                                     <div class="card-body p-0">
-                                        <% Object.keys(map[product]).forEach(method => {
-                                            const orders = map[product][method].filter(o => id !== 'maxattempt' || o.age < 30);
-                                            if (orders.length > 0) { %>
-                                                <div class="px-3 pt-3"><strong><%= method %></strong></div>
-                                                <div class="table-responsive">
-                                                <table class="table table-sm table-bordered mb-0">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Age</th>
-                                                            <th>Tracking Number</th>
-                                                            <th>Location</th>
-                                                            <th>Attempt</th>
-                                                            <th>Latest Reason</th>
-                                                            <th>Area</th>
-                                                            <th>Name</th>
-                                                            <th>Main Phone</th>
-                                                            <th>Customer Remark</th>
-                                                            <th>Go Rush Remark</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <% orders.forEach(order => { %>
-                                                            <tr>
-                                                                <td>
-                                                                    <span class="badge
-                                                                        <%= order.age >= 30 ? 'bg-dark' :
-                                                                            order.age >= 10 ? 'bg-danger' :
-                                                                            order.age >= 7 ? 'bg-warning text-dark' : 'bg-success' %>">
-                                                                        <%= order.age %> days
-                                                                    </span>
-                                                                </td>
-                                                                <td class="track-no"><%= order.doTrackingNumber %></td>
-                                                                <td><%= order.location || '-' %></td>
-                                                                <td><%= order.attempt %></td>
-                                                                <td><%= order.latestReason %></td>
-                                                                <td><%= order.area %></td>
-                                                                <td><%= order.receiverName %></td>
-                                                                <td><%= order.receiverPhoneNumber %></td>
-                                                                <td><%= order.remarks || '-' %></td>
-                                                                <td><%= order.grRemark || '-' %></td>
-                                                            </tr>
-                                                        <% }) %>
-                                                    </tbody>
-                                                </table>
+                                        <% if (isMawbProduct) {
+                                            const mawbGroups = {};
+                                            Object.keys(map[product]).forEach(method => {
+                                                map[product][method].forEach(order => {
+                                                    const m = order.mawbNo || 'Unassigned';
+                                                    if (!mawbGroups[m]) mawbGroups[m] = [];
+                                                    mawbGroups[m].push(order);
+                                                });
+                                            });
+                                        %>
+                                            <% Object.keys(mawbGroups).sort().forEach((mawb, mawbIndex) => {
+                                                const mawbOrders = mawbGroups[mawb];
+                                                const methodSubMap = {};
+                                                mawbOrders.forEach(order => {
+                                                    const meth = order.jobMethod || 'Unknown';
+                                                    if (!methodSubMap[meth]) methodSubMap[meth] = [];
+                                                    methodSubMap[meth].push(order);
+                                                });
+                                                const mawbIdPrefix = `${id}-${index}-mawb-${mawbIndex}`;
+                                            %>
+                                                <div class="card my-2 mx-3">
+                                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                                        <div class="toggle-header" style="cursor: pointer;"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#collapse-<%= mawbIdPrefix %>">
+                                                            <strong>MAWB: <%= mawb %></strong>
+                                                        </div>
+                                                        <div class="section-toolbar">
+                                                            <span class="badge bg-info"><%= mawbOrders.length %> orders</span>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                data-target="#collapse-<%= mawbIdPrefix %>"
+                                                                data-section-name="MAWB <%= mawb %>">📋 Copy</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                data-target="#collapse-<%= mawbIdPrefix %>"
+                                                                data-section-name="MAWB <%= mawb %>">📊 Excel</button>
+                                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                                                                data-bs-target="#collapse-<%= mawbIdPrefix %>"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="collapse" id="collapse-<%= mawbIdPrefix %>">
+                                                        <div class="card-body p-0">
+                                                            <%- include('partials/warehouseMethodTables', { methodData: methodSubMap, tabId: id }) %>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <hr class="my-1">
-                                        <% } }) %>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <%- include('partials/warehouseMethodTables', { methodData: map[product], tabId: id }) %>
+                                        <% } %>
                                     </div>
                                 </div>
                             </div>
