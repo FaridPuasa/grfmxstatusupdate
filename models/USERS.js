@@ -31,7 +31,12 @@ const UserSchema = new mongoose.Schema({
     profilePicture: { type: String, default: '' },
     qrcodeVerify: { type: String, default: '' },
     userId: { type: String, unique: true, sparse: true },
-    company: { type: String, enum: ['Globex', 'Gorush', 'Rbskyshop', 'Others'], default: 'Gorush' }
+    company: { type: String, enum: ['Globex', 'Gorush', 'Rbskyshop', 'Others'], default: 'Gorush' },
+
+    // Last page visited while logged in - used to resume there on next login
+    // if re-logging in soon after an unplanned logout (idle timeout/day rollover)
+    lastVisitedPath: { type: String, default: '/' },
+    lastVisitedAt: { type: Date, default: null }
 });
 
 // Function to get prefix based on role

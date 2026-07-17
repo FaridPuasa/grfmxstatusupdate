@@ -178,6 +178,7 @@ const UnifiedPOD = mainConn.model('UnifiedPOD', require('./models/UnifiedPOD'));
 const GDEXMANIFESTSEALTAGS = mainConn.model('GDEXMANIFESTSEALTAGS', require('./models/GDEXMANIFESTSEALTAGS'));
 const PharmacyFormBatch = mainConn.model('PharmacyFormBatch', require('./models/PharmacyFormBatch'));
 const PHARMACYFORMCOUNTER = mainConn.model('PHARMACYFORMCOUNTER', require('./models/PHARMACYFORMCOUNTER'));
+const INVENTORYSTOCK = mainConn.model('INVENTORYSTOCK', require('./models/INVENTORYSTOCK'));
 
 // Vehicle DB
 const VEHICLE = vehicleConn.model('VEHICLE', require('./models/VEHICLE'));
@@ -197,13 +198,13 @@ const upload = multer({ storage });
 // ==================================================
 // 🔑 Session & Authentication
 // ==================================================
-const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
+const SESSION_IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes of inactivity
 
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    rolling: true, // refresh the 30-min expiry on every request (page loads, AJAX, heartbeat)
+    rolling: true, // refresh the 60-min expiry on every request (page loads, AJAX, heartbeat)
     store: MongoStore.create({
         mongoUrl: dbURI,
         dbName: 'GR_DMS',
@@ -232,6 +233,23 @@ app.use((req, res, next) => {
                     res.redirect('/login');
                 });
             });
+        }
+    }
+    next();
+});
+
+// Remembers the last page an authenticated user viewed, so that after an
+// unplanned logout (idle timeout above, or day rollover) they can be dropped
+// back into it if they log back in within the hour - see POST /login.
+const LAST_VISITED_SKIP_PREFIXES = ['/api/', '/images/', '/js/', '/css/', '/templates/', '/login', '/logout', '/session/heartbeat'];
+app.use((req, res, next) => {
+    if (req.method === 'GET' && req.isAuthenticated()) {
+        const path = req.originalUrl;
+        if (!LAST_VISITED_SKIP_PREFIXES.some(prefix => path.startsWith(prefix))) {
+            USERS.updateOne(
+                { _id: req.user._id },
+                { $set: { lastVisitedPath: path, lastVisitedAt: new Date() } }
+            ).catch(err => console.error('Error tracking last visited page:', err));
         }
     }
     next();
@@ -335,6 +353,14 @@ function ensureMOHForm(req, res, next) {
 
 function ensureSearchMOHJob(req, res, next) {
     if (req.isAuthenticated() && (req.user.role === 'moh' || req.user.role === 'cs' || req.user.role === 'manager' || req.user.role === 'admin')) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+function ensureInventory(req, res, next) {
+    if (req.isAuthenticated() && (req.user.role === 'manager' || req.user.role === 'admin')) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -1140,6 +1166,261 @@ app.get('/deleteReport/:id', ensureAuthenticated, async (req, res) => {
     } catch (err) {
         console.error('Error deleting report:', err);
         res.status(500).send('Failed to delete report: ' + err.message);
+    }
+});
+
+// ==================================================
+// 📦 Inventory System (admin/manager only)
+// ==================================================
+
+app.get('/inventory', ensureAuthenticated, ensureInventory, (req, res) => {
+    res.render('inventoryList', { user: req.user });
+});
+
+// Server-side DataTables listing
+app.get('/api/inventory', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const draw = parseInt(req.query.draw) || 0;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 10;
+        const searchValue = req.query.search?.value?.trim();
+        const order = req.query.order?.[0];
+        const columns = req.query.columns;
+
+        let query = {};
+        if (searchValue) {
+            const regex = new RegExp(searchValue, 'i');
+            query['$or'] = [
+                { itemDescription: regex },
+                { product: regex }
+            ];
+        }
+
+        let sort = {};
+        if (order && columns && columns[order.column]) {
+            const colName = columns[order.column].data;
+            if (['itemDescription', 'product', 'quantity', 'lastUpdated'].includes(colName)) {
+                sort[colName] = order.dir === 'desc' ? -1 : 1;
+            }
+        }
+        if (Object.keys(sort).length === 0) {
+            sort = { lastUpdated: -1 };
+        }
+
+        const total = await INVENTORYSTOCK.countDocuments({});
+        const filtered = await INVENTORYSTOCK.countDocuments(query);
+        const items = await INVENTORYSTOCK.find(query)
+            .select(['_id', 'itemDescription', 'product', 'quantity', 'lastUpdated', 'lastUpdatedBy'])
+            .sort(sort)
+            .skip(start)
+            .limit(length)
+            .lean();
+
+        res.json({ draw, recordsTotal: total, recordsFiltered: filtered, data: items });
+    } catch (err) {
+        console.error('Error loading inventory list:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Add New Item
+app.post('/api/inventory', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const { itemDescription, product, quantity } = req.body;
+        if (!itemDescription?.trim() || !product?.trim()) {
+            return res.status(400).json({ success: false, message: 'Item Description and Product are required' });
+        }
+        const initialQty = Number(quantity) || 0;
+        const now = new Date();
+        const item = new INVENTORYSTOCK({
+            itemDescription: itemDescription.trim(),
+            product: product.trim(),
+            quantity: initialQty,
+            lastUpdated: now,
+            lastUpdatedBy: req.user.name,
+            history: initialQty > 0 ? [{ date: now, qtyIn: initialQty, updatedBy: req.user.name }] : []
+        });
+        await item.save();
+        res.json({ success: true, item });
+    } catch (err) {
+        console.error('Error creating inventory item:', err);
+        res.status(500).json({ success: false, message: 'Failed to create item' });
+    }
+});
+
+// Item In - existing item, quantity increases
+app.post('/api/inventory/:id/in', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const qty = Number(req.body.qtyIn);
+        if (!qty || qty <= 0) {
+            return res.status(400).json({ success: false, message: 'Quantity In must be a positive number' });
+        }
+        const now = new Date();
+        const item = await INVENTORYSTOCK.findByIdAndUpdate(
+            req.params.id,
+            {
+                $inc: { quantity: qty },
+                $set: { lastUpdated: now, lastUpdatedBy: req.user.name },
+                $push: { history: { date: now, qtyIn: qty, updatedBy: req.user.name } }
+            },
+            { new: true }
+        );
+        if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+        res.json({ success: true, item });
+    } catch (err) {
+        console.error('Error processing item in:', err);
+        res.status(500).json({ success: false, message: 'Failed to update item' });
+    }
+});
+
+// Item Out - existing item, quantity decreases, reason + tracking numbers recorded
+app.post('/api/inventory/:id/out', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const { reason, trackingNumbers, otherReason } = req.body;
+        const qty = Number(req.body.qtyOut);
+        if (!qty || qty <= 0) {
+            return res.status(400).json({ success: false, message: 'Quantity Out must be a positive number' });
+        }
+        if (!['Delivery', 'Other'].includes(reason)) {
+            return res.status(400).json({ success: false, message: 'Reason must be Delivery or Other' });
+        }
+        const cleanedTrackingNumbers = Array.isArray(trackingNumbers)
+            ? trackingNumbers.map(t => String(t).trim()).filter(Boolean)
+            : [];
+        if (reason === 'Delivery' && cleanedTrackingNumbers.length === 0) {
+            return res.status(400).json({ success: false, message: 'At least one tracking number is required when reason is Delivery' });
+        }
+        if (reason === 'Other' && !otherReason?.trim()) {
+            return res.status(400).json({ success: false, message: 'Reason text is required when reason is Other' });
+        }
+
+        const now = new Date();
+        // Atomic conditional update - only decrements if enough stock is available,
+        // avoiding a read-then-write race between concurrent Item Out submissions.
+        const item = await INVENTORYSTOCK.findOneAndUpdate(
+            { _id: req.params.id, quantity: { $gte: qty } },
+            {
+                $inc: { quantity: -qty },
+                $set: { lastUpdated: now, lastUpdatedBy: req.user.name },
+                $push: {
+                    history: {
+                        date: now,
+                        qtyOut: qty,
+                        reason,
+                        trackingNumbers: reason === 'Delivery' ? cleanedTrackingNumbers : [],
+                        otherReason: reason === 'Other' ? otherReason.trim() : '',
+                        updatedBy: req.user.name
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!item) {
+            const exists = await INVENTORYSTOCK.exists({ _id: req.params.id });
+            if (!exists) return res.status(404).json({ success: false, message: 'Item not found' });
+            return res.status(400).json({ success: false, message: 'Quantity Out exceeds current stock' });
+        }
+
+        res.json({ success: true, item });
+    } catch (err) {
+        console.error('Error processing item out:', err);
+        res.status(500).json({ success: false, message: 'Failed to update item' });
+    }
+});
+
+// Edit item details (description/product only - quantity only ever changes via In/Out)
+app.put('/api/inventory/:id', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const { itemDescription, product } = req.body;
+        if (!itemDescription?.trim() || !product?.trim()) {
+            return res.status(400).json({ success: false, message: 'Item Description and Product are required' });
+        }
+        const item = await INVENTORYSTOCK.findByIdAndUpdate(
+            req.params.id,
+            {
+                itemDescription: itemDescription.trim(),
+                product: product.trim(),
+                lastUpdated: new Date(),
+                lastUpdatedBy: req.user.name
+            },
+            { new: true }
+        );
+        if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+        res.json({ success: true, item });
+    } catch (err) {
+        console.error('Error editing inventory item:', err);
+        res.status(500).json({ success: false, message: 'Failed to edit item' });
+    }
+});
+
+// Delete item
+app.delete('/api/inventory/:id', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const deleted = await INVENTORYSTOCK.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({ success: false, message: 'Item not found' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting inventory item:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete item' });
+    }
+});
+
+// View History - ins/outs, tracking numbers / reason for outs
+app.get('/api/inventory/:id/history', ensureAuthenticated, ensureInventory, async (req, res) => {
+    try {
+        const item = await INVENTORYSTOCK.findById(req.params.id).lean();
+        if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+        const history = [...(item.history || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+        res.json({ success: true, itemDescription: item.itemDescription, product: item.product, history });
+    } catch (err) {
+        console.error('Error fetching inventory history:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch history' });
+    }
+});
+
+// Stock balances grouped by product, consumed by the Operation End of Day Report.
+// Accepts an optional ?date=YYYY-MM-DD - when given, the balance is reconstructed
+// as of the end of that day by backing out any history entries dated after it,
+// so re-generating a past day's report still shows that day's true closing
+// balance instead of whatever the live quantity happens to be today.
+app.get('/api/inventory/stock-summary', ensureAuthenticated, async (req, res) => {
+    try {
+        const { date } = req.query;
+        const items = await INVENTORYSTOCK.find({})
+            .select(['itemDescription', 'product', 'quantity', 'history'])
+            .sort({ product: 1, itemDescription: 1 })
+            .lean();
+
+        const dayStart = date
+            ? moment.tz(`${date} 00:00:00`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Brunei').toDate()
+            : null;
+        const cutoff = date
+            ? moment.tz(`${date} 23:59:59`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Brunei').toDate()
+            : null;
+
+        const grouped = {};
+        items.forEach(it => {
+            let quantity = it.quantity;
+            let delivered = 0;
+            if (cutoff) {
+                const futureEntries = (it.history || []).filter(h => h.date && new Date(h.date) > cutoff);
+                const futureNetChange = futureEntries.reduce((sum, h) => sum + (h.qtyIn || 0) - (h.qtyOut || 0), 0);
+                quantity = it.quantity - futureNetChange;
+
+                delivered = (it.history || [])
+                    .filter(h => h.reason === 'Delivery' && h.date && new Date(h.date) >= dayStart && new Date(h.date) <= cutoff)
+                    .reduce((sum, h) => sum + (h.qtyOut || 0), 0);
+            }
+            if (!grouped[it.product]) grouped[it.product] = [];
+            grouped[it.product].push({ itemDescription: it.itemDescription, quantity, delivered });
+        });
+        const products = Object.keys(grouped).map(product => ({ product, items: grouped[product] }));
+
+        res.json({ success: true, products });
+    } catch (err) {
+        console.error('Error fetching inventory stock summary:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch stock summary' });
     }
 });
 
@@ -3356,18 +3637,32 @@ app.post('/login', ensureNotAuthenticated, (req, res, next) => {
         req.logIn(user, (err) => {
             if (err) return next(err);
             req.session.loginDate = moment().tz('Asia/Brunei').format('YYYY-MM-DD');
-            return res.redirect('/');
+
+            // If this user was viewing a page within the last hour (i.e. an
+            // unplanned logout - idle timeout or day rollover - rather than a
+            // deliberate one, which clears these fields below), drop them back
+            // into it instead of the dashboard.
+            const ONE_HOUR_MS = 60 * 60 * 1000;
+            const canResume = user.lastVisitedAt &&
+                user.lastVisitedPath &&
+                (Date.now() - new Date(user.lastVisitedAt).getTime()) <= ONE_HOUR_MS;
+            return res.redirect(canResume ? user.lastVisitedPath : '/');
         });
     })(req, res, next);
 });
 
 // Logout route
 app.get('/logout', ensureAuthenticated, (req, res) => {
+    const userId = req.user._id;
     req.logout((err) => { // Logout the user
         if (err) {
             console.error('Error logging out:', err);
             res.status(500).send('Internal Server Error');
         } else {
+            // Deliberate logout - clear the resume pointer so the next login
+            // lands on the dashboard rather than resuming this session.
+            USERS.updateOne({ _id: userId }, { $set: { lastVisitedPath: '/', lastVisitedAt: null } })
+                .catch(err => console.error('Error clearing last visited page:', err));
             req.session.destroy((err) => { // Destroy the session
                 if (err) {
                     console.error('Error destroying session:', err);
@@ -3380,7 +3675,7 @@ app.get('/logout', ensureAuthenticated, (req, res) => {
     });
 });
 
-// Keeps the rolling 30-min session alive while the user is active on the page
+// Keeps the rolling 60-min session alive while the user is active on the page
 // (e.g. scanning, clicking) without needing a full page navigation.
 app.post('/session/heartbeat', ensureAuthenticated, (req, res) => {
     res.sendStatus(204);

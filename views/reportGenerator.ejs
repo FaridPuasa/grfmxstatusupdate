@@ -1829,6 +1829,28 @@
         }
       }
 
+      // Pulls live inventory balances (grouped by product) from the Inventory
+      // system and renders one balance table per product, replacing what used
+      // to be a hardcoded, manually-filled Pure51-only table.
+      async function loadInventoryStockSummary(date, container) {
+        if (!container) return;
+        try {
+          const res = await fetch(`/api/inventory/stock-summary?date=${encodeURIComponent(date)}`);
+          const data = await res.json();
+          if (!data.success || !data.products || data.products.length === 0) {
+            container.innerHTML = '';
+            return;
+          }
+          container.innerHTML = data.products.map((p, idx) => {
+            const rows = p.items.map(item => `<tr><td>${item.itemDescription}</td><td contenteditable="true">${item.quantity}</td><td contenteditable="true">${item.delivered}</td></tr>`).join('');
+            return `<table class="table table-bordered inventoryStockTable"><thead><tr style="background:lightblue;font-weight:bold;"><th colspan="3" style="text-align:left;">4.${idx + 1}. ${getProductDisplayName(p.product)} Inventory Stock</th></tr><tr><th>Item</th><th>Balance</th><th>Delivered</th></tr></thead><tbody>${rows}</tbody></table>`;
+          }).join('');
+        } catch (err) {
+          console.error('Error loading inventory stock summary:', err);
+          container.innerHTML = '';
+        }
+      }
+
       endGenerateBtn.addEventListener('click', async () => {
         const endReportDate = document.getElementById('endReportDate').value;
         if (!endReportDate) { alert('Please pick a date'); return; }
@@ -1880,22 +1902,23 @@
           codSection.style.marginTop = "30px";
           const warehouseSection = document.createElement('div');
           warehouseSection.style.marginTop = "30px";
-          const pure51Container = document.createElement('div');
-          pure51Container.style.marginTop = "30px";
-          pure51Container.innerHTML = `<table class="table table-bordered" id="pure51StockTable"><thead><tr style="background:lightblue;font-weight:bold;"><th colspan="2" style="text-align:left;">4.1. Pure51 Inventory Stock</th></tr><tr><th>Item</th><th>Balance</th></tr></thead><tbody><tr><td>Feminine Wash 200ml</td><td contenteditable="true"></td></tr><tr><td>Feminine Wash 75ml</td><td contenteditable="true"></td></tr><tr><td>Lingerie Wash 100ml</td><td contenteditable="true"></td></tr></tbody></table>`;
+          const inventoryStockContainer = document.createElement('div');
+          inventoryStockContainer.id = 'inventoryStockContainer';
+          inventoryStockContainer.style.marginTop = "30px";
           const vehicleSection = document.createElement('div');
           vehicleSection.style.marginTop = "30px";
 
           reportContainer.appendChild(deliverySection);
           reportContainer.appendChild(codSection);
           reportContainer.appendChild(warehouseSection);
-          reportContainer.appendChild(pure51Container);
+          reportContainer.appendChild(inventoryStockContainer);
           reportContainer.appendChild(vehicleSection);
 
           await Promise.all([
             loadDeliveryResult(endReportDate, deliverySection),
             loadCodBtCollected(endReportDate, codSection),
             loadWarehouseTable(endReportDate, warehouseSection),
+            loadInventoryStockSummary(endReportDate, inventoryStockContainer),
             loadVehicleReport(endReportDate, vehicleSection)
           ]);
           const existingCheckedBy = document.getElementById('vehicleReportCheckedBy');

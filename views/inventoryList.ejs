@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <style>
+        .navbar-nav.flex-row {
+            flex-direction: row !important;
+        }
+
+        .navbar {
+            background-color: transparent;
+        }
+
+        .container-bg {
+            background-color: #333;
+        }
+
+        .navbar-nav.flex-row .nav-item {
+            margin-right: 10px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        td {
+            font-size: 15px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            max-height: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                height: 30px;
+                max-height: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo {
+                height: 25px;
+                max-height: 25px;
+            }
+        }
+
+        /* Custom Modal Styles - No Bootstrap JS dependency */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .custom-modal-content {
+            background-color: #fff;
+            margin: 3% auto;
+            padding: 0;
+            width: 95%;
+            max-width: 700px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .custom-modal-content.wide {
+            max-width: 1000px;
+        }
+
+        .custom-modal-header {
+            padding: 15px 20px;
+            background-color: #6e9e9e;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .custom-modal-header h5 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .custom-modal-close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+
+        .custom-modal-close:hover {
+            color: #ddd;
+        }
+
+        .custom-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .custom-modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #ddd;
+            text-align: right;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .custom-modal-footer button {
+            margin-left: 10px;
+        }
+
+        .trackingNumberRow {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        #historyTable th,
+        #historyTable td {
+            font-size: 13px;
+        }
+    </style>
+    <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/x-icon">
+    <link rel="icon" href="/images/smallgorushlogo.png" type="image/png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+
+<body class="bg-light">
+    <div class="container-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <%- include('partials/navbar') %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="mb-0">Inventory</h1>
+            <button type="button" class="btn btn-primary" id="addItemBtn">+ Add New Item</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped" id="inventoryTable">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </main>
+
+    <!-- Add / Edit Item Modal -->
+    <div id="itemFormModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5 id="itemFormModalTitle">Add New Item</h5>
+                <span class="custom-modal-close" data-close="itemFormModal">&times;</span>
+            </div>
+            <div class="custom-modal-body">
+                <form id="itemForm">
+                    <input type="hidden" id="itemFormId">
+                    <div class="mb-3">
+                        <label class="form-label">Item Description</label>
+                        <input type="text" class="form-control" id="itemFormDescription" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Product</label>
+                        <select class="form-select" id="itemFormProduct" required>
+                            <option value="">-- Select Product --</option>
+                            <option value="pure51">PURE51</option>
+                            <option value="sklabo">SKLABO</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="itemFormQuantityGroup">
+                        <label class="form-label">Initial Quantity</label>
+                        <input type="number" class="form-control" id="itemFormQuantity" min="0" value="0">
+                    </div>
+                </form>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-secondary" data-close="itemFormModal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="itemFormSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item In Modal -->
+    <div id="itemInModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5>Item In - <span id="itemInDescription"></span></h5>
+                <span class="custom-modal-close" data-close="itemInModal">&times;</span>
+            </div>
+            <div class="custom-modal-body">
+                <input type="hidden" id="itemInId">
+                <p>Current Quantity: <strong id="itemInCurrentQty"></strong></p>
+                <div class="mb-3">
+                    <label class="form-label">Quantity In</label>
+                    <input type="number" class="form-control" id="itemInQty" min="1" required>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-secondary" data-close="itemInModal">Cancel</button>
+                <button type="button" class="btn btn-success" id="itemInSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Out Modal -->
+    <div id="itemOutModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5>Item Out - <span id="itemOutDescription"></span></h5>
+                <span class="custom-modal-close" data-close="itemOutModal">&times;</span>
+            </div>
+            <div class="custom-modal-body">
+                <input type="hidden" id="itemOutId">
+                <p>Current Quantity: <strong id="itemOutCurrentQty"></strong></p>
+                <div class="mb-3">
+                    <label class="form-label">Quantity Out</label>
+                    <input type="number" class="form-control" id="itemOutQty" min="1" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reason</label>
+                    <select class="form-select" id="itemOutReason" required>
+                        <option value="">-- Select Reason --</option>
+                        <option value="Delivery">Delivery</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3 hidden" id="itemOutTrackingGroup" style="display:none;">
+                    <label class="form-label">Tracking Number(s)</label>
+                    <div id="itemOutTrackingRows"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="addTrackingRowBtn">+ Add
+                        Tracking Number</button>
+                </div>
+                <div class="mb-3" id="itemOutOtherReasonGroup" style="display:none;">
+                    <label class="form-label">Reason Details</label>
+                    <textarea class="form-control" id="itemOutOtherReason" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-secondary" data-close="itemOutModal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="itemOutSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="custom-modal">
+        <div class="custom-modal-content wide">
+            <div class="custom-modal-header">
+                <h5>History - <span id="historyDescription"></span></h5>
+                <span class="custom-modal-close" data-close="historyModal">&times;</span>
+            </div>
+            <div class="custom-modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="historyTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Qty In</th>
+                                <th>Qty Out</th>
+                                <th>Reason</th>
+                                <th>Tracking Number(s) / Reason Details</th>
+                                <th>Updated By</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-secondary" data-close="historyModal">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <script>
+        const productDisplayNames = {
+            'ewe': 'EWE', 'pdu': 'PDU', 'mglobal': 'MGLOBAL', 'gdex': 'GDEX', 'gdext': 'GDEXT',
+            'pure51': 'PURE51', 'sklabo': 'SKLABO', 'localdelivery': 'LD', 'cbsl': 'CBSL',
+            'pharmacymoh': 'MOH', 'pharmacyjpmc': 'JPMC', 'pharmacyphc': 'PHC', 'kptdp': 'KPT', 'icarus': 'ICARUS'
+        };
+        function getProductDisplayName(key) {
+            return productDisplayNames[key] || (key || '').toUpperCase();
+        }
+        function formatDateTime(d) {
+            if (!d) return '-';
+            const date = new Date(d);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleString('en-GB');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        document.querySelectorAll('[data-close]').forEach(el => {
+            el.addEventListener('click', () => closeModal(el.getAttribute('data-close')));
+        });
+        window.addEventListener('click', (e) => {
+            document.querySelectorAll('.custom-modal').forEach(modal => {
+                if (e.target === modal) closeModal(modal.id);
+            });
+        });
+
+        let table;
+        $(document).ready(function () {
+            table = $('#inventoryTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: { url: '/api/inventory', type: 'GET' },
+                order: [],
+                columns: [
+                    { data: 'itemDescription' },
+                    {
+                        data: 'product',
+                        render: (data) => getProductDisplayName(data)
+                    },
+                    { data: 'quantity' },
+                    {
+                        data: 'lastUpdated',
+                        render: (data) => formatDateTime(data)
+                    },
+                    {
+                        data: '_id',
+                        orderable: false,
+                        searchable: false,
+                        render: (data, type, row) => `
+                            <button class="btn btn-info btn-sm history-btn" data-id="${data}" data-desc="${row.itemDescription}">History</button>
+                            <button class="btn btn-success btn-sm in-btn" data-id="${data}" data-desc="${row.itemDescription}" data-qty="${row.quantity}">Item In</button>
+                            <button class="btn btn-warning btn-sm out-btn" data-id="${data}" data-desc="${row.itemDescription}" data-qty="${row.quantity}">Item Out</button>
+                            <button class="btn btn-secondary btn-sm edit-btn" data-id="${data}" data-desc="${row.itemDescription}" data-product="${row.product}">Edit</button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${data}">Delete</button>
+                        `
+                    }
+                ]
+            });
+        });
+
+        // ======================= ADD / EDIT ITEM =======================
+        const itemFormModalTitle = document.getElementById('itemFormModalTitle');
+        const itemFormId = document.getElementById('itemFormId');
+        const itemFormDescription = document.getElementById('itemFormDescription');
+        const itemFormProduct = document.getElementById('itemFormProduct');
+        const itemFormQuantity = document.getElementById('itemFormQuantity');
+        const itemFormQuantityGroup = document.getElementById('itemFormQuantityGroup');
+
+        document.getElementById('addItemBtn').addEventListener('click', () => {
+            itemFormModalTitle.textContent = 'Add New Item';
+            itemFormId.value = '';
+            itemFormDescription.value = '';
+            itemFormProduct.value = '';
+            itemFormQuantity.value = '0';
+            itemFormQuantityGroup.style.display = 'block';
+            openModal('itemFormModal');
+        });
+
+        $(document).on('click', '.edit-btn', function () {
+            itemFormModalTitle.textContent = 'Edit Item Details';
+            itemFormId.value = $(this).data('id');
+            itemFormDescription.value = $(this).data('desc');
+            itemFormProduct.value = $(this).data('product');
+            itemFormQuantityGroup.style.display = 'none';
+            openModal('itemFormModal');
+        });
+
+        document.getElementById('itemFormSaveBtn').addEventListener('click', async () => {
+            const id = itemFormId.value;
+            const itemDescription = itemFormDescription.value.trim();
+            const product = itemFormProduct.value;
+            if (!itemDescription || !product) {
+                alert('Please fill in Item Description and Product');
+                return;
+            }
+            try {
+                let res;
+                if (id) {
+                    res = await axios.put(`/api/inventory/${id}`, { itemDescription, product });
+                } else {
+                    const quantity = Number(itemFormQuantity.value) || 0;
+                    res = await axios.post('/api/inventory', { itemDescription, product, quantity });
+                }
+                if (res.data.success) {
+                    closeModal('itemFormModal');
+                    table.ajax.reload(null, false);
+                } else {
+                    alert(res.data.message || 'Failed to save item');
+                }
+            } catch (err) {
+                alert(err.response?.data?.message || 'Failed to save item');
+            }
+        });
+
+        // ======================= ITEM IN =======================
+        $(document).on('click', '.in-btn', function () {
+            document.getElementById('itemInId').value = $(this).data('id');
+            document.getElementById('itemInDescription').textContent = $(this).data('desc');
+            document.getElementById('itemInCurrentQty').textContent = $(this).data('qty');
+            document.getElementById('itemInQty').value = '';
+            openModal('itemInModal');
+        });
+
+        document.getElementById('itemInSaveBtn').addEventListener('click', async () => {
+            const id = document.getElementById('itemInId').value;
+            const qtyIn = Number(document.getElementById('itemInQty').value);
+            if (!qtyIn || qtyIn <= 0) {
+                alert('Please enter a valid Quantity In');
+                return;
+            }
+            try {
+                const res = await axios.post(`/api/inventory/${id}/in`, { qtyIn });
+                if (res.data.success) {
+                    closeModal('itemInModal');
+                    table.ajax.reload(null, false);
+                } else {
+                    alert(res.data.message || 'Failed to update item');
+                }
+            } catch (err) {
+                alert(err.response?.data?.message || 'Failed to update item');
+            }
+        });
+
+        // ======================= ITEM OUT =======================
+        const itemOutReason = document.getElementById('itemOutReason');
+        const itemOutTrackingGroup = document.getElementById('itemOutTrackingGroup');
+        const itemOutOtherReasonGroup = document.getElementById('itemOutOtherReasonGroup');
+        const itemOutTrackingRows = document.getElementById('itemOutTrackingRows');
+
+        function addTrackingRow(value = '') {
+            const row = document.createElement('div');
+            row.className = 'trackingNumberRow';
+            row.innerHTML = `
+                <input type="text" class="form-control tracking-input" value="${value}" placeholder="Tracking Number">
+                <button type="button" class="btn btn-sm btn-outline-danger removeTrackingRowBtn">&times;</button>
+            `;
+            row.querySelector('.removeTrackingRowBtn').addEventListener('click', () => row.remove());
+            itemOutTrackingRows.appendChild(row);
+        }
+
+        document.getElementById('addTrackingRowBtn').addEventListener('click', () => addTrackingRow());
+
+        itemOutReason.addEventListener('change', () => {
+            if (itemOutReason.value === 'Delivery') {
+                itemOutTrackingGroup.style.display = 'block';
+                itemOutOtherReasonGroup.style.display = 'none';
+                if (itemOutTrackingRows.children.length === 0) addTrackingRow();
+            } else if (itemOutReason.value === 'Other') {
+                itemOutTrackingGroup.style.display = 'none';
+                itemOutOtherReasonGroup.style.display = 'block';
+            } else {
+                itemOutTrackingGroup.style.display = 'none';
+                itemOutOtherReasonGroup.style.display = 'none';
+            }
+        });
+
+        $(document).on('click', '.out-btn', function () {
+            document.getElementById('itemOutId').value = $(this).data('id');
+            document.getElementById('itemOutDescription').textContent = $(this).data('desc');
+            document.getElementById('itemOutCurrentQty').textContent = $(this).data('qty');
+            document.getElementById('itemOutQty').value = '';
+            itemOutReason.value = '';
+            itemOutTrackingGroup.style.display = 'none';
+            itemOutOtherReasonGroup.style.display = 'none';
+            itemOutTrackingRows.innerHTML = '';
+            document.getElementById('itemOutOtherReason').value = '';
+            openModal('itemOutModal');
+        });
+
+        document.getElementById('itemOutSaveBtn').addEventListener('click', async () => {
+            const id = document.getElementById('itemOutId').value;
+            const qtyOut = Number(document.getElementById('itemOutQty').value);
+            const reason = itemOutReason.value;
+            const otherReason = document.getElementById('itemOutOtherReason').value.trim();
+
+            if (!qtyOut || qtyOut <= 0) {
+                alert('Please enter a valid Quantity Out');
+                return;
+            }
+            if (!reason) {
+                alert('Please select a Reason');
+                return;
+            }
+
+            let trackingNumbers = [];
+            if (reason === 'Delivery') {
+                trackingNumbers = Array.from(itemOutTrackingRows.querySelectorAll('.tracking-input'))
+                    .map(input => input.value.trim())
+                    .filter(Boolean);
+                if (trackingNumbers.length === 0) {
+                    alert('Please enter at least one Tracking Number');
+                    return;
+                }
+            } else if (reason === 'Other' && !otherReason) {
+                alert('Please enter the Reason Details');
+                return;
+            }
+
+            try {
+                const res = await axios.post(`/api/inventory/${id}/out`, {
+                    qtyOut, reason, trackingNumbers, otherReason
+                });
+                if (res.data.success) {
+                    closeModal('itemOutModal');
+                    table.ajax.reload(null, false);
+                } else {
+                    alert(res.data.message || 'Failed to update item');
+                }
+            } catch (err) {
+                alert(err.response?.data?.message || 'Failed to update item');
+            }
+        });
+
+        // ======================= HISTORY =======================
+        $(document).on('click', '.history-btn', async function () {
+            const id = $(this).data('id');
+            document.getElementById('historyDescription').textContent = $(this).data('desc');
+            const tbody = document.querySelector('#historyTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+            openModal('historyModal');
+            try {
+                const res = await axios.get(`/api/inventory/${id}/history`);
+                const history = res.data.history || [];
+                if (history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">No history yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = history.map(h => {
+                    let detail = '-';
+                    if (h.reason === 'Delivery') {
+                        detail = (h.trackingNumbers || []).join(', ') || '-';
+                    } else if (h.reason === 'Other') {
+                        detail = h.otherReason || '-';
+                    }
+                    return `
+                        <tr>
+                            <td>${formatDateTime(h.date)}</td>
+                            <td>${h.qtyIn || 0}</td>
+                            <td>${h.qtyOut || 0}</td>
+                            <td>${h.reason || '-'}</td>
+                            <td style="text-align:left;">${detail}</td>
+                            <td>${h.updatedBy || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="6">Failed to load history</td></tr>';
+            }
+        });
+
+        // ======================= DELETE =======================
+        $(document).on('click', '.delete-btn', async function () {
+            if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) return;
+            const id = $(this).data('id');
+            try {
+                const res = await axios.delete(`/api/inventory/${id}`);
+                if (res.data.success) {
+                    table.ajax.reload(null, false);
+                } else {
+                    alert(res.data.message || 'Failed to delete item');
+                }
+            } catch (err) {
+                alert(err.response?.data?.message || 'Failed to delete item');
+            }
+        });
+    </script>
+</body>
+
+</html>
