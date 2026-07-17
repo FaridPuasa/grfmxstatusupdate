@@ -468,9 +468,15 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                                     mawbGroups[m].push(order);
                                                                 });
                                                             });
+                                                            const mawbKeysSorted = Object.keys(mawbGroups).sort((a, b) => {
+                                                                const maxAgeA = Math.max(...mawbGroups[a].map(o => o.age));
+                                                                const maxAgeB = Math.max(...mawbGroups[b].map(o => o.age));
+                                                                return maxAgeB - maxAgeA;
+                                                            });
                                                         %>
-                                                            <% Object.keys(mawbGroups).sort().forEach((mawb, mawbIndex) => {
+                                                            <% mawbKeysSorted.forEach((mawb, mawbIndex) => {
                                                                 const mawbOrders = mawbGroups[mawb];
+                                                                const mawbMaxAge = Math.max(...mawbOrders.map(o => o.age));
                                                                 const areaSubMap = {};
                                                                 mawbOrders.forEach(order => {
                                                                     const a = order.area || 'Unknown';
@@ -485,6 +491,12 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                                             data-bs-toggle="collapse"
                                                                             data-bs-target="#collapse-<%= mawbIdPrefix %>">
                                                                             <strong>MAWB: <%= mawb %></strong>
+                                                                            <span class="badge
+                                                                                <%= mawbMaxAge >= 3 ? 'bg-dark' :
+                                                                                    mawbMaxAge >= 2 ? 'bg-danger' :
+                                                                                    mawbMaxAge >= 1 ? 'bg-warning text-dark' : 'bg-success' %> ms-2">
+                                                                                <%= mawbMaxAge %> days
+                                                                            </span>
                                                                         </div>
                                                                         <div class="section-toolbar">
                                                                             <span class="badge bg-info"><%= mawbOrders.length %> orders</span>
@@ -568,9 +580,15 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                     mawbGroups[m].push(order);
                                                 });
                                             });
+                                            const mawbKeysSorted = Object.keys(mawbGroups).sort((a, b) => {
+                                                const maxAgeA = Math.max(...mawbGroups[a].map(o => o.age));
+                                                const maxAgeB = Math.max(...mawbGroups[b].map(o => o.age));
+                                                return maxAgeB - maxAgeA;
+                                            });
                                         %>
-                                            <% Object.keys(mawbGroups).sort().forEach((mawb, mawbIndex) => {
+                                            <% mawbKeysSorted.forEach((mawb, mawbIndex) => {
                                                 const mawbOrders = mawbGroups[mawb];
+                                                const mawbMaxAge = Math.max(...mawbOrders.map(o => o.age));
                                                 const methodSubMap = {};
                                                 mawbOrders.forEach(order => {
                                                     const meth = order.jobMethod || 'Unknown';
@@ -585,6 +603,12 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                             data-bs-toggle="collapse"
                                                             data-bs-target="#collapse-<%= mawbIdPrefix %>">
                                                             <strong>MAWB: <%= mawb %></strong>
+                                                            <span class="badge
+                                                                <%= mawbMaxAge >= 3 ? 'bg-dark' :
+                                                                    mawbMaxAge >= 2 ? 'bg-danger' :
+                                                                    mawbMaxAge >= 1 ? 'bg-warning text-dark' : 'bg-success' %> ms-2">
+                                                                <%= mawbMaxAge %> days
+                                                            </span>
                                                         </div>
                                                         <div class="section-toolbar">
                                                             <span class="badge bg-info"><%= mawbOrders.length %> orders</span>
