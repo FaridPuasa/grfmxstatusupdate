@@ -501,6 +501,7 @@
             document.getElementById('itemOutDescription').textContent = $(this).data('desc');
             document.getElementById('itemOutCurrentQty').textContent = $(this).data('qty');
             document.getElementById('itemOutQty').value = '';
+            document.getElementById('itemOutQty').max = $(this).data('qty');
             itemOutReason.value = '';
             itemOutTrackingGroup.style.display = 'none';
             itemOutOtherReasonGroup.style.display = 'none';
@@ -517,6 +518,11 @@
 
             if (!qtyOut || qtyOut <= 0) {
                 alert('Please enter a valid Quantity Out');
+                return;
+            }
+            const currentQty = Number(document.getElementById('itemOutCurrentQty').textContent);
+            if (qtyOut > currentQty) {
+                alert(`Quantity Out (${qtyOut}) cannot exceed current stock (${currentQty})`);
                 return;
             }
             if (!reason) {
