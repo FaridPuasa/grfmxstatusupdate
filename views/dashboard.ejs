@@ -476,7 +476,10 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                         %>
                                                             <% mawbKeysSorted.forEach((mawb, mawbIndex) => {
                                                                 const mawbOrders = mawbGroups[mawb];
-                                                                const mawbMaxAge = Math.max(...mawbOrders.map(o => o.age));
+                                                                const mawbAges = mawbOrders.map(o => o.age);
+                                                                const mawbMaxAge = Math.max(...mawbAges);
+                                                                const mawbMinAge = Math.min(...mawbAges);
+                                                                const mawbAgeLabel = mawbMaxAge === mawbMinAge ? `${mawbMaxAge}` : `${mawbMaxAge}-${mawbMinAge}`;
                                                                 const areaSubMap = {};
                                                                 mawbOrders.forEach(order => {
                                                                     const a = order.area || 'Unknown';
@@ -495,7 +498,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                                                 <%= mawbMaxAge >= 3 ? 'bg-dark' :
                                                                                     mawbMaxAge >= 2 ? 'bg-danger' :
                                                                                     mawbMaxAge >= 1 ? 'bg-warning text-dark' : 'bg-success' %> ms-2">
-                                                                                <%= mawbMaxAge %> days
+                                                                                <%= mawbAgeLabel %> days
                                                                             </span>
                                                                         </div>
                                                                         <div class="section-toolbar">
@@ -588,7 +591,10 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                         %>
                                             <% mawbKeysSorted.forEach((mawb, mawbIndex) => {
                                                 const mawbOrders = mawbGroups[mawb];
-                                                const mawbMaxAge = Math.max(...mawbOrders.map(o => o.age));
+                                                const mawbAges = mawbOrders.map(o => o.age);
+                                                const mawbMaxAge = Math.max(...mawbAges);
+                                                const mawbMinAge = Math.min(...mawbAges);
+                                                const mawbAgeLabel = mawbMaxAge === mawbMinAge ? `${mawbMaxAge}` : `${mawbMaxAge}-${mawbMinAge}`;
                                                 const methodSubMap = {};
                                                 mawbOrders.forEach(order => {
                                                     const meth = order.jobMethod || 'Unknown';
@@ -607,7 +613,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                                                                 <%= mawbMaxAge >= 3 ? 'bg-dark' :
                                                                     mawbMaxAge >= 2 ? 'bg-danger' :
                                                                     mawbMaxAge >= 1 ? 'bg-warning text-dark' : 'bg-success' %> ms-2">
-                                                                <%= mawbMaxAge %> days
+                                                                <%= mawbAgeLabel %> days
                                                             </span>
                                                         </div>
                                                         <div class="section-toolbar">
