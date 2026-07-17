@@ -79,6 +79,7 @@ const orderSchema = new mongoose.Schema({
     lastUpdateDateTime: String,
     warehouseEntry: String,
     warehouseEntryDateTime: String,
+    queuedWarehouse: String, // warehouse (K1/K2) originally selected when the job entered "Queued for Warehouse", so FOQJ can recover it later
     assignedTo: String,
     attempt: String,
     flightDate: String,

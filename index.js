@@ -16240,7 +16240,8 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                         lastUpdatedBy: req.user.name,
                         queueStatus: null,
                         queueScheduledTime: null,
-                        queueNote: null
+                        queueNote: null,
+                        queuedWarehouse: null
                     },
                     $push: {
                         history: {
@@ -16344,7 +16345,8 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
                                 lastUpdatedBy: req.user.name,
                                 queueStatus: null,
                                 queueScheduledTime: null,
-                                queueNote: null
+                                queueNote: null,
+                                queuedWarehouse: null
                             },
                             $push: {
                                 history: {
@@ -16411,6 +16413,73 @@ async function processFixOnQueueJobs(trackingNumber, warehouse, req) {
         };
     }
 }
+
+// ==================================================
+// 🔧 AUTO FOQJ CHECKER - Automated job that runs every 30 minutes
+// Catches jobs stuck in "Queued for Warehouse" that the in-memory 30-min
+// delayed-update timer (scheduleDetrackUpdate/executeDelayedDetrackUpdate)
+// never completed - e.g. because the server restarted and the in-memory
+// timer was lost. Reuses processFixOnQueueJobs directly, so the eligibility
+// rules and the Detrack/MongoDB/GDEX updates are identical to the manual
+// FOQJ button in updateJob.ejs.
+// ==================================================
+let isCheckingFOQJ = false;
+
+async function checkFixOnQueueJobsStatus() {
+    if (isCheckingFOQJ) {
+        console.log('⏭️ Skipping checkFixOnQueueJobsStatus run - previous run still in progress');
+        return;
+    }
+    isCheckingFOQJ = true;
+    try {
+        // Same eligibility as FOQJ itself: product PDU/EWE/MGLOBAL, status "Queued for Warehouse"
+        const stuckOrders = await ORDERS.find(
+            {
+                currentStatus: "Queued for Warehouse",
+                product: { $in: ['pdu', 'ewe', 'mglobal'] }
+            },
+            {
+                doTrackingNumber: 1,
+                product: 1,
+                queuedWarehouse: 1
+            }
+        );
+
+        console.log(`🔧 [Auto FOQJ] Checking ${stuckOrders.length} "Queued for Warehouse" job(s)...`);
+
+        for (const order of stuckOrders) {
+            const trackingNumber = order.doTrackingNumber;
+            if (!trackingNumber) continue;
+
+            if (!order.queuedWarehouse) {
+                console.log(`⚠️ [Auto FOQJ] Skipping ${trackingNumber} - no queuedWarehouse recorded (queued before this field existed, or created via an older code path)`);
+                continue;
+            }
+
+            const systemReq = { user: { name: 'System' } };
+
+            try {
+                const result = await processFixOnQueueJobs(trackingNumber, order.queuedWarehouse, systemReq);
+                if (result.success) {
+                    console.log(`✅ [Auto FOQJ] Fixed ${trackingNumber}: ${result.message}`);
+                } else {
+                    console.log(`⏭️ [Auto FOQJ] ${trackingNumber} not fixed: ${result.message} (${result.reason})`);
+                }
+            } catch (err) {
+                console.error(`❌ [Auto FOQJ] Error processing ${trackingNumber}:`, err.message);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    } catch (error) {
+        console.error('Auto FOQJ watcher encountered an error:', error);
+    } finally {
+        isCheckingFOQJ = false;
+    }
+}
+
+setInterval(checkFixOnQueueJobsStatus, 1800000); // every 30 minutes
+checkFixOnQueueJobsStatus();
 
 async function updateMongoForGDEXHold(trackingNumber, product, req, reasonDetails) {
     try {
@@ -18657,6 +18726,7 @@ async function updateMongoWithQueuedStatus(trackingNumber, warehouse, jobData, p
                 lastUpdatedBy: req.user.name,
                 queueStatus: "delayed",
                 queueScheduledTime: moment().add(30, 'minutes').format(),
+                queuedWarehouse: warehouse,
             }
         };
 
@@ -18728,7 +18798,8 @@ async function createOrderWithQueuedStatus(trackingNumber, warehouse, jobData, p
             parcelWeight: jobData.weight || 0,
             queueStatus: "delayed",
             queueScheduledTime: moment().add(30, 'minutes').format(), // CHANGED to 30 minutes
-            queueNote: "30-minute delay" // CHANGED
+            queueNote: "30-minute delay", // CHANGED
+            queuedWarehouse: warehouse
         });
 
         await newOrder.save();
@@ -19136,6 +19207,7 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
 
         // ========== UPDATED: Only AL1 for GDEX products ==========
         const isGDEX = (product === 'gdex' || product === 'gdext');
+        let gdexAl1Sent = false;
 
         // Execute immediate updates with GDEX integration
         for (const status of sequence.immediate) {
@@ -19154,15 +19226,16 @@ async function executeDetrackUpdates(trackingNumber, product, currentStatus, req
             if (success) {
                 console.log(`✅ Immediate Detrack update to ${status} for ${trackingNumber}`);
 
-                // 2. If GDEX product, send AL1 (Received by Branch) ONLY - NO DT2
-                if (isGDEX) {
+                // 2. If GDEX product, send AL1 (Received by Branch) ONLY ONCE - NO DT2.
+                // Detrack still gets every status in sequence.immediate (e.g. at_warehouse then in_sorting_area).
+                if (isGDEX && !gdexAl1Sent) {
                     console.log(`📤 Sending GDEX AL1 (Received by Branch) for ${trackingNumber}`);
                     const gdexSuccess = await updateGDEXStatus(trackingNumber, 'branch_received', jobData);
                     results.push({ status: 'AL1', success: gdexSuccess, gdex: true });
+                    gdexAl1Sent = true;
 
                     // Small delay after GDEX update
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    break; // Exit loop after sending AL1 (only send once)
                 }
             }
         }
@@ -19370,7 +19443,8 @@ async function executeDelayedDetrackUpdate(delayedJobId) {
                 lastUpdatedBy: delayedJob.reqUser.name,
                 queueStatus: null, // Clear queue status
                 queueScheduledTime: null,
-                queueNote: null
+                queueNote: null,
+                queuedWarehouse: null
             },
             $push: {
                 history: {
