@@ -6807,7 +6807,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 postalCode = data.data.postal_code.toUpperCase()
             }
 
-            if ((product == 'EWE') || (product == 'EWENS') || (product == 'KPTDP') || (product == 'PDU') || (product == 'PURE51') || (product == 'TEMU') || (product == 'MGLOBAL') || (product == 'GDEXT') || (product == 'GDEX')) {
+            if ((product == 'EWE') || (product == 'EWENS') || (product == 'KPTDP') || (product == 'PDU') || (product == 'PURE51') || (product == 'SKLB') || (product == 'TEMU') || (product == 'MGLOBAL') || (product == 'GDEXT') || (product == 'GDEX')) {
                 // Loop through each item in the data.data.items array and construct the items array
                 for (let i = 0; i < data.data.items.length; i++) {
                     itemsArray.push({
@@ -7143,6 +7143,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
             if (product == 'PURE51') {
                 currentProduct = 'pure51'
+            }
+
+            if (product == 'SKLB') {
+                currentProduct = 'sklabo'
             }
 
             if (product == 'CBSL') {
@@ -7586,19 +7590,19 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
             }
 
             // ==================================================
-            // FA - FIX ALL JOBS (PURE51 Attempt Correction - MongoDB Only)
+            // FA - FIX ALL JOBS (PURE51/SKLABO Attempt Correction - MongoDB Only)
             // ==================================================
             if (req.body.statusCode == 'FA') {
-                // Only process PURE51 products
-                if (product !== 'PURE51') {
+                // Only process PURE51/SKLABO products
+                if (product !== 'PURE51' && product !== 'SKLB') {
                     processingResults.push({
                         consignmentID,
-                        status: `Skipped: FA option is only for PURE51 products. Current product: ${product}`,
+                        status: `Skipped: FA option is only for PURE51/SKLABO products. Current product: ${product}`,
                     });
                     return;
                 }
 
-                console.log(`\n🔧 FIXING PURE51 JOB: ${consignmentID} - Calculating correct attempts from Detrack milestones`);
+                console.log(`\n🔧 FIXING ${product} JOB: ${consignmentID} - Calculating correct attempts from Detrack milestones`);
 
                 try {
                     // Calculate correct attempts from Detrack milestones
@@ -7635,7 +7639,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                         processingResults.push({
                             consignmentID,
-                            status: `✅ PURE51 attempt fixed: ${currentMongoAttempt} → ${calculatedAttempts}`,
+                            status: `✅ ${product} attempt fixed: ${currentMongoAttempt} → ${calculatedAttempts}`,
                         });
                         console.log(`   ✅ Successfully updated attempt for ${consignmentID}`);
                     } else {
@@ -7651,7 +7655,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     // NO other field updates
 
                 } catch (faError) {
-                    console.error(`❌ Error fixing PURE51 job ${consignmentID}:`, faError.message);
+                    console.error(`❌ Error fixing ${product} job ${consignmentID}:`, faError.message);
                     processingResults.push({
                         consignmentID,
                         status: `Error: ${faError.message}`,
@@ -8615,10 +8619,10 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     } else {
                         // ========== NON-GDEX PRODUCTS (keep existing logic) ==========
                         if (data.data.reason == "Unattempted Delivery") {
-                            const isPure51 = (product == 'PURE51');
+                            const isPure51 = (product == 'PURE51') || (product == 'SKLB');
 
                             if (isPure51) {
-                                // PURE51: Increment attempt for Unattempted Delivery
+                                // PURE51/SKLABO: Increment attempt for Unattempted Delivery
                                 update = {
                                     currentStatus: "Return to Warehouse",
                                     lastUpdateDateTime: moment().format(),
@@ -8667,16 +8671,16 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                 mongoDBrun = 2;
                                 completeRun = 1;
                                 appliedStatus = "Failed Delivery, Return to Warehouse";
-                                portalUpdate = "Portal and Detrack status updated to At Warehouse. Attempt incremented for PURE51.";
+                                portalUpdate = "Portal and Detrack status updated to At Warehouse. Attempt incremented for PURE51/SKLABO.";
 
                             } else {
-                                // Non-PURE51 products: Keep original behavior (no increment)
+                                // Non-PURE51/SKLABO products: Keep original behavior (no increment)
                                 update = {
                                     currentStatus: "Return to Warehouse",
                                     lastUpdateDateTime: moment().format(),
                                     assignedTo: "N/A",
                                     latestReason: data.data.reason,
-                                    attempt: data.data.attempt,  // No increment for non-PURE51
+                                    attempt: data.data.attempt,  // No increment for non-PURE51/SKLABO
                                     latestLocation: req.body.warehouse,
                                     lastUpdatedBy: req.user.name,
                                     $push: {
@@ -13297,7 +13301,7 @@ function cleanPhoneNumber(rawPhoneNumber) {
 function shouldSendWhatsApp(product, phoneNumber) {
     const skipProducts = [
         "fmx", "bb", "fcas", "icarus", "ewe", "ewens",
-        "kptdf", "pdu", "pure51", "mglobal", "kptdp", "gdext", "gdext"
+        "kptdf", "pdu", "pure51", "sklabo", "mglobal", "kptdp", "gdext", "gdext"
     ];
     return !skipProducts.includes(product) && phoneNumber !== "N/A";
 }
@@ -17206,8 +17210,15 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
 
         // Category B products: pure51, icarus, kptdp
         const categoryBProducts = ['pure51', 'icarus', 'kptdp'];
+        // SKLABO: same create-flow structure as Category B, but different senderName/payment default
+        const isSklabo = product.toLowerCase() === 'sklabo';
 
-        if (categoryBProducts.includes(product.toLowerCase())) {
+        if (isSklabo) {
+            senderName = 'SK LABO';
+            paymentMethod = 'Cash';
+        }
+
+        if (isSklabo || categoryBProducts.includes(product.toLowerCase())) {
             // Use payment_mode from Detrack (if available)
             if (jobData.payment_mode) {
                 paymentMethod = jobData.payment_mode;
@@ -17314,8 +17325,8 @@ async function createIIWOrderWithRules(jobData, trackingNumber, warehouse, req, 
         console.log(`✅ MongoDB IIW order created for ${product.toUpperCase()}`);
 
         // ========== KEEP DETRACK UPDATES EXACTLY THE SAME ==========
-        // Category B products: pure51, icarus, kptdp - use same simple status updates
-        const categoryBProductsForDetrack = ['pure51', 'icarus', 'kptdp'];
+        // Category B products: pure51, icarus, kptdp, sklabo - use same simple status updates
+        const categoryBProductsForDetrack = ['pure51', 'icarus', 'kptdp', 'sklabo'];
 
         if (categoryBProductsForDetrack.includes(product.toLowerCase())) {
             console.log(`\n🔄 CATEGORY B PRODUCT (${product.toUpperCase()}) - SIMPLE DETRACK STATUS UPDATES (UNCHANGED)`);
@@ -17967,7 +17978,7 @@ async function processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawb
             'localdelivery', 'pdu', 'mglobal', 'ewe', 'gdex', 'gdext'
         ];
 
-        const canCreateProducts = ['pure51', 'icarus', 'kptdp'];
+        const canCreateProducts = ['pure51', 'icarus', 'kptdp', 'sklabo'];
         // mawbProducts already defined above
 
         // ========== 5. VALIDATION CHECKS ==========
@@ -18584,7 +18595,7 @@ function getDetrackUpdateSequence(product, currentStatus, isDelayedExecution = f
     // Define product categories
     const mawbProducts = ['pdu', 'mglobal', 'ewe', 'gdex', 'gdext'];
     const mustExistProducts = ['cbsl', 'pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery'];
-    const canCreateProducts = ['pure51', 'icarus', 'kptdp'];
+    const canCreateProducts = ['pure51', 'icarus', 'kptdp', 'sklabo'];
 
     // ========== MAWB-REQUIRED PRODUCTS ==========
     if (mawbProducts.includes(normalizedProduct)) {
@@ -19642,6 +19653,8 @@ function getProductInfo(groupName, jobOwner) {
 
     if (product === 'pure51') {
         currentProduct = 'pure51';
+    } else if (product === 'sklb') {
+        currentProduct = 'sklabo';
     } else if (product === 'cbsl') {
         currentProduct = 'cbsl';
     } else if (product === 'jpmc') {
@@ -22310,6 +22323,7 @@ const PRODUCT_MAPPING = {
     'gdex': 'GDEX',
     'gdext': 'GDEX',
     'pure51': 'PURE51',
+    'sklabo': 'SKLABO',
     'localdelivery': 'LD',
     'cbsl': 'CBSL',
     'pharmacymoh': 'MOH',
