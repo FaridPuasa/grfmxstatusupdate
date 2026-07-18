@@ -38,6 +38,19 @@
     left: 50%;
     transform: translate(-50%, -50%);
   }
+
+  /* Highlight the nav link / dropdown item matching the current page */
+  .navbar-nav .nav-link.active-page {
+    background-color: rgba(255, 255, 255, 0.18);
+    color: #fff !important;
+    font-weight: 700;
+    border-radius: 6px;
+  }
+  .navbar-nav .dropdown-item.active-page {
+    background-color: #0d6efd;
+    color: #fff !important;
+    font-weight: 600;
+  }
 </style>
 
 <!-- Navbar HTML -->
@@ -51,7 +64,7 @@
         </a>
 
         <!-- Burger menu button -->
-        <button class="navbar-toggler ml-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive"
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive"
                 aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
@@ -283,3 +296,24 @@
 <% if (user) { %>
   <script src="/js/sessionActivity.js"></script>
 <% } %>
+
+<script>
+  // Highlight whichever nav link / dropdown item points at the current page, and
+  // highlight its parent dropdown toggle too so the active section is obvious.
+  document.addEventListener('DOMContentLoaded', function () {
+    var currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    document.querySelectorAll('.navbar-nav .nav-link, .navbar-nav .dropdown-item').forEach(function (link) {
+      var href = link.getAttribute('href');
+      if (!href || href === '#' || /^https?:\/\//i.test(href)) return;
+      var linkPath = href.replace(/\/+$/, '') || '/';
+      if (linkPath !== currentPath) return;
+
+      link.classList.add('active-page');
+      var parentDropdown = link.closest('.dropdown');
+      if (parentDropdown) {
+        var toggle = parentDropdown.querySelector(':scope > .dropdown-toggle');
+        if (toggle) toggle.classList.add('active-page');
+      }
+    });
+  });
+</script>

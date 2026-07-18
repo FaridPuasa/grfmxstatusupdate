@@ -119,7 +119,15 @@ h1.text-center {
     padding: 0.65rem 0.9rem;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
+}
+
+.kpi-tile .kpi-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    color: #94a3b8;
 }
 
 .kpi-tile .kpi-value {
@@ -137,10 +145,12 @@ h1.text-center {
     margin-top: 0.15rem;
 }
 
-.kpi-tile.kpi-warn .kpi-value { color: #b45309; }
-.kpi-tile.kpi-danger .kpi-value { color: #b91c1c; }
-.kpi-tile.kpi-dark .kpi-value { color: #111827; }
-.kpi-tile.kpi-muted .kpi-value { color: #6b7280; }
+.kpi-tile.kpi-warn .kpi-value, .kpi-tile.kpi-warn .kpi-icon { color: #b45309; }
+.kpi-tile.kpi-danger .kpi-value, .kpi-tile.kpi-danger .kpi-icon { color: #b91c1c; }
+.kpi-tile.kpi-dark .kpi-value, .kpi-tile.kpi-dark .kpi-icon { color: #111827; }
+.kpi-tile.kpi-muted .kpi-value, .kpi-tile.kpi-muted .kpi-icon { color: #6b7280; }
+.kpi-tile.kpi-info .kpi-value, .kpi-tile.kpi-info .kpi-icon { color: #0369a1; }
+.kpi-tile.kpi-success .kpi-value, .kpi-tile.kpi-success .kpi-icon { color: #15803d; }
 
 /* Dispatcher/freelancer summary cards (In Progress / Completed section) */
 .dispatcher-summary-strip {
@@ -157,6 +167,7 @@ h1.text-center {
     border-left: 3px solid var(--gr-progress);
     border-radius: 12px;
     padding: 0.65rem 0.9rem;
+    text-align: center;
 }
 
 .dispatcher-card-name {
@@ -165,6 +176,40 @@ h1.text-center {
     color: #1e293b;
     line-height: 1.2;
 }
+
+.dispatcher-card-name .bi {
+    margin-right: 0.3rem;
+    color: var(--gr-progress);
+}
+
+/* Dispatcher (in-house staff) vs Freelancer — distinct accent colors */
+.dispatcher-card.type-freelancer {
+    border-left-color: #7c3aed;
+}
+
+.dispatcher-card.type-freelancer .dispatcher-card-name .bi {
+    color: #7c3aed;
+}
+
+.dispatcher-group-label {
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+    margin: 0.5rem 0 0.1rem;
+}
+
+.dispatcher-group-label:first-child {
+    margin-top: 0;
+}
+
+.dispatcher-group-label.type-dispatcher .bi { color: var(--gr-progress); }
+.dispatcher-group-label.type-freelancer .bi { color: #7c3aed; }
 
 .dispatcher-card-area {
     font-size: 0.72rem;
@@ -178,10 +223,15 @@ h1.text-center {
     display: flex;
     gap: 0.35rem;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .dispatcher-card-stats .badge {
     font-weight: 600;
+}
+
+.dispatcher-card-stats .badge .bi {
+    margin-right: 0.2rem;
 }
 
 /* Card polish */
@@ -217,6 +267,27 @@ h1.text-center {
 
 .toggle-header[aria-expanded="true"] .bi-caret-down-fill,
 i.bi-caret-down-fill[aria-expanded="true"] {
+    transform: rotate(180deg);
+}
+
+/* Section Show/Hide toggle — stretched full-width, bold, centered */
+.toggle-section-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    padding: 0.55rem 1rem;
+}
+
+.toggle-section-btn .bi {
+    transition: transform 0.2s ease;
+}
+
+.toggle-section-btn[aria-expanded="true"] .bi {
     transform: rotate(180deg);
 }
 
@@ -341,19 +412,19 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         };
     %>
     <div class="kpi-strip">
-        <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.warehouseK1 %></span><span class="kpi-label">Warehouse K1</span></div>
-        <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.warehouseK2 %></span><span class="kpi-label">Warehouse K2</span></div>
+        <div class="kpi-tile kpi-dark"><i class="bi bi-building kpi-icon"></i><span class="kpi-value"><%= kpi.warehouseK1 %></span><span class="kpi-label">Warehouse K1</span></div>
+        <div class="kpi-tile kpi-dark"><i class="bi bi-building kpi-icon"></i><span class="kpi-value"><%= kpi.warehouseK2 %></span><span class="kpi-label">Warehouse K2</span></div>
     </div>
     <div class="kpi-strip">
-        <div class="kpi-tile"><span class="kpi-value"><%= kpi.current %></span><span class="kpi-label">Current</span></div>
-        <div class="kpi-tile"><span class="kpi-value"><%= kpi.plannedSelfCollect %></span><span class="kpi-label">Planned Self Collect</span></div>
-        <div class="kpi-tile kpi-warn"><span class="kpi-value"><%= kpi.urgent %></span><span class="kpi-label">Urgent</span></div>
-        <div class="kpi-tile kpi-danger"><span class="kpi-value"><%= kpi.overdue %></span><span class="kpi-label">Overdue</span></div>
-        <div class="kpi-tile kpi-dark"><span class="kpi-value"><%= kpi.maxAttempt %></span><span class="kpi-label">Max Attempt</span></div>
+        <div class="kpi-tile"><i class="bi bi-box-seam kpi-icon"></i><span class="kpi-value"><%= kpi.current %></span><span class="kpi-label">Current</span></div>
+        <div class="kpi-tile"><i class="bi bi-person-walking kpi-icon"></i><span class="kpi-value"><%= kpi.plannedSelfCollect %></span><span class="kpi-label">Planned Self Collect</span></div>
+        <div class="kpi-tile kpi-warn"><i class="bi bi-exclamation-triangle-fill kpi-icon"></i><span class="kpi-value"><%= kpi.urgent %></span><span class="kpi-label">Urgent</span></div>
+        <div class="kpi-tile kpi-danger"><i class="bi bi-clock-history kpi-icon"></i><span class="kpi-value"><%= kpi.overdue %></span><span class="kpi-label">Overdue</span></div>
+        <div class="kpi-tile kpi-dark"><i class="bi bi-arrow-repeat kpi-icon"></i><span class="kpi-value"><%= kpi.maxAttempt %></span><span class="kpi-label">Max Attempt</span></div>
     </div>
 
-    <button class="btn btn-sm btn-outline-primary toggle-section-btn mb-3" type="button"
-        data-bs-toggle="collapse" data-bs-target="#warehouse-tabs-collapse">Show</button>
+    <button class="btn btn-outline-primary toggle-section-btn mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#warehouse-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="warehouse-tabs-collapse">
     <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
@@ -661,12 +732,19 @@ i.bi-caret-down-fill[aria-expanded="true"] {
   </div>
   <div class="card-body">
 
+    <div class="kpi-strip" id="overallSummaryStrip">
+        <div class="kpi-tile kpi-dark"><i class="bi bi-collection kpi-icon"></i><span class="kpi-value" id="overallSummaryTotal">-</span><span class="kpi-label">Total</span></div>
+        <div class="kpi-tile kpi-info"><i class="bi bi-lightning-charge-fill kpi-icon"></i><span class="kpi-value" id="overallSummaryActive">-</span><span class="kpi-label">Active</span></div>
+        <div class="kpi-tile kpi-success"><i class="bi bi-check-circle-fill kpi-icon"></i><span class="kpi-value" id="overallSummaryCompleted">-</span><span class="kpi-label">Completed</span></div>
+        <div class="kpi-tile kpi-danger"><i class="bi bi-x-circle-fill kpi-icon"></i><span class="kpi-value" id="overallSummaryFailed">-</span><span class="kpi-label">Failed</span></div>
+    </div>
+
     <div class="dispatcher-summary-strip" id="dispatcherSummaryStrip">
         <p class="text-muted mb-0">Loading dispatcher summary…</p>
     </div>
 
-    <button class="btn btn-sm btn-outline-primary toggle-section-btn mb-3" type="button"
-        data-bs-toggle="collapse" data-bs-target="#progress-tabs-collapse">Show</button>
+    <button class="btn btn-outline-primary toggle-section-btn mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#progress-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="progress-tabs-collapse">
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
@@ -732,185 +810,127 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                 </div>
                 <div class="collapse" id="collapse-activejobs-<%= dateIndex %>">
                     <div class="card-body p-0">
-                        <% 
-                            // Separate Selfcollect and other dispatchers
-                            const otherDispatchers = [];
+                        <%
+                            // Split assignees into Dispatcher / Freelancer / Selfcollect groups
+                            const dispatcherStaff = ["Sowdeq", "Leo", "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"];
+                            const dispatcherEntries = [];
+                            const freelancerEntries = [];
                             let selfcollectDispatcher = null;
                             Object.keys(deliveriesMap[date]).forEach(assignee => {
                                 if (assignee === 'Selfcollect') {
                                     selfcollectDispatcher = deliveriesMap[date][assignee];
                                 } else {
-                                    otherDispatchers.push({ name: assignee, data: deliveriesMap[date][assignee] });
+                                    let count = 0;
+                                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
+                                        count += deliveriesMap[date][assignee].__products[product].length;
+                                    });
+                                    const entry = { name: assignee, data: deliveriesMap[date][assignee], count };
+                                    (dispatcherStaff.includes(assignee) ? dispatcherEntries : freelancerEntries).push(entry);
                                 }
                             });
 
-                            // Sort other dispatchers alphabetically
-                            otherDispatchers.sort((a,b) => a.name.localeCompare(b.name));
+                            // Most jobs to least jobs within each group
+                            dispatcherEntries.sort((a, b) => b.count - a.count);
+                            freelancerEntries.sort((a, b) => b.count - a.count);
 
-                            // Render other dispatchers first
-                            otherDispatchers.forEach((disp, assignIndex) => {
-                                let assigneeCount = 0;
-                                Object.keys(disp.data.__products).forEach(product => {
-                                    assigneeCount += disp.data.__products[product].length;
-                                });
+                            let selfcollectCount = 0;
+                            if (selfcollectDispatcher) {
+                                const statuses = selfcollectDispatcher.__statuses || {};
+                                Object.keys(statuses).forEach(st => { selfcollectCount += statuses[st].length; });
+                            }
+
+                            const assigneeGroups = [
+                                { key: 'dispatcher', label: 'Dispatcher', icon: 'bi-truck', total: dispatcherEntries.reduce((sum, e) => sum + e.count, 0), entries: dispatcherEntries },
+                                { key: 'freelancer', label: 'Freelancer', icon: 'bi-bicycle', total: freelancerEntries.reduce((sum, e) => sum + e.count, 0), entries: freelancerEntries },
+                                { key: 'selfcollect', label: 'Selfcollect', icon: 'bi-person-walking', total: selfcollectCount, entries: [] }
+                            ].filter(g => g.total > 0);
+                        %>
+                        <% assigneeGroups.forEach(group => {
+                            const groupIdPrefix = `activejobs-${dateIndex}-group-${group.key}`;
                         %>
                             <div class="card my-2 mx-3">
                                 <div class="card-header" style="padding: 0.75rem 1rem;">
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>">
-                                            <strong><%= disp.name %> <span style="font-weight:normal;">(<%= disp.data.__areas ? disp.data.__areas.join(', ') : '' %>)</span></strong>
+                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>">
+                                            <strong><i class="bi <%= group.icon %>"></i> <%= group.label %></strong>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <span class="badge bg-success"><%= assigneeCount %> jobs</span>
+                                            <span class="badge bg-primary"><%= group.total %> jobs</span>
                                             <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>"
-                                                    data-section-name="<%= disp.name %> (<%= date %>)">📋 Copy</button>
+                                                    data-target="#collapse-<%= groupIdPrefix %>"
+                                                    data-section-name="<%= group.label %> (<%= date %>)">📋 Copy</button>
                                             <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>"
-                                                    data-section-name="<%= disp.name %> (<%= date %>)">📊 Excel</button>
-                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>"></i>
+                                                    data-target="#collapse-<%= groupIdPrefix %>"
+                                                    data-section-name="<%= group.label %> (<%= date %>)">📊 Excel</button>
+                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>"></i>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>">
+                                <div class="collapse" id="collapse-<%= groupIdPrefix %>">
                                     <div class="card-body p-0">
-                                        <% Object.keys(disp.data.__products).forEach((product, prodIndex) => {
-                                            const productCount = disp.data.__products[product].length;
+                                        <% if (group.key === 'selfcollect' && selfcollectDispatcher) {
+                                            const statuses = selfcollectDispatcher.__statuses || {};
+                                            const jobMethodsOrder = ['Self Collect', 'Drop Off'];
+                                            const availableJobMethods = jobMethodsOrder.filter(m => statuses[m] && statuses[m].length > 0);
                                         %>
-                                            <div class="card my-2 mx-3">
-                                                <div class="card-header" style="padding: 0.75rem 1rem;">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
-                                                            <strong><%= (productMapping[product] || product.toUpperCase()) %></strong>
-                                                        </div>
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <span class="badge bg-warning text-dark"><%= productCount %> jobs</span>
-                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"
-                                                                    data-section-name="<%= disp.name %> - <%= (productMapping[product] || product.toUpperCase()) %>">📋 Copy</button>
-                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"
-                                                                    data-section-name="<%= disp.name %> - <%= (productMapping[product] || product.toUpperCase()) %>">📊 Excel</button>
-                                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>"></i>
+                                            <% availableJobMethods.forEach((jobMethod, statusIndex) => {
+                                                const jobs = statuses[jobMethod];
+                                            %>
+                                                <div class="card my-2 mx-3">
+                                                    <div class="card-header" style="padding: 0.75rem 1rem;">
+                                                        <div class="d-flex align-items-center justify-content-between">
+                                                            <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>">
+                                                                <strong><%= jobMethod %></strong>
+                                                            </div>
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span class="badge bg-success"><%= jobs.length %> jobs</span>
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                        data-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"
+                                                                        data-section-name="Selfcollect - <%= jobMethod %>">📋 Copy</button>
+                                                                <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                        data-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"
+                                                                        data-section-name="Selfcollect - <%= jobMethod %>">📊 Excel</button>
+                                                                <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"></i>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-<%= assignIndex %>-<%= prodIndex %>">
-                                                    <div class="card-body p-0">
-                                                        <div class="table-responsive">
-                                                        <table class="table table-sm table-bordered mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Tracking Number</th>
-                                                                    <th>Area</th>
-                                                                    <th>Name</th>
-                                                                    <th>Main Phone</th>
-                                                                    <th>Go Rush Remark</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <% disp.data.__products[product].forEach(order => { %>
+                                                    <div class="collapse" id="collapse-<%= groupIdPrefix %>-<%= statusIndex %>">
+                                                        <div class="card-body p-0">
+                                                            <div class="table-responsive">
+                                                            <table class="table table-sm table-bordered mb-0">
+                                                                <thead>
                                                                     <tr>
-                                                                        <td class="track-no"><%= order.doTrackingNumber %></td>
-                                                                        <td><%= order.area || '-' %></td>
-                                                                        <td><%= order.receiverName %></td>
-                                                                        <td><%= order.receiverPhoneNumber %></td>
-                                                                        <td><%= order.grRemark %></td>
+                                                                        <th>Tracking Number</th>
+                                                                        <th>Name</th>
+                                                                        <th>Main Phone</th>
+                                                                        <th>Go Rush Remark</th>
                                                                     </tr>
-                                                                <% }) %>
-                                                            </tbody>
-                                                        </table>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <% jobs.forEach(order => { %>
+                                                                        <tr>
+                                                                            <td class="track-no"><%= order.doTrackingNumber %></td>
+                                                                            <td><%= order.receiverName %></td>
+                                                                            <td><%= order.receiverPhoneNumber %></td>
+                                                                            <td><%= order.grRemark %></td>
+                                                                        </tr>
+                                                                    <% }) %>
+                                                                </tbody>
+                                                            </table>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        <% }) %>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <% group.entries.forEach((disp, assignIndex) => { %>
+                                                <%- include('partials/assigneeJobCard', { disp, idPrefix: `${groupIdPrefix}-${assignIndex}`, date, productMapping }) %>
+                                            <% }) %>
+                                        <% } %>
                                     </div>
                                 </div>
                             </div>
                         <% }) %>
-
-                        <% if (selfcollectDispatcher) { 
-                            // Get job methods for Selfcollect in sorted order
-                            const statuses = selfcollectDispatcher.__statuses || {};
-                            const jobMethodsOrder = ['Self Collect', 'Drop Off'];
-                            const availableJobMethods = jobMethodsOrder.filter(m => statuses[m] && statuses[m].length > 0);
-                        %>
-                            <div class="card my-2 mx-3">
-                                <div class="card-header" style="padding: 0.75rem 1rem;">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect">
-                                            <strong>Selfcollect <span style="font-weight:normal;">(<%= availableJobMethods.join(', ') %>)</span></strong>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge bg-success">
-                                                <%= availableJobMethods.reduce((acc, method) => acc + statuses[method].length, 0) %> jobs
-                                            </span>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect"
-                                                    data-section-name="Selfcollect (<%= date %>)">📋 Copy</button>
-                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect"
-                                                    data-section-name="Selfcollect (<%= date %>)">📊 Excel</button>
-                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-selfcollect">
-                                    <div class="card-body p-0">
-                                        <% availableJobMethods.forEach((jobMethod, statusIndex) => {
-                                            const jobs = statuses[jobMethod];
-                                        %>
-                                            <div class="card my-2 mx-3">
-                                                <div class="card-header" style="padding: 0.75rem 1rem;">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>">
-                                                            <strong><%= jobMethod %></strong>
-                                                        </div>
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <span class="badge bg-success"><%= jobs.length %> jobs</span>
-                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>"
-                                                                    data-section-name="Selfcollect - <%= jobMethod %>">📋 Copy</button>
-                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                                    data-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>"
-                                                                    data-section-name="Selfcollect - <%= jobMethod %>">📊 Excel</button>
-                                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>-selfcollect-<%= statusIndex %>">
-                                                    <div class="card-body p-0">
-                                                        <div class="table-responsive">
-                                                        <table class="table table-sm table-bordered mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Tracking Number</th>
-                                                                    <th>Name</th>
-                                                                    <th>Main Phone</th>
-                                                                    <th>Go Rush Remark</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <% jobs.forEach(order => { %>
-                                                                    <tr>
-                                                                        <td class="track-no"><%= order.doTrackingNumber %></td>
-                                                                        <td><%= order.receiverName %></td>
-                                                                        <td><%= order.receiverPhoneNumber %></td>
-                                                                        <td><%= order.grRemark %></td>
-                                                                    </tr>
-                                                                <% }) %>
-                                                            </tbody>
-                                                        </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <% }) %>
-                                    </div>
-                                </div>
-                            </div>
-                        <% } %>
                     </div>
                 </div>
             </div>
@@ -1002,8 +1022,8 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         <p class="text-muted mb-0">Loading new orders summary…</p>
     </div>
 
-    <button class="btn btn-sm btn-outline-primary toggle-section-btn mb-3" type="button"
-        data-bs-toggle="collapse" data-bs-target="#neworders-tabs-collapse">Show</button>
+    <button class="btn btn-outline-primary toggle-section-btn mb-3" type="button"
+        data-bs-toggle="collapse" data-bs-target="#neworders-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="neworders-tabs-collapse">
     <!-- Tabs -->
@@ -1072,6 +1092,7 @@ async function loadCompletedJobs() {
         const data = await response.json();
         completedJobsData = data;
 
+        renderOverallSummary(data);
         renderDispatcherSummaryCards(data);
         renderCompletedJobsTable(data);
         completedJobsLoaded = true;
@@ -1080,12 +1101,36 @@ async function loadCompletedJobs() {
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to load data.</td></tr>`;
         const summaryEl = document.getElementById('dispatcherSummaryStrip');
         if (summaryEl) summaryEl.innerHTML = '<p class="text-danger mb-0">Failed to load dispatcher summary.</p>';
+        ['overallSummaryTotal', 'overallSummaryActive', 'overallSummaryCompleted', 'overallSummaryFailed'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '-';
+        });
     }
 }
 
 function createBadge(count, color='primary') {
     return `<span class="badge bg-${color} ms-2">${count}</span>`;
 }
+
+// Overall Total/Active/Completed/Failed row — aggregated across all dispatchers/freelancers
+function renderOverallSummary(data) {
+    let active = 0, completed = 0, failed = 0;
+    Object.keys(data).forEach(dispatcher => {
+        const d = data[dispatcher];
+        active += (d.inProgress || []).length;
+        completed += (d.completed || []).length;
+        failed += (d.failed || []).length;
+    });
+    const total = active + completed + failed;
+
+    document.getElementById('overallSummaryTotal').textContent = total;
+    document.getElementById('overallSummaryActive').textContent = active;
+    document.getElementById('overallSummaryCompleted').textContent = completed;
+    document.getElementById('overallSummaryFailed').textContent = failed;
+}
+
+// Assignees on this list are in-house dispatch staff; everyone else is treated as a freelancer.
+const DISPATCHER_STAFF = ["Sowdeq", "Leo", "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"];
 
 // Dispatcher/freelancer summary cards — only shown for dispatchers with active jobs right now
 function renderDispatcherSummaryCards(data) {
@@ -1107,7 +1152,7 @@ function renderDispatcherSummaryCards(data) {
         return;
     }
 
-    activeDispatchers.forEach(dispatcher => {
+    const renderCard = (dispatcher, type) => {
         const d = data[dispatcher];
         const activeCount = d.inProgress.length;
         const completedCount = (d.completed || []).length;
@@ -1116,35 +1161,70 @@ function renderDispatcherSummaryCards(data) {
         const areas = [...new Set(d.inProgress.map(job => job.area).filter(Boolean))];
 
         container.insertAdjacentHTML('beforeend', `
-            <div class="dispatcher-card">
-                <div class="dispatcher-card-name">${dispatcher}</div>
+            <div class="dispatcher-card type-${type}">
+                <div class="dispatcher-card-name"><i class="bi bi-person-badge"></i>${dispatcher}</div>
                 <div class="dispatcher-card-area">${areas.length ? areas.join(', ') : '-'}</div>
                 <div class="dispatcher-card-stats">
-                    <span class="badge bg-secondary">Total ${totalCount}</span>
-                    <span class="badge bg-info">Active ${activeCount}</span>
-                    <span class="badge bg-success">Completed ${completedCount}</span>
-                    <span class="badge bg-danger">Failed ${failedCount}</span>
+                    <span class="badge bg-secondary"><i class="bi bi-collection"></i> Total ${totalCount}</span>
+                    <span class="badge bg-info"><i class="bi bi-lightning-charge-fill"></i> Active ${activeCount}</span>
+                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Completed ${completedCount}</span>
+                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill"></i> Failed ${failedCount}</span>
                 </div>
             </div>
         `);
-    });
+    };
+
+    // Group dispatchers first, then freelancers — most jobs to least within each group
+    const dispatcherGroup = activeDispatchers.filter(name => DISPATCHER_STAFF.includes(name));
+    const freelancerGroup = activeDispatchers.filter(name => !DISPATCHER_STAFF.includes(name));
+
+    if (dispatcherGroup.length > 0) {
+        container.insertAdjacentHTML('beforeend', '<div class="dispatcher-group-label type-dispatcher"><i class="bi bi-truck"></i> Dispatchers</div>');
+        dispatcherGroup.forEach(name => renderCard(name, 'dispatcher'));
+    }
+    if (freelancerGroup.length > 0) {
+        container.insertAdjacentHTML('beforeend', '<div class="dispatcher-group-label type-freelancer"><i class="bi bi-bicycle"></i> Freelancers</div>');
+        freelancerGroup.forEach(name => renderCard(name, 'freelancer'));
+    }
 }
 
 function renderCompletedJobsTable(data) {
     const tableBody = document.getElementById('completed-jobs-table-body');
     tableBody.innerHTML = '';
 
-    const dispatchers = Object.keys(data).sort();
-    if (dispatchers.length === 0) {
+    const allDispatchers = Object.keys(data);
+    if (allDispatchers.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No records found for selected date.</td></tr>`;
         return;
     }
 
+    const totalFor = (dispatcher) => {
+        const d = data[dispatcher];
+        return d.inProgress.length + d.completed.length + d.failed.length;
+    };
+
+    // Split into Dispatcher / Freelancer groups, most jobs to least within each group
+    const dispatcherGroup = allDispatchers
+        .filter(name => DISPATCHER_STAFF.includes(name))
+        .sort((a, b) => totalFor(b) - totalFor(a));
+    const freelancerGroup = allDispatchers
+        .filter(name => !DISPATCHER_STAFF.includes(name))
+        .sort((a, b) => totalFor(b) - totalFor(a));
+
     let totalInProgress = 0;
     let totalCompleted = 0;
     let totalFailed = 0;
+    let rowIdx = 0;
 
-    dispatchers.forEach((dispatcher, idx) => {
+    const renderGroupLabel = (label) => {
+        tableBody.insertAdjacentHTML('beforeend', `
+            <tr class="table-light">
+                <td colspan="4" style="font-weight:700; text-transform:uppercase; font-size:0.8rem; letter-spacing:0.05em; color:#475569;">${label}</td>
+            </tr>
+        `);
+    };
+
+    const renderDispatcherRow = (dispatcher) => {
         const d = data[dispatcher];
         const inProgressCount = d.inProgress.length;
         const completedCount = d.completed.length;
@@ -1154,7 +1234,7 @@ function renderCompletedJobsTable(data) {
         totalCompleted += completedCount;
         totalFailed += failedCount;
 
-        const dispatcherCollapseId = `dispatcher-collapse-${idx}`;
+        const dispatcherCollapseId = `dispatcher-collapse-${rowIdx++}`;
 
         // Dispatcher summary row
         tableBody.insertAdjacentHTML('beforeend', `
@@ -1284,9 +1364,18 @@ function renderCompletedJobsTable(data) {
                 </td>
             </tr>
         `);
-    });
+    };
 
-    // Grand total row
+    if (dispatcherGroup.length > 0) {
+        renderGroupLabel('Dispatchers');
+        dispatcherGroup.forEach(renderDispatcherRow);
+    }
+    if (freelancerGroup.length > 0) {
+        renderGroupLabel('Freelancers');
+        freelancerGroup.forEach(renderDispatcherRow);
+    }
+
+    // Grand total row (sums both groups)
     tableBody.insertAdjacentHTML('beforeend', `
         <tr class="table-secondary fw-bold" style="position: sticky; bottom: 0; background-color: #f1f1f1;">
             <td>Grand Total</td>
@@ -1411,17 +1500,36 @@ async function loadCodBtData() {
             return [...cashJobs, ...bankTransferJobs, ...billPaymentJobs, ...others];
         }
 
-        // Render all dispatchers except Selfcollect first (sorted alphabetically)
-        const dispatcherNames = Object.keys(dispatchers).filter(d => d !== 'Selfcollect').sort();
+        // Split into Dispatcher / Freelancer groups (Selfcollect rendered separately below),
+        // sorted by total amount, most to least, within each group
+        const nonSelfcollectNames = Object.keys(dispatchers).filter(d => d !== 'Selfcollect');
+        const dispatcherGroup = nonSelfcollectNames
+            .filter(d => DISPATCHER_STAFF.includes(d))
+            .sort((a, b) => (dispatchers[b].total || 0) - (dispatchers[a].total || 0));
+        const freelancerGroup = nonSelfcollectNames
+            .filter(d => !DISPATCHER_STAFF.includes(d))
+            .sort((a, b) => (dispatchers[b].total || 0) - (dispatchers[a].total || 0));
 
-        dispatcherNames.forEach((dispatcher, index) => {
+        let rowIdx = 0;
+        const collapseIdByName = {};
+
+        const renderGroupLabel = (label) => {
+            tableBody.insertAdjacentHTML('beforeend', `
+                <tr class="table-light">
+                    <td colspan="4" style="font-weight:700; text-transform:uppercase; font-size:0.8rem; letter-spacing:0.05em; color:#475569;">${label}</td>
+                </tr>
+            `);
+        };
+
+        const renderDispatcherRow = (dispatcher) => {
             const data = dispatchers[dispatcher];
             const totalAmount = data.total || 0;
             const cashAmount = data.cash || 0;
             const btAmount = data.bt || 0;
 
             if (totalAmount > 0 || cashAmount > 0 || btAmount > 0) {
-                const collapseId = `dispatcher-collapse-${index}`;
+                const collapseId = `dispatcher-collapse-${rowIdx++}`;
+                collapseIdByName[dispatcher] = collapseId;
 
                 const sortedJobs = sortJobsByPayment(data.jobs || []);
 
@@ -1467,7 +1575,16 @@ async function loadCodBtData() {
                 grandCash += cashAmount;
                 grandBT += btAmount;
             }
-        });
+        };
+
+        if (dispatcherGroup.length > 0) {
+            renderGroupLabel('Dispatchers');
+            dispatcherGroup.forEach(renderDispatcherRow);
+        }
+        if (freelancerGroup.length > 0) {
+            renderGroupLabel('Freelancers');
+            freelancerGroup.forEach(renderDispatcherRow);
+        }
 
         // Render Selfcollect last, as a single dispatcher row named "Selfcollect"
         const selfcollectData = dispatchers['Selfcollect'];
@@ -1573,9 +1690,7 @@ async function loadCodBtData() {
             if (dispatcherKeys[0] === 'Selfcollect') {
                 collapseIdToExpand = 'dispatcher-collapse-selfcollect';
             } else {
-                // Find index of dispatcher for collapse id
-                const index = dispatcherNames.indexOf(dispatcherKeys[0]);
-                collapseIdToExpand = `dispatcher-collapse-${index}`;
+                collapseIdToExpand = collapseIdByName[dispatcherKeys[0]];
             }
             const collapseElement = document.getElementById(collapseIdToExpand);
             if (collapseElement) {
@@ -1769,6 +1884,7 @@ function renderNewOrdersSummary(data) {
   products.forEach(p => {
     container.insertAdjacentHTML('beforeend', `
       <div class="kpi-tile">
+        <i class="bi bi-box-seam kpi-icon"></i>
         <span class="kpi-value">${p.count}</span>
         <span class="kpi-label">${PRODUCT_MAPPING[p.name.toLowerCase()] || p.name.toUpperCase()} orders</span>
       </div>
@@ -1920,8 +2036,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.toggle-section-btn').forEach(btn => {
         const target = document.querySelector(btn.getAttribute('data-bs-target'));
         if (!target) return;
-        target.addEventListener('shown.bs.collapse', () => { btn.textContent = 'Hide'; });
-        target.addEventListener('hidden.bs.collapse', () => { btn.textContent = 'Show'; });
+        const label = btn.querySelector('.toggle-section-btn-label');
+        target.addEventListener('shown.bs.collapse', () => { if (label) label.textContent = 'Hide'; });
+        target.addEventListener('hidden.bs.collapse', () => { if (label) label.textContent = 'Show'; });
     });
 });
 </script>

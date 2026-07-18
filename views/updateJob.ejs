@@ -64,7 +64,11 @@
     <div class="container mt-4">
         <!-- Initial Header and Form Section -->
         <div id="initialSection">
-            <h1 class="mb-4">Update Job</h1>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Update Job</h5>
+                </div>
+            </div>
 
             <form id="updateJobForm">
                 <div class="mb-3">
@@ -178,11 +182,15 @@
 
         <!-- Active Update Section -->
         <div id="activeUpdateSection" style="display: none;">
-            <h1 class="mb-4" id="activeUpdateTitle">Update Title</h1>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> <span id="activeUpdateTitle">Update Title</span></h5>
+                </div>
+            </div>
 
             <!-- In your HTML, update the delayed jobs info section -->
             <div id="delayedJobsInfo" class="alert alert-info" style="display: none;">
-                <h5><i class="fas fa-clock"></i> Delayed Processing</h5>
+                <h5><i class="bi bi-clock-fill"></i> Delayed Processing</h5>
                 <p id="delayedJobsMessage">Some jobs are queued for delayed processing (30 minutes). They will update to
                     "At Warehouse" and "In Sorting Area" automatically.</p>
             </div>
@@ -270,8 +278,9 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/tableEnhancer.js"></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script>
 
         // Add these missing global variables at the top of your JavaScript
@@ -595,7 +604,7 @@
                         infoAlert.id = 'foqjInfoAlert';
                         infoAlert.className = 'alert alert-info mt-2';
                         infoAlert.innerHTML = `
-            <i class="fas fa-info-circle"></i> 
+            <i class="bi bi-info-circle-fill"></i> 
             <strong>Fix On Queue Jobs:</strong> This will check jobs stuck in "Queued for Warehouse" status.
             Only works for PDU, EWE, and MGLOBAL products.
         `;
@@ -624,7 +633,7 @@
                 uploadButton.id = 'excelUploadButton';
                 uploadButton.type = 'button';
                 uploadButton.className = 'btn btn-outline-success mt-2';
-                uploadButton.innerHTML = '<i class="fas fa-file-excel"></i> Upload Excel/CSV File';
+                uploadButton.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Upload Excel/CSV File';
                 uploadButton.onclick = showExcelUploadModal;
 
                 const mawbContainer = document.getElementById('mawbNumContainer');
@@ -882,7 +891,7 @@
             const stats = window.mawbScanningStats;
 
             statsDiv.innerHTML = `
-        <h5><i class="fas fa-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
+        <h5><i class="bi bi-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
         <div class="row">
             <div class="col-md-4">
                 <p><strong>Total Jobs:</strong> ${stats.total}</p>
@@ -1332,7 +1341,7 @@
         function showMAWBStatsForBulk(stats, enteredCount) {
             const statsHtml = `
         <div class="alert alert-info mb-3">
-            <h5><i class="fas fa-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
+            <h5><i class="bi bi-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
             <div class="row">
                 <div class="col-md-4">
                     <p><strong>Total Jobs in MAWB:</strong> ${stats.totalJobs}</p>
@@ -1364,7 +1373,7 @@
         function showMAWBStatsForBulkBasic(mawbNum, totalJobs, unscannedJobs, enteredCount) {
             const statsHtml = `
         <div class="alert alert-info mb-3">
-            <h5><i class="fas fa-boxes"></i> MAWB Group: ${mawbNum}</h5>
+            <h5><i class="bi bi-boxes"></i> MAWB Group: ${mawbNum}</h5>
             <div class="row">
                 <div class="col-md-4">
                     <p><strong>Total Jobs in MAWB:</strong> ${totalJobs}</p>
@@ -1589,7 +1598,7 @@
         function showMAWBStatsForBulk(stats, enteredCount) {
             const statsHtml = `
         <div class="alert alert-info mb-3">
-            <h5><i class="fas fa-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
+            <h5><i class="bi bi-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
             <div class="row">
                 <div class="col-md-4">
                     <p><strong>Total Jobs in MAWB:</strong> ${stats.totalJobs}</p>
@@ -1731,6 +1740,7 @@
             </div>
         `;
                 resultsContainer.appendChild(successTable);
+                enhanceResultsTable(successTable.querySelector('table'));
             }
 
             // Create duplicate table if there are duplicates
@@ -1739,7 +1749,7 @@
                 duplicateTable.innerHTML = `
             <h4 class="text-info mt-4">Duplicate Jobs (Ignored) (${result.duplicate.length})</h4>
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Duplicate tracking numbers were ignored and not processed again.
+                <i class="bi bi-info-circle-fill"></i> Duplicate tracking numbers were ignored and not processed again.
             </div>
             <div class="table-responsive">
                 <table class="table table-info table-striped">
@@ -1767,6 +1777,7 @@
             </div>
         `;
                 resultsContainer.appendChild(duplicateTable);
+                enhanceResultsTable(duplicateTable.querySelector('table'));
             }
 
             // ========== THIS SECTION SHOULD BE INSIDE THE FUNCTION ==========
@@ -1804,6 +1815,7 @@
             </div>
         `;
                 resultsContainer.appendChild(delayedTable);
+                enhanceResultsTable(delayedTable.querySelector('table'));
             }
 
             // Create failed table if there are failed updates
@@ -1833,6 +1845,7 @@
             </div>
         `;
                 resultsContainer.appendChild(failedTable);
+                enhanceResultsTable(failedTable.querySelector('table'));
             }
 
             if (result.groupedByCustomer && result.groupedByCustomer.length > 0) {
@@ -1840,7 +1853,7 @@
                 groupedTable.innerHTML = `
             <h4 class="text-info mt-4">Grouped by Customer (${result.groupedByCustomer.length} groups)</h4>
             <div class="alert alert-info">
-                <i class="fas fa-users"></i> These parcels can be grouped together for sorting
+                <i class="bi bi-people-fill"></i> These parcels can be grouped together for sorting
             </div>
             <div class="table-responsive">
                 <table class="table table-info table-striped">
@@ -1882,6 +1895,7 @@
             </div>
         `;
                 resultsContainer.appendChild(groupedTable);
+                enhanceResultsTable(groupedTable.querySelector('table'));
             }
 
             // If no results at all, show a message
@@ -2221,7 +2235,7 @@
             if (updateCode === 'IIW' && mawbNum && mawbNum.trim() !== '') {
                 loadingHtml = `
             <div class="alert alert-info mb-3">
-                <h5><i class="fas fa-boxes"></i> Processing MAWB Group: ${mawbNum}</h5>
+                <h5><i class="bi bi-boxes"></i> Processing MAWB Group: ${mawbNum}</h5>
                 <p>Filtered to ${trackingNumbers.length} valid tracking numbers</p>
             </div>
             ${loadingHtml}
@@ -2751,7 +2765,7 @@
                     }
 
                     mawbInfo.innerHTML = `
-                <h5><i class="fas fa-boxes"></i> Scanning for MAWB: ${mawbNum}</h5>
+                <h5><i class="bi bi-boxes"></i> Scanning for MAWB: ${mawbNum}</h5>
                 <p>Scan tracking numbers belonging to this MAWB group</p>
             `;
                 }
@@ -2822,7 +2836,7 @@
                     </div>
                     <div class="modal-body">
                        <div class="alert alert-info">
-    <h6><i class="fas fa-info-circle"></i> File Requirements:</h6>
+    <h6><i class="bi bi-info-circle-fill"></i> File Requirements:</h6>
     <ul class="mb-2">
         <li><strong>Required columns:</strong> Tracking Number</li>
         <li><strong>Optional columns:</strong> Postal Code, Parcel Weight (kg)</li>
@@ -2843,14 +2857,14 @@
                         <div class="mb-3">
                             <input type="hidden" id="uploadMAWB" value="${mawbNum}">
                             <button type="button" class="btn btn-success" onclick="uploadExcelFile('${mawbNum}')">
-                                <i class="fas fa-upload"></i> Upload & Process
+                                <i class="bi bi-upload"></i> Upload & Process
                             </button>
                             <div class="btn-group ms-2" role="group">
     <button type="button" class="btn btn-outline-primary" onclick="generateTemplate('excel')">
-        <i class="fas fa-file-excel"></i> Excel Template
+        <i class="bi bi-file-earmark-excel"></i> Excel Template
     </button>
     <button type="button" class="btn btn-outline-secondary" onclick="generateTemplate('csv')">
-        <i class="fas fa-file-csv"></i> CSV Template
+        <i class="bi bi-filetype-csv"></i> CSV Template
     </button>
 </div>
                         </div>
@@ -3095,10 +3109,10 @@ EXAMPLE004\tBE9012\t
                 const csvBtn = document.querySelector('button[onclick*="generateTemplate(\'csv\')"]');
 
                 if (excelBtn) {
-                    excelBtn.innerHTML = `<i class="fas fa-file-excel"></i> Excel Template (${mawbNum})`;
+                    excelBtn.innerHTML = `<i class="bi bi-file-earmark-excel"></i> Excel Template (${mawbNum})`;
                 }
                 if (csvBtn) {
-                    csvBtn.innerHTML = `<i class="fas fa-file-csv"></i> CSV Template (${mawbNum})`;
+                    csvBtn.innerHTML = `<i class="bi bi-filetype-csv"></i> CSV Template (${mawbNum})`;
                 }
             }
         }
@@ -3265,7 +3279,7 @@ EXAMPLE004\tBE9012\t
                 uploadButton.id = 'uwpExcelUploadButton';
                 uploadButton.type = 'button';
                 uploadButton.className = 'btn btn-outline-success mt-2';
-                uploadButton.innerHTML = '<i class="fas fa-file-excel"></i> Upload Excel/CSV File to Update Weight/Postal Code';
+                uploadButton.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Upload Excel/CSV File to Update Weight/Postal Code';
                 uploadButton.onclick = showUWPExcelUploadModal;
 
                 const mawbFields = document.getElementById('mawbFields');
@@ -3289,7 +3303,7 @@ EXAMPLE004\tBE9012\t
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <h6><i class="fas fa-info-circle"></i> File Requirements:</h6>
+                        <h6><i class="bi bi-info-circle-fill"></i> File Requirements:</h6>
                         <ul class="mb-2">
                             <li><strong>Required columns:</strong> Tracking Number</li>
                             <li><strong>Optional columns:</strong> Postal Code, Parcel Weight (kg)</li>
@@ -3309,14 +3323,14 @@ EXAMPLE004\tBE9012\t
                     
                     <div class="mb-3">
                         <button type="button" class="btn btn-success" onclick="uploadUWPExcelFile()">
-                            <i class="fas fa-upload"></i> Upload & Process
+                            <i class="bi bi-upload"></i> Upload & Process
                         </button>
                         <div class="btn-group ms-2" role="group">
                             <button type="button" class="btn btn-outline-primary" onclick="generateUWPTemplate('excel')">
-                                <i class="fas fa-file-excel"></i> Excel Template
+                                <i class="bi bi-file-earmark-excel"></i> Excel Template
                             </button>
                             <button type="button" class="btn btn-outline-secondary" onclick="generateUWPTemplate('csv')">
-                                <i class="fas fa-file-csv"></i> CSV Template
+                                <i class="bi bi-filetype-csv"></i> CSV Template
                             </button>
                         </div>
                     </div>
@@ -3567,7 +3581,7 @@ EXAMPLE004\t\t
                 duplicateTable.innerHTML = `
             <h4 class="text-info mt-4">Duplicate Seals (${result.duplicate.length})</h4>
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> These manifest seals were already scanned in the GDEX system.
+                <i class="bi bi-info-circle-fill"></i> These manifest seals were already scanned in the GDEX system.
             </div>
             <div class="table-responsive">
                 <table class="table table-info table-striped">
@@ -3593,6 +3607,7 @@ EXAMPLE004\t\t
             </div>
         `;
                 resultsContainer.appendChild(duplicateTable);
+                enhanceResultsTable(duplicateTable.querySelector('table'));
             }
 
             // ==================================================
@@ -3626,6 +3641,7 @@ EXAMPLE004\t\t
             </div>
         `;
                 resultsContainer.appendChild(successTable);
+                enhanceResultsTable(successTable.querySelector('table'));
             }
 
             // ==================================================
@@ -3659,6 +3675,7 @@ EXAMPLE004\t\t
             </div>
         `;
                 resultsContainer.appendChild(failedTable);
+                enhanceResultsTable(failedTable.querySelector('table'));
             }
 
             // ==================================================
@@ -3877,7 +3894,7 @@ EXAMPLE004\t\t
                 html += `
             <h4 class="text-info">Duplicates Skipped</h4>
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Duplicate tracking/seal numbers were skipped and not processed again.
+                <i class="bi bi-info-circle-fill"></i> Duplicate tracking/seal numbers were skipped and not processed again.
             </div>
         `;
             }

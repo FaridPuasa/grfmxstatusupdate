@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Digital ID - <%= user.name %></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         * {
             margin: 0;
@@ -299,7 +299,7 @@
                 </div>
             <% } else { %>
                 <div class="profile-circle" style="background-color: #f0f0f0; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; width: 150px; height: 150px; border-radius: 50%;">
-                    <i class="fas fa-user fa-4x" style="color: #999;"></i>
+                    <i class="bi bi-person-fill" style="color: #999; font-size: 4rem;"></i>
                 </div>
             <% } %>
             
@@ -313,7 +313,7 @@
             <% } %>
             
             <div class="status-badge status-<%= statusType %>">
-                <i class="fas <%= statusIcon %>"></i> <%= statusText %>
+                <i class="bi <%= statusIcon %>"></i> <%= statusText %>
             </div>
             
             <% if (user.icNum && user.icNum.length >= 4) { 
@@ -322,7 +322,7 @@
             %>
                 <div class="info-row" style="background-color: <%= infoBgColor %>;">
                     <div class="info-label">
-                        <i class="fas fa-id-card"></i> IC Number
+                        <i class="bi bi-person-vcard"></i> IC Number
                     </div>
                     <div class="info-value">
                         <%= censoredIc %>
@@ -332,7 +332,7 @@
             
             <div class="info-row" style="background-color: <%= infoBgColor %>;">
                 <div class="info-label">
-                    <i class="fas fa-briefcase"></i> Position
+                    <i class="bi bi-briefcase-fill"></i> Position
                 </div>
                 <div class="info-value">
                     <% if (positionHtml) { %>

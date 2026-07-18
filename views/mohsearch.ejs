@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOH Search</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
     <style>
@@ -94,24 +95,30 @@
             <%- include('partials/navbar') %>
         </div>
     </div>
-    <div class="container mt-5">
-        <h1 class="text-center mt-4">MOH Search</h1>
-        <form action="/mohsearch" method="post">
-            <div class="form-group">
-                <label for="patientNumber">Patient Number</label>
-                <input type="text" id="patientNumber" name="patientNumber" class="form-control"
-                    value="<%= searchQuery.patientNumber %>">
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-search"></i> MOH Search</h5>
             </div>
-            <div class="form-group">
-                <label for="icPassNum">IC/Passport Number</label>
-                <input type="text" id="icPassNum" name="icPassNum" class="form-control"
-                    value="<%= searchQuery.icPassNum %>">
+            <div class="card-body">
+                <form action="/mohsearch" method="post">
+                    <div class="mb-3">
+                        <label for="patientNumber">Patient Number</label>
+                        <input type="text" id="patientNumber" name="patientNumber" class="form-control"
+                            value="<%= searchQuery.patientNumber %>">
+                    </div>
+                    <div class="mb-3">
+                        <label for="icPassNum">IC/Passport Number</label>
+                        <input type="text" id="icPassNum" name="icPassNum" class="form-control"
+                            value="<%= searchQuery.icPassNum %>">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Search</button>
+                </form>
             </div>
-            <button type="submit" class="btn btn-primary">Search</button>
-        </form>
+        </div>
     </div>
-    <div id="results" class="mt-4">
-        <table class="table" id="orderTable">
+    <div id="results" class="container mt-4">
+        <table class="table table-striped" id="orderTable">
             <thead>
                 <tr>
                     <th>Tracking No.</th>

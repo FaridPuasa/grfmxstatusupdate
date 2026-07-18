@@ -1798,7 +1798,7 @@ app.get('/api/delivery-result-report', async (req, res) => {
             .sort((a, b) => {
                 if (a.staff === "Selfcollect") return 1;
                 if (b.staff === "Selfcollect") return -1;
-                return a.staff.localeCompare(b.staff);
+                return b.total - a.total;
             });
 
         console.log(`Returning ${results.length} staff results with ${products.length} products`);
@@ -1911,8 +1911,8 @@ ${products.map(_ => `<th>Cash</th><th>BT</th><th>Total Amount</th>`).join('')}
 </thead>
 <tbody>`;
 
-        // Table body per staff
-        Object.keys(staffMap).sort().forEach(staff => {
+        // Table body per staff (most total amount to least)
+        Object.keys(staffMap).sort((a, b) => staffMap[b].totalAll - staffMap[a].totalAll).forEach(staff => {
             const displayName = dispatcherMap[staff] || staff;
             html += `<tr><td>${displayName}</td>`;
             const data = staffMap[staff].products;
@@ -3105,7 +3105,11 @@ app.get('/api/freelancer-delivery-result-report', async (req, res) => {
                 };
             })
             .filter(result => result.totalCompleted > 0) // Only show freelancers with completed jobs
-            .sort((a, b) => a.staff.localeCompare(b.staff));
+            .sort((a, b) => {
+                if (a.staff === "Selfcollect") return 1;
+                if (b.staff === "Selfcollect") return -1;
+                return b.totalCompleted - a.totalCompleted;
+            });
 
         console.log(`Returning ${results.length} freelancers with completed jobs`);
 
@@ -3180,7 +3184,11 @@ app.get('/api/freelancer-job-completed-count-report', ensureAuthenticated, async
                     .sort((a, b) => a.date.localeCompare(b.date));
                 return { staff, dates, total: data.total };
             })
-            .sort((a, b) => a.staff.localeCompare(b.staff));
+            .sort((a, b) => {
+                if (a.staff === "Selfcollect") return 1;
+                if (b.staff === "Selfcollect") return -1;
+                return b.total - a.total;
+            });
 
         const responseData = { results };
         freelancerJobCountCache.set(cacheKey, responseData);
@@ -3511,6 +3519,8 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) {
                 return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) &&
                     ((method === "Standard" && age >= 3 && age <= 7) || (method === "Express" && age >= 1 && age <= 7));
+            } else if (["gdex", "gdext"].includes(product)) {
+                return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) && age > 1 && age < 4;
             } else {
                 return warehouseEntry === "Yes" && ["At Warehouse", "Return to Warehouse"].includes(currentStatus) && age >= 3 && age <= 14;
             }
@@ -3519,6 +3529,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
         const overdueMap = categorize(allOrders, (order, age) => {
             const { product } = order;
             if (["pharmacymoh", "pharmacyjpmc", "pharmacyphc"].includes(product)) return age > 7 && age < 30;
+            if (["gdex", "gdext"].includes(product)) return age >= 4 && age < 30;
             return age > 14 && age < 30;
         });
 
@@ -4055,7 +4066,7 @@ app.get('/verify/:userId', async (req, res) => {
 
         let statusType = 'unauthorized';
         let statusText = 'Not Affiliated with Go Rush';
-        let statusIcon = 'fa-times-circle';
+        let statusIcon = 'bi-x-circle-fill';
         let position = user.jobPosition || 'Staff';
         let positionHtml = null;
         let contactHtml = null;
@@ -4121,7 +4132,7 @@ app.get('/verify/:userId', async (req, res) => {
                 if (hasJobToday) {
                     statusType = 'authorized';
                     statusText = 'Authorized Digital ID';
-                    statusIcon = 'fa-check-circle';
+                    statusIcon = 'bi-check-circle-fill';
                     positionHtml = `Freelancer for <span id="timer" class="timer">Loading...</span>`;
                     needTimer = true;
 
@@ -4141,7 +4152,7 @@ app.get('/verify/:userId', async (req, res) => {
                 } else {
                     statusType = 'expired';
                     statusText = 'Inactive Freelancer';
-                    statusIcon = 'fa-clock';
+                    statusIcon = 'bi-clock-fill';
                     position = 'Inactive Freelancer';
 
                     const contactInfo = getCompanyContact(user.company, user.role);
@@ -4161,7 +4172,7 @@ app.get('/verify/:userId', async (req, res) => {
             } else if (user.role === 'dispatcher') {
                 statusType = 'authorized';
                 statusText = 'Authorized Digital ID';
-                statusIcon = 'fa-check-circle';
+                statusIcon = 'bi-check-circle-fill';
 
                 const contactInfo = getCompanyContact(user.company, user.role);
                 assuranceText = contactInfo.assurance;
@@ -4179,7 +4190,7 @@ app.get('/verify/:userId', async (req, res) => {
             } else {
                 statusType = 'authorized';
                 statusText = 'Authorized Digital ID';
-                statusIcon = 'fa-check-circle';
+                statusIcon = 'bi-check-circle-fill';
 
                 const contactInfo = getCompanyContact(user.company, user.role);
                 assuranceText = contactInfo.assurance;
