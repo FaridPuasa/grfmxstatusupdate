@@ -499,6 +499,18 @@ async function checkStaleInfoReceivedJobs() {
 }
 
 // ==================================================
+// 🕒 Convert a Detrack timestamp to Brunei time (UTC+8)
+// If the timestamp string already carries an explicit timezone/offset (e.g. "Z" or "+08:00"),
+// convert it to Brunei time. If it has no offset, Detrack already returned it in Brunei local
+// time, so it's used as-is without any additional shift.
+// ==================================================
+function toBruneiMoment(timestamp) {
+    if (!timestamp) return null;
+    const hasOffset = /Z$|[+-]\d{2}:?\d{2}$/.test(String(timestamp).trim());
+    return hasOffset ? moment(timestamp).tz('Asia/Brunei') : moment.tz(timestamp, 'Asia/Brunei');
+}
+
+// ==================================================
 // 🔍 CHECK ACTIVE DELIVERIES STATUS - Automated job that runs every 10 minutes
 // ==================================================
 let isCheckingActiveDeliveries = false;
@@ -556,8 +568,8 @@ async function checkActiveDeliveriesStatus() {
                 let completionDateStr = null;
 
                 if (data.data.completed_time) {
-                    // Convert Detrack time to Brunei time
-                    detrackCompletedTime = moment(data.data.completed_time).utcOffset(8);
+                    // Convert Detrack time to Brunei time (no-op if already Brunei local time)
+                    detrackCompletedTime = toBruneiMoment(data.data.completed_time);
                     completionDateStr = detrackCompletedTime.format('YYYY-MM-DD');
                 }
 
@@ -574,7 +586,7 @@ async function checkActiveDeliveriesStatus() {
 
                 // ========== UPDATED: Get completed timestamp from updated_at field ==========
                 const completedTimestamp = data.data.updated_at;
-                const formattedTimestamp = moment(completedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+                const formattedTimestamp = toBruneiMoment(completedTimestamp).format('YYYY-MM-DDTHH:mm:ss');
 
                 // ========== UPDATED: Determine location based on assign_to ==========
                 let latestLocation = '';
@@ -789,7 +801,7 @@ async function checkActiveDeliveriesStatus() {
 
                     // ========== UPDATED: Get completed timestamp for non-GDEX ==========
                     const completedTimestamp = data.data.updated_at;
-                    const formattedTimestamp = moment(completedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+                    const formattedTimestamp = toBruneiMoment(completedTimestamp).format('YYYY-MM-DDTHH:mm:ss');
 
                     // ========== UPDATED: Determine location for non-GDEX ==========
                     let latestLocation = '';
@@ -5578,133 +5590,149 @@ async function sendGDEXTrackingWebhook(consignmentID, statusCode, statusDescript
     }
 }
 
-async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, token) {
-    try {
-        // Respect a statusdatetime the caller already computed (e.g. from Detrack's "updated_at");
-        // only fall back to now if none was provided.
-        if (trackingData && !trackingData.statusdatetime) {
-            trackingData.statusdatetime = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
-        }
+async function sendGDEXTrackingWebhookWithData(consignmentID, trackingData, token, retries = 3) {
+    // Respect a statusdatetime the caller already computed (e.g. from Detrack's "updated_at");
+    // only fall back to now if none was provided.
+    if (trackingData && !trackingData.statusdatetime) {
+        trackingData.statusdatetime = moment().utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+    }
 
-        // ========== LOG FULL REQUEST ==========
-        console.log(`\n📤 ===== COMPLETE REQUEST TO GDEX =====`);
-        console.log(`URL: ${gdexConfig.trackingUrl}`);
-        console.log(`Method: POST`);
-        console.log(`Headers:`, JSON.stringify({
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token.substring(0, 20)}...` // Truncate for security
-        }, null, 2));
-        console.log(`Body:`, JSON.stringify(trackingData, null, 2));
-        console.log(`========================================\n`);
-
-        console.log(`📡 Sending GDEX webhook for ${consignmentID}: ${trackingData.statuscode} - ${trackingData.statusdescription}`);
-        console.log(`Using status date/time: ${trackingData.statusdatetime}`);
-
-        const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
-            headers: {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            // ========== LOG FULL REQUEST ==========
+            console.log(`\n📤 ===== COMPLETE REQUEST TO GDEX (attempt ${attempt}/${retries}) =====`);
+            console.log(`URL: ${gdexConfig.trackingUrl}`);
+            console.log(`Method: POST`);
+            console.log(`Headers:`, JSON.stringify({
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            timeout: 15000  // Increase timeout to 15 seconds
-        });
+                'Authorization': `Bearer ${token.substring(0, 20)}...` // Truncate for security
+            }, null, 2));
+            console.log(`Body:`, JSON.stringify(trackingData, null, 2));
+            console.log(`========================================\n`);
 
-        // ========== LOG FULL RESPONSE ==========
-        console.log(`\n📥 ===== COMPLETE RESPONSE FROM GDEX =====`);
-        console.log(`Status: ${response.status} ${response.statusText}`);
-        console.log(`Headers:`, JSON.stringify(response.headers, null, 2));
-        console.log(`Body:`, JSON.stringify(response.data, null, 2));
-        console.log(`==========================================\n`);
+            console.log(`📡 Sending GDEX webhook for ${consignmentID}: ${trackingData.statuscode} - ${trackingData.statusdescription}`);
+            console.log(`Using status date/time: ${trackingData.statusdatetime}`);
 
-        if (response.data && response.data.success === true) {
-            console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} webhook ${trackingData.statuscode} sent successfully`);
-            return { success: true, error: null, response: response.data };
-        } else {
-            const errorMsg = response.data?.error || 'Unknown GDEX error';
-            console.error(`❌ GDEX webhook failed:`, errorMsg);
-            return {
-                success: false,
-                error: errorMsg,
-                details: response.data,
-                fullRequest: trackingData,
-                fullResponse: {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: response.headers,
-                    data: response.data
-                }
-            };
-        }
-    } catch (error) {
-        // ========== LOG FULL ERROR DETAILS ==========
-        console.error(`\n🔥 ===== COMPLETE ERROR DETAILS =====`);
-        console.error(`Error message: ${error.message}`);
+            const response = await axios.post(gdexConfig.trackingUrl, trackingData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                timeout: 15000  // Increase timeout to 15 seconds
+            });
 
-        if (error.response) {
-            // The request was made and the server responded with a status code outside of 2xx
-            console.error(`📌 RESPONSE STATUS: ${error.response.status} ${error.response.statusText}`);
-            console.error(`📌 RESPONSE HEADERS:`, JSON.stringify(error.response.headers, null, 2));
-            console.error(`📌 RESPONSE DATA:`, JSON.stringify(error.response.data, null, 2));
+            // ========== LOG FULL RESPONSE ==========
+            console.log(`\n📥 ===== COMPLETE RESPONSE FROM GDEX =====`);
+            console.log(`Status: ${response.status} ${response.statusText}`);
+            console.log(`Headers:`, JSON.stringify(response.headers, null, 2));
+            console.log(`Body:`, JSON.stringify(response.data, null, 2));
+            console.log(`==========================================\n`);
 
-            // Try to extract any hidden error codes or messages
-            let detailedError = `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`;
-
-            // Check for common error formats
-            if (error.response.data) {
-                if (error.response.data.error) {
-                    detailedError += ` | Error: ${error.response.data.error}`;
-                }
-                if (error.response.data.message) {
-                    detailedError += ` | Message: ${error.response.data.message}`;
-                }
-                if (error.response.data.error_description) {
-                    detailedError += ` | Description: ${error.response.data.error_description}`;
-                }
-                if (error.response.data.code) {
-                    detailedError += ` | Code: ${error.response.data.code}`;
-                }
-                if (error.response.data.errors) {
-                    detailedError += ` | Validation: ${JSON.stringify(error.response.data.errors)}`;
-                }
+            if (response.data && response.data.success === true) {
+                console.log(`✅ GDEX ${GDEX_ENV.toUpperCase()} webhook ${trackingData.statuscode} sent successfully`);
+                return { success: true, error: null, response: response.data };
+            } else {
+                // GDEX responded and explicitly rejected the request (e.g. validation error) -
+                // retrying the exact same payload won't change that, so fail immediately.
+                const errorMsg = response.data?.error || 'Unknown GDEX error';
+                console.error(`❌ GDEX webhook failed:`, errorMsg);
+                return {
+                    success: false,
+                    error: errorMsg,
+                    details: response.data,
+                    fullRequest: trackingData,
+                    fullResponse: {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: response.headers,
+                        data: response.data
+                    }
+                };
             }
+        } catch (error) {
+            // ========== LOG FULL ERROR DETAILS ==========
+            console.error(`\n🔥 ===== COMPLETE ERROR DETAILS (attempt ${attempt}/${retries}) =====`);
+            console.error(`Error code: ${error.code || 'n/a'}`);
+            console.error(`Error message: ${error.message}`);
 
-            console.error(`=====================================\n`);
+            if (error.response) {
+                // The request was made and the server responded with a status code outside of 2xx.
+                // GDEX gave us a definitive answer (e.g. 401/400/500) - retrying won't fix that.
+                console.error(`📌 RESPONSE STATUS: ${error.response.status} ${error.response.statusText}`);
+                console.error(`📌 RESPONSE HEADERS:`, JSON.stringify(error.response.headers, null, 2));
+                console.error(`📌 RESPONSE DATA:`, JSON.stringify(error.response.data, null, 2));
 
-            return {
-                success: false,
-                error: detailedError,
-                statusCode: error.response.status,
-                statusText: error.response.statusText,
-                headers: error.response.headers,
-                data: error.response.data,
-                fullRequest: trackingData,
-                fullResponse: {
-                    status: error.response.status,
+                // Try to extract any hidden error codes or messages
+                let detailedError = `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}`;
+
+                // Check for common error formats
+                if (error.response.data) {
+                    if (error.response.data.error) {
+                        detailedError += ` | Error: ${error.response.data.error}`;
+                    }
+                    if (error.response.data.message) {
+                        detailedError += ` | Message: ${error.response.data.message}`;
+                    }
+                    if (error.response.data.error_description) {
+                        detailedError += ` | Description: ${error.response.data.error_description}`;
+                    }
+                    if (error.response.data.code) {
+                        detailedError += ` | Code: ${error.response.data.code}`;
+                    }
+                    if (error.response.data.errors) {
+                        detailedError += ` | Validation: ${JSON.stringify(error.response.data.errors)}`;
+                    }
+                }
+
+                console.error(`=====================================\n`);
+
+                return {
+                    success: false,
+                    error: detailedError,
+                    statusCode: error.response.status,
                     statusText: error.response.statusText,
                     headers: error.response.headers,
-                    data: error.response.data
-                }
-            };
+                    data: error.response.data,
+                    fullRequest: trackingData,
+                    fullResponse: {
+                        status: error.response.status,
+                        statusText: error.response.statusText,
+                        headers: error.response.headers,
+                        data: error.response.data
+                    }
+                };
 
-        } else if (error.request) {
-            // The request was made but no response was received
-            console.error(`📌 NO RESPONSE RECEIVED - Request that was sent:`);
-            console.error(error.request);
-            console.error(`=====================================\n`);
-            return {
-                success: false,
-                error: 'No response from GDEX server (network error)',
-                request: error.request,
-                fullRequest: trackingData
-            };
-        } else {
-            // Something happened in setting up the request
-            console.error(`📌 REQUEST SETUP ERROR:`, error.message);
-            console.error(`=====================================\n`);
-            return {
-                success: false,
-                error: error.message,
-                fullRequest: trackingData
-            };
+            } else if (error.request) {
+                // The request was made but no response was received at all (true network
+                // failure or the 15s timeout elapsing) - this is transient, so retry.
+                console.error(`📌 NO RESPONSE RECEIVED (code: ${error.code || 'n/a'}) - Request that was sent:`);
+                console.error(error.request);
+                console.error(`=====================================\n`);
+
+                if (attempt < retries) {
+                    console.log(`⏳ Retrying GDEX webhook for ${consignmentID} after no-response error (attempt ${attempt}/${retries})...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    continue;
+                }
+
+                return {
+                    success: false,
+                    error: `No response from GDEX server (network error${error.code ? `: ${error.code}` : ''})`,
+                    code: error.code,
+                    request: error.request,
+                    fullRequest: trackingData
+                };
+            } else {
+                // Something happened in setting up the request - a code/config issue, not
+                // network flakiness, so retrying won't help.
+                console.error(`📌 REQUEST SETUP ERROR:`, error.message);
+                console.error(`=====================================\n`);
+                return {
+                    success: false,
+                    error: error.message,
+                    fullRequest: trackingData
+                };
+            }
         }
     }
 }
@@ -8683,7 +8711,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                     // ========== UPDATED: Handle failed deliveries with photos for GDEX/GDEXT ==========
 
                     const failedTimestamp = data.data.updated_at;
-                    const failedformattedTimestamp = moment(failedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+                    const failedformattedTimestamp = toBruneiMoment(failedTimestamp).format('YYYY-MM-DDTHH:mm:ss');
 
                     // Check if this is a GDEX/GDEXT product
                     const isGdexProduct = (product == 'GDEX' || product == 'GDEXT');
@@ -8863,7 +8891,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         { upsert: false }
                                     );
 
-                                    mongoDBrun = 2;
                                     completeRun = 1;
 
                                     // Update Detrack status
@@ -9135,7 +9162,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
 
                     // Get completed timestamp from Detrack
                     const completedTimestamp = data.data.updated_at;
-                    const formattedTimestamp = moment(completedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+                    const formattedTimestamp = toBruneiMoment(completedTimestamp).format('YYYY-MM-DDTHH:mm:ss');
 
                     // Determine location based on assign_to
                     let latestLocation = '';
@@ -9237,7 +9264,6 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                                         { upsert: false }
                                     );
 
-                                    mongoDBrun = 2;
                                     completeRun = 1;
 
                                     processingResults.push({
@@ -9391,7 +9417,7 @@ app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDeliv
                 }
 
                 const rgpCompletedTimestamp = data.data.updated_at;
-                const rgpFormattedTimestamp = moment(rgpCompletedTimestamp).utcOffset(8).format('YYYY-MM-DDTHH:mm:ss');
+                const rgpFormattedTimestamp = toBruneiMoment(rgpCompletedTimestamp).format('YYYY-MM-DDTHH:mm:ss');
 
                 let rgpLatestLocation = '';
                 if (data.data.assign_to === 'Selfcollect') {
