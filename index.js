@@ -3403,7 +3403,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
         const allOrders = await ORDERS.find(
             { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1 }
+            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
         );
 
         const deliveryOrders = await ORDERS.find(
@@ -3526,10 +3526,24 @@ app.get('/', ensureAuthenticated, async (req, res) => {
 
         const maxAttemptMap = categorize(allOrders, (order, age) => order.attempt >= 3 && age < 30);
 
+        // True when the most recent "Failed Delivery" entry in the order's history (if any)
+        // was for a customer-requested reschedule to self collect — i.e. that reason hasn't
+        // since been superseded by a later failed delivery attempt for a different reason.
+        const isLastFailedDeliveryRescheduleToSelfCollect = (order) => {
+            const history = order.history || [];
+            for (let i = history.length - 1; i >= 0; i--) {
+                if (history[i].statusHistory === "Failed Delivery") {
+                    return history[i].reason === "Reschedule to self collect requested by customer";
+                }
+            }
+            return false;
+        };
+
         const plannedSelfCollectMap = categorize(allOrders, (order, age) => {
-            return ["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
-                order.grRemark && order.grRemark.toLowerCase().includes("self collect") &&
-                age <= 30;
+            if (age > 30) return false;
+            return (["At Warehouse", "Return to Warehouse"].includes(order.currentStatus) &&
+                order.grRemark && order.grRemark.toLowerCase().includes("self collect")) ||
+                isLastFailedDeliveryRescheduleToSelfCollect(order);
         });
 
         // Group deliveries
