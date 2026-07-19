@@ -15327,6 +15327,13 @@ const backgroundJobs = new Map();
 // past backgroundJobs' 30-minute cutoff.
 const deliveryJobs = new Map();
 
+// In-memory store for /api/assign-pod-jobs jobs. Same reasoning as
+// deliveryJobs above - assigning a POD loops sequentially over every tracking
+// number in it (Detrack + Mongo + optional GDEX calls, plus a 500ms
+// rate-limit delay each), so a POD with 30+ jobs can easily run well past
+// Heroku's 30s router timeout if done inline in the request.
+const podAssignJobs = new Map();
+
 // Generate unique job ID
 function generateJobId() {
     return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -20245,6 +20252,9 @@ setInterval(cleanupOldJobs, 5 * 60 * 1000);
 // number does more sequential external calls than a typical /updateJob item.
 setInterval(() => cleanupOldJobs(deliveryJobs, 60 * 60 * 1000, 50), 10 * 60 * 1000);
 
+// /api/assign-pod-jobs jobs get the same longer max age for the same reason.
+setInterval(() => cleanupOldJobs(podAssignJobs, 60 * 60 * 1000, 50), 10 * 60 * 1000);
+
 // ==================================================
 // 🔄 Chunk Processing Route
 // ==================================================
@@ -22552,13 +22562,189 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
 // ==================================================
 
 app.post('/api/assign-pod-jobs', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    const { podId, podName, trackingNumbers, dispatcher, assignDate } = req.body;
+    const { podName, trackingNumbers, dispatcher, assignDate } = req.body;
 
-    console.log(`=== Assigning POD Jobs: ${podName} ===`);
+    if (!Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
+        return res.status(400).json({ error: 'No tracking numbers provided' });
+    }
+
+    console.log(`=== Queuing POD Assignment: ${podName} ===`);
     console.log(`Dispatcher: ${dispatcher}`);
     console.log(`Assign Date: ${assignDate}`);
     console.log(`Tracking Numbers: ${trackingNumbers.length} jobs`);
 
+    const jobId = generateJobId();
+    const userName = req.user.name;
+
+    podAssignJobs.set(jobId, {
+        status: 'queued',
+        podName,
+        total: trackingNumbers.length,
+        processed: 0,
+        results: [],
+        startTime: Date.now()
+    });
+
+    // Respond immediately with the job ID so the client can poll for progress
+    // instead of holding the connection open - a POD with many jobs takes
+    // well over Heroku's 30s router timeout to process sequentially.
+    res.json({ jobId, status: 'queued', total: trackingNumbers.length });
+
+    setTimeout(() => {
+        patchJob(podAssignJobs, jobId, { status: 'processing' });
+        processPodAssignmentsInBackground(jobId, trackingNumbers, dispatcher, assignDate, userName).catch((error) => {
+            console.error('POD assignment background job error:', error);
+            patchJob(podAssignJobs, jobId, { status: 'failed', error: error.message });
+        });
+    }, 100);
+});
+
+// Polling endpoint for the /api/assign-pod-jobs background job above.
+app.get('/api/assign-pod-jobs/status/:jobId', ensureAuthenticated, (req, res) => {
+    const job = podAssignJobs.get(req.params.jobId);
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+    res.json(job);
+});
+
+// Handles one tracking number's worth of assignment work and always returns
+// a result object (never throws) so the caller can track progress per item.
+async function processSinglePodAssignment(consignmentID, dispatcher, assignDate, userName) {
+    try {
+        // Step 1: Fetch data from Detrack
+        const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': apiKey
+            }
+        });
+
+        const data = response.data.data;
+        const product = data.group_name;
+        let currentProduct = '';
+
+        // Determine product type
+        if (product === 'GDEX') currentProduct = 'gdex';
+        else if (product === 'GDEXT') currentProduct = 'gdext';
+        else if (product === 'EWE') currentProduct = 'ewe';
+        else currentProduct = product.toLowerCase();
+
+        // Check if job can be assigned to Out for Delivery
+        const canAssignOutForDelivery = (
+            (data.type === 'Delivery' && (data.status === 'at_warehouse' || data.status === 'in_sorting_area')) ||
+            (data.type === 'Delivery' && data.status === 'on_hold' && (currentProduct === 'gdex' || currentProduct === 'gdext'))
+        );
+
+        if (!canAssignOutForDelivery) {
+            let errorMsg = `Cannot assign - Current status: ${data.status}`;
+            if (data.type !== 'Delivery') errorMsg = `Cannot assign - Job type is ${data.type}, not Delivery`;
+            if (data.status === 'dispatched') errorMsg = `Job already assigned to a dispatcher`;
+            if (data.status === 'completed') errorMsg = `Job already completed`;
+            if (data.status === 'failed') errorMsg = `Job has failed delivery`;
+            if (data.status === 'cancelled') errorMsg = `Job has been cancelled`;
+
+            return { trackingNumber: consignmentID, success: false, error: errorMsg };
+        }
+
+        // Get area from address
+        let area = data.zone || 'N/A';
+        let finalArea = area;
+
+        // Prepare update data for MongoDB
+        let update = {
+            area: finalArea,
+            currentStatus: "Out for Delivery",
+            lastUpdateDateTime: moment().format(),
+            instructions: data.remarks || '',
+            assignedTo: dispatcher,
+            attempt: data.attempt || 0,
+            jobDate: assignDate,
+            latestLocation: dispatcher,
+            lastUpdatedBy: userName,
+            $push: {
+                history: {
+                    statusHistory: "Out for Delivery",
+                    dateUpdated: moment().format(),
+                    updatedBy: userName,
+                    lastAssignedTo: dispatcher,
+                    reason: "N/A",
+                    lastLocation: dispatcher,
+                }
+            }
+        };
+
+        // Handle COD for EWE products
+        let detrackUpdateData = {
+            do_number: consignmentID,
+            data: {
+                date: assignDate,
+                assign_to: dispatcher,
+                status: "dispatched",
+                zone: finalArea,
+            }
+        };
+
+        if ((data.payment_mode === "COD") && (currentProduct === "ewe")) {
+            update.paymentMethod = "Cash";
+            update.totalPrice = data.payment_amount;
+            update.paymentAmount = data.payment_amount;
+            detrackUpdateData.data.total_price = data.payment_amount;
+            detrackUpdateData.data.payment_mode = "Cash";
+        }
+
+        // Step 2: Update MongoDB
+        const filter = { doTrackingNumber: consignmentID };
+        const mongoResult = await ORDERS.findOneAndUpdate(filter, update, { upsert: false, new: false });
+
+        if (!mongoResult) {
+            return { trackingNumber: consignmentID, success: false, error: 'Order not found in MongoDB' };
+        }
+
+        console.log(`✅ MongoDB updated for ${consignmentID}`);
+
+        // Step 3: Update Detrack
+        const detrackSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
+
+        if (!detrackSuccess) {
+            return { trackingNumber: consignmentID, success: false, error: 'Failed to update Detrack status' };
+        }
+
+        console.log(`✅ Detrack updated for ${consignmentID}`);
+
+        // Step 4: Update GDEX if applicable
+        let gdexSuccess = true;
+        if (product === 'GDEX' || product === 'GDEXT') {
+            console.log(`🔄 Sending GDEX Out for Delivery for ${consignmentID}`);
+            gdexSuccess = await updateGDEXStatus(consignmentID, 'out_for_delivery');
+
+            if (gdexSuccess) {
+                console.log(`✅ GDEX updated for ${consignmentID}`);
+            } else {
+                console.log(`⚠️ GDEX update failed for ${consignmentID} (non-critical)`);
+            }
+        }
+
+        console.log(`✅ Successfully assigned ${consignmentID} to ${dispatcher}`);
+
+        return {
+            trackingNumber: consignmentID,
+            success: true,
+            product: product,
+            gdexUpdated: (product === 'GDEX' || product === 'GDEXT') ? gdexSuccess : 'N/A'
+        };
+
+    } catch (error) {
+        console.error(`❌ Error processing ${consignmentID}:`, error.message);
+        return {
+            trackingNumber: consignmentID,
+            success: false,
+            error: error.message.includes('404') ? 'Tracking number not found in Detrack' : error.message
+        };
+    }
+}
+
+async function processPodAssignmentsInBackground(jobId, trackingNumbers, dispatcher, assignDate, userName) {
     const results = [];
 
     // Process each tracking number sequentially
@@ -22566,172 +22752,22 @@ app.post('/api/assign-pod-jobs', ensureAuthenticated, ensureGeneratePODandUpdate
         const consignmentID = trackingNumbers[i];
         console.log(`\n[${i + 1}/${trackingNumbers.length}] Processing: ${consignmentID}`);
 
-        try {
-            // Step 1: Fetch data from Detrack
-            const response = await axios.get(`https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': apiKey
-                }
-            });
+        const result = await processSinglePodAssignment(consignmentID, dispatcher, assignDate, userName);
+        results.push(result);
+        patchJob(podAssignJobs, jobId, { processed: i + 1, results: [...results] });
 
-            const data = response.data.data;
-            const product = data.group_name;
-            let currentProduct = '';
-
-            // Determine product type
-            if (product === 'GDEX') currentProduct = 'gdex';
-            else if (product === 'GDEXT') currentProduct = 'gdext';
-            else if (product === 'EWE') currentProduct = 'ewe';
-            else currentProduct = product.toLowerCase();
-
-            // Check if job can be assigned to Out for Delivery
-            const canAssignOutForDelivery = (
-                (data.type === 'Delivery' && (data.status === 'at_warehouse' || data.status === 'in_sorting_area')) ||
-                (data.type === 'Delivery' && data.status === 'on_hold' && (currentProduct === 'gdex' || currentProduct === 'gdext'))
-            );
-
-            if (!canAssignOutForDelivery) {
-                let errorMsg = `Cannot assign - Current status: ${data.status}`;
-                if (data.type !== 'Delivery') errorMsg = `Cannot assign - Job type is ${data.type}, not Delivery`;
-                if (data.status === 'dispatched') errorMsg = `Job already assigned to a dispatcher`;
-                if (data.status === 'completed') errorMsg = `Job already completed`;
-                if (data.status === 'failed') errorMsg = `Job has failed delivery`;
-                if (data.status === 'cancelled') errorMsg = `Job has been cancelled`;
-
-                results.push({
-                    trackingNumber: consignmentID,
-                    success: false,
-                    error: errorMsg
-                });
-                continue;
-            }
-
-            // Get area from address
-            let area = data.zone || 'N/A';
-            let finalArea = area;
-
-            // Prepare update data for MongoDB
-            let update = {
-                area: finalArea,
-                currentStatus: "Out for Delivery",
-                lastUpdateDateTime: moment().format(),
-                instructions: data.remarks || '',
-                assignedTo: dispatcher,
-                attempt: data.attempt || 0,
-                jobDate: assignDate,
-                latestLocation: dispatcher,
-                lastUpdatedBy: req.user.name,
-                $push: {
-                    history: {
-                        statusHistory: "Out for Delivery",
-                        dateUpdated: moment().format(),
-                        updatedBy: req.user.name,
-                        lastAssignedTo: dispatcher,
-                        reason: "N/A",
-                        lastLocation: dispatcher,
-                    }
-                }
-            };
-
-            // Handle COD for EWE products
-            let detrackUpdateData = {
-                do_number: consignmentID,
-                data: {
-                    date: assignDate,
-                    assign_to: dispatcher,
-                    status: "dispatched",
-                    zone: finalArea,
-                }
-            };
-
-            if ((data.payment_mode === "COD") && (currentProduct === "ewe")) {
-                update.paymentMethod = "Cash";
-                update.totalPrice = data.payment_amount;
-                update.paymentAmount = data.payment_amount;
-                detrackUpdateData.data.total_price = data.payment_amount;
-                detrackUpdateData.data.payment_mode = "Cash";
-            }
-
-            // Step 2: Update MongoDB
-            const filter = { doTrackingNumber: consignmentID };
-            const mongoResult = await ORDERS.findOneAndUpdate(filter, update, { upsert: false, new: false });
-
-            if (!mongoResult) {
-                results.push({
-                    trackingNumber: consignmentID,
-                    success: false,
-                    error: 'Order not found in MongoDB'
-                });
-                continue;
-            }
-
-            console.log(`✅ MongoDB updated for ${consignmentID}`);
-
-            // Step 3: Update Detrack
-            const detrackSuccess = await updateDetrackStatusWithRetry(consignmentID, apiKey, detrackUpdateData);
-
-            if (!detrackSuccess) {
-                results.push({
-                    trackingNumber: consignmentID,
-                    success: false,
-                    error: 'Failed to update Detrack status'
-                });
-                continue;
-            }
-
-            console.log(`✅ Detrack updated for ${consignmentID}`);
-
-            // Step 4: Update GDEX if applicable
-            let gdexSuccess = true;
-            if (product === 'GDEX' || product === 'GDEXT') {
-                console.log(`🔄 Sending GDEX Out for Delivery for ${consignmentID}`);
-                gdexSuccess = await updateGDEXStatus(consignmentID, 'out_for_delivery');
-
-                if (gdexSuccess) {
-                    console.log(`✅ GDEX updated for ${consignmentID}`);
-                } else {
-                    console.log(`⚠️ GDEX update failed for ${consignmentID} (non-critical)`);
-                }
-            }
-
-            results.push({
-                trackingNumber: consignmentID,
-                success: true,
-                product: product,
-                gdexUpdated: (product === 'GDEX' || product === 'GDEXT') ? gdexSuccess : 'N/A'
-            });
-
-            console.log(`✅ Successfully assigned ${consignmentID} to ${dispatcher}`);
-
-            // Small delay to avoid API rate limiting
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-        } catch (error) {
-            console.error(`❌ Error processing ${consignmentID}:`, error.message);
-            results.push({
-                trackingNumber: consignmentID,
-                success: false,
-                error: error.message.includes('404') ? 'Tracking number not found in Detrack' : error.message
-            });
-        }
+        // Small delay to avoid API rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     // Log summary
     const successCount = results.filter(r => r.success).length;
     const failCount = results.filter(r => !r.success).length;
-    console.log(`\n=== Assignment Complete for ${podName} ===`);
+    console.log(`\n=== Assignment Complete for job ${jobId} ===`);
     console.log(`Success: ${successCount}, Failed: ${failCount}`);
 
-    res.json({
-        success: true,
-        podName: podName,
-        totalJobs: trackingNumbers.length,
-        successCount: successCount,
-        failCount: failCount,
-        results: results
-    });
-});
+    patchJob(podAssignJobs, jobId, { status: 'completed', results });
+}
 
 // Product Mapping for Display Names
 const PRODUCT_MAPPING = {

@@ -1,0 +1,29 @@
+/* Shared mobile styles: on small screens, center page titles and standalone
+   prose so pages read better on phones instead of defaulting to left-aligned
+   text. Forms, tables, and flex toolbars are left untouched since centering
+   those tends to hurt usability. */
+@media (max-width: 768px) {
+  h1, h2, h3, h4, h5, h6 {
+    text-align: center;
+  }
+
+  p,
+  .lead,
+  .alert,
+  .text-muted {
+    text-align: center;
+  }
+
+  form p,
+  form .text-muted,
+  .card-header p,
+  .card-header .text-muted,
+  .table p,
+  .table .text-muted,
+  td p,
+  td .text-muted,
+  th p,
+  th .text-muted {
+    text-align: inherit;
+  }
+}

@@ -51,6 +51,21 @@
     color: #fff !important;
     font-weight: 600;
   }
+
+  /* On mobile the navbar collapses into a stacked menu — center the links,
+     dropdown toggles and dropdown items/headers so they read like a phone
+     menu instead of a left-aligned desktop list. */
+  @media (max-width: 991.98px) {
+    .navbar-nav .nav-link,
+    .navbar-nav .dropdown-toggle,
+    .navbar-nav .dropdown-item,
+    .navbar-nav .dropdown-header {
+      text-align: center;
+    }
+    .navbar-nav .dropdown-menu {
+      text-align: center;
+    }
+  }
 </style>
 
 <!-- Navbar HTML -->
