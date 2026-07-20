@@ -29,96 +29,24 @@
             vertical-align: middle;
         }
 
-        /* Custom Modal Styles - No Bootstrap JS dependency */
-        .custom-modal {
-            display: none;
-            position: fixed;
-            z-index: 9999;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .custom-modal-content {
-            background-color: #fff;
-            margin: 2% auto;
-            padding: 0;
-            width: 95%;
-            max-width: 95%;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            animation: modalopen 0.3s;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        @keyframes modalopen {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .custom-modal-header {
-            padding: 15px 20px;
+        /* POD detail modal - real Bootstrap Modal, just themed to match the POD's own header color */
+        #viewPODModal .modal-header {
             background-color: #6e9e9e;
             color: white;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .custom-modal-header h5 {
-            margin: 0;
-            font-size: 18px;
-        }
-
-        .custom-modal-close {
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 20px;
-        }
-
-        .custom-modal-close:hover {
-            color: #ddd;
-        }
-
-        .custom-modal-body {
-            padding: 20px;
+        #modalPODContent {
             overflow-x: auto;
-            flex: 1;
         }
 
-        .custom-modal-footer {
-            padding: 15px 20px;
-            border-top: 1px solid #ddd;
-            text-align: right;
-            border-radius: 0 0 8px 8px;
-        }
-
-        .custom-modal-footer button {
-            margin-left: 10px;
-        }
-
-        .custom-modal-body .pod-table {
+        #modalPODContent .pod-table {
             width: 100%;
             border-collapse: collapse;
             min-width: 1400px;
         }
 
-        .custom-modal-body .pod-table th,
-        .custom-modal-body .pod-table td {
+        #modalPODContent .pod-table th,
+        #modalPODContent .pod-table td {
             border: 1px solid black;
             padding: 6px;
             text-align: center;
@@ -126,17 +54,17 @@
             font-size: 12px;
         }
 
-        .custom-modal-body .pod-table th {
+        #modalPODContent .pod-table th {
             background-color: #6e9e9e;
             font-weight: bold;
         }
 
-        .custom-modal-body .logo-cell img {
+        #modalPODContent .logo-cell img {
             width: 120px;
             height: auto;
         }
 
-        .custom-modal-body .barcode-container svg {
+        #modalPODContent .barcode-container svg {
             max-width: 150px;
             height: auto;
         }
@@ -148,15 +76,7 @@
 </head>
 
 <body class="bg-light">
-    <div class="container-bg">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <%- include('partials/navbar') %>
-                </div>
-            </div>
-        </div>
-    </div>
+    <%- include('partials/navbar') %>
 
     <main class="container mt-4">
         <div class="card">
@@ -185,19 +105,20 @@
         </div>
     </main>
 
-    <!-- Custom Modal (No Bootstrap JS) -->
-    <div id="viewPODModal" class="custom-modal">
-        <div class="custom-modal-content">
-            <div class="custom-modal-header">
-                <h5>POD Details</h5>
-                <span class="custom-modal-close" id="modalCloseBtn">&times;</span>
-            </div>
-            <div class="custom-modal-body" id="modalPODContent">
-                <div id="podHtmlContainer"></div>
-            </div>
-            <div class="custom-modal-footer">
-                <button type="button" class="btn btn-primary" id="modalPrintBtn">Print</button>
-                <button type="button" class="btn btn-secondary" id="modalCloseFooterBtn">Close</button>
+    <div class="modal fade" id="viewPODModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">POD Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalPODContent">
+                    <div id="podHtmlContainer"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="modalPrintBtn">Print</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -221,8 +142,6 @@
                 const month = String(bruneiDate.getMonth() + 1).padStart(2, '0');
                 const day = String(bruneiDate.getDate()).padStart(2, '0');
                 const bruneiDateString = `${year}-${month}-${day}`;
-                console.log('Brunei current date (YYYY-MM-DD):', bruneiDateString);
-                console.log('Raw UTC date:', now.toISOString().split('T')[0]);
                 return bruneiDateString;
             } catch (error) {
                 // Fallback to UTC if timezone detection fails
@@ -351,39 +270,8 @@ $(document).ready(function () {
 });
 
         // Get modal elements
-        const modal = document.getElementById('viewPODModal');
-        const modalCloseBtn = document.getElementById('modalCloseBtn');
-        const modalCloseFooterBtn = document.getElementById('modalCloseFooterBtn');
+        const viewPODModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('viewPODModal'));
         const modalPrintBtn = document.getElementById('modalPrintBtn');
-
-        // Close modal function
-        function closeModal() {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-
-        // Open modal function
-        function openModal() {
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
-
-        // Close modal when clicking X
-        modalCloseBtn.onclick = function () {
-            closeModal();
-        }
-
-        // Close modal when clicking Close button
-        modalCloseFooterBtn.onclick = function () {
-            closeModal();
-        }
-
-        // Close modal when clicking outside the modal content
-        window.onclick = function (event) {
-            if (event.target === modal) {
-                closeModal();
-            }
-        }
 
         // Print modal content
         modalPrintBtn.onclick = function () {
@@ -432,12 +320,11 @@ $(document).ready(function () {
             }
 
             try {
-                console.log('Fetching POD:', podId);
                 const response = await axios.get(`/api/view-pod/${podId}`);
                 const htmlContent = response.data.htmlContent;
 
                 document.getElementById('podHtmlContainer').innerHTML = htmlContent;
-                openModal();
+                viewPODModal.show();
 
             } catch (error) {
                 console.error('Error fetching POD:', error);
@@ -452,7 +339,6 @@ $(document).ready(function () {
             const podName = $(this).data('podname');
 
             try {
-                console.log('Fetching tracking numbers for POD:', podName);
                 const response = await axios.get(`/api/view-pod/${podId}`);
                 const htmlContent = response.data.htmlContent;
 
@@ -506,14 +392,12 @@ $(document).ready(function () {
             let deliveryDate = $(this).data('deliverydate');
             const dispatcher = $(this).data('dispatcher');
             
-            console.log('Raw deliveryDate from POD:', deliveryDate);
             
             // Format dispatcher name
             const formattedDispatcher = dispatcher.charAt(0).toUpperCase() + dispatcher.slice(1).toLowerCase();
             
             // Get today's date in Brunei timezone (UTC+8)
             const todayFormatted = getBruneiCurrentDate();
-            console.log('Brunei today (YYYY-MM-DD):', todayFormatted);
             
             // Normalize the delivery date from the POD
             const normalizedDeliveryDate = normalizeDeliveryDate(deliveryDate);
@@ -523,9 +407,6 @@ $(document).ready(function () {
                 return;
             }
             
-            console.log('Normalized delivery date:', normalizedDeliveryDate);
-            console.log('Brunei current date:', todayFormatted);
-            console.log('Dates match?', normalizedDeliveryDate === todayFormatted);
             
             // Compare dates (both in YYYY-MM-DD format using Brunei timezone)
             if (normalizedDeliveryDate !== todayFormatted) {
@@ -569,7 +450,6 @@ $(document).ready(function () {
             
             try {
                 // Get all tracking numbers from the POD
-                console.log('Fetching tracking numbers for POD:', podName);
                 const response = await axios.get(`/api/view-pod/${podId}`);
                 const htmlContent = response.data.htmlContent;
                 
@@ -587,7 +467,6 @@ $(document).ready(function () {
                     return;
                 }
                 
-                console.log(`Found ${trackingNumbers.length} tracking numbers to assign`);
 
                 // Update modal with tracking count
                 updateAssignJobsStatus(`Processing 0 of ${trackingNumbers.length} job(s)...`);
@@ -608,6 +487,12 @@ $(document).ready(function () {
                 if (!jobId) throw new Error('No job ID received from server');
 
                 const job = await pollAssignJobsStatus(jobId, trackingNumbers.length);
+
+                if (job.status === 'cancelled') {
+                    showToast('Assignment cancelled. Note: any jobs the server had already processed before you cancelled are still assigned.', 'warning');
+                    return;
+                }
+
                 const results = job.results || [];
                 const successCount = results.filter(r => r.success).length;
                 const failCount = results.filter(r => !r.success).length;
@@ -642,14 +527,33 @@ $(document).ready(function () {
             }
         });
 
+        // Set whenever the assign-jobs modal closes (see the 'hidden.bs.modal'
+        // listener in showAssignJobsModal below); checked by the poll loop so
+        // dismissing the modal actually stops the client from polling/acting
+        // on this job, instead of just hiding it while polling silently continued.
+        let assignJobsCancelled = false;
+
         // Polls /api/assign-pod-jobs/status/:jobId until the job reaches a
         // terminal status, updating the modal's progress text as it goes.
         function pollAssignJobsStatus(jobId, total) {
+            assignJobsCancelled = false;
             return new Promise((resolve, reject) => {
                 const pollTimer = setInterval(async () => {
+                    if (assignJobsCancelled) {
+                        clearInterval(pollTimer);
+                        resolve({ status: 'cancelled' });
+                        return;
+                    }
                     try {
                         const res = await axios.get(`/api/assign-pod-jobs/status/${jobId}`);
                         const job = res.data;
+
+                        if (assignJobsCancelled) {
+                            clearInterval(pollTimer);
+                            resolve({ status: 'cancelled' });
+                            return;
+                        }
+
                         const processed = job.processed || 0;
                         const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
                         updateAssignJobsStatus(`Processing ${processed} of ${total} job(s)... (${pct}%)`);
@@ -668,40 +572,45 @@ $(document).ready(function () {
 
         // Modal functions for showing progress
         function showAssignJobsModal(podName, dispatcher, deliveryDate) {
-            if (!$('#assignJobsModal').length) {
+            if (!document.getElementById('assignJobsModal')) {
                 $('body').append(`
-            <div id="assignJobsModal" class="custom-modal" style="display: none;">
-                <div class="custom-modal-content" style="max-width: 500px;">
-                    <div class="custom-modal-header">
-                        <h5>Assigning Jobs</h5>
-                        <span class="custom-modal-close" id="assignJobsModalClose">&times;</span>
-                    </div>
-                    <div class="custom-modal-body" style="text-align: center;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+            <div class="modal fade" id="assignJobsModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog" style="max-width: 500px;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Assigning Jobs</h5>
+                            <button type="button" class="btn-close" id="assignJobsModalClose" aria-label="Close"></button>
                         </div>
-                        <p id="assignJobsStatus" style="margin-top: 15px;">Processing jobs...</p>
-                        <div id="assignJobsDetails" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
-                    </div>
-                    <div class="custom-modal-footer">
-                        <button type="button" class="btn btn-secondary" id="assignJobsModalCancel">Cancel</button>
+                        <div class="modal-body text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p id="assignJobsStatus" class="mt-3">Processing jobs...</p>
+                            <div id="assignJobsDetails" class="mt-2" style="font-size: 12px; color: #666;"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="assignJobsModalCancel">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>
         `);
 
+                const modalEl = document.getElementById('assignJobsModal');
+
+                // However the modal ends up closing - Cancel button, backdrop
+                // click, or Escape - treat it as a cancellation so the poll
+                // loop stops and the caller doesn't act on a stale result.
+                modalEl.addEventListener('hidden.bs.modal', function () {
+                    assignJobsCancelled = true;
+                });
+
                 $('#assignJobsModalClose, #assignJobsModalCancel').click(function () {
                     hideAssignJobsModal();
                 });
-
-                window.onclick = function (event) {
-                    if (event.target === $('#assignJobsModal')[0]) {
-                        hideAssignJobsModal();
-                    }
-                };
             }
 
-            $('#assignJobsModal').css('display', 'block');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('assignJobsModal')).show();
             $('#assignJobsStatus').text(`Assigning jobs for POD: ${podName}`);
             $('#assignJobsDetails').text(`Dispatcher: ${dispatcher} | Delivery Date: ${deliveryDate} (Brunei Time)`);
         }
@@ -714,7 +623,8 @@ $(document).ready(function () {
         }
 
         function hideAssignJobsModal() {
-            $('#assignJobsModal').css('display', 'none');
+            const modalEl = document.getElementById('assignJobsModal');
+            if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
         }
     </script>
 </body>

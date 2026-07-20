@@ -35,62 +35,6 @@
             /* Center-align table contents vertically */
         }
 
-        /* The Modal (hidden by default) */
-        .modal {
-            display: none;
-            /* Hidden by default */
-            position: fixed;
-            /* Stay in place */
-            z-index: 1;
-            /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%;
-            /* Full width */
-            height: 100%;
-            /* Full height */
-            background-color: rgba(0, 0, 0, 0.8);
-            /* Black background with opacity */
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* Modal Content */
-        .modal-content {
-            position: relative;
-            margin: auto;
-            padding: 20px;
-            width: 90%;
-            /* Full width */
-            max-width: 800px;
-            /* Maximum width */
-            text-align: center;
-        }
-
-        /* The Close Button */
-        .close {
-            position: absolute;
-            top: 10px;
-            right: 25px;
-            color: #fff;
-            /* Ensures the color is white */
-            font-size: 35px;
-            font-weight: bold;
-            cursor: pointer;
-            visibility: visible;
-            /* Always visible */
-            opacity: 1;
-            /* Fully opaque */
-            transition: opacity 0.3s;
-            /* Add smooth transition if you want */
-        }
-
-        /* Optional: Add hover effect */
-        .close:hover {
-            opacity: 0.7;
-            /* Slightly transparent when hovered */
-        }
-
     </style>
 
     <!-- Favicon -->
@@ -101,12 +45,7 @@
 </head>
 
 <body class="bg-light">
-    <div class="container-bg">
-        <div class="container">
-            <!-- Create a similar navigation bar as in listofpharmacyPod.ejs -->
-            <%- include('partials/navbar') %>
-        </div>
-    </div>
+    <%- include('partials/navbar') %>
 
     <main class="container mt-4">
         <div class="card my-4">
@@ -136,29 +75,42 @@
                                 <%= waorder.receiverPhoneNumber %>
                             </td>
                             <td>
-                                <button class="btn btn-primary show-btn"
-                                    data-target="#modalFront<%= index %>"><i class="bi bi-image"></i> Show</button>
+                                <button class="btn btn-primary show-btn" type="button"
+                                    data-bs-toggle="modal" data-bs-target="#modalFront<%= index %>"><i class="bi bi-image"></i> Show</button>
                             </td>
                             <td>
-                                <button class="btn btn-primary show-btn"
-                                    data-target="#modalBack<%= index %>"><i class="bi bi-image"></i> Show</button>
+                                <button class="btn btn-primary show-btn" type="button"
+                                    data-bs-toggle="modal" data-bs-target="#modalBack<%= index %>"><i class="bi bi-image"></i> Show</button>
                             </td>
                         </tr>
 
                         <!-- Modal for IC Picture Front -->
-                        <div class="modal" id="modalFront<%= index %>">
-                            <div class="modal-content">
-                                <span class="close" data-target="#modalFront<%= index %>">&times;</span>
-                                <img src="<%= waorder.icPictureFront %>" alt="IC Front"
-                                    style="width: 90%; height: auto;">
+                        <div class="modal fade" id="modalFront<%= index %>" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">IC Picture (Front)</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img src="<%= waorder.icPictureFront %>" alt="IC Front" class="img-fluid">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Modal for IC Picture Back -->
-                        <div class="modal" id="modalBack<%= index %>">
-                            <div class="modal-content">
-                                <span class="close" data-target="#modalBack<%= index %>">&times;</span>
-                                <img src="<%= waorder.icPictureBack %>" alt="IC Back" style="width: 90%; height: auto;">
+                        <div class="modal fade" id="modalBack<%= index %>" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">IC Picture (Back)</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img src="<%= waorder.icPictureBack %>" alt="IC Back" class="img-fluid">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <% }); %>
@@ -189,35 +141,6 @@
                 ]
             });
         });
-    </script>
-
-    <!-- JavaScript for Modal Functionality -->
-    <script>
-        document.querySelectorAll('.show-btn').forEach(button => {
-            button.addEventListener('click', function () {
-                const modalId = this.getAttribute('data-target');
-                const modal = document.querySelector(modalId);
-                modal.style.display = 'flex';
-            });
-        });
-
-        document.querySelectorAll('.modal .close').forEach(closeBtn => {
-            closeBtn.addEventListener('click', function () {
-                const modalId = this.getAttribute('data-target');
-                const modal = document.querySelector(modalId);
-                modal.style.display = 'none';
-            });
-        });
-
-        // Close modal when clicking outside the modal content
-        window.onclick = function (event) {
-            const modals = document.querySelectorAll('.modal');
-            modals.forEach(modal => {
-                if (event.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
-        };
     </script>
 </body>
 

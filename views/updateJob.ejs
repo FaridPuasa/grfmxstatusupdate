@@ -52,15 +52,7 @@
 </head>
 
 <body>
-    <div class="container-bg">
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <%- include('partials/navbar') %>
-                </div>
-            </div>
-        </div>
-    </div>
+    <%- include('partials/navbar') %>
     <div class="container mt-4">
         <!-- Initial Header and Form Section -->
         <div id="initialSection">
@@ -1345,37 +1337,6 @@
             return duplicates.slice(-10).reverse(); // Return last 10 duplicates
         }
 
-        function showMAWBStatsForBulk(stats, enteredCount) {
-            const statsHtml = `
-        <div class="alert alert-info mb-3">
-            <h5><i class="bi bi-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
-            <div class="row">
-                <div class="col-md-4">
-                    <p><strong>Total Jobs in MAWB:</strong> ${stats.totalJobs}</p>
-                    <p><strong>Entered for Processing:</strong> ${enteredCount}</p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Already Scanned:</strong> ${stats.scannedJobs} <span class="badge bg-success">At Warehouse</span></p>
-                    <p><strong>Will Be Scanned:</strong> ${stats.unscannedJobs} <span class="badge bg-warning">To Be Updated</span></p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Already at Warehouse:</strong> ${stats.scannedJobs} jobs</p>
-                    <p><strong>Will be updated:</strong> Up to ${Math.min(stats.unscannedJobs, enteredCount)} jobs</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-            // Insert at the beginning of the active update section
-            const activeSection = document.getElementById('activeUpdateSection');
-            if (activeSection) {
-                const loadingDiv = document.getElementById('loading');
-                if (loadingDiv) {
-                    loadingDiv.insertAdjacentHTML('beforebegin', statsHtml);
-                }
-            }
-        }
-
         // Function to show basic MAWB stats for bulk processing
         function showMAWBStatsForBulkBasic(mawbNum, totalJobs, unscannedJobs, enteredCount) {
             const statsHtml = `
@@ -2023,10 +1984,13 @@
                 isCancelled: false
             };
 
-            // Store globally for cancellation
+            // Store globally for cancellation. abortController lets us cancel an
+            // in-flight chunk request immediately instead of waiting for it to
+            // finish before the loop notices isCancelled on its next iteration.
             window.chunkedProcessing = {
                 results: chunkedResults,
-                isProcessing: true
+                isProcessing: true,
+                abortController: new AbortController()
             };
 
             // Process chunks sequentially with delay
@@ -2066,6 +2030,11 @@
                     }
 
                 } catch (error) {
+                    if (window.chunkedProcessing.isCancelled) {
+                        // Cancelled mid-chunk (aborted fetch or cancelled poll) - don't
+                        // count the in-flight chunk as failed, just stop.
+                        break;
+                    }
                     console.error(`Error processing chunk ${i + 1}:`, error);
                     // Add chunk to failed
                     chunks[i].forEach(trackingNumber => {
@@ -2114,7 +2083,8 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify(requestBody),
+                    signal: window.chunkedProcessing?.abortController?.signal
                 });
 
                 if (!response.ok) {
@@ -2144,11 +2114,23 @@
 
             return new Promise((resolve, reject) => {
                 const checkInterval = setInterval(async () => {
+                    if (window.chunkedProcessing?.isCancelled) {
+                        clearInterval(checkInterval);
+                        reject(new Error('Cancelled by user'));
+                        return;
+                    }
+
                     attempts++;
 
                     try {
                         const response = await fetch(`/updateJob/status/${jobId}`);
                         const jobStatus = await response.json();
+
+                        if (window.chunkedProcessing?.isCancelled) {
+                            clearInterval(checkInterval);
+                            reject(new Error('Cancelled by user'));
+                            return;
+                        }
 
                         if (jobStatus.status === 'completed') {
                             clearInterval(checkInterval);
@@ -2172,6 +2154,7 @@
         function cancelChunkedProcessing() {
             if (window.chunkedProcessing) {
                 window.chunkedProcessing.isCancelled = true;
+                window.chunkedProcessing.abortController?.abort();
                 showToast('Processing cancelled. Partial results will be shown.', 'info');
 
                 // Show partial results
@@ -2434,38 +2417,6 @@
             }, 2000);
         }
 
-        // Add this function to check and handle duplicates
-        function checkAndHandleDuplicate(trackingNumber, updateCode) {
-            const key = `${updateCode}_${trackingNumber}`;
-            const now = Date.now();
-
-            if (processedTrackingNumbers.has(key)) {
-                const lastProcessed = processedTrackingNumbers.get(key);
-                const timeDiff = now - lastProcessed.timestamp;
-
-                // Increment duplicate count
-                lastProcessed.count = (lastProcessed.count || 1) + 1;
-                lastProcessed.timestamp = now;
-                processedTrackingNumbers.set(key, lastProcessed);
-
-                console.log(`⚠️ Duplicate tracking number detected: ${trackingNumber} (${updateCode}), count: ${lastProcessed.count}`);
-                return {
-                    isDuplicate: true,
-                    count: lastProcessed.count
-                };
-            } else {
-                // First time processing this tracking number
-                processedTrackingNumbers.set(key, {
-                    timestamp: now,
-                    count: 1
-                });
-                return {
-                    isDuplicate: false,
-                    count: 1
-                };
-            }
-        }
-
         // Clean up old entries (older than 1 hour)
         setInterval(() => {
             const oneHour = 60 * 60 * 1000;
@@ -2487,215 +2438,6 @@
 
             console.log(`🧹 Front-end cleanup: Bulk: ${processedTrackingNumbers.bulk.size}, OneByOne: ${processedTrackingNumbers.onebyone.size}`);
         }, 5 * 60 * 1000); // Run every 5 minutes
-
-        // Update the processSingleTrackingNumber function to handle duplicates
-        async function processSingleTrackingNumber(trackingNumber, updateCode, mawbNum, warehouse, req) {
-            const cleanTrackingNumber = trackingNumber.trim();
-
-            if (!cleanTrackingNumber) {
-                return { success: false, error: 'Empty tracking number', isDuplicate: false };
-            }
-
-            // Check for duplicate
-            const duplicateCheck = checkAndHandleDuplicate(cleanTrackingNumber, updateCode);
-            if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
-                return {
-                    success: false,
-                    error: `Duplicate tracking number (count: ${duplicateCheck.count})`,
-                    trackingNumber: cleanTrackingNumber,
-                    isDuplicate: true,
-                    duplicateCount: duplicateCheck.count
-                };
-            }
-
-            try {
-                console.log(`🔍 Processing ${cleanTrackingNumber} with updateCode: ${updateCode}`);
-
-                let processSuccess = false;
-                let message = '';
-
-                switch (updateCode) {
-                    case 'UAN':
-                        processSuccess = await processMAWBUpdate(cleanTrackingNumber, mawbNum, req);
-                        message = processSuccess ? `MAWB Number updated to ${mawbNum}` : 'MAWB update failed';
-                        break;
-                    case 'CCH':
-                        processSuccess = await processOnHoldUpdate(cleanTrackingNumber, req);
-                        message = processSuccess ? 'Job put on hold' : 'On hold update failed';
-                        break;
-                    case 'H9':
-                    case 'H18':
-                    case 'H19':
-                    case 'H27':
-                    case 'H31':
-                        const gdexHoldResult = await processGDEXHoldUpdate(trackingNumber, updateCode, req);
-                        result = {
-                            success: gdexHoldResult.success,
-                            message: gdexHoldResult.message || 'GDEX Hold update failed'
-                        };
-                        break;
-                    case 'IIW':
-                        const result = await processItemInWarehouseUpdate(cleanTrackingNumber, warehouse, req);
-                        processSuccess = result.success;
-                        message = result.message;
-                        break;
-                    default:
-                        console.log(`⚠️ Generic update called for ${updateCode}`);
-                        processSuccess = await processGenericUpdate(cleanTrackingNumber, updateCode, req, mawbNum);
-                        message = processSuccess ? `Updated with ${updateCode}` : `${updateCode} update failed`;
-                }
-
-                console.log(`📊 Result for ${cleanTrackingNumber}: ${processSuccess ? 'SUCCESS' : 'FAILED'} - ${message}`);
-
-                return {
-                    success: processSuccess,
-                    message: message,
-                    trackingNumber: cleanTrackingNumber,
-                    isDuplicate: false,
-                    duplicateCount: 1
-                };
-
-            } catch (error) {
-                console.error(`❌ Error processing ${cleanTrackingNumber}:`, error);
-                return {
-                    success: false,
-                    error: error.message,
-                    trackingNumber: cleanTrackingNumber,
-                    isDuplicate: false,
-                    duplicateCount: 1
-                };
-            }
-        }
-
-        async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
-            console.log(`🔄 Processing batch of ${batch.length} items with updateCode: ${updateCode}`);
-
-            const batchPromises = batch.map(async (trackingNumber) => {
-                try {
-                    // Check for duplicate
-                    const duplicateCheck = trackDuplicate(trackingNumber, updateCode, 'bulk');
-
-                    if (duplicateCheck.isDuplicate && duplicateCheck.count > 1) {
-                        // This is a duplicate - skip processing
-                        console.log(`⏭️ Skipping duplicate: ${trackingNumber} (seen ${duplicateCheck.count} times)`);
-                        return {
-                            success: false,
-                            message: `Duplicate tracking number (count: ${duplicateCheck.count})`,
-                            isDuplicate: true,
-                            duplicateCount: duplicateCheck.count
-                        };
-                    }
-
-                    // Mark as being processed
-                    const key = `${updateCode}_${trackingNumber}`;
-                    const data = processedTrackingNumbers.bulk.get(key);
-                    if (data) {
-                        data.processed = true;
-                        processedTrackingNumbers.bulk.set(key, data);
-                    }
-
-                    // Process the update
-                    if (updateCode === 'IIW') {
-                        return await processItemInWarehouseUpdate(trackingNumber, warehouse, req);
-                    } else if (updateCode === 'UAN') {
-                        const success = await processMAWBUpdate(trackingNumber, mawbNum, req);
-                        return {
-                            success: success,
-                            message: success ? `MAWB updated to ${mawbNum}` : 'MAWB update failed'
-                        };
-                    } else if (updateCode === 'CCH') {
-                        const success = await processOnHoldUpdate(trackingNumber, req);
-                        return {
-                            success: success,
-                            message: success ? 'Put on hold' : 'On hold update failed'
-                        };
-                    } else if (['H9', 'H18', 'H19', 'H27', 'H31'].includes(updateCode)) {
-                        const gdexHoldResult = await processGDEXHoldUpdate(trackingNumber, updateCode, req);
-                        result = {
-                            success: gdexHoldResult.success,
-                            message: gdexHoldResult.message || 'GDEX Hold update failed'
-                        };
-                    } else {
-                        return {
-                            success: false,
-                            message: `Unsupported update code: ${updateCode}`
-                        };
-                    }
-                } catch (error) {
-                    console.error(`❌ Error processing ${trackingNumber}:`, error);
-                    return {
-                        success: false,
-                        message: 'Error: ' + error.message
-                    };
-                }
-            });
-
-            const batchResults = await Promise.allSettled(batchPromises);
-
-            // Process results
-            const results = {
-                successful: [],
-                failed: [],
-                delayed: [],
-                duplicate: [],
-                updatedCount: 0,
-                failedCount: 0,
-                delayedCount: 0,
-                duplicateCount: 0
-            };
-
-            batchResults.forEach((result, index) => {
-                const trackingNumber = batch[index];
-
-                if (result.status === 'fulfilled' && result.value) {
-                    const value = result.value;
-
-                    if (value.isDuplicate) {
-                        results.duplicate.push({
-                            trackingNumber: trackingNumber,
-                            result: value.message || 'Duplicate tracking number',
-                            duplicateCount: value.duplicateCount || 1,
-                            status: "Duplicate"
-                        });
-                        results.duplicateCount++;
-                    } else if (value.delayed) {
-                        results.delayed.push({
-                            trackingNumber: trackingNumber,
-                            result: value.message,
-                            product: value.delayedInfo?.product,
-                            scheduledTime: value.delayedInfo?.scheduledTime,
-                            currentStatus: value.delayedInfo?.currentStatus,
-                            status: "Queued (30 min)"
-                        });
-                        results.delayedCount++;
-                    } else if (value.success) {
-                        results.successful.push({
-                            trackingNumber: trackingNumber,
-                            result: value.message,
-                            status: "Updated"
-                        });
-                        results.updatedCount++;
-                    } else {
-                        results.failed.push({
-                            trackingNumber: trackingNumber,
-                            result: value.message,
-                            status: "Failed"
-                        });
-                        results.failedCount++;
-                    }
-                } else {
-                    results.failed.push({
-                        trackingNumber: trackingNumber,
-                        result: 'Processing error',
-                        status: "Error"
-                    });
-                    results.failedCount++;
-                }
-            });
-
-            console.log(`📊 Batch results: ${results.updatedCount} updated, ${results.failedCount} failed, ${results.delayedCount} delayed, ${results.duplicateCount} duplicates`);
-            return results;
-        }
 
         function switchToActiveUpdateMode(updateCode, method) {
             document.getElementById('initialSection').style.display = 'none';
@@ -2759,31 +2501,6 @@
             }
             currentJobId = null;
             location.reload();
-        }
-
-        // Add a cancel job button (optional enhancement)
-        function addCancelButton() {
-            const resultsDiv = document.getElementById('bulkResults');
-            if (resultsDiv && currentJobId) {
-                const cancelButton = document.createElement('button');
-                cancelButton.className = 'btn btn-warning me-2';
-                cancelButton.textContent = 'Cancel Job';
-                cancelButton.onclick = async () => {
-                    const confirmed = await showConfirm('Are you sure you want to cancel this job?', { okText: 'Cancel Job', okClass: 'btn-danger' });
-                    if (confirmed) {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        currentJobId = null;
-                        document.getElementById('loading').style.display = 'none';
-                        showToast('Job cancelled', 'success');
-                    }
-                };
-
-                const buttonContainer = resultsDiv.querySelector('.d-grid');
-                if (buttonContainer) {
-                    buttonContainer.prepend(cancelButton);
-                }
-            }
         }
 
         // In the showExcelUploadModal function, update to include MAWB input

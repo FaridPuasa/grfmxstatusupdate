@@ -105,15 +105,7 @@
 </head>
 
 <body>
-  <div class="container-bg">
-    <div class="container">
-      <div class="row">
-        <div class="col-12">
-          <%- include('partials/navbar') %>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%- include('partials/navbar') %>
   <div class="container mt-4">
     <div class="card mb-3">
       <div class="card-header bg-primary text-white">
@@ -477,8 +469,6 @@
       const freelancerJobCountResultsContainer = document.getElementById('freelancerJobCountResultsContainer');
       const freelancerJobCountCheckedByContainer = document.getElementById('freelancerJobCountCheckedByContainer');
 
-      let isReportSaved = false;
-
       function showLoading() { loadingSpinner.style.display = 'flex'; }
       function hideLoading() { loadingSpinner.style.display = 'none'; }
 
@@ -584,7 +574,6 @@
       const freelancerCheckedByContainer = document.getElementById('freelancerCheckedByContainer');
 
       reportTypeEl.addEventListener('change', () => {
-        isReportSaved = false;
         clearReport();
         generateBtn.classList.remove('hidden');
         saveBtn.classList.add('hidden');
@@ -1142,7 +1131,6 @@
 
       // ======================= MORNING REPORT =======================
       generateBtn.addEventListener('click', async () => {
-        isReportSaved = false;
         const date = reportDateEl.value;
         const vehicle = document.getElementById('vehicle').value || 'N/A';
         const dispatcher = document.getElementById('dispatcher').value;
@@ -1293,7 +1281,6 @@
             console.error(err);
             showToast('Error saving report', 'error');
           } finally {
-            isReportSaved = true;
             generateBtn.classList.add('hidden');
             saveBtn.classList.add('hidden');
             printBtn.classList.remove('hidden');
