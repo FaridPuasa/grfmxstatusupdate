@@ -304,7 +304,7 @@
                     <table id="userTable" class="table table-hover">
                         <thead>
                             <tr>
-                                <th class="checkbox-column" style="display: none;" id="checkboxHeader"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+                                <th class="checkbox-column" id="checkboxHeader"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
                                 <th>No.</th>
                                 <th>Name</th>
                                 <th>User ID</th>
@@ -318,7 +318,7 @@
                         <tbody>
                             <% users.forEach(function(user, index) { %>
                                 <tr data-user-id="<%= user.userId || user._id %>" data-user-name="<%= user.name %>">
-                                    <td class="checkbox-column" style="display: none;"><input type="checkbox" class="user-checkbox" value="<%= user.userId || user._id %>"></td>
+                                    <td class="checkbox-column"><input type="checkbox" class="user-checkbox" value="<%= user.userId || user._id %>"></td>
                                     <td><%= index + 1 %></td>
                                     <td><%= user.name %></td>
                                     <td><%= user.userId || '-' %></td>
