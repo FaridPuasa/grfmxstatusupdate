@@ -3661,40 +3661,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Re-renders the warehouse tabs + Active Jobs sections without a full page
-// reload, using the exact same data/rendering path as the initial page load.
-app.get('/api/dashboard/warehouse-refresh', ensureAuthenticated, async (req, res) => {
-    try {
-        const data = await computeWarehouseDashboardData();
-
-        const renderView = (view, locals) => new Promise((resolve, reject) => {
-            req.app.render(view, locals, (err, html) => err ? reject(err) : resolve(html));
-        });
-
-        const [warehouseHtml, activeJobsHtml] = await Promise.all([
-            renderView('partials/warehouseTabContent', {
-                currentMap: data.currentMap,
-                plannedSelfCollectMap: data.plannedSelfCollectMap,
-                urgentMap: data.urgentMap,
-                overdueMap: data.overdueMap,
-                maxAttemptMap: data.maxAttemptMap,
-                archivedMap: data.archivedMap,
-                productMapping: PRODUCT_MAPPING,
-                mawbProducts: MAWB_PRODUCTS
-            }),
-            renderView('partials/activeJobsTabContent', {
-                deliveriesMap: data.deliveriesMap,
-                productMapping: PRODUCT_MAPPING
-            })
-        ]);
-
-        res.json({ warehouseHtml, activeJobsHtml });
-    } catch (error) {
-        console.error('Error refreshing warehouse dashboard:', error);
-        res.status(500).json({ error: 'Failed to refresh dashboard data' });
-    }
-});
-
 app.get('/login', ensureNotAuthenticated, (req, res) => {
     res.render('login', {
         errors: req.flash('error'),

@@ -268,11 +268,6 @@ i.bi-caret-down-fill[aria-expanded="true"] {
     white-space: nowrap;
 }
 
-/* Search filter (Warehouse / Active Jobs / COD-BT / Completed) */
-.search-hidden {
-    display: none !important;
-}
-
 /* Back to top */
 #backToTopBtn {
     position: fixed;
@@ -300,17 +295,6 @@ i.bi-caret-down-fill[aria-expanded="true"] {
 
     <div class="container mt-4">
         <h1 class="text-center mt-4">Dashboard</h1>
-
-        <div class="d-flex align-items-center justify-content-center gap-3 flex-wrap mb-3" id="dashboardRefreshControls">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="refreshDashboardBtn">
-                <i class="bi bi-arrow-clockwise"></i> Refresh Now
-            </button>
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
-                <label class="form-check-label" for="autoRefreshToggle">Auto-refresh (every 90s while a section is open)</label>
-            </div>
-            <span class="text-muted small" id="lastRefreshedLabel">Not refreshed yet</span>
-        </div>
 
         <% if (['moh'].includes(user.role)) { %>
             <br><a href="/mohsearch"><button class="btn btn-primary">Click here to search for patient
@@ -383,12 +367,6 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         data-bs-toggle="collapse" data-bs-target="#warehouse-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="warehouse-tabs-collapse">
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <input type="search" class="form-control section-search-input" id="warehouseSearchInput"
-            data-section-root="#warehouse-tabs-collapse"
-            placeholder="Search this tab by tracking number, name, or phone…">
-        <button type="button" class="btn btn-outline-secondary btn-sm section-search-clear" data-target-input="#warehouseSearchInput">Clear</button>
-    </div>
     <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="current-tab" data-bs-toggle="tab"
@@ -443,12 +421,6 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         data-bs-toggle="collapse" data-bs-target="#progress-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="progress-tabs-collapse">
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <input type="search" class="form-control section-search-input" id="progressSearchInput"
-            data-section-root="#progress-tabs-collapse"
-            placeholder="Search this tab by tracking number, name, or phone…">
-        <button type="button" class="btn btn-outline-secondary btn-sm section-search-clear" data-target-input="#progressSearchInput">Clear</button>
-    </div>
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="activejobs-tab" data-bs-toggle="tab" data-bs-target="#activejobs-content" type="button" role="tab" aria-controls="activejobs-content" aria-selected="true">
@@ -1545,233 +1517,6 @@ document.addEventListener('DOMContentLoaded', function() {
         target.addEventListener('shown.bs.collapse', () => { if (label) label.textContent = 'Hide'; });
         target.addEventListener('hidden.bs.collapse', () => { if (label) label.textContent = 'Show'; });
     });
-});
-</script>
-
-<script>
-// ===== Warehouse / Active Jobs refresh (no full page reload) + auto-refresh + search =====
-// Warehouse and Active Jobs are rendered server-side at page-load with no way to refresh
-// short of reloading the whole page. /api/dashboard/warehouse-refresh re-runs the exact
-// same data computation and returns the two sections' HTML fragments so they can be
-// swapped in place. COD/BT, Completed Jobs, and GR Website New Orders already fetch their
-// own data via JS (loadCompletedJobs/refreshCodBtTable/fetchGRWebsiteOrders) - auto-refresh
-// just re-invokes whichever of those is currently visible.
-
-let lastRefreshedAt = null;
-let autoRefreshTimer = null;
-const AUTO_REFRESH_INTERVAL_MS = 90000;
-
-function isSectionOpen(collapseId) {
-    const el = document.getElementById(collapseId);
-    return !!el && el.classList.contains('show');
-}
-
-function getActiveTabTarget(navSelector) {
-    const activeBtn = document.querySelector(`${navSelector} .nav-link.active`);
-    return activeBtn ? activeBtn.getAttribute('data-bs-target') : null;
-}
-
-// Directly sets which tab is active/shown, instead of going through Bootstrap's
-// Tab.show() - that API silently no-ops if the target button already has the
-// .active class, which it always does here (we only replace .tab-content, never
-// the nav-link buttons themselves, so a tab clicked before a refresh keeps its
-// .active class throughout). That left the freshly-injected content's own
-// default-active pane visible underneath/alongside whatever tab was actually
-// selected. Setting classes directly sidesteps that guard entirely.
-function restoreActiveTab(navSelector, targetSelector) {
-    if (!targetSelector) return;
-    const nav = document.querySelector(navSelector);
-    const targetBtn = nav && nav.querySelector(`[data-bs-target="${targetSelector}"]`);
-    const targetPane = document.querySelector(targetSelector);
-    if (!nav || !targetBtn || !targetPane) return;
-
-    nav.querySelectorAll('.nav-link').forEach(btn => {
-        btn.classList.remove('active');
-        btn.setAttribute('aria-selected', 'false');
-    });
-    targetBtn.classList.add('active');
-    targetBtn.setAttribute('aria-selected', 'true');
-
-    if (targetPane.parentElement) {
-        targetPane.parentElement.querySelectorAll(':scope > .tab-pane').forEach(pane => {
-            pane.classList.remove('show', 'active');
-        });
-    }
-    targetPane.classList.add('show', 'active');
-}
-
-function updateLastRefreshedLabel() {
-    const label = document.getElementById('lastRefreshedLabel');
-    if (label && lastRefreshedAt) {
-        label.textContent = 'Last refreshed: ' + moment(lastRefreshedAt).format('h:mm:ss A');
-    }
-}
-
-function reapplyActiveSearches() {
-    ['warehouseSearchInput', 'progressSearchInput'].forEach(id => {
-        const input = document.getElementById(id);
-        if (input && input.value.trim()) {
-            filterSectionByQuery(input.getAttribute('data-section-root'), input.value);
-        }
-    });
-}
-
-// Re-renders the Warehouse tabs + Active Jobs pane in place. Preserves whichever
-// Warehouse sub-tab (Current/Urgent/Overdue/etc.) was active, since the fetched
-// fragment always defaults back to "Current" otherwise. Also re-asserts which
-// Progress-section tab (Active Jobs/COD-BT/Completed) is active, since the
-// fetched Active Jobs fragment always marks itself as the shown/active pane
-// even if the user is actually looking at a different tab right now.
-async function refreshWarehouseDashboard() {
-    const activeWarehouseTab = getActiveTabTarget('#orderTabs');
-    const activeProgressTab = getActiveTabTarget('#deliveryTabs');
-
-    const res = await fetch('/api/dashboard/warehouse-refresh');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-
-    const warehouseTabContent = document.querySelector('#warehouse-tabs-collapse .tab-content');
-    if (warehouseTabContent && data.warehouseHtml) {
-        warehouseTabContent.outerHTML = data.warehouseHtml;
-        restoreActiveTab('#orderTabs', activeWarehouseTab);
-    }
-
-    const activeJobsPane = document.getElementById('activejobs-content');
-    if (activeJobsPane && data.activeJobsHtml) {
-        activeJobsPane.outerHTML = data.activeJobsHtml;
-        restoreActiveTab('#deliveryTabs', activeProgressTab);
-    }
-
-    reapplyActiveSearches();
-}
-
-// Refreshes whichever sections are currently expanded/visible. Used by both the
-// manual "Refresh Now" button and the auto-refresh timer.
-async function refreshVisibleSections() {
-    const jobs = [];
-
-    if (isSectionOpen('warehouse-tabs-collapse') || isSectionOpen('progress-tabs-collapse')) {
-        jobs.push(refreshWarehouseDashboard());
-    }
-
-    if (isSectionOpen('progress-tabs-collapse')) {
-        const activeProgressTab = getActiveTabTarget('#deliveryTabs');
-        if (activeProgressTab === '#codbt-content' && typeof refreshCodBtTable === 'function') {
-            jobs.push(Promise.resolve(refreshCodBtTable()));
-        } else if (activeProgressTab === '#completed-jobs' && typeof loadCompletedJobs === 'function') {
-            jobs.push(Promise.resolve(loadCompletedJobs()));
-        }
-    }
-
-    if (isSectionOpen('neworders-tabs-collapse')) {
-        const dateInput = document.getElementById('grWebsiteDate');
-        if (dateInput && typeof fetchGRWebsiteOrders === 'function') {
-            jobs.push(Promise.resolve(fetchGRWebsiteOrders(dateInput.value)));
-        }
-    }
-
-    await Promise.allSettled(jobs);
-    lastRefreshedAt = new Date();
-    updateLastRefreshedLabel();
-}
-
-function setAutoRefreshEnabled(enabled) {
-    localStorage.setItem('dashboardAutoRefresh', enabled ? '1' : '0');
-    if (autoRefreshTimer) {
-        clearInterval(autoRefreshTimer);
-        autoRefreshTimer = null;
-    }
-    if (enabled) {
-        autoRefreshTimer = setInterval(() => {
-            if (document.hidden) return; // paused while the browser tab isn't focused
-            refreshVisibleSections().catch(err => console.error('Auto-refresh failed:', err));
-        }, AUTO_REFRESH_INTERVAL_MS);
-    }
-}
-
-// ===== Search: filter rows by tracking number / name / phone within whichever tab is active =====
-function filterSectionByQuery(rootSelector, query) {
-    const root = document.querySelector(rootSelector);
-    if (!root) return;
-    const scope = root.querySelector('.tab-pane.active') || root;
-    const q = query.trim().toLowerCase();
-
-    scope.querySelectorAll('.search-hidden').forEach(el => el.classList.remove('search-hidden'));
-    if (!q) return;
-
-    scope.querySelectorAll('table tbody tr').forEach(row => {
-        if (!row.textContent.toLowerCase().includes(q)) {
-            row.classList.add('search-hidden');
-        }
-    });
-
-    // Process leaf cards (fewest nested .card descendants) before their ancestors,
-    // so a parent's visibility check already reflects its children's results.
-    const cards = Array.from(scope.querySelectorAll('.card'));
-    cards.sort((a, b) => a.querySelectorAll('.card').length - b.querySelectorAll('.card').length);
-
-    cards.forEach(card => {
-        const hasVisibleRow = !!card.querySelector('table tbody tr:not(.search-hidden)');
-        const hasVisibleChildCard = !!card.querySelector('.card:not(.search-hidden)');
-        if (hasVisibleRow || hasVisibleChildCard) {
-            card.classList.remove('search-hidden');
-            const collapseChild = card.querySelector(':scope > .collapse');
-            if (collapseChild && window.bootstrap) {
-                bootstrap.Collapse.getOrCreateInstance(collapseChild, { toggle: false }).show();
-            }
-        } else {
-            card.classList.add('search-hidden');
-        }
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.section-search-input').forEach(input => {
-        let debounceTimer;
-        input.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                filterSectionByQuery(input.getAttribute('data-section-root'), input.value);
-            }, 200);
-        });
-    });
-
-    document.querySelectorAll('.section-search-clear').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const input = document.querySelector(btn.getAttribute('data-target-input'));
-            if (!input) return;
-            input.value = '';
-            filterSectionByQuery(input.getAttribute('data-section-root'), '');
-            input.focus();
-        });
-    });
-
-    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
-    if (autoRefreshToggle) {
-        const savedPref = localStorage.getItem('dashboardAutoRefresh') === '1';
-        autoRefreshToggle.checked = savedPref;
-        setAutoRefreshEnabled(savedPref);
-        autoRefreshToggle.addEventListener('change', () => setAutoRefreshEnabled(autoRefreshToggle.checked));
-    }
-
-    const refreshBtn = document.getElementById('refreshDashboardBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', async () => {
-            refreshBtn.disabled = true;
-            const originalHtml = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Refreshing…';
-            try {
-                await refreshVisibleSections();
-                showToast('Dashboard refreshed', 'success');
-            } catch (err) {
-                console.error('Manual refresh failed:', err);
-                showToast('Failed to refresh dashboard: ' + err.message, 'error');
-            } finally {
-                refreshBtn.disabled = false;
-                refreshBtn.innerHTML = originalHtml;
-            }
-        });
-    }
 });
 </script>
 
