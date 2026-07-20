@@ -1,0 +1,30 @@
+<% /* Locals expected: groupedByArea (object: area -> array of address strings) */ %>
+<% Object.keys(groupedByArea).forEach((area, areaIndex) => {
+    const addresses = groupedByArea[area];
+    const isUnmatched = area === 'N/A';
+%>
+    <div class="card my-2">
+        <div class="card-header d-flex justify-content-between align-items-center<%= isUnmatched ? ' bg-danger-subtle' : '' %>">
+            <div class="toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                data-bs-target="#collapse-area-<%= areaIndex %>">
+                <strong><%= isUnmatched ? 'Unmatched (needs manual check)' : area %></strong>
+            </div>
+            <div class="section-toolbar d-flex align-items-center gap-2">
+                <span class="badge <%= isUnmatched ? 'bg-danger' : 'bg-warning text-dark' %>">
+                    <%= addresses.length %> address<%= addresses.length === 1 ? '' : 'es' %>
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-secondary area-copy-btn"
+                    data-area="<%= area %>"><i class="bi bi-clipboard"></i> Copy</button>
+                <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
+                    data-bs-target="#collapse-area-<%= areaIndex %>"></i>
+            </div>
+        </div>
+        <div class="collapse" id="collapse-area-<%= areaIndex %>">
+            <ul class="list-group list-group-flush">
+                <% addresses.forEach(addr => { %>
+                    <li class="list-group-item address-item"><%= addr %></li>
+                <% }) %>
+            </ul>
+        </div>
+    </div>
+<% }) %>

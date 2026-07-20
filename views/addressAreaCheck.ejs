@@ -35,7 +35,8 @@
                     <div class="mb-3">
                         <label for="customerAddresses" class="form-label">Customer Address(es) — one per line</label>
                         <textarea name="customerAddresses" id="customerAddresses" rows="10" class="form-control"
-                            placeholder="Enter one customer address per line"></textarea>
+                            placeholder="Enter one customer address per line" required></textarea>
+                        <small class="text-muted" id="addressCountHint">0 addresses entered</small>
                     </div>
                     <button type="submit" id="submitButton" class="btn btn-primary"><i class="bi bi-search"></i> Submit</button>
                 </form>
@@ -59,11 +60,29 @@
         const addressAreaForm = document.getElementById('addressAreaForm');
         const submitButton = document.getElementById('submitButton');
         const loading = document.getElementById('loading');
+        const customerAddresses = document.getElementById('customerAddresses');
+        const addressCountHint = document.getElementById('addressCountHint');
+
+        function nonBlankLines(text) {
+            return text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        }
+
+        function updateAddressCount() {
+            const count = nonBlankLines(customerAddresses.value).length;
+            addressCountHint.textContent = `${count} address${count === 1 ? '' : 'es'} entered`;
+        }
+        customerAddresses.addEventListener('input', updateAddressCount);
+        updateAddressCount();
 
         // Disable the submit button and show the loading animation while the
         // (synchronous, server-side) area lookup runs - the native form submit
         // below proceeds immediately, no artificial delay needed.
         function disableSubmitButton(event) {
+            if (nonBlankLines(customerAddresses.value).length === 0) {
+                event.preventDefault();
+                showToast('Enter at least one customer address before submitting.', 'warning');
+                return;
+            }
             submitButton.disabled = true;
             loading.style.display = 'block';
         }

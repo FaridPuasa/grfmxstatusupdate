@@ -1,0 +1,172 @@
+<%_
+// Locals expected: deliveriesMap, productMapping.
+// Extracted from dashboard.ejs so Active Jobs can be re-rendered on demand
+// (see /api/dashboard/warehouse-refresh) without a full page reload.
+_%><div class="tab-pane fade show active" id="activejobs-content" role="tabpanel" aria-labelledby="activejobs-tab">
+    <% if (Object.keys(deliveriesMap).length === 0) { %>
+        <p class="text-center text-muted">No jobs found.</p>
+    <% } else { %>
+        <% Object.keys(deliveriesMap).forEach((date, dateIndex) => {
+            // Calculate total jobs for badge
+            let dateCount = 0;
+            Object.keys(deliveriesMap[date]).forEach(assignee => {
+                if (assignee === 'Selfcollect') {
+                    // Sum all job method counts for Selfcollect
+                    const statuses = deliveriesMap[date][assignee].__statuses || {};
+                    Object.keys(statuses).forEach(st => {
+                        dateCount += statuses[st].length;
+                    });
+                } else {
+                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
+                        dateCount += deliveriesMap[date][assignee].__products[product].length;
+                    });
+                }
+            });
+        %>
+            <div class="card my-3">
+                <div class="card-header" style="padding: 0.75rem 1rem;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>">
+                            <strong><%= date %></strong>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary"><%= dateCount %> jobs</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                    data-target="#collapse-activejobs-<%= dateIndex %>"
+                                    data-section-name="Active Jobs - <%= date %>">📋 Copy</button>
+                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                    data-target="#collapse-activejobs-<%= dateIndex %>"
+                                    data-section-name="Active Jobs - <%= date %>">📊 Excel</button>
+                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>">
+                    <div class="card-body p-0">
+                        <%
+                            // Split assignees into Dispatcher / Freelancer / Selfcollect groups
+                            const dispatcherStaff = ["Sowdeq", "Leo", "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"];
+                            const dispatcherEntries = [];
+                            const freelancerEntries = [];
+                            let selfcollectDispatcher = null;
+                            Object.keys(deliveriesMap[date]).forEach(assignee => {
+                                if (assignee === 'Selfcollect') {
+                                    selfcollectDispatcher = deliveriesMap[date][assignee];
+                                } else {
+                                    let count = 0;
+                                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
+                                        count += deliveriesMap[date][assignee].__products[product].length;
+                                    });
+                                    const entry = { name: assignee, data: deliveriesMap[date][assignee], count };
+                                    (dispatcherStaff.includes(assignee) ? dispatcherEntries : freelancerEntries).push(entry);
+                                }
+                            });
+
+                            // Most jobs to least jobs within each group
+                            dispatcherEntries.sort((a, b) => b.count - a.count);
+                            freelancerEntries.sort((a, b) => b.count - a.count);
+
+                            let selfcollectCount = 0;
+                            if (selfcollectDispatcher) {
+                                const statuses = selfcollectDispatcher.__statuses || {};
+                                Object.keys(statuses).forEach(st => { selfcollectCount += statuses[st].length; });
+                            }
+
+                            const assigneeGroups = [
+                                { key: 'dispatcher', label: 'Dispatcher', icon: 'bi-truck', total: dispatcherEntries.reduce((sum, e) => sum + e.count, 0), entries: dispatcherEntries },
+                                { key: 'freelancer', label: 'Freelancer', icon: 'bi-bicycle', total: freelancerEntries.reduce((sum, e) => sum + e.count, 0), entries: freelancerEntries },
+                                { key: 'selfcollect', label: 'Selfcollect', icon: 'bi-person-walking', total: selfcollectCount, entries: [] }
+                            ].filter(g => g.total > 0);
+                        %>
+                        <% assigneeGroups.forEach(group => {
+                            const groupIdPrefix = `activejobs-${dateIndex}-group-${group.key}`;
+                        %>
+                            <div class="card my-2 mx-3">
+                                <div class="card-header" style="padding: 0.75rem 1rem;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>">
+                                            <strong><i class="bi <%= group.icon %>"></i> <%= group.label %></strong>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-primary"><%= group.total %> jobs</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                    data-target="#collapse-<%= groupIdPrefix %>"
+                                                    data-section-name="<%= group.label %> (<%= date %>)">📋 Copy</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                    data-target="#collapse-<%= groupIdPrefix %>"
+                                                    data-section-name="<%= group.label %> (<%= date %>)">📊 Excel</button>
+                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="collapse" id="collapse-<%= groupIdPrefix %>">
+                                    <div class="card-body p-0">
+                                        <% if (group.key === 'selfcollect' && selfcollectDispatcher) {
+                                            const statuses = selfcollectDispatcher.__statuses || {};
+                                            const jobMethodsOrder = ['Self Collect', 'Drop Off'];
+                                            const availableJobMethods = jobMethodsOrder.filter(m => statuses[m] && statuses[m].length > 0);
+                                        %>
+                                            <% availableJobMethods.forEach((jobMethod, statusIndex) => {
+                                                const jobs = statuses[jobMethod];
+                                            %>
+                                                <div class="card my-2 mx-3">
+                                                    <div class="card-header" style="padding: 0.75rem 1rem;">
+                                                        <div class="d-flex align-items-center justify-content-between">
+                                                            <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>">
+                                                                <strong><%= jobMethod %></strong>
+                                                            </div>
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span class="badge bg-success"><%= jobs.length %> jobs</span>
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
+                                                                        data-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"
+                                                                        data-section-name="Selfcollect - <%= jobMethod %>">📋 Copy</button>
+                                                                <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
+                                                                        data-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"
+                                                                        data-section-name="Selfcollect - <%= jobMethod %>">📊 Excel</button>
+                                                                <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"></i>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="collapse" id="collapse-<%= groupIdPrefix %>-<%= statusIndex %>">
+                                                        <div class="card-body p-0">
+                                                            <div class="table-responsive">
+                                                            <table class="table table-sm table-bordered mb-0">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Tracking Number</th>
+                                                                        <th>Name</th>
+                                                                        <th>Main Phone</th>
+                                                                        <th>Go Rush Remark</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <% jobs.forEach(order => { %>
+                                                                        <tr>
+                                                                            <td class="track-no"><%= order.doTrackingNumber %></td>
+                                                                            <td><%= order.receiverName %></td>
+                                                                            <td><%= order.receiverPhoneNumber %></td>
+                                                                            <td><%= order.grRemark %></td>
+                                                                        </tr>
+                                                                    <% }) %>
+                                                                </tbody>
+                                                            </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <% group.entries.forEach((disp, assignIndex) => { %>
+                                                <%- include('assigneeJobCard', { disp, idPrefix: `${groupIdPrefix}-${assignIndex}`, date, productMapping }) %>
+                                            <% }) %>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    <% } %>
+</div>

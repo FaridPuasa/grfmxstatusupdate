@@ -268,6 +268,11 @@ i.bi-caret-down-fill[aria-expanded="true"] {
     white-space: nowrap;
 }
 
+/* Search filter (Warehouse / Active Jobs / COD-BT / Completed) */
+.search-hidden {
+    display: none !important;
+}
+
 /* Back to top */
 #backToTopBtn {
     position: fixed;
@@ -295,6 +300,17 @@ i.bi-caret-down-fill[aria-expanded="true"] {
 
     <div class="container mt-4">
         <h1 class="text-center mt-4">Dashboard</h1>
+
+        <div class="d-flex align-items-center justify-content-center gap-3 flex-wrap mb-3" id="dashboardRefreshControls">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="refreshDashboardBtn">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Now
+            </button>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
+                <label class="form-check-label" for="autoRefreshToggle">Auto-refresh (every 90s while a section is open)</label>
+            </div>
+            <span class="text-muted small" id="lastRefreshedLabel">Not refreshed yet</span>
+        </div>
 
         <% if (['moh'].includes(user.role)) { %>
             <br><a href="/mohsearch"><button class="btn btn-primary">Click here to search for patient
@@ -367,6 +383,12 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         data-bs-toggle="collapse" data-bs-target="#warehouse-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="warehouse-tabs-collapse">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <input type="search" class="form-control section-search-input" id="warehouseSearchInput"
+            data-section-root="#warehouse-tabs-collapse"
+            placeholder="Search this tab by tracking number, name, or phone…">
+        <button type="button" class="btn btn-outline-secondary btn-sm section-search-clear" data-target-input="#warehouseSearchInput">Clear</button>
+    </div>
     <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="current-tab" data-bs-toggle="tab"
@@ -394,273 +416,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         </li>
     </ul>
 
-    <div class="tab-content">
-        <% const tabData = [
-            { id: 'current', map: currentMap },
-            { id: 'plannedselfcollect', map: plannedSelfCollectMap },
-            { id: 'urgent', map: urgentMap },
-            { id: 'overdue', map: overdueMap },
-            { id: 'maxattempt', map: maxAttemptMap },
-            { id: 'archived', map: archivedMap }
-        ]; %>
-
-        <% tabData.forEach(({ id, map }, tabIndex) => { %>
-            <div class="tab-pane fade <%= tabIndex === 0 ? 'show active' : '' %>" id="<%= id %>" role="tabpanel">
-
-                <% if (Object.keys(map).length === 0) { %>
-                    <p class="text-center text-muted">No <%= id %> orders found.</p>
-                <% } else { %>
-
-                    <% if (id === 'current') { %>
-                        <% Object.keys(map).forEach((location, locIndex) => {
-                            let locCount = 0;
-                            Object.keys(map[location]).forEach(product => {
-                                Object.keys(map[location][product]).forEach(area => {
-                                    locCount += map[location][product][area].length;
-                                });
-                            });
-                        %>
-                            <div class="card my-3">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <div class="toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>">
-                                        <strong><%= location.toUpperCase() %></strong>
-                                    </div>
-                                    <div class="section-toolbar">
-                                        <span class="badge bg-primary"><%= locCount %> orders</span>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>"
-                                            data-section-name="<%= location.toUpperCase() %>">📋 Copy</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>"
-                                            data-section-name="<%= location.toUpperCase() %>">📊 Excel</button>
-                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                            data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>"></i>
-                                    </div>
-                                </div>
-                                <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>">
-                                    <div class="card-body p-0">
-
-                                        <% Object.keys(map[location]).forEach((product, prodIndex) => {
-                                            let prodCount = 0;
-                                            Object.keys(map[location][product]).forEach(area => {
-                                                prodCount += map[location][product][area].length;
-                                            });
-                                            const isMawbProduct = mawbProducts.includes(product);
-                                        %>
-                                            <div class="card my-2 mx-3">
-                                                <div class="card-header d-flex justify-content-between align-items-center">
-                                                    <div class="toggle-header" style="cursor: pointer;"
-                                                        data-bs-toggle="collapse"
-                                                        data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
-                                                        <strong><%= (productMapping[product] || product.toUpperCase()) %></strong>
-                                                    </div>
-                                                    <div class="section-toolbar">
-                                                        <span class="badge bg-success"><%= prodCount %> orders</span>
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"
-                                                            data-section-name="<%= location.toUpperCase() %> - <%= (productMapping[product] || product.toUpperCase()) %>">📋 Copy</button>
-                                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                            data-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"
-                                                            data-section-name="<%= location.toUpperCase() %> - <%= (productMapping[product] || product.toUpperCase()) %>">📊 Excel</button>
-                                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                                            data-bs-target="#collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>"></i>
-                                                    </div>
-                                                </div>
-                                                <div class="collapse" id="collapse-<%= id %>-loc-<%= locIndex %>-prod-<%= prodIndex %>">
-                                                    <div class="card-body p-0">
-
-                                                        <% if (isMawbProduct) {
-                                                            const mawbGroups = {};
-                                                            Object.keys(map[location][product]).forEach(area => {
-                                                                map[location][product][area].forEach(order => {
-                                                                    const m = order.mawbNo || 'Unassigned';
-                                                                    if (!mawbGroups[m]) mawbGroups[m] = [];
-                                                                    mawbGroups[m].push(order);
-                                                                });
-                                                            });
-                                                            const mawbKeysSorted = Object.keys(mawbGroups).sort((a, b) => {
-                                                                const maxAgeA = Math.max(...mawbGroups[a].map(o => o.age));
-                                                                const maxAgeB = Math.max(...mawbGroups[b].map(o => o.age));
-                                                                return maxAgeB - maxAgeA;
-                                                            });
-                                                        %>
-                                                            <% mawbKeysSorted.forEach((mawb, mawbIndex) => {
-                                                                const mawbOrders = mawbGroups[mawb];
-                                                                const mawbAges = mawbOrders.map(o => o.age);
-                                                                const mawbMaxAge = Math.max(...mawbAges);
-                                                                const mawbMinAge = Math.min(...mawbAges);
-                                                                const mawbAgeLabel = mawbMaxAge === mawbMinAge ? `${mawbMaxAge}` : `${mawbMaxAge}-${mawbMinAge}`;
-                                                                const areaSubMap = {};
-                                                                mawbOrders.forEach(order => {
-                                                                    const a = order.area || 'Unknown';
-                                                                    if (!areaSubMap[a]) areaSubMap[a] = [];
-                                                                    areaSubMap[a].push(order);
-                                                                });
-                                                                const mawbIdPrefix = `${id}-loc-${locIndex}-prod-${prodIndex}-mawb-${mawbIndex}`;
-                                                            %>
-                                                                <div class="card my-2 mx-3">
-                                                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                                                        <div class="toggle-header" style="cursor: pointer;"
-                                                                            data-bs-toggle="collapse"
-                                                                            data-bs-target="#collapse-<%= mawbIdPrefix %>">
-                                                                            <strong>MAWB: <%= mawb %></strong>
-                                                                            <span class="badge
-                                                                                <%= mawbMaxAge >= 3 ? 'bg-dark' :
-                                                                                    mawbMaxAge >= 2 ? 'bg-danger' :
-                                                                                    mawbMaxAge >= 1 ? 'bg-warning text-dark' : 'bg-success' %> ms-2">
-                                                                                <%= mawbAgeLabel %> days
-                                                                            </span>
-                                                                        </div>
-                                                                        <div class="section-toolbar">
-                                                                            <span class="badge bg-info"><%= mawbOrders.length %> orders</span>
-                                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                                                data-target="#collapse-<%= mawbIdPrefix %>"
-                                                                                data-section-name="MAWB <%= mawb %>">📋 Copy</button>
-                                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                                                data-target="#collapse-<%= mawbIdPrefix %>"
-                                                                                data-section-name="MAWB <%= mawb %>">📊 Excel</button>
-                                                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                                                                data-bs-target="#collapse-<%= mawbIdPrefix %>"></i>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="collapse" id="collapse-<%= mawbIdPrefix %>">
-                                                                        <div class="card-body p-0">
-                                                                            <%- include('partials/warehouseAreaCards', { idPrefix: mawbIdPrefix, areaData: areaSubMap }) %>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            <% }) %>
-                                                        <% } else { %>
-                                                            <%- include('partials/warehouseAreaCards', { idPrefix: `${id}-loc-${locIndex}-prod-${prodIndex}`, areaData: map[location][product] }) %>
-                                                        <% } %>
-
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <% }) %>
-
-                                    </div>
-                                </div>
-                            </div>
-                        <% }) %>
-
-                    <% } else { %>
-
-                        <% Object.keys(map).forEach((product, index) => {
-                            const isMawbProduct = mawbProducts.includes(product);
-                        %>
-                            <div class="card my-3">
-                                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
-                                    <div class="toggle-header" style="cursor: pointer;"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#collapse-<%= id %>-<%= index %>">
-                                        <strong><%= (productMapping[product] || product.toUpperCase()) %></strong>
-                                    </div>
-                                    <div class="section-toolbar">
-                                        <div class="badge bg-danger">
-                                            <%= Object.values(map[product]).flat().length %> orders
-                                        </div>
-                                        <% Object.keys(map[product]).forEach(method => {
-                                            const methodCount = map[product][method].length;
-                                            if (methodCount > 0) { %>
-                                                <span class="badge
-                                                    <%= method === 'Standard' ? 'bg-primary' :
-                                                        method === 'Express' ? 'bg-warning text-dark' :
-                                                        method === 'Drop Off' ? 'bg-info text-dark' :
-                                                        method === 'Immediate' ? 'bg-danger' :
-                                                        method === 'Self Collect' ? 'bg-success' : 'bg-secondary' %>">
-                                                    <%= method %>: <%= methodCount %>
-                                                </span>
-                                        <% } }) %>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                            data-target="#collapse-<%= id %>-<%= index %>"
-                                            data-section-name="<%= (productMapping[product] || product.toUpperCase()) %>">📋 Copy</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                            data-target="#collapse-<%= id %>-<%= index %>"
-                                            data-section-name="<%= (productMapping[product] || product.toUpperCase()) %>">📊 Excel</button>
-                                        <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                            data-bs-target="#collapse-<%= id %>-<%= index %>"></i>
-                                    </div>
-                                </div>
-                                <div class="collapse" id="collapse-<%= id %>-<%= index %>">
-                                    <div class="card-body p-0">
-                                        <% if (isMawbProduct) {
-                                            const mawbGroups = {};
-                                            Object.keys(map[product]).forEach(method => {
-                                                map[product][method].forEach(order => {
-                                                    const m = order.mawbNo || 'Unassigned';
-                                                    if (!mawbGroups[m]) mawbGroups[m] = [];
-                                                    mawbGroups[m].push(order);
-                                                });
-                                            });
-                                            const mawbKeysSorted = Object.keys(mawbGroups).sort((a, b) => {
-                                                const maxAgeA = Math.max(...mawbGroups[a].map(o => o.age));
-                                                const maxAgeB = Math.max(...mawbGroups[b].map(o => o.age));
-                                                return maxAgeB - maxAgeA;
-                                            });
-                                        %>
-                                            <% mawbKeysSorted.forEach((mawb, mawbIndex) => {
-                                                const mawbOrders = mawbGroups[mawb];
-                                                const mawbAges = mawbOrders.map(o => o.age);
-                                                const mawbMaxAge = Math.max(...mawbAges);
-                                                const mawbMinAge = Math.min(...mawbAges);
-                                                const mawbAgeLabel = mawbMaxAge === mawbMinAge ? `${mawbMaxAge}` : `${mawbMaxAge}-${mawbMinAge}`;
-                                                const methodSubMap = {};
-                                                mawbOrders.forEach(order => {
-                                                    const meth = order.jobMethod || 'Unknown';
-                                                    if (!methodSubMap[meth]) methodSubMap[meth] = [];
-                                                    methodSubMap[meth].push(order);
-                                                });
-                                                const mawbIdPrefix = `${id}-${index}-mawb-${mawbIndex}`;
-                                            %>
-                                                <div class="card my-2 mx-3">
-                                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                                        <div class="toggle-header" style="cursor: pointer;"
-                                                            data-bs-toggle="collapse"
-                                                            data-bs-target="#collapse-<%= mawbIdPrefix %>">
-                                                            <strong>MAWB: <%= mawb %></strong>
-                                                            <span class="badge
-                                                                <%= mawbMaxAge >= 3 ? 'bg-dark' :
-                                                                    mawbMaxAge >= 2 ? 'bg-danger' :
-                                                                    mawbMaxAge >= 1 ? 'bg-warning text-dark' : 'bg-success' %> ms-2">
-                                                                <%= mawbAgeLabel %> days
-                                                            </span>
-                                                        </div>
-                                                        <div class="section-toolbar">
-                                                            <span class="badge bg-info"><%= mawbOrders.length %> orders</span>
-                                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                                data-target="#collapse-<%= mawbIdPrefix %>"
-                                                                data-section-name="MAWB <%= mawb %>">📋 Copy</button>
-                                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                                data-target="#collapse-<%= mawbIdPrefix %>"
-                                                                data-section-name="MAWB <%= mawb %>">📊 Excel</button>
-                                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse"
-                                                                data-bs-target="#collapse-<%= mawbIdPrefix %>"></i>
-                                                        </div>
-                                                    </div>
-                                                    <div class="collapse" id="collapse-<%= mawbIdPrefix %>">
-                                                        <div class="card-body p-0">
-                                                            <%- include('partials/warehouseMethodTables', { methodData: methodSubMap, tabId: id }) %>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <% }) %>
-                                        <% } else { %>
-                                            <%- include('partials/warehouseMethodTables', { methodData: map[product], tabId: id }) %>
-                                        <% } %>
-                                    </div>
-                                </div>
-                            </div>
-                        <% }) %>
-
-                    <% } %>
-
-                <% } %>
-
-            </div>
-        <% }) %>
-    </div>
+<%- include('partials/warehouseTabContent') %>
     </div>
 </div>
   </div>
@@ -687,6 +443,12 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         data-bs-toggle="collapse" data-bs-target="#progress-tabs-collapse"><i class="bi bi-chevron-down"></i><span class="toggle-section-btn-label">Show</span></button>
 
     <div class="collapse" id="progress-tabs-collapse">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <input type="search" class="form-control section-search-input" id="progressSearchInput"
+            data-section-root="#progress-tabs-collapse"
+            placeholder="Search this tab by tracking number, name, or phone…">
+        <button type="button" class="btn btn-outline-secondary btn-sm section-search-clear" data-target-input="#progressSearchInput">Clear</button>
+    </div>
     <ul class="nav nav-tabs mb-3" id="deliveryTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="activejobs-tab" data-bs-toggle="tab" data-bs-target="#activejobs-content" type="button" role="tab" aria-controls="activejobs-content" aria-selected="true">
@@ -709,174 +471,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
         <!-- Active Jobs Tab -->
         <!-- Active Jobs Tab -->
 <!-- Active Jobs Tab -->
-<div class="tab-pane fade show active" id="activejobs-content" role="tabpanel" aria-labelledby="activejobs-tab">
-    <% if (Object.keys(deliveriesMap).length === 0) { %>
-        <p class="text-center text-muted">No jobs found.</p>
-    <% } else { %>
-        <% Object.keys(deliveriesMap).forEach((date, dateIndex) => {
-            // Calculate total jobs for badge
-            let dateCount = 0;
-            Object.keys(deliveriesMap[date]).forEach(assignee => {
-                if (assignee === 'Selfcollect') {
-                    // Sum all job method counts for Selfcollect
-                    const statuses = deliveriesMap[date][assignee].__statuses || {};
-                    Object.keys(statuses).forEach(st => {
-                        dateCount += statuses[st].length;
-                    });
-                } else {
-                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
-                        dateCount += deliveriesMap[date][assignee].__products[product].length;
-                    });
-                }
-            });
-        %>
-            <div class="card my-3">
-                <div class="card-header" style="padding: 0.75rem 1rem;">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>">
-                            <strong><%= date %></strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary"><%= dateCount %> jobs</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                    data-target="#collapse-activejobs-<%= dateIndex %>"
-                                    data-section-name="Active Jobs - <%= date %>">📋 Copy</button>
-                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                    data-target="#collapse-activejobs-<%= dateIndex %>"
-                                    data-section-name="Active Jobs - <%= date %>">📊 Excel</button>
-                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-activejobs-<%= dateIndex %>"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="collapse" id="collapse-activejobs-<%= dateIndex %>">
-                    <div class="card-body p-0">
-                        <%
-                            // Split assignees into Dispatcher / Freelancer / Selfcollect groups
-                            const dispatcherStaff = ["Sowdeq", "Leo", "Hamidin", "Wafi", "Edey", "Zura", "Adiwardi", "Haiqal", "Hjazam"];
-                            const dispatcherEntries = [];
-                            const freelancerEntries = [];
-                            let selfcollectDispatcher = null;
-                            Object.keys(deliveriesMap[date]).forEach(assignee => {
-                                if (assignee === 'Selfcollect') {
-                                    selfcollectDispatcher = deliveriesMap[date][assignee];
-                                } else {
-                                    let count = 0;
-                                    Object.keys(deliveriesMap[date][assignee].__products).forEach(product => {
-                                        count += deliveriesMap[date][assignee].__products[product].length;
-                                    });
-                                    const entry = { name: assignee, data: deliveriesMap[date][assignee], count };
-                                    (dispatcherStaff.includes(assignee) ? dispatcherEntries : freelancerEntries).push(entry);
-                                }
-                            });
-
-                            // Most jobs to least jobs within each group
-                            dispatcherEntries.sort((a, b) => b.count - a.count);
-                            freelancerEntries.sort((a, b) => b.count - a.count);
-
-                            let selfcollectCount = 0;
-                            if (selfcollectDispatcher) {
-                                const statuses = selfcollectDispatcher.__statuses || {};
-                                Object.keys(statuses).forEach(st => { selfcollectCount += statuses[st].length; });
-                            }
-
-                            const assigneeGroups = [
-                                { key: 'dispatcher', label: 'Dispatcher', icon: 'bi-truck', total: dispatcherEntries.reduce((sum, e) => sum + e.count, 0), entries: dispatcherEntries },
-                                { key: 'freelancer', label: 'Freelancer', icon: 'bi-bicycle', total: freelancerEntries.reduce((sum, e) => sum + e.count, 0), entries: freelancerEntries },
-                                { key: 'selfcollect', label: 'Selfcollect', icon: 'bi-person-walking', total: selfcollectCount, entries: [] }
-                            ].filter(g => g.total > 0);
-                        %>
-                        <% assigneeGroups.forEach(group => {
-                            const groupIdPrefix = `activejobs-${dateIndex}-group-${group.key}`;
-                        %>
-                            <div class="card my-2 mx-3">
-                                <div class="card-header" style="padding: 0.75rem 1rem;">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>">
-                                            <strong><i class="bi <%= group.icon %>"></i> <%= group.label %></strong>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge bg-primary"><%= group.total %> jobs</span>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                    data-target="#collapse-<%= groupIdPrefix %>"
-                                                    data-section-name="<%= group.label %> (<%= date %>)">📋 Copy</button>
-                                            <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                    data-target="#collapse-<%= groupIdPrefix %>"
-                                                    data-section-name="<%= group.label %> (<%= date %>)">📊 Excel</button>
-                                            <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="collapse" id="collapse-<%= groupIdPrefix %>">
-                                    <div class="card-body p-0">
-                                        <% if (group.key === 'selfcollect' && selfcollectDispatcher) {
-                                            const statuses = selfcollectDispatcher.__statuses || {};
-                                            const jobMethodsOrder = ['Self Collect', 'Drop Off'];
-                                            const availableJobMethods = jobMethodsOrder.filter(m => statuses[m] && statuses[m].length > 0);
-                                        %>
-                                            <% availableJobMethods.forEach((jobMethod, statusIndex) => {
-                                                const jobs = statuses[jobMethod];
-                                            %>
-                                                <div class="card my-2 mx-3">
-                                                    <div class="card-header" style="padding: 0.75rem 1rem;">
-                                                        <div class="d-flex align-items-center justify-content-between">
-                                                            <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>">
-                                                                <strong><%= jobMethod %></strong>
-                                                            </div>
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <span class="badge bg-success"><%= jobs.length %> jobs</span>
-                                                                <button type="button" class="btn btn-sm btn-outline-secondary toolbar-btn copy-tracking-btn"
-                                                                        data-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"
-                                                                        data-section-name="Selfcollect - <%= jobMethod %>">📋 Copy</button>
-                                                                <button type="button" class="btn btn-sm btn-outline-success toolbar-btn export-excel-btn"
-                                                                        data-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"
-                                                                        data-section-name="Selfcollect - <%= jobMethod %>">📊 Excel</button>
-                                                                <i class="bi bi-caret-down-fill toggle-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= groupIdPrefix %>-<%= statusIndex %>"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="collapse" id="collapse-<%= groupIdPrefix %>-<%= statusIndex %>">
-                                                        <div class="card-body p-0">
-                                                            <div class="table-responsive">
-                                                            <table class="table table-sm table-bordered mb-0">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Tracking Number</th>
-                                                                        <th>Name</th>
-                                                                        <th>Main Phone</th>
-                                                                        <th>Go Rush Remark</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <% jobs.forEach(order => { %>
-                                                                        <tr>
-                                                                            <td class="track-no"><%= order.doTrackingNumber %></td>
-                                                                            <td><%= order.receiverName %></td>
-                                                                            <td><%= order.receiverPhoneNumber %></td>
-                                                                            <td><%= order.grRemark %></td>
-                                                                        </tr>
-                                                                    <% }) %>
-                                                                </tbody>
-                                                            </table>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <% }) %>
-                                        <% } else { %>
-                                            <% group.entries.forEach((disp, assignIndex) => { %>
-                                                <%- include('partials/assigneeJobCard', { disp, idPrefix: `${groupIdPrefix}-${assignIndex}`, date, productMapping }) %>
-                                            <% }) %>
-                                        <% } %>
-                                    </div>
-                                </div>
-                            </div>
-                        <% }) %>
-                    </div>
-                </div>
-            </div>
-        <% }) %>
-    <% } %>
-</div>
+<%- include('partials/activeJobsTabContent') %>
 
         <!-- COD/BT Collected Tab -->
         <div class="tab-pane fade" id="codbt-content" role="tabpanel" aria-labelledby="codbt-tab">
@@ -1373,36 +968,6 @@ async function loadCodBtData() {
         tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load data.</td></tr>';
     }
 }
-
-    // Helper to group jobs by payment method in desired order
-    function groupJobsByPaymentMethod(jobs) {
-        const paymentGroups = {
-            cash: [],
-            bankTransfer: [],
-            billPayment: [],
-            others: []
-        };
-
-        jobs.forEach(job => {
-            const pm = job.paymentMethod.toLowerCase();
-            if (pm === 'cash') {
-                paymentGroups.cash.push(job);
-            } else if (pm.includes('bank transfer')) {
-                paymentGroups.bankTransfer.push(job);
-            } else if (pm.includes('bill payment')) {
-                paymentGroups.billPayment.push(job);
-            } else {
-                paymentGroups.others.push(job);
-            }
-        });
-
-        return [
-            ...paymentGroups.cash,
-            ...paymentGroups.bankTransfer,
-            ...paymentGroups.billPayment,
-            ...paymentGroups.others
-        ];
-    }
 
     function refreshCodBtTable() {
     const selectedDate = document.getElementById('codbt-date-picker').value;
@@ -1980,6 +1545,207 @@ document.addEventListener('DOMContentLoaded', function() {
         target.addEventListener('shown.bs.collapse', () => { if (label) label.textContent = 'Hide'; });
         target.addEventListener('hidden.bs.collapse', () => { if (label) label.textContent = 'Show'; });
     });
+});
+</script>
+
+<script>
+// ===== Warehouse / Active Jobs refresh (no full page reload) + auto-refresh + search =====
+// Warehouse and Active Jobs are rendered server-side at page-load with no way to refresh
+// short of reloading the whole page. /api/dashboard/warehouse-refresh re-runs the exact
+// same data computation and returns the two sections' HTML fragments so they can be
+// swapped in place. COD/BT, Completed Jobs, and GR Website New Orders already fetch their
+// own data via JS (loadCompletedJobs/refreshCodBtTable/fetchGRWebsiteOrders) - auto-refresh
+// just re-invokes whichever of those is currently visible.
+
+let lastRefreshedAt = null;
+let autoRefreshTimer = null;
+const AUTO_REFRESH_INTERVAL_MS = 90000;
+
+function isSectionOpen(collapseId) {
+    const el = document.getElementById(collapseId);
+    return !!el && el.classList.contains('show');
+}
+
+function getActiveTabTarget(navSelector) {
+    const activeBtn = document.querySelector(`${navSelector} .nav-link.active`);
+    return activeBtn ? activeBtn.getAttribute('data-bs-target') : null;
+}
+
+function restoreActiveTab(navSelector, targetSelector) {
+    if (!targetSelector) return;
+    const btn = document.querySelector(`${navSelector} [data-bs-target="${targetSelector}"]`);
+    if (btn && window.bootstrap) {
+        bootstrap.Tab.getOrCreateInstance(btn).show();
+    }
+}
+
+function updateLastRefreshedLabel() {
+    const label = document.getElementById('lastRefreshedLabel');
+    if (label && lastRefreshedAt) {
+        label.textContent = 'Last refreshed: ' + moment(lastRefreshedAt).format('h:mm:ss A');
+    }
+}
+
+function reapplyActiveSearches() {
+    ['warehouseSearchInput', 'progressSearchInput'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input && input.value.trim()) {
+            filterSectionByQuery(input.getAttribute('data-section-root'), input.value);
+        }
+    });
+}
+
+// Re-renders the Warehouse tabs + Active Jobs pane in place. Preserves whichever
+// Warehouse sub-tab (Current/Urgent/Overdue/etc.) was active, since the fetched
+// fragment always defaults back to "Current" otherwise.
+async function refreshWarehouseDashboard() {
+    const activeWarehouseTab = getActiveTabTarget('#orderTabs');
+
+    const res = await fetch('/api/dashboard/warehouse-refresh');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    const warehouseTabContent = document.querySelector('#warehouse-tabs-collapse .tab-content');
+    if (warehouseTabContent && data.warehouseHtml) {
+        warehouseTabContent.outerHTML = data.warehouseHtml;
+        restoreActiveTab('#orderTabs', activeWarehouseTab);
+    }
+
+    const activeJobsPane = document.getElementById('activejobs-content');
+    if (activeJobsPane && data.activeJobsHtml) {
+        activeJobsPane.outerHTML = data.activeJobsHtml;
+    }
+
+    reapplyActiveSearches();
+}
+
+// Refreshes whichever sections are currently expanded/visible. Used by both the
+// manual "Refresh Now" button and the auto-refresh timer.
+async function refreshVisibleSections() {
+    const jobs = [];
+
+    if (isSectionOpen('warehouse-tabs-collapse') || isSectionOpen('progress-tabs-collapse')) {
+        jobs.push(refreshWarehouseDashboard());
+    }
+
+    if (isSectionOpen('progress-tabs-collapse')) {
+        const activeProgressTab = getActiveTabTarget('#deliveryTabs');
+        if (activeProgressTab === '#codbt-content' && typeof refreshCodBtTable === 'function') {
+            jobs.push(Promise.resolve(refreshCodBtTable()));
+        } else if (activeProgressTab === '#completed-jobs' && typeof loadCompletedJobs === 'function') {
+            jobs.push(Promise.resolve(loadCompletedJobs()));
+        }
+    }
+
+    if (isSectionOpen('neworders-tabs-collapse')) {
+        const dateInput = document.getElementById('grWebsiteDate');
+        if (dateInput && typeof fetchGRWebsiteOrders === 'function') {
+            jobs.push(Promise.resolve(fetchGRWebsiteOrders(dateInput.value)));
+        }
+    }
+
+    await Promise.allSettled(jobs);
+    lastRefreshedAt = new Date();
+    updateLastRefreshedLabel();
+}
+
+function setAutoRefreshEnabled(enabled) {
+    localStorage.setItem('dashboardAutoRefresh', enabled ? '1' : '0');
+    if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+    }
+    if (enabled) {
+        autoRefreshTimer = setInterval(() => {
+            if (document.hidden) return; // paused while the browser tab isn't focused
+            refreshVisibleSections().catch(err => console.error('Auto-refresh failed:', err));
+        }, AUTO_REFRESH_INTERVAL_MS);
+    }
+}
+
+// ===== Search: filter rows by tracking number / name / phone within whichever tab is active =====
+function filterSectionByQuery(rootSelector, query) {
+    const root = document.querySelector(rootSelector);
+    if (!root) return;
+    const scope = root.querySelector('.tab-pane.active') || root;
+    const q = query.trim().toLowerCase();
+
+    scope.querySelectorAll('.search-hidden').forEach(el => el.classList.remove('search-hidden'));
+    if (!q) return;
+
+    scope.querySelectorAll('table tbody tr').forEach(row => {
+        if (!row.textContent.toLowerCase().includes(q)) {
+            row.classList.add('search-hidden');
+        }
+    });
+
+    // Process leaf cards (fewest nested .card descendants) before their ancestors,
+    // so a parent's visibility check already reflects its children's results.
+    const cards = Array.from(scope.querySelectorAll('.card'));
+    cards.sort((a, b) => a.querySelectorAll('.card').length - b.querySelectorAll('.card').length);
+
+    cards.forEach(card => {
+        const hasVisibleRow = !!card.querySelector('table tbody tr:not(.search-hidden)');
+        const hasVisibleChildCard = !!card.querySelector('.card:not(.search-hidden)');
+        if (hasVisibleRow || hasVisibleChildCard) {
+            card.classList.remove('search-hidden');
+            const collapseChild = card.querySelector(':scope > .collapse');
+            if (collapseChild && window.bootstrap) {
+                bootstrap.Collapse.getOrCreateInstance(collapseChild, { toggle: false }).show();
+            }
+        } else {
+            card.classList.add('search-hidden');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.section-search-input').forEach(input => {
+        let debounceTimer;
+        input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                filterSectionByQuery(input.getAttribute('data-section-root'), input.value);
+            }, 200);
+        });
+    });
+
+    document.querySelectorAll('.section-search-clear').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.querySelector(btn.getAttribute('data-target-input'));
+            if (!input) return;
+            input.value = '';
+            filterSectionByQuery(input.getAttribute('data-section-root'), '');
+            input.focus();
+        });
+    });
+
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    if (autoRefreshToggle) {
+        const savedPref = localStorage.getItem('dashboardAutoRefresh') === '1';
+        autoRefreshToggle.checked = savedPref;
+        setAutoRefreshEnabled(savedPref);
+        autoRefreshToggle.addEventListener('change', () => setAutoRefreshEnabled(autoRefreshToggle.checked));
+    }
+
+    const refreshBtn = document.getElementById('refreshDashboardBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            const originalHtml = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Refreshing…';
+            try {
+                await refreshVisibleSections();
+                showToast('Dashboard refreshed', 'success');
+            } catch (err) {
+                console.error('Manual refresh failed:', err);
+                showToast('Failed to refresh dashboard: ' + err.message, 'error');
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = originalHtml;
+            }
+        });
+    }
 });
 </script>
 

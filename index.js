@@ -3381,8 +3381,10 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
     }
 });
 
-app.get('/', ensureAuthenticated, async (req, res) => {
-    try {
+// Computes the warehouse/active-jobs dashboard data. Shared by the main '/'
+// route (initial page load) and /api/dashboard/warehouse-refresh (re-render
+// without a full page reload) so both stay in sync from one code path.
+async function computeWarehouseDashboardData() {
         const moment = require('moment');
         const now = moment();
 
@@ -3631,6 +3633,13 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             return map;
         })();
 
+    return { currentMap, urgentMap, overdueMap, archivedMap, maxAttemptMap, plannedSelfCollectMap, deliveriesMap };
+}
+
+app.get('/', ensureAuthenticated, async (req, res) => {
+    try {
+        const { currentMap, urgentMap, overdueMap, archivedMap, maxAttemptMap, plannedSelfCollectMap, deliveriesMap } = await computeWarehouseDashboardData();
+
         res.render('dashboard', {
             currentMap,
             urgentMap,
@@ -3649,6 +3658,40 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
+    }
+});
+
+// Re-renders the warehouse tabs + Active Jobs sections without a full page
+// reload, using the exact same data/rendering path as the initial page load.
+app.get('/api/dashboard/warehouse-refresh', ensureAuthenticated, async (req, res) => {
+    try {
+        const data = await computeWarehouseDashboardData();
+
+        const renderView = (view, locals) => new Promise((resolve, reject) => {
+            req.app.render(view, locals, (err, html) => err ? reject(err) : resolve(html));
+        });
+
+        const [warehouseHtml, activeJobsHtml] = await Promise.all([
+            renderView('partials/warehouseTabContent', {
+                currentMap: data.currentMap,
+                plannedSelfCollectMap: data.plannedSelfCollectMap,
+                urgentMap: data.urgentMap,
+                overdueMap: data.overdueMap,
+                maxAttemptMap: data.maxAttemptMap,
+                archivedMap: data.archivedMap,
+                productMapping: PRODUCT_MAPPING,
+                mawbProducts: MAWB_PRODUCTS
+            }),
+            renderView('partials/activeJobsTabContent', {
+                deliveriesMap: data.deliveriesMap,
+                productMapping: PRODUCT_MAPPING
+            })
+        ]);
+
+        res.json({ warehouseHtml, activeJobsHtml });
+    } catch (error) {
+        console.error('Error refreshing warehouse dashboard:', error);
+        res.status(500).json({ error: 'Failed to refresh dashboard data' });
     }
 });
 
@@ -4144,13 +4187,13 @@ app.get('/verify/:userId', async (req, res) => {
                     assuranceText = contactInfo.assurance;
                     contactHtml = `
                         <a href="tel:+${contactInfo.phone}" class="contact-link">
-                            <i class="fas fa-phone"></i> Call
+                            <i class="bi bi-telephone-fill"></i> Call
                         </a>
                         <a href="sms:+${contactInfo.phone}" class="contact-link">
-                            <i class="fas fa-sms"></i> SMS
+                            <i class="bi bi-chat-dots-fill"></i> SMS
                         </a>
                         <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
-                            <i class="fab fa-whatsapp"></i> WhatsApp
+                            <i class="bi bi-whatsapp"></i> WhatsApp
                         </a>
                     `;
                 } else {
@@ -4163,13 +4206,13 @@ app.get('/verify/:userId', async (req, res) => {
                     assuranceText = contactInfo.assurance;
                     contactHtml = `
                         <a href="tel:+${contactInfo.phone}" class="contact-link">
-                            <i class="fas fa-phone"></i> Call
+                            <i class="bi bi-telephone-fill"></i> Call
                         </a>
                         <a href="sms:+${contactInfo.phone}" class="contact-link">
-                            <i class="fas fa-sms"></i> SMS
+                            <i class="bi bi-chat-dots-fill"></i> SMS
                         </a>
                         <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
-                            <i class="fab fa-whatsapp"></i> WhatsApp
+                            <i class="bi bi-whatsapp"></i> WhatsApp
                         </a>
                     `;
                 }
@@ -4182,13 +4225,13 @@ app.get('/verify/:userId', async (req, res) => {
                 assuranceText = contactInfo.assurance;
                 contactHtml = `
                     <a href="tel:+${contactInfo.phone}" class="contact-link">
-                        <i class="fas fa-phone"></i> Call
+                        <i class="bi bi-telephone-fill"></i> Call
                     </a>
                     <a href="sms:+${contactInfo.phone}" class="contact-link">
-                        <i class="fas fa-sms"></i> SMS
+                        <i class="bi bi-chat-dots-fill"></i> SMS
                     </a>
                     <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
-                        <i class="fab fa-whatsapp"></i> WhatsApp
+                        <i class="bi bi-whatsapp"></i> WhatsApp
                     </a>
                 `;
             } else {
@@ -4200,13 +4243,13 @@ app.get('/verify/:userId', async (req, res) => {
                 assuranceText = contactInfo.assurance;
                 contactHtml = `
                     <a href="tel:+${contactInfo.phone}" class="contact-link">
-                        <i class="fas fa-phone"></i> Call
+                        <i class="bi bi-telephone-fill"></i> Call
                     </a>
                     <a href="sms:+${contactInfo.phone}" class="contact-link">
-                        <i class="fas fa-sms"></i> SMS
+                        <i class="bi bi-chat-dots-fill"></i> SMS
                     </a>
                     <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
-                        <i class="fab fa-whatsapp"></i> WhatsApp
+                        <i class="bi bi-whatsapp"></i> WhatsApp
                     </a>
                 `;
             }
@@ -4216,13 +4259,13 @@ app.get('/verify/:userId', async (req, res) => {
             assuranceText = contactInfo.assurance;
             contactHtml = `
                 <a href="tel:+${contactInfo.phone}" class="contact-link">
-                    <i class="fas fa-phone"></i> Call
+                    <i class="bi bi-telephone-fill"></i> Call
                 </a>
                 <a href="sms:+${contactInfo.phone}" class="contact-link">
-                    <i class="fas fa-sms"></i> SMS
+                    <i class="bi bi-chat-dots-fill"></i> SMS
                 </a>
                 <a href="https://wa.me/${contactInfo.phone}" class="contact-link">
-                    <i class="fab fa-whatsapp"></i> WhatsApp
+                    <i class="bi bi-whatsapp"></i> WhatsApp
                 </a>
             `;
         }
@@ -4888,7 +4931,9 @@ app.get('/deletePharmacyFormBatch/:id', ensureAuthenticated, ensureMOHForm, asyn
 
 
 app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    const customerAddresses = req.body.customerAddresses.split('\n');
+    const customerAddresses = req.body.customerAddresses.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
     const result = [];
 
     for (const customerAddress of customerAddresses) {
@@ -5261,7 +5306,25 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
         result.push({ customerAddress: address.trim(), area });
     }
 
-    res.render('successAddressArea', { entries: result, user: req.user });
+    // Group by area so the results page can show one collapsible card per
+    // area (matching the pattern used elsewhere in the app) instead of a
+    // single flat table.
+    const groupedByArea = {};
+    result.forEach(entry => {
+        if (!groupedByArea[entry.area]) groupedByArea[entry.area] = [];
+        groupedByArea[entry.area].push(entry.customerAddress);
+    });
+
+    // "N/A" (unmatched) last, everything else alphabetical, so the addresses
+    // that need manual follow-up are easy to spot at the bottom.
+    const orderedAreas = {};
+    Object.keys(groupedByArea).sort((a, b) => {
+        if (a === 'N/A') return 1;
+        if (b === 'N/A') return -1;
+        return a.localeCompare(b);
+    }).forEach(area => { orderedAreas[area] = groupedByArea[area]; });
+
+    res.render('successAddressArea', { groupedByArea: orderedAreas, totalCount: result.length, user: req.user });
 });
 
 // Add token cache object at the top with your other caches

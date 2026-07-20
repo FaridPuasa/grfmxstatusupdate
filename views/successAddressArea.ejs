@@ -8,12 +8,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/mobile-center.css">
-    <style>
-        /* Increase the margin-bottom for the h1 element */
-        h1 {
-            margin-bottom: 20px;
-        }
-    </style>
 
     <!-- Favicon -->
   <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
@@ -26,71 +20,61 @@
     <%- include('partials/navbar') %>
     <main class="container mt-4">
         <div class="card my-4">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Check Result</h5>
+                <span class="badge bg-light text-dark"><%= totalCount %> address<%= totalCount === 1 ? '' : 'es' %> checked</span>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead class="table-primary">
-                            <tr>
-                                <th>Customer Address</th>
-                                <th data-excel-ignore>Area</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% for (const entry of entries) { %>
-                                <tr>
-                                    <td>
-                                        <%= entry.customerAddress %>
-                                    </td>
-                                    <td>
-                                        <%= entry.area %>
-                                    </td>
-                                </tr>
-                                <% } %>
-                        </tbody>
-                    </table>
+                <% if (totalCount === 0) { %>
+                    <p class="text-center text-muted">No addresses were submitted.</p>
+                <% } else { %>
+                    <div class="d-flex justify-content-end mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="copyAllBtn">
+                            <i class="bi bi-clipboard"></i> Copy All Areas
+                        </button>
+                    </div>
+                    <%- include('partials/addressAreaGroupCards', { groupedByArea }) %>
+                <% } %>
+
+                <div class="mt-3">
+                    <button class="btn btn-primary" onclick="window.location.href = '/addressAreaCheck'"><i class="bi bi-arrow-left"></i> Back to Address Area
+                        Checker</button>
                 </div>
-                <button id="copyToExcelBtn" class="btn btn-success"><i class="bi bi-clipboard"></i> Copy Area to Excel</button>
-                <button class="btn btn-primary" onclick="window.location.href = '/addressAreaCheck'"><i class="bi bi-arrow-left"></i> Back to Address Area
-                    Checker</button>
             </div>
         </div>
     </main>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.0/js/jquery.tablesorter.min.js"></script>
     <script>
-        document.getElementById("copyToExcelBtn").addEventListener("click", function () {
-            // Get the "Area" column data (data-excel-ignore attribute is used to ignore this column)
-            var areaColumn = document.querySelectorAll("td:nth-child(2)");
+        const groupedByArea = <%- JSON.stringify(groupedByArea).replace(/</g, '\\u003c') %>;
 
-            // Generate a newline-separated string with leading/trailing whitespace trimmed
-            var newlineSeparatedData = Array.from(areaColumn).map(function (cell) {
-                return cell.dataset.excelIgnore ? "" : cell.textContent.trim();
-            }).join("\n");
+        async function copyToClipboard(text, successMessage) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(successMessage, 'success');
+            } catch (err) {
+                console.error('Clipboard copy failed:', err);
+                showToast('Failed to copy to clipboard.', 'error');
+            }
+        }
 
-            // Create a text area element to hold the data
-            var textArea = document.createElement("textarea");
-            textArea.value = newlineSeparatedData;
-
-            // Append the text area to the document
-            document.body.appendChild(textArea);
-
-            // Select the text area content
-            textArea.select();
-
-            // Copy the selected text to the clipboard
-            document.execCommand("copy");
-
-            // Remove the text area from the document
-            document.body.removeChild(textArea);
-
-            // Provide a user feedback (you can customize this)
-            showToast("Area data copied to clipboard. You can now paste it into Excel vertically.", 'success');
+        document.querySelectorAll('.area-copy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const area = btn.getAttribute('data-area');
+                const addresses = groupedByArea[area] || [];
+                copyToClipboard(addresses.join('\n'), `Copied ${addresses.length} address(es) for ${area}.`);
+            });
         });
+
+        const copyAllBtn = document.getElementById('copyAllBtn');
+        if (copyAllBtn) {
+            copyAllBtn.addEventListener('click', () => {
+                const lines = [];
+                Object.keys(groupedByArea).forEach(area => {
+                    groupedByArea[area].forEach(addr => lines.push(`${addr}\t${area}`));
+                });
+                copyToClipboard(lines.join('\n'), 'Copied all addresses (with area) to clipboard.');
+            });
+        }
     </script>
 </body>
 
