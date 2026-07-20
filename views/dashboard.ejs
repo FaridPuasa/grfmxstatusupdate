@@ -1571,12 +1571,33 @@ function getActiveTabTarget(navSelector) {
     return activeBtn ? activeBtn.getAttribute('data-bs-target') : null;
 }
 
+// Directly sets which tab is active/shown, instead of going through Bootstrap's
+// Tab.show() - that API silently no-ops if the target button already has the
+// .active class, which it always does here (we only replace .tab-content, never
+// the nav-link buttons themselves, so a tab clicked before a refresh keeps its
+// .active class throughout). That left the freshly-injected content's own
+// default-active pane visible underneath/alongside whatever tab was actually
+// selected. Setting classes directly sidesteps that guard entirely.
 function restoreActiveTab(navSelector, targetSelector) {
     if (!targetSelector) return;
-    const btn = document.querySelector(`${navSelector} [data-bs-target="${targetSelector}"]`);
-    if (btn && window.bootstrap) {
-        bootstrap.Tab.getOrCreateInstance(btn).show();
+    const nav = document.querySelector(navSelector);
+    const targetBtn = nav && nav.querySelector(`[data-bs-target="${targetSelector}"]`);
+    const targetPane = document.querySelector(targetSelector);
+    if (!nav || !targetBtn || !targetPane) return;
+
+    nav.querySelectorAll('.nav-link').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+    });
+    targetBtn.classList.add('active');
+    targetBtn.setAttribute('aria-selected', 'true');
+
+    if (targetPane.parentElement) {
+        targetPane.parentElement.querySelectorAll(':scope > .tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+        });
     }
+    targetPane.classList.add('show', 'active');
 }
 
 function updateLastRefreshedLabel() {
@@ -1597,9 +1618,13 @@ function reapplyActiveSearches() {
 
 // Re-renders the Warehouse tabs + Active Jobs pane in place. Preserves whichever
 // Warehouse sub-tab (Current/Urgent/Overdue/etc.) was active, since the fetched
-// fragment always defaults back to "Current" otherwise.
+// fragment always defaults back to "Current" otherwise. Also re-asserts which
+// Progress-section tab (Active Jobs/COD-BT/Completed) is active, since the
+// fetched Active Jobs fragment always marks itself as the shown/active pane
+// even if the user is actually looking at a different tab right now.
 async function refreshWarehouseDashboard() {
     const activeWarehouseTab = getActiveTabTarget('#orderTabs');
+    const activeProgressTab = getActiveTabTarget('#deliveryTabs');
 
     const res = await fetch('/api/dashboard/warehouse-refresh');
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1614,6 +1639,7 @@ async function refreshWarehouseDashboard() {
     const activeJobsPane = document.getElementById('activejobs-content');
     if (activeJobsPane && data.activeJobsHtml) {
         activeJobsPane.outerHTML = data.activeJobsHtml;
+        restoreActiveTab('#deliveryTabs', activeProgressTab);
     }
 
     reapplyActiveSearches();
