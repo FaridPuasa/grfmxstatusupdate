@@ -102,6 +102,9 @@
                   <% if (['cs','warehouse', 'manager', 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
                   <% } %>
+                  <% if (['admin'].includes(user.role)) { %>
+                    <a class="dropdown-item" href="/updateJobDelivery">Update Job/Delivery (Combined)</a>
+                  <% } %>
                   <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
@@ -207,6 +210,9 @@
                   <% } %>
                   <% if (['cs' ,'warehouse', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
+                  <% } %>
+                  <% if (['admin'].includes(user.role)) { %>
+                    <a class="dropdown-item" href="/updateJobDelivery">Update Job/Delivery (Combined)</a>
                   <% } %>
                   <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>

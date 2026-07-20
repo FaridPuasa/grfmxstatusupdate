@@ -5272,25 +5272,10 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
         result.push({ customerAddress: address.trim(), area });
     }
 
-    // Group by area so the results page can show one collapsible card per
-    // area (matching the pattern used elsewhere in the app) instead of a
-    // single flat table.
-    const groupedByArea = {};
-    result.forEach(entry => {
-        if (!groupedByArea[entry.area]) groupedByArea[entry.area] = [];
-        groupedByArea[entry.area].push(entry.customerAddress);
-    });
-
-    // "N/A" (unmatched) last, everything else alphabetical, so the addresses
-    // that need manual follow-up are easy to spot at the bottom.
-    const orderedAreas = {};
-    Object.keys(groupedByArea).sort((a, b) => {
-        if (a === 'N/A') return 1;
-        if (b === 'N/A') return -1;
-        return a.localeCompare(b);
-    }).forEach(area => { orderedAreas[area] = groupedByArea[area]; });
-
-    res.render('successAddressArea', { groupedByArea: orderedAreas, totalCount: result.length, user: req.user });
+    // Keep results in the same order the addresses were pasted in, so the
+    // areas can be copied back line-by-line next to the original addresses
+    // in Excel.
+    res.render('successAddressArea', { result, totalCount: result.length, user: req.user });
 });
 
 // Add token cache object at the top with your other caches
@@ -15018,6 +15003,13 @@ function patchJob(jobsMap, jobId, patch) {
 // Serve the update job page
 app.get('/updateJob', ensureAuthenticated, (req, res) => {
     res.render('updateJob', { user: req.user });
+});
+
+// Serve the combined Update Job/Delivery page (render-only - it posts to the
+// existing /updateJob and /updateDelivery endpoints, no new business logic).
+// Restricted to admin only for now while this page is being rolled out.
+app.get('/updateJobDelivery', ensureAuthenticated, ensureAdmin, (req, res) => {
+    res.render('updateJobDelivery', { user: req.user });
 });
 
 app.post('/updateJob', async (req, res) => {

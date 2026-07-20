@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Job</title>
+    <title>Update Job/Delivery (Combined)</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <script src="https://unpkg.com/imask"></script>
     <style>
@@ -58,50 +58,103 @@
         <div id="initialSection">
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Update Job</h5>
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Update Job/Delivery (Combined)</h5>
                 </div>
             </div>
 
-            <form id="updateJobForm">
                 <div class="mb-3">
-                    <label for="updateCode" class="form-label">Tracking Status Code / Detail to be updated:</label>
-                    <select id="updateCode" name="updateCode" class="form-select" required>
+                    <label for="actionCode" class="form-label">Tracking Status Code / Detail to be updated:</label>
+                    <select id="actionCode" name="actionCode" class="form-select" required>
                         <option value="" selected>Please select status</option>
                         <% if (['warehouse' , 'manager' , 'admin' ].includes(user.role)) { %>
                             <optgroup label="EWE/MGLOBAL/PDU/GDEX Flow">
-                                <option value="UAN">1. MAWB Number</option>
+                                <option value="UAN" data-flow="job">1. MAWB Number</option>
                             </optgroup>
                             <optgroup label="EWE/MGLOBAL/PDU Flow">
-                                <option value="CCH">2.1. On Hold</option>
+                                <option value="CCH" data-flow="job">2.1. On Hold</option>
                             </optgroup>
                             <optgroup label="GDEX On Hold Flow">
-                                <option value="H9">Reject By Airport</option>
-                                <option value="H18">DG Shipment</option>
-                                <option value="H19">Prohibited Shipment</option>
-                                <option value="H27">Pending Custom Declaration</option>
-                                <option value="H31">Shipment rejected/confiscated by customs</option>
+                                <option value="H9" data-flow="job">Reject By Airport</option>
+                                <option value="H18" data-flow="job">DG Shipment</option>
+                                <option value="H19" data-flow="job">Prohibited Shipment</option>
+                                <option value="H27" data-flow="job">Pending Custom Declaration</option>
+                                <option value="H31" data-flow="job">Shipment rejected/confiscated by customs</option>
                             </optgroup>
                             <optgroup label="GDEX Flow">
-                                <option value="SBR">Scan Manifest Seal Tag</option>
+                                <option value="SBR" data-flow="job">Scan Manifest Seal Tag</option>
                             </optgroup>
                             <% } %>
                                 <optgroup label="Standard Flow">
-                                    <option value="IIW">2.2. Item in Warehouse</option>
-                                    <!-- <option value="OFD">2.1. Out for Delivery</option> -->
+                                    <option value="IIW" data-flow="job">2.2. Item in Warehouse</option>
                                 </optgroup>
                                 <optgroup label="Change Details">
-                                    <option value="UWP">Update Weight/Postal Code</option>
-                                    <!-- <option value="UMN">Update MAWB Number</option> -->
+                                    <option value="UWP" data-flow="job">Update Weight/Postal Code</option>
                                 </optgroup>
                                 <% if (['admin' ].includes(user.role)) { %>
                                     <optgroup label="Admin Only">
-                                        <option value="FOQJ">Fix On Queue Jobs</option>
+                                        <option value="FOQJ" data-flow="job">Fix On Queue Jobs</option>
                                     </optgroup>
                                     <% } %>
+
+                                    <optgroup label="Delivery: Standard Flow">
+                                        <option value="35" data-flow="delivery">1.1. Out for Delivery</option>
+                                        <option value="CSSC" data-flow="delivery">1.2. Self Collect</option>
+                                    </optgroup>
+                                    <optgroup label="Delivery: MGLOBAL Flow">
+                                        <option value="FCC" data-flow="delivery">1.1. Fail due to Customer not available / cannot be contacted</option>
+                                        <option value="FIA" data-flow="delivery">1.2. Fail due to Incorrect Address</option>
+                                        <option value="FSC" data-flow="delivery">1.3.1. Fail due to Reschedule to self collect requested by customer
+                                        </option>
+                                        <option value="CSSC" data-flow="delivery">1.3.2. Self Collect</option>
+                                    </optgroup>
+                                    <% if (['manager' , 'admin' ].includes(user.role)) { %>
+                                        <optgroup label="Delivery: GDEX On Hold Warehouse Flow">
+                                            <option value="H19" data-flow="delivery">Prohibited Shipment</option>
+                                            <option value="H27" data-flow="delivery">Pending Custom Declaration</option>
+                                            <option value="H31" data-flow="delivery">Shipment rejected/confiscated by customs</option>
+                                        </optgroup>
+                                        <optgroup label="Delivery: GDEX Return">
+                                            <option value="RSAL2" data-flow="delivery">Return to Shipper</option>
+                                        </optgroup>
+                                        <optgroup label="Delivery: Stuck Jobs Hidden from Agent App">
+                                            <option value="FSJ" data-flow="delivery">Fix Stuck Jobs</option>
+                                        </optgroup>
+                                        <% } %>
+                                            <optgroup label="Delivery: After Success/Fail updated on Agent App">
+                                                <option value="SFJ" data-flow="delivery">Clear Job</option>
+                                            </optgroup>
+                                            <% if (['manager' , 'admin' ].includes(user.role)) { %>
+                                                <optgroup label="Delivery: GDEX POD & Flow">
+                                                    <option value="RGP" data-flow="delivery">Resend POD</option>
+                                                    <option value="FGA" data-flow="delivery" data-mode="bulk-only">Fix Job Flow</option>
+                                                </optgroup>
+                                                <% } %>
+                                                    <optgroup label="Delivery: Change Details">
+                                                        <option value="SD" data-flow="delivery">Swap Dispatchers</option>
+                                                        <option value="UWL" data-flow="delivery">Update Warehouse</option>
+                                                        <option value="UCDR" data-flow="delivery">Update Customer/Instructions Remark</option>
+                                                        <option value="UGR" data-flow="delivery" data-mode="single">Update Go Rush Remark</option>
+                                                        <option value="UD" data-flow="delivery">Update Job Date</option>
+                                                        <option value="UJM" data-flow="delivery" data-mode="single">Update Job Method</option>
+                                                        <option value="UP" data-flow="delivery" data-mode="single">Update Price</option>
+                                                        <option value="UW" data-flow="delivery" data-mode="single">Update Weight</option>
+                                                        <option value="UAS" data-flow="delivery" data-mode="single">Update Address</option>
+                                                        <option value="UAR" data-flow="delivery" data-mode="single">Update Area</option>
+                                                        <option value="UPN" data-flow="delivery" data-mode="single">Update Phone Number</option>
+                                                        <option value="URN" data-flow="delivery" data-mode="single">Update Customer Name</option>
+                                                        <option value="UPC" data-flow="delivery" data-mode="single">Update Postal Code</option>
+                                                        <option value="UAB" data-flow="delivery" data-mode="single">Update MAWB No.</option>
+                                                    </optgroup>
+                                                    <optgroup label="Delivery: Danger Zone!!!">
+                                                        <option value="CD" data-flow="delivery">1. Cancelled Job</option>
+                                                        <option value="AJ" data-flow="delivery">2. Cancelled -&gt; Reactivate Job</option>
+                                                        <option value="47" data-flow="delivery">3. Dispose Job</option>
+                                                    </optgroup>
                     </select>
                 </div>
 
-                <div id="mawbFields" style="display: none;">
+            <form id="updateJobForm">
+<div id="mawbFields" style="display: none;">
                     <!-- MAWB Number Field -->
                     <div id="mawbNumContainer">
                         <div class="mb-3">
@@ -170,10 +223,318 @@
                     </div>
                 </div>
             </form>
+
+<form id="deliveryForm" style="display: none;">
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvFgaStartDateTimeWrapper">
+                    <label for="dlvFgaStartDateTime" class="form-label">Start Date/Time (Brunei Time):</label>
+                    <input type="datetime-local" id="dlvFgaStartDateTime" name="fgaStartDateTime" class="form-control"
+                        disabled>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvFgaEndDateTimeWrapper">
+                    <label for="dlvFgaEndDateTime" class="form-label">End Date/Time (Brunei Time):</label>
+                    <input type="datetime-local" id="dlvFgaEndDateTime" name="fgaEndDateTime" class="form-control"
+                        disabled>
+                    <strong><small>*Only Detrack status changes within this range (Brunei time) will be pushed to
+                            GDEX.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvAssignDateWrapper">
+                    <label for="dlvAssignDate" class="form-label">Assign Date:</label>
+                    <input type="date" id="dlvAssignDate" name="assignDate" class="form-control" disabled>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvDispatchersWrapper">
+                    <label for="dlvDispatchers" class="form-label">Dispatchers:</label>
+                    <select id="dlvDispatchers" name="dispatchers" class="form-select" disabled>
+                        <option value="" selected>Please select dispatcher</option>
+                        <optgroup label="Dispatchers">
+                            <option value="Edey">Edey</option>
+                            <option value="Hamidin">Hamidin</option>
+                            <option value="Leo">Leo</option>
+                            <option value="Sowdeq">Sowdeq</option>
+                            <option value="Hjazam">Hjazam</option>
+                            <option value="Haiqal">Haiqal</option>
+                        </optgroup>
+                        <optgroup label="Freelancers">
+                            <option value="Bob">Bob</option>
+                            <option value="Ermi">Ermi</option>
+                            <option value="Feeza">Feeza</option>
+                            <option value="Ikha">Ikha</option>
+                            <option value="Jon">Jon</option>
+                            <option value="Qui">Qui</option>
+                        </optgroup>
+                        <!-- <optgroup label="Belts"> -->
+                        <!-- <option value="Aiedil">Aiedil</option> -->
+                        <!-- <option value="Hjazam">Hjazam</option> -->
+                        <!-- <option value="Hardy">Hardy</option> -->
+                        <!-- <option value="Hazif">Hazif</option> -->
+                        <!-- <option value="Rizal">Rizal</option> -->
+                        <!-- <option value="Zainul">Zainul</option> -->
+                        <!-- <option value="Zakwan">Zakwan</option> -->
+                        <!-- </optgroup> -->
+                        <optgroup label="Others">
+                            <option value="Zura">Zura</option>
+                            <!-- <option value="Wafi">Wafi</option> -->
+                            <option value="Adiwardi">Adiwardi</option>
+                            <!-- <option value="Syahmi">Syahmi</option> -->
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvFreelancerNameWrapper">
+                    <label for="dlvFreelancerName" class="form-label">Freelancer Name:</label>
+                    <input type="text" id="dlvFreelancerName" name="freelancerName" class="form-control" disabled>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvAdditionalReasonWrapper">
+                    <label for="dlvAdditionalReason" class="form-label">Additional Reason / Rescheduled Date:</label>
+                    <input type="text" id="dlvAdditionalReason" name="additionalReason" class="form-control" disabled>
+                    <strong><small>*For Detained by Customs or Cancelled Delivery, fill in the
+                            reason.</small></strong><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvWarehouseWrapper">
+                    <label for="dlvWarehouse" class="form-label">Warehouse:</label>
+                    <select id="dlvWarehouse" name="warehouse" class="form-select" disabled>
+                        <option value="" selected>Please select warehouse location</option>
+                        <option value="Warehouse K1">Warehouse K1</option>
+                        <option value="Warehouse K2">Warehouse K2</option>
+                    </select>
+                    <small>K1 > Go Rush Kiulap</small><br>
+                    <small>K2 > Simpang 14-9</small><br>
+                    <strong><small>*If no failed job, pick K1</small></strong><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvK2roomWrapper">
+                    <label for="dlvK2room" class="form-label">Room:</label>
+                    <select id="dlvK2room" name="k2room" class="form-select" disabled>
+                        <option value="Open Space" selected>Open Space</option>
+                        <option value="Medicine Room">Medicine Room</option>
+                        <option value="Room 1">Room 1</option>
+                    </select>
+                    <small>Open space > All parcels except medicine</small><br>
+                    <small>Medicine Room > Strictly for medicine</small><br>
+                    <small>Room 1 > Failed deliveries</small><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvFridgeWrapper">
+                    <label for="dlvFridge" class="form-label">Fridge Item?:</label>
+                    <select id="dlvFridge" name="fridge" class="form-select" disabled>
+                        <option value="" selected>Please select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                    <strong><small>*Strictly applicable for medicines only.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvK2rowWrapper">
+                    <label for="dlvK2row" class="form-label">Rack row number:</label>
+                    <select id="dlvK2row" name="k2row" class="form-select" disabled>
+                        <option value="N/A" selected>N/A</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                    <small>Rack row number from 1-5 > Single Rack</small><br>
+                    <small>Rack row number from 1-10 > Dual Rack</small><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvUcdrTrackingWrapper">
+                    <label for="dlvUcdrTrackingNumber" class="form-label">Tracking Number:</label>
+                    <div class="input-group">
+                        <input type="text" id="dlvUcdrTrackingNumber" class="form-control" disabled>
+                        <button type="button" id="dlvUcdrCheckButton" class="btn btn-outline-secondary"
+                            disabled>Check</button>
+                    </div>
+                    <div id="dlvUcdrCheckStatus" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvUcdrCurrentRemarksWrapper">
+                    <label class="form-label">Current Remarks:</label>
+                    <div id="dlvUcdrCurrentRemarks" class="form-control" style="background-color:#e9ecef;"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvCdRemarkWrapper">
+                    <label for="dlvCdRemark" class="form-label">Updated Customer/Instructions Remark:</label>
+                    <input type="text" id="dlvCdRemark" name="cdRemark" class="form-control" disabled>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvGrRemarkWrapper">
+                    <label for="dlvGrRemark" class="form-label">New Go Rush Remark:</label>
+                    <input type="text" id="dlvGrRemark" name="grRemark" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            remark.</small></strong><br>
+                    <strong><small>**Check if there is existing customer remark on Detrack before
+                            updating.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvWeightWrapper">
+                    <label for="dlvWeight" class="form-label">New Weight:</label>
+                    <input type="text" id="dlvWeight" name="weight" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with same
+                            weight.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvPaymentMethodWrapper">
+                    <label for="dlvPaymentMethod" class="form-label">Payment Method:</label>
+                    <select id="dlvPaymentMethod" name="paymentMethod" class="form-select" disabled>
+                        <option value="" selected>Please select payment method</option>
+                        <optgroup label="NON COD">
+                            <option value="NON COD">NON COD</option>
+                        </optgroup>
+                        <optgroup label="COD">
+                            <option value="Cash">Cash</option>
+                            <option value="Bill Payment (BIBD)">Bill Payment (BIBD)</option>
+                            <option value="Bank Transfer (BIBD)">Bank Transfer (BIBD)</option>
+                            <option value="Bank Transfer (Baiduri)">Bank Transfer (Baiduri)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="field-wrapper" id="dlvPriceWrapper">
+                    <br>
+                    <label for="dlvPrice" class="form-label">New Price:</label>
+                    <input type="text" id="dlvPrice" name="price" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with same
+                            price and payment method.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvAreaWrapper">
+                    <label for="dlvArea" class="form-label">New Area:</label>
+                    <select id="dlvArea" name="area" class="form-select" disabled>
+                        <option value="" selected>Please select area</option>
+                        <option value="B">B</option>
+                        <option value="G">G</option>
+                        <option value="JT">JT</option>
+                        <option value="KB">KB</option>
+                        <option value="TUTONG">TUTONG</option>
+                        <option value="TEMBURONG">TEMBURONG</option>
+                    </select>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            area.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvAddressWrapper">
+                    <label for="dlvAddress" class="form-label">New Address:</label>
+                    <input type="text" id="dlvAddress" name="address" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            address.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvPhoneNumWrapper">
+                    <label for="dlvPhoneNum" class="form-label">New Phone Number:</label>
+                    <input type="text" id="dlvPhoneNum" name="phoneNum" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            phone number.</small></strong><br>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvNameWrapper">
+                    <label for="dlvName" class="form-label">New Name:</label>
+                    <input type="text" id="dlvName" name="name" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            name.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvJobMethodWrapper">
+                    <label for="dlvJobMethod" class="form-label">New Job Method:</label>
+                    <select id="dlvJobMethod" name="jobMethod" class="form-select" disabled>
+                        <option value="" selected>Please select Job Method</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Express">Express</option>
+                        <option value="Immediate">Immediate</option>
+                        <option value="Drop Off">Drop Off</option>
+                        <option value="Self Collect">Self Collect / Pick Up</option>
+                    </select>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            job method.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvPostalCodeWrapper">
+                    <label for="dlvPostalCode" class="form-label">New Postal Code:</label>
+                    <input type="text" id="dlvPostalCode" name="postalCode" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            postal code.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvAwbNumWrapper">
+                    <label for="dlvAwbNum" class="form-label">New MAWB No:</label>
+                    <input type="text" id="dlvAwbNum" name="awbNum" class="form-control" disabled>
+                    <strong><small>*1 tracking number per update recommended unless multiple tracking number with
+                            same
+                            AWB number.</small></strong>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvPaymentStatusWrapper">
+                    <label for="dlvPaymentStatus" class="form-label">BT paid?:</label>
+                    <select id="dlvPaymentStatus" name="paymentStatus" class="form-select" disabled>
+                        <option value="" selected>Please select status</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3" id="dlvUpdateMethodWrapper" style="display: none;">
+                <label for="dlvUpdateMethod" class="form-label">Update Method:</label>
+                <select id="dlvUpdateMethod" class="form-select">
+                    <option value="" selected>Please select method</option>
+                    <option value="bulk">1. Bulk</option>
+                    <option value="onebyone">2. One by one</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <div class="field-wrapper" id="dlvConsignmentIDWrapper">
+                    <label for="dlvConsignmentID" class="form-label">Tracking Number(s):</label>
+                    <textarea id="dlvConsignmentID" name="consignmentIDs" class="form-control" rows="2"
+                        required></textarea>
+                </div>
+            </div>
+            <div class="mb-3 text-center" id="dlvOneByOneSection" style="display: none;">
+                <button type="button" id="dlvReadyToScan" class="btn btn-success btn-lg">Ready to Scan</button>
+            </div>
+            <button type="submit" id="dlvSubmitButton" class="btn btn-primary"><i class="bi bi-check-lg"></i> Submit</button>
+        </form>
         </div>
 
         <!-- Active Update Section -->
-        <div id="activeUpdateSection" style="display: none;">
+<div id="activeUpdateSection" style="display: none;">
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="bi bi-pencil-square"></i> <span id="activeUpdateTitle">Update Title</span></h5>
@@ -265,6 +626,59 @@
                     <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
                 </div>
             </div>
+
+            <!-- Delivery Bulk / One-by-one Results (new: same visual language as job's
+                 bulkResults, since /updateDelivery only reports updated/failed/total,
+                 not delayed/duplicate). -->
+            <div id="deliveryResults" class="result-section">
+                <h3>Update Results</h3>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-success">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Updated</h5>
+                                <p class="card-text display-4" id="dlvUpdatedCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-danger">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Failed</h5>
+                                <p class="card-text display-4" id="dlvFailedCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-secondary">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Total Processed</h5>
+                                <p class="card-text display-4" id="dlvTotalCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dlvResultsContainer"></div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
+                </div>
+            </div>
+
+            <!-- Delivery One-by-one Interface (new capability, modeled on job's
+                 #oneByOneInterface / #trackingNumSingle). -->
+            <div id="dlvOneByOneInterface" style="display: none;">
+                <div id="dlvScanResults" class="result-section"></div>
+                <div class="mb-3">
+                    <label for="dlvTrackingNumSingle" class="form-label">Scan or Enter Tracking Number:</label>
+                    <input type="text" id="dlvTrackingNumSingle" class="form-control"
+                        placeholder="Scan or paste tracking number">
+                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">Reset</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -275,6 +689,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/mobile-center.css">
     <script>
+
 
         // Add these missing global variables at the top of your JavaScript
         let scanResults = {
@@ -422,7 +837,7 @@
             }
         }
 
-        document.getElementById('updateCode').addEventListener('change', async function () {
+        async function handleJobActionChange(value) {
             const mawbFields = document.getElementById('mawbFields');
             const updateMethodSection = document.getElementById('updateMethod').closest('.mb-3');
             const updateMethod = document.getElementById('updateMethod');
@@ -451,15 +866,15 @@
             if (trackingNumBulkField) trackingNumBulkField.placeholder = 'Enter one tracking number per line';
             if (trackingNumSingleField) trackingNumSingleField.placeholder = 'Scan or paste tracking number';
 
-            if (this.value === 'UAN' || this.value === 'UWP' || this.value === 'CCH' || this.value === 'IIW' || this.value === 'UMN' || this.value === 'H9' || this.value === 'FOQJ' ||
-                this.value === 'H18' ||
-                this.value === 'H19' ||
-                this.value === 'H27' ||
-                this.value === 'H31' ||
-                this.value === 'SBR') {
+            if (value === 'UAN' || value === 'UWP' || value === 'CCH' || value === 'IIW' || value === 'UMN' || value === 'H9' || value === 'FOQJ' ||
+                value === 'H18' ||
+                value === 'H19' ||
+                value === 'H27' ||
+                value === 'H31' ||
+                value === 'SBR') {
                 mawbFields.style.display = 'block';
 
-                if (this.value === 'UAN') {
+                if (value === 'UAN') {
                     // MAWB Update - Excel Upload Only
                     mawbNumContainer.style.display = 'block';
                     mawbSelect.style.display = 'none';
@@ -480,7 +895,7 @@
                     // Show file upload button
                     showExcelUploadButton();
 
-                } else if (this.value === 'UWP') {  // NEW UWP CASE
+                } else if (value === 'UWP') {  // NEW UWP CASE
                     // Update Weight/Postal Code - Excel Upload Only
                     mawbNumContainer.style.display = 'none'; // No MAWB input needed
                     warehouseFields.style.display = 'none';
@@ -496,7 +911,7 @@
                     // Show file upload button for UWP
                     showUWPExcelUploadButton();
 
-                } else if (this.value === 'UMN') {
+                } else if (value === 'UMN') {
                     // UMN Update - Show update method
                     mawbNumContainer.style.display = 'block';
                     mawbSelect.style.display = 'none';
@@ -517,12 +932,12 @@
                     bulkSection.style.display = 'none';
                     oneByOneSection.style.display = 'none';
 
-                } else if (this.value === 'CCH' ||
-                    this.value === 'H9' ||
-                    this.value === 'H18' ||
-                    this.value === 'H19' ||
-                    this.value === 'H27' ||
-                    this.value === 'H31') {
+                } else if (value === 'CCH' ||
+                    value === 'H9' ||
+                    value === 'H18' ||
+                    value === 'H19' ||
+                    value === 'H27' ||
+                    value === 'H31') {
                     // On Hold - Show update method
                     mawbNumContainer.style.display = 'none';
                     warehouseFields.style.display = 'none';
@@ -538,7 +953,7 @@
                     bulkSection.style.display = 'none';
                     oneByOneSection.style.display = 'none';
 
-                } else if (this.value === 'SBR') {
+                } else if (value === 'SBR') {
                     // Scan Manifest Seal - GDEX only
                     mawbFields.style.display = 'block';
                     mawbNumContainer.style.display = 'block';
@@ -567,7 +982,7 @@
 
                     // Load GDEX MAWBs only
                     await loadGDEXMAWBs();
-                } else if (this.value === 'IIW') {
+                } else if (value === 'IIW') {
                     // Item in Warehouse - Show dropdown with recent MAWBs
                     mawbNumContainer.style.display = 'block';
                     mawbSelect.style.display = 'block';
@@ -590,7 +1005,7 @@
                     // Load recent MAWBs
                     await loadRecentMAWBs();
                 }
-                else if (this.value === 'FOQJ') {
+                else if (value === 'FOQJ') {
                     // Fix On Queue Jobs - Allow warehouse selection, no MAWB
                     mawbFields.style.display = 'block';
                     mawbNumContainer.style.display = 'none';
@@ -633,7 +1048,7 @@
                 hideAllSections();
                 hideExcelUploadButton();
             }
-        });
+        }
 
         // Function to show Excel upload button
         function showExcelUploadButton() {
@@ -932,7 +1347,7 @@
 
         // Update the readyToScan event listener - FIXED VERSION
         document.getElementById('readyToScan').addEventListener('click', async function () {
-            const updateCode = document.getElementById('updateCode').value;
+            const updateCode = document.getElementById('actionCode').value;
             const warehouse = document.getElementById('warehouse').value;
             const mawbSelect = document.getElementById('mawbNum');
             const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
@@ -988,7 +1403,7 @@
 
             this.value = '';
 
-            const updateCode = document.getElementById('updateCode').value;
+            const updateCode = document.getElementById('actionCode').value;
 
             if (updateCode === 'SBR') {
                 const mawbSelect = document.getElementById('mawbNum');
@@ -1389,7 +1804,7 @@
         document.getElementById('updateJobForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            const updateCode = document.getElementById('updateCode').value;
+            const updateCode = document.getElementById('actionCode').value;
 
             if (updateCode === 'SBR') {
                 const mawbSelect = document.getElementById('mawbNum');
@@ -2944,7 +3359,7 @@ EXAMPLE004\tBE9012\t
 
         // Function to preserve MAWB selection when switching to one-by-one mode
         function preserveMAWBSelection() {
-            const updateCode = document.getElementById('updateCode').value;
+            const updateCode = document.getElementById('actionCode').value;
             const mawbSelect = document.getElementById('mawbNum');
             const mawbValue = mawbSelect ? mawbSelect.value : '';
 
@@ -3602,7 +4017,7 @@ EXAMPLE004\t\t
 
             // For IIW, group scanned parcels by customer so multiple parcels for the
             // same customer/area are easy to spot and sort while still scanning.
-            const currentUpdateCodeEl = document.getElementById('updateCode');
+            const currentUpdateCodeEl = document.getElementById('actionCode');
             if (currentUpdateCodeEl && currentUpdateCodeEl.value === 'IIW') {
                 const groupedByCustomer = groupScanResultsByCustomer([
                     ...(scanResults.successful || []),
@@ -3732,6 +4147,1130 @@ EXAMPLE004\t\t
             scanResultsDiv.style.display = 'block';
             scanResultsDiv.scrollTop = scanResultsDiv.scrollHeight;
         }
+    
+
+                    // --- NEW LOGIC: Set Assign Date to Today's Date and make it read-only/auto-populated ---
+            const assignDateField = document.getElementById('dlvAssignDate');
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayFormatted = `${yyyy}-${mm}-${dd}`;
+
+            // Set the value of the assignDate field to today's date
+            assignDateField.value = todayFormatted;
+
+            // The field is already disabled by default, but we ensure it remains disabled
+            // and the user cannot change it manually. However, we want it to be submitted with the form.
+            // Disabled inputs are not submitted, so we need to make it readonly but still enabled? 
+            // Actually, disabled fields are NOT sent to server. But original code had it disabled and expected to be enabled for certain status codes.
+            // To maintain functionality while auto-populating today's date when the field becomes required/enabled,
+            // we will override the updateFieldStatus logic to ensure whenever the field is enabled (required),
+            // it always gets today's date and remains non-editable by user (readonly but not disabled to allow submission).
+            // However, note: disabled fields are not submitted; but original design used disabled + required? That's contradictory.
+            // Better approach: make the field readonly when shown, not disabled, to allow submission AND user cannot change.
+            // We'll adjust dynamically in updateFieldStatus to set readonly attribute instead of disabled, but preserve original required logic.
+
+            // Store original functions and override behaviour for assignDate.
+            // But to keep it simple and robust: we'll patch the updateFieldStatus logic to ensure assignDate is always today and readonly when active.
+            // However we must respect original requirements for assignDate: it should be required for certain status codes.
+            // So we will preserve the required flag, but instead of setting disabled=false, we set readonly=true and remove disabled.
+            // This ensures the value is submitted and user cannot change it.
+
+            // Let's keep references and modify updateFieldStatus function after its definition.
+
+            $("#dlvFgaStartDateTimeWrapper").hide();
+            $("#dlvFgaEndDateTimeWrapper").hide();
+            $("#dlvAssignDateWrapper").hide();
+            $("#dlvDispatchersWrapper").hide();
+            $("#dlvFreelancerNameWrapper").hide();
+            $("#dlvAdditionalReasonWrapper").hide();
+            $("#dlvWarehouseWrapper").hide();
+            $("#dlvWeightWrapper").hide();
+            $("#dlvPaymentMethodWrapper").hide();
+            $("#dlvPriceWrapper").hide();
+            $("#dlvAreaWrapper").hide();
+            $("#dlvAddressWrapper").hide();
+            $("#dlvPhoneNumWrapper").hide();
+            $("#dlvNameWrapper").hide();
+            $("#dlvJobMethodWrapper").hide();
+            $("#dlvPostalCodeWrapper").hide();
+            $("#dlvAwbNumWrapper").hide();
+            $("#dlvPaymentStatusWrapper").hide();
+            $("#dlvK2roomWrapper").hide();
+            $("#dlvK2rowWrapper").hide();
+            $("#dlvFridgeWrapper").hide();
+            $("#dlvGrRemarkWrapper").hide();
+            $("#dlvUcdrTrackingWrapper").hide();
+            $("#dlvUcdrCurrentRemarksWrapper").hide();
+            $("#dlvCdRemarkWrapper").hide();
+
+            // Get references to the fields
+            const consignmentIDField = document.getElementById('dlvConsignmentID');
+            const fgaStartDateTimeField = document.getElementById('dlvFgaStartDateTime');
+            const fgaEndDateTimeField = document.getElementById('dlvFgaEndDateTime');
+            const dispatchersField = document.getElementById('dlvDispatchers');
+            const freelancerNameField = document.getElementById('dlvFreelancerName');
+            const additionalReasonField = document.getElementById('dlvAdditionalReason');
+            const warehouseField = document.getElementById('dlvWarehouse');
+            const weightField = document.getElementById('dlvWeight');
+            const paymentMethodField = document.getElementById('dlvPaymentMethod');
+            const priceField = document.getElementById('dlvPrice');
+            const areaField = document.getElementById('dlvArea');
+            const addressField = document.getElementById('dlvAddress');
+            const phoneNumField = document.getElementById('dlvPhoneNum');
+            const nameField = document.getElementById('dlvName');
+            const jobMethodField = document.getElementById('dlvJobMethod');
+            const postalCodeField = document.getElementById('dlvPostalCode');
+            const awbNumField = document.getElementById('dlvAwbNum');
+            const paymentStatusField = document.getElementById('dlvPaymentStatus');
+            const k2roomField = document.getElementById('dlvK2room');
+            const k2rowField = document.getElementById('dlvK2row');
+            const fridgeField = document.getElementById('dlvFridge');
+            const grRemarkField = document.getElementById('dlvGrRemark');
+            const ucdrTrackingNumberField = document.getElementById('dlvUcdrTrackingNumber');
+            const ucdrCheckButton = document.getElementById('dlvUcdrCheckButton');
+            const ucdrCheckStatusDiv = document.getElementById('dlvUcdrCheckStatus');
+            const ucdrCurrentRemarksDiv = document.getElementById('dlvUcdrCurrentRemarks');
+            const cdRemarkField = document.getElementById('dlvCdRemark');
+
+            const statusCodeSelect = document.getElementById('actionCode');
+            const submitButton = document.getElementById('dlvSubmitButton');
+
+            // (bulk submit handling, progress polling and results rendering are
+            // provided by the shared glue script further down this file, which
+            // reuses #loading/#progressBar from the job flow and renders through
+            // displayDeliveryResults() instead of the old plain results table.)
+
+            function updateFreelancerNameField() {
+                const selectedDispatcher = dispatchersField.value;
+                if ((selectedDispatcher === 'FL1') || (selectedDispatcher === 'FL2')) {
+                    $("#dlvFreelancerNameWrapper").fadeIn();
+                    freelancerNameField.disabled = false;
+                    freelancerNameField.required = true;
+                } else {
+                    $("#dlvFreelancerNameWrapper").hide();
+                    freelancerNameField.disabled = true;
+                    freelancerNameField.required = false;
+                    freelancerNameField.value = '';
+                }
+            }
+
+            document.getElementById('dlvWeight').addEventListener('input', function (e) {
+                const value = e.target.value;
+                const validNumber = /^\d*\.?\d{0,3}$/;
+                if (!validNumber.test(value)) {
+                    e.target.value = value.slice(0, -1);
+                }
+            });
+
+            priceField.addEventListener('input', function (e) {
+                const value = e.target.value;
+                const validNumber = /^\d*\.?\d{0,2}$/;
+                if (!validNumber.test(value)) {
+                    e.target.value = value.slice(0, -1);
+                }
+            });
+
+            function updatePriceWrapper() {
+                const selectedPaymentMethod = paymentMethodField.value;
+                if (selectedPaymentMethod === 'NON COD') {
+                    $("#dlvPriceWrapper").hide();
+                    priceField.disabled = true;
+                    priceField.required = false;
+                    priceField.value = '';
+                } else {
+                    $("#dlvPriceWrapper").fadeIn();
+                    priceField.disabled = false;
+                    priceField.required = true;
+                }
+            }
+
+            $('#dlvWarehouse').change(function () {
+                if ($(this).val().length == 0) {
+                    $("#dlvK2roomWrapper").hide();
+                    $("#dlvK2rowWrapper").hide();
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+                }
+                if ($(this).val() == "Warehouse K1") {
+                    $("#dlvK2roomWrapper").hide();
+                    $("#dlvK2rowWrapper").hide();
+                    k2roomField.disabled = true;
+                    k2roomField.required = false;
+                    k2rowField.disabled = true;
+                    k2rowField.required = false;
+                }
+                if ($(this).val() == "Warehouse K2") {
+                    $('#dlvK2room').val("Open Space");
+                    $('#dlvK2row').val("N/A");
+                    $("#dlvK2roomWrapper").fadeIn();
+                    $("#dlvK2rowWrapper").fadeIn();
+                    k2roomField.disabled = false;
+                    k2roomField.required = true;
+                    k2rowField.disabled = false;
+                    k2rowField.required = false;
+                }
+            })
+
+            // Helper to set assign date to today, readonly and ensure value is always today
+            function setAssignDateTodayAndReadonly(makeRequired) {
+                // Always set the value to today's date
+                assignDateField.value = todayFormatted;
+                // Make it readonly so user can't edit but still submits
+                assignDateField.readOnly = true;
+                // Remove disabled attribute so it's submitted with form
+                assignDateField.disabled = false;
+                if (makeRequired) {
+                    assignDateField.required = true;
+                } else {
+                    assignDateField.required = false;
+                }
+            }
+
+            // Modified updateFieldStatus with assign date always today and readonly when visible
+            function updateDeliveryFieldStatus() {
+                const selectedStatusCode = statusCodeSelect.value;
+
+                fgaStartDateTimeField.value = '';
+                fgaEndDateTimeField.value = '';
+                assignDateField.value = '';
+                dispatchersField.value = '';
+                additionalReasonField.value = '';
+                freelancerNameField.value = '';
+                warehouseField.value = '';
+                weightField.value = '';
+                paymentMethodField.value = '';
+                priceField.value = '';
+                areaField.value = '';
+                addressField.value = '';
+                phoneNumField.value = '';
+                nameField.value = '';
+                jobMethodField.value = '';
+                postalCodeField.value = '';
+                awbNumField.value = '';
+                paymentStatusField.value = '';
+                k2roomField.value = '';
+                k2rowField.value = '';
+                fridgeField.value = '';
+                grRemarkField.value = '';
+                cdRemarkField.value = '';
+                ucdrTrackingNumberField.value = '';
+                ucdrCheckStatusDiv.textContent = '';
+                ucdrCurrentRemarksDiv.textContent = '';
+
+                $("#dlvConsignmentIDWrapper").hide();
+                consignmentIDField.required = false;
+                consignmentIDField.disabled = false;
+                $("#dlvSubmitButton").show();
+                submitButton.disabled = false;
+
+                fgaStartDateTimeField.disabled = true; fgaStartDateTimeField.required = false;
+                fgaEndDateTimeField.disabled = true; fgaEndDateTimeField.required = false;
+                $("#dlvFgaStartDateTimeWrapper").hide();
+                $("#dlvFgaEndDateTimeWrapper").hide();
+                $("#dlvAssignDateWrapper").hide();
+                $("#dlvDispatchersWrapper").hide();
+                $("#dlvAdditionalReasonWrapper").hide();
+                $("#dlvFreelancerNameWrapper").hide();
+                $("#dlvWarehouseWrapper").hide();
+                $("#dlvWeightWrapper").hide();
+                $("#dlvPaymentMethodWrapper").hide();
+                $("#dlvPriceWrapper").hide();
+                $("#dlvAreaWrapper").hide();
+                $("#dlvAddressWrapper").hide();
+                $("#dlvPhoneNumWrapper").hide();
+                $("#dlvNameWrapper").hide();
+                $("#dlvJobMethodWrapper").hide();
+                $("#dlvPostalCodeWrapper").hide();
+                $("#dlvAwbNumWrapper").hide();
+                $("#dlvPaymentStatusWrapper").hide();
+                $("#dlvK2roomWrapper").hide();
+                $("#dlvK2rowWrapper").hide();
+                $("#dlvGrRemarkWrapper").hide();
+                $("#dlvFridgeWrapper").hide();
+                $("#dlvUcdrTrackingWrapper").hide();
+                $("#dlvUcdrCurrentRemarksWrapper").hide();
+                $("#dlvCdRemarkWrapper").hide();
+                ucdrTrackingNumberField.disabled = true;
+                ucdrCheckButton.disabled = true;
+                cdRemarkField.disabled = true;
+                cdRemarkField.required = false;
+
+                if (selectedStatusCode === 'FGA') {
+                    $("#dlvFgaStartDateTimeWrapper").fadeIn();
+                    $("#dlvFgaEndDateTimeWrapper").fadeIn();
+                    fgaStartDateTimeField.disabled = false;
+                    fgaStartDateTimeField.required = true;
+                    fgaEndDateTimeField.disabled = false;
+                    fgaEndDateTimeField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD')) {
+                    assignDateField.disabled = false;
+                    dispatchersField.disabled = false;
+                    additionalReasonField.disabled = true;
+                    warehouseField.disabled = true;
+
+                    $("#dlvAssignDateWrapper").fadeIn();
+                    $("#dlvDispatchersWrapper").fadeIn();
+
+                    setAssignDateTodayAndReadonly(true);
+
+                    dispatchersField.required = true;
+                    additionalReasonField.required = false;
+                    warehouseField.required = false;
+
+                    weightField.disabled = true; weightField.required = false;
+                    paymentMethodField.disabled = true; paymentMethodField.required = false;
+                    priceField.disabled = true; priceField.required = false;
+                    areaField.disabled = true; areaField.required = false;
+                    addressField.disabled = true; addressField.required = false;
+                    phoneNumField.disabled = true; phoneNumField.required = false;
+                    nameField.disabled = true; nameField.required = false;
+                    jobMethodField.disabled = true; jobMethodField.required = false;
+                    postalCodeField.disabled = true; postalCodeField.required = false;
+                    awbNumField.disabled = true; awbNumField.required = false;
+                    paymentStatusField.disabled = true; paymentStatusField.required = false;
+                    k2roomField.disabled = true; k2roomField.required = false;
+                    k2rowField.disabled = true; k2rowField.required = false;
+                    fridgeField.disabled = true; fridgeField.required = false;
+                    grRemarkField.disabled = true; grRemarkField.required = false;
+                }
+                else if ((selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
+                    assignDateField.disabled = false;
+                    dispatchersField.disabled = true;
+                    additionalReasonField.disabled = true;
+                    warehouseField.disabled = true;
+                    $("#dlvAssignDateWrapper").fadeIn();
+                    setAssignDateTodayAndReadonly(true);
+                    dispatchersField.required = false;
+                    additionalReasonField.required = false;
+                    warehouseField.required = false;
+                    // reset others disabled
+                    weightField.disabled = true; paymentMethodField.disabled = true; priceField.disabled = true;
+                    areaField.disabled = true; addressField.disabled = true; phoneNumField.disabled = true;
+                    nameField.disabled = true; jobMethodField.disabled = true; postalCodeField.disabled = true;
+                    awbNumField.disabled = true; paymentStatusField.disabled = true; k2roomField.disabled = true;
+                    k2rowField.disabled = true; fridgeField.disabled = true; grRemarkField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UP') {
+                    assignDateField.disabled = true;
+                    $("#dlvPaymentMethodWrapper").fadeIn();
+                    paymentMethodField.disabled = false;
+                    paymentMethodField.required = true;
+                    // assign date not shown, ensure it's not required and disabled
+                    assignDateField.required = false;
+                    assignDateField.disabled = true;
+                }
+                else if ((selectedStatusCode === '12') || (selectedStatusCode === 'SFJ') || (selectedStatusCode === 'UWL')) {
+                    $("#dlvWarehouseWrapper").fadeIn();
+                    warehouseField.disabled = false;
+                    warehouseField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if ((selectedStatusCode === 'CD') || (selectedStatusCode === 'DC')) {
+                    additionalReasonField.disabled = false;
+                    additionalReasonField.required = true;
+                    $("#dlvAdditionalReasonWrapper").fadeIn();
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UW') {
+                    $("#dlvWeightWrapper").fadeIn();
+                    weightField.disabled = false;
+                    weightField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UFM') {
+                    $("#dlvFridgeWrapper").fadeIn();
+                    fridgeField.disabled = false;
+                    fridgeField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UAR') {
+                    $("#dlvAreaWrapper").fadeIn();
+                    areaField.disabled = false;
+                    areaField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UAS') {
+                    $("#dlvAddressWrapper").fadeIn();
+                    addressField.disabled = false;
+                    addressField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UPN') {
+                    $("#dlvPhoneNumWrapper").fadeIn();
+                    phoneNumField.disabled = false;
+                    phoneNumField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'URN') {
+                    $("#dlvNameWrapper").fadeIn();
+                    nameField.disabled = false;
+                    nameField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UJM') {
+                    $("#dlvJobMethodWrapper").fadeIn();
+                    jobMethodField.disabled = false;
+                    jobMethodField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UPC') {
+                    $("#dlvPostalCodeWrapper").fadeIn();
+                    postalCodeField.disabled = false;
+                    postalCodeField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UAB') {
+                    $("#dlvAwbNumWrapper").fadeIn();
+                    awbNumField.disabled = false;
+                    awbNumField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UGR') {
+                    $("#dlvGrRemarkWrapper").fadeIn();
+                    grRemarkField.disabled = false;
+                    grRemarkField.required = true;
+                    assignDateField.disabled = true;
+                }
+                else if (selectedStatusCode === 'UCDR') {
+                    $("#dlvConsignmentIDWrapper").hide();
+                    consignmentIDField.required = false;
+                    $("#dlvSubmitButton").hide();
+                    submitButton.disabled = true;
+
+                    $("#dlvUcdrTrackingWrapper").fadeIn();
+                    ucdrTrackingNumberField.disabled = false;
+                    ucdrCheckButton.disabled = false;
+                    assignDateField.disabled = true;
+                }
+                else {
+                    assignDateField.disabled = true;
+                    dispatchersField.disabled = true;
+                    additionalReasonField.disabled = true;
+                    warehouseField.disabled = true;
+                    weightField.disabled = true;
+                    paymentMethodField.disabled = true;
+                    priceField.disabled = true;
+                    areaField.disabled = true;
+                    addressField.disabled = true;
+                    phoneNumField.disabled = true;
+                    nameField.disabled = true;
+                    jobMethodField.disabled = true;
+                    postalCodeField.disabled = true;
+                    awbNumField.disabled = true;
+                    paymentStatusField.disabled = true;
+                    k2roomField.disabled = true;
+                    k2rowField.disabled = true;
+                    fridgeField.disabled = true;
+                    grRemarkField.disabled = true;
+
+                    assignDateField.required = false;
+                    dispatchersField.required = false;
+                    additionalReasonField.required = false;
+                    warehouseField.required = false;
+                    weightField.required = false;
+                    paymentMethodField.required = false;
+                    priceField.required = false;
+                    areaField.required = false;
+                    addressField.required = false;
+                    phoneNumField.required = false;
+                    nameField.required = false;
+                    jobMethodField.required = false;
+                    postalCodeField.required = false;
+                    awbNumField.required = false;
+                    paymentStatusField.required = false;
+                    k2roomField.required = false;
+                    k2rowField.required = false;
+                    fridgeField.required = false;
+                    grRemarkField.required = false;
+                }
+
+                // Tracking Number(s) stays hidden until a status is chosen (UCDR uses its own
+                // single tracking number field instead, hidden further above).
+                if (selectedStatusCode === '') {
+                    $("#dlvConsignmentIDWrapper").hide();
+                    consignmentIDField.required = false;
+                } else if (selectedStatusCode !== 'UCDR') {
+                    $("#dlvConsignmentIDWrapper").fadeIn();
+                    consignmentIDField.required = true;
+                }
+                // Additional case for 'SD' or '35' already handled but ensure assign date readOnly and today
+                if ((selectedStatusCode === '35') || (selectedStatusCode === 'SD') || (selectedStatusCode === 'CSSC') || (selectedStatusCode === 'UD')) {
+                    setAssignDateTodayAndReadonly(true);
+                } else {
+                    // if not showing assignDate, we might disable but also reset readonly attribute
+                    assignDateField.readOnly = false;
+                    assignDateField.disabled = true;
+                    assignDateField.required = false;
+                }
+            }
+
+            function resetUcdrRemarkState() {
+                $("#dlvUcdrCurrentRemarksWrapper").hide();
+                $("#dlvCdRemarkWrapper").hide();
+                $("#dlvSubmitButton").hide();
+                submitButton.disabled = true;
+                cdRemarkField.disabled = true;
+                cdRemarkField.required = false;
+                cdRemarkField.value = '';
+                ucdrCurrentRemarksDiv.textContent = '';
+                ucdrCheckStatusDiv.textContent = '';
+                ucdrCheckStatusDiv.className = 'mt-2';
+            }
+
+            ucdrTrackingNumberField.addEventListener('input', resetUcdrRemarkState);
+
+            ucdrCheckButton.addEventListener('click', async function () {
+                const trackingNumber = ucdrTrackingNumberField.value.trim().toUpperCase();
+                if (!trackingNumber) {
+                    showToast('Please enter a tracking number.', 'warning');
+                    return;
+                }
+
+                resetUcdrRemarkState();
+                ucdrCheckButton.disabled = true;
+                ucdrCheckStatusDiv.textContent = 'Checking...';
+
+                try {
+                    const res = await fetch(`/updateDelivery/checkRemarks/${encodeURIComponent(trackingNumber)}`);
+                    const result = await res.json();
+
+                    if (!res.ok || !result.exists) {
+                        ucdrCheckStatusDiv.textContent = 'Tracking number not found.';
+                        ucdrCheckStatusDiv.className = 'mt-2 text-danger';
+                    } else {
+                        ucdrCheckStatusDiv.textContent = '';
+                        consignmentIDField.value = trackingNumber;
+
+                        ucdrCurrentRemarksDiv.textContent = result.remarks ? result.remarks : 'No remarks available';
+                        $("#dlvUcdrCurrentRemarksWrapper").fadeIn();
+
+                        cdRemarkField.value = result.remarks || '';
+                        cdRemarkField.disabled = false;
+                        cdRemarkField.required = true;
+                        $("#dlvCdRemarkWrapper").fadeIn();
+
+                        $("#dlvSubmitButton").fadeIn();
+                        submitButton.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Error checking tracking number:', error);
+                    ucdrCheckStatusDiv.textContent = 'Error checking tracking number. Please try again.';
+                    ucdrCheckStatusDiv.className = 'mt-2 text-danger';
+                } finally {
+                    ucdrCheckButton.disabled = false;
+                }
+            });
+
+            paymentMethodField.addEventListener('change', updatePriceWrapper);
+            updateDeliveryFieldStatus();
+            dispatchersField.addEventListener('change', updateFreelancerNameField);
+            updateFreelancerNameField();
+    
+
+        // ==================================================
+        // 🧩 MERGED PAGE GLUE (new code, not ported from either source page)
+        //
+        // Everything above this point is the job flow (verbatim from
+        // updateJob.ejs, reading #actionCode instead of #updateCode) followed
+        // by the delivery flow (verbatim field-status logic from
+        // updateDelivery.ejs, with dlv-prefixed ids). The code below wires the
+        // two together: a single dispatcher on #actionCode branches by
+        // data-flow, and adds bulk/one-by-one UX + results rendering for the
+        // delivery flow that the standalone updateDelivery.ejs never had.
+        // ==================================================
+
+        // ---- Delivery-flow scan accumulator (mirrors job's `scanResults`) ----
+        let dlvScanResults = { successful: [], failed: [], updatedCount: 0, notUpdatedCount: 0 };
+
+        const DLV_DANGER_ZONE_ACTIONS = {
+            'CD': 'Cancel',
+            'AJ': 'Reactivate (Cancelled -> Active)',
+            '47': 'Dispose'
+        };
+
+        // Codes that must always go through the single-tracking-number
+        // scanning loop instead of the bulk/one-by-one choice.
+        const DLV_SINGLE_ONLY_CODES = ['UW', 'UP', 'UAR', 'UAS', 'UPN', 'URN', 'UJM', 'UPC', 'UAB', 'UGR'];
+
+        function getDeliveryActionTitle() {
+            const select = document.getElementById('actionCode');
+            const opt = select.selectedOptions[0];
+            return opt ? opt.textContent.trim() : 'Update Delivery';
+        }
+
+        // ---- Show/hide helpers for the delivery bulk/method/one-by-one chrome ----
+        function hideDeliveryMethodSelector() {
+            $('#dlvUpdateMethodWrapper').hide();
+            document.getElementById('dlvUpdateMethod').value = '';
+        }
+        function showDeliveryMethodSelector() {
+            $('#dlvUpdateMethodWrapper').fadeIn();
+        }
+        function hideDeliveryBulkTextarea() {
+            $('#dlvConsignmentIDWrapper').hide();
+            document.getElementById('dlvConsignmentID').required = false;
+        }
+        function showDeliveryBulkTextarea() {
+            $('#dlvConsignmentIDWrapper').fadeIn();
+            document.getElementById('dlvConsignmentID').required = true;
+        }
+        function hideDeliveryOneByOneScanner() {
+            document.getElementById('dlvOneByOneSection').style.display = 'none';
+        }
+        function showDeliveryOneByOneScanner() {
+            document.getElementById('dlvOneByOneSection').style.display = 'block';
+        }
+        function hideDeliverySubmitButton() {
+            $('#dlvSubmitButton').hide();
+            document.getElementById('dlvSubmitButton').disabled = true;
+        }
+        function showDeliverySubmitButton() {
+            $('#dlvSubmitButton').show();
+            document.getElementById('dlvSubmitButton').disabled = false;
+        }
+        function hideAllDeliverySections() {
+            hideDeliveryMethodSelector();
+            hideDeliveryOneByOneScanner();
+        }
+
+        // Layers the new bulk/one-by-one/single-only UX on top of the
+        // (verbatim, unmodified) per-field show/hide logic in
+        // updateDeliveryFieldStatus(). Called right after it on every
+        // #actionCode change for a delivery-flow option.
+        function applyDeliveryModeUI(statusCode, mode) {
+            hideAllDeliverySections();
+
+            if (!statusCode) return;
+
+            if (statusCode === 'UCDR') {
+                // Dedicated Check-button -> preview-remark -> Submit flow;
+                // updateDeliveryFieldStatus() already hid the bulk textarea and
+                // showed the UCDR-specific fields. Nothing else to layer in.
+                return;
+            }
+
+            if (statusCode === 'FGA') {
+                // Bulk-only date-range sweep - textarea + submit button stay as
+                // updateDeliveryFieldStatus() already set them; just make sure no
+                // method selector / one-by-one UI leaks in.
+                return;
+            }
+
+            if (mode === 'single') {
+                hideDeliveryBulkTextarea();
+                hideDeliverySubmitButton();
+                showDeliveryOneByOneScanner();
+                return;
+            }
+
+            // Both bulk and one-by-one are available - make the user pick a
+            // method first, matching updateJob.ejs's #updateMethod pattern.
+            showDeliveryMethodSelector();
+            hideDeliveryBulkTextarea();
+            hideDeliverySubmitButton();
+            hideDeliveryOneByOneScanner();
+        }
+
+        document.getElementById('dlvUpdateMethod').addEventListener('change', function () {
+            if (this.value === 'bulk') {
+                showDeliveryBulkTextarea();
+                showDeliverySubmitButton();
+                hideDeliveryOneByOneScanner();
+            } else if (this.value === 'onebyone') {
+                hideDeliveryBulkTextarea();
+                hideDeliverySubmitButton();
+                showDeliveryOneByOneScanner();
+            } else {
+                hideDeliveryBulkTextarea();
+                hideDeliverySubmitButton();
+                hideDeliveryOneByOneScanner();
+            }
+        });
+
+        // ---- Shared payload builder for both bulk submit and one-by-one scans ----
+        // Reuses FormData over #deliveryForm so the exact same field names/values
+        // that updateDelivery.ejs sends today (weight, price, area, warehouse,
+        // dispatchers, ... whichever fields updateDeliveryFieldStatus() left
+        // enabled for the current statusCode) are preserved unchanged; only
+        // `statusCode` (now driven by the shared #actionCode select) is injected
+        // manually since that select lives outside #deliveryForm.
+        function buildDeliveryPayload(overrideConsignmentIDs) {
+            const formData = new FormData(document.getElementById('deliveryForm'));
+            const payload = Object.fromEntries(formData.entries());
+            payload.statusCode = document.getElementById('actionCode').value;
+            if (typeof overrideConsignmentIDs === 'string') {
+                payload.consignmentIDs = overrideConsignmentIDs;
+            }
+            return payload;
+        }
+
+        // Polls /updateDelivery/status/:jobId (unchanged endpoint) until the job
+        // completes or fails, updating the shared #loading progress bar the same
+        // way updateDelivery.ejs's own pollJobStatus() used to.
+        function pollDeliveryJobStatus(jobId) {
+            return new Promise((resolve) => {
+                const timer = setInterval(async () => {
+                    try {
+                        const res = await fetch(`/updateDelivery/status/${jobId}`);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const job = await res.json();
+
+                        const total = job.total || 0;
+                        const processed = job.processed || 0;
+                        const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                        const progressBarEl = document.getElementById('progressBar');
+                        const loadingMessageEl = document.getElementById('loadingMessage');
+                        if (progressBarEl) {
+                            progressBarEl.style.width = pct + '%';
+                            progressBarEl.textContent = pct + '%';
+                        }
+                        if (loadingMessageEl) loadingMessageEl.textContent = `Processing ${processed} of ${total}...`;
+
+                        if (job.status === 'completed' || job.status === 'failed') {
+                            clearInterval(timer);
+                            resolve(job);
+                        }
+                    } catch (error) {
+                        console.error('Error polling delivery job status:', error);
+                    }
+                }, 2000);
+            });
+        }
+
+        // The /updateDelivery status endpoint only ever returns a flat message
+        // string per tracking number (processingResults[i].status), not a
+        // structured success/failure code, so bucketing here is a front-end-only
+        // heuristic as called out in the plan.
+        function classifyDeliveryResult(status) {
+            return /error|fail|not found|invalid/i.test(status || '') ? 'failed' : 'updated';
+        }
+
+        // Renders bulk (or FGA / UCDR-via-bulk) delivery results using the same
+        // card+table visual language as job's displayBulkResults(), since
+        // /updateDelivery has no delayed/duplicate categories to show.
+        function displayDeliveryResults(processingResults) {
+            const results = processingResults || [];
+            const updated = results.filter(r => classifyDeliveryResult(r.status) === 'updated');
+            const failed = results.filter(r => classifyDeliveryResult(r.status) === 'failed');
+
+            const deliveryResultsEl = document.getElementById('deliveryResults');
+            deliveryResultsEl.style.display = 'block';
+            document.getElementById('dlvUpdatedCount').textContent = updated.length;
+            document.getElementById('dlvFailedCount').textContent = failed.length;
+            document.getElementById('dlvTotalCount').textContent = results.length;
+
+            const container = document.getElementById('dlvResultsContainer');
+            container.innerHTML = '';
+
+            if (updated.length > 0) {
+                const successTable = document.createElement('div');
+                successTable.innerHTML = `
+            <h4 class="text-success mt-4">Successfully Processed Jobs (${updated.length}) <span class="badge bg-success">Success</span></h4>
+            <div class="table-responsive">
+                <table class="table table-success table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${updated.map(r => `
+                            <tr>
+                                <td>${escapeHtml(r.consignmentID || 'N/A')}</td>
+                                <td>${escapeHtml(r.status || 'Updated')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                container.appendChild(successTable);
+                enhanceResultsTable(successTable.querySelector('table'));
+            }
+
+            if (failed.length > 0) {
+                const failedTable = document.createElement('div');
+                failedTable.innerHTML = `
+            <h4 class="text-danger mt-4">Failed Jobs (${failed.length}) <span class="badge bg-danger">Failed</span></h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${failed.map(r => `
+                            <tr>
+                                <td>${escapeHtml(r.consignmentID || 'N/A')}</td>
+                                <td>${escapeHtml(r.status || 'Failed')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                container.appendChild(failedTable);
+                enhanceResultsTable(failedTable.querySelector('table'));
+            }
+
+            if (results.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'alert alert-info';
+                noResults.innerHTML = '<strong>No results to display.</strong>';
+                container.appendChild(noResults);
+            }
+
+            setTimeout(() => {
+                deliveryResultsEl.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        // Renders the accumulating delivery one-by-one scan results, mirroring
+        // job's updateScanResultsDisplay()/#scanResults pattern, self-contained
+        // inside #dlvScanResults.
+        function updateDeliveryScanResultsDisplay() {
+            const scanResultsDiv = document.getElementById('dlvScanResults');
+            if (!scanResultsDiv) return;
+
+            let html = `
+        <h3>Scanning Results</h3>
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Updated</h5>
+                        <p class="card-text display-4">${dlvScanResults.updatedCount}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-danger">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Failed</h5>
+                        <p class="card-text display-4">${dlvScanResults.notUpdatedCount}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-secondary">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total</h5>
+                        <p class="card-text display-4">${dlvScanResults.updatedCount + dlvScanResults.notUpdatedCount}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+            const allResults = [...dlvScanResults.successful, ...dlvScanResults.failed];
+            const latest = allResults[allResults.length - 1];
+            if (latest) {
+                const isSuccess = dlvScanResults.successful.includes(latest);
+                html += `
+            <div class="alert ${isSuccess ? 'alert-success' : 'alert-danger'} alert-dismissible fade show">
+                <strong>${isSuccess ? '✅ Success' : '❌ Failed'}:</strong>
+                ${escapeHtml(latest.consignmentID || 'N/A')} - ${escapeHtml(latest.status || 'No result message')}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+            }
+
+            if (dlvScanResults.successful.length > 0) {
+                const recent = dlvScanResults.successful.slice(-10).reverse();
+                html += `
+            <h4 class="text-success">Recently Updated <span class="badge bg-success">Success</span></h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-success table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recent.map(r => `
+                            <tr>
+                                <td><small>${escapeHtml(r.consignmentID || 'N/A')}</small></td>
+                                <td><small>${escapeHtml(r.status || 'Updated')}</small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            if (dlvScanResults.failed.length > 0) {
+                const recent = dlvScanResults.failed.slice(-10).reverse();
+                html += `
+            <h4 class="text-danger">Recent Failures <span class="badge bg-danger">Failed</span></h4>
+            <div class="table-responsive">
+                <table class="table table-danger table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tracking Number</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recent.map(r => `
+                            <tr>
+                                <td><small>${escapeHtml(r.consignmentID || 'N/A')}</small></td>
+                                <td><small>${escapeHtml(r.status || 'Failed')}</small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            scanResultsDiv.innerHTML = html;
+            scanResultsDiv.style.display = 'block';
+        }
+
+        // Mirrors job's switchToActiveUpdateMode(), but for the delivery flow's
+        // own results/scan containers.
+        function switchToDeliveryActiveMode(method) {
+            document.getElementById('initialSection').style.display = 'none';
+            document.getElementById('activeUpdateSection').style.display = 'block';
+            document.getElementById('activeUpdateTitle').textContent = getDeliveryActionTitle();
+
+            document.getElementById('delayedJobsInfo').style.display = 'none';
+            document.getElementById('bulkResults').style.display = 'none';
+            document.getElementById('oneByOneInterface').style.display = 'none';
+            document.getElementById('deliveryResults').style.display = 'none';
+            document.getElementById('dlvOneByOneInterface').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+
+            if (method === 'onebyone') {
+                document.getElementById('dlvOneByOneInterface').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('dlvTrackingNumSingle').focus();
+                }, 300);
+            }
+        }
+
+        // ---- Bulk submit (also used by FGA and by UCDR's Submit button) ----
+        document.getElementById('deliveryForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const statusCode = document.getElementById('actionCode').value;
+            const dangerAction = DLV_DANGER_ZONE_ACTIONS[statusCode];
+            if (dangerAction) {
+                const trackingNumbers = document.getElementById('dlvConsignmentID').value
+                    .split('\n')
+                    .map(v => v.trim())
+                    .filter(Boolean);
+                const preview = trackingNumbers.slice(0, 15).join(', ') +
+                    (trackingNumbers.length > 15 ? `, ... (+${trackingNumbers.length - 15} more)` : '');
+                const confirmed = await showConfirm(
+                    `You are about to ${dangerAction} ${trackingNumbers.length} job(s):\n\n${preview}\n\n` +
+                    `This action cannot be undone. Continue?`,
+                    { title: 'Please Confirm', okText: 'Continue', okClass: 'btn-danger' }
+                );
+                if (!confirmed) return;
+            }
+
+            switchToDeliveryActiveMode('bulk');
+
+            document.getElementById('loading').innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2" id="loadingMessage">Starting processing...</p>
+        <div class="progress mt-3" style="height: 25px;">
+            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width: 0%; font-weight: bold;">0%</div>
+        </div>
+    `;
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const payload = buildDeliveryPayload();
+
+                const res = await fetch('/updateDelivery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const errBody = await res.json().catch(() => ({}));
+                    throw new Error(errBody.error || `HTTP ${res.status}`);
+                }
+
+                const result = await res.json();
+                if (!result.jobId) throw new Error('No job ID received from server');
+
+                const loadingMessageEl = document.getElementById('loadingMessage');
+                if (loadingMessageEl) loadingMessageEl.textContent = `Processing 0 of ${result.total}...`;
+
+                const job = await pollDeliveryJobStatus(result.jobId);
+
+                document.getElementById('loading').style.display = 'none';
+                displayDeliveryResults(job.processingResults);
+
+                if (job.status === 'failed') {
+                    showToast('Update job failed: ' + (job.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error submitting delivery update:', error);
+                document.getElementById('loading').style.display = 'none';
+                showToast('Error starting update job: ' + error.message, 'error');
+            }
+        });
+
+        // ---- One-by-one scanning (new capability for the delivery flow) ----
+        document.getElementById('dlvReadyToScan').addEventListener('click', function () {
+            const form = document.getElementById('deliveryForm');
+            if (!form.reportValidity()) return;
+            switchToDeliveryActiveMode('onebyone');
+        });
+
+        document.getElementById('dlvTrackingNumSingle').addEventListener('change', async function () {
+            const trackingNumber = this.value.trim();
+            if (!trackingNumber) return;
+            this.value = '';
+
+            const statusCode = document.getElementById('actionCode').value;
+
+            const dangerAction = DLV_DANGER_ZONE_ACTIONS[statusCode];
+            if (dangerAction) {
+                const confirmed = await showConfirm(
+                    `You are about to ${dangerAction} job ${trackingNumber}.\n\nThis action cannot be undone. Continue?`,
+                    { title: 'Please Confirm', okText: 'Continue', okClass: 'btn-danger' }
+                );
+                if (!confirmed) {
+                    this.focus();
+                    return;
+                }
+            }
+
+            this.disabled = true;
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.style.display = 'block';
+            loadingDiv.innerHTML = `
+        <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <span class="ms-2">Updating...</span>
+    `;
+
+            try {
+                const payload = buildDeliveryPayload(trackingNumber);
+
+                const res = await fetch('/updateDelivery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const errBody = await res.json().catch(() => ({}));
+                    throw new Error(errBody.error || `HTTP ${res.status}`);
+                }
+
+                const result = await res.json();
+                if (!result.jobId) throw new Error('No job ID received from server');
+
+                const job = await pollDeliveryJobStatus(result.jobId);
+                const r = (job.processingResults && job.processingResults[0]) ||
+                    { consignmentID: trackingNumber, status: job.error || 'No result returned' };
+
+                if (classifyDeliveryResult(r.status) === 'failed') {
+                    dlvScanResults.failed.push(r);
+                    dlvScanResults.notUpdatedCount++;
+                    flashError(this);
+                } else {
+                    dlvScanResults.successful.push(r);
+                    dlvScanResults.updatedCount++;
+                    flashSuccess(this);
+                }
+                updateDeliveryScanResultsDisplay();
+
+            } catch (error) {
+                console.error('Error:', error);
+                dlvScanResults.failed.push({ consignmentID: trackingNumber, status: 'Error: ' + error.message });
+                dlvScanResults.notUpdatedCount++;
+                updateDeliveryScanResultsDisplay();
+                flashError(this);
+            } finally {
+                loadingDiv.style.display = 'none';
+                this.disabled = false;
+                this.focus();
+            }
+        });
+
+        // ---- Reset the job-side form/fields when a delivery (or blank) option is picked ----
+        function resetJobFieldsForNonJobFlow() {
+            document.getElementById('mawbFields').style.display = 'none';
+            document.getElementById('updateMethod').closest('.mb-3').style.display = 'none';
+            document.getElementById('warehouse').required = false;
+            hideAllSections();
+            hideExcelUploadButton();
+        }
+
+        // ---- Reset the delivery-side form/fields when a job (or blank) option is picked ----
+        function resetDeliveryFieldsForNonDeliveryFlow() {
+            document.getElementById('deliveryForm').style.display = 'none';
+            hideAllDeliverySections();
+        }
+
+        // ---- The single dispatcher that replaces both files' own
+        //      #updateCode / #statusCode change listeners ----
+        document.getElementById('actionCode').addEventListener('change', async function () {
+            const selectedOption = this.selectedOptions[0];
+            const flow = selectedOption ? selectedOption.dataset.flow : '';
+            const mode = selectedOption ? selectedOption.dataset.mode : '';
+
+            if (flow !== 'job') {
+                resetJobFieldsForNonJobFlow();
+            }
+            if (flow !== 'delivery') {
+                resetDeliveryFieldsForNonDeliveryFlow();
+            }
+
+            if (flow === 'job') {
+                await handleJobActionChange(this.value);
+            } else if (flow === 'delivery') {
+                document.getElementById('deliveryForm').style.display = 'block';
+                updateDeliveryFieldStatus();
+                applyDeliveryModeUI(this.value, mode);
+            }
+        });
+
+    </script>
+    <script>
+        let inputElement1 = document.getElementById('dlvPhoneNum');
+        var patternMask = IMask(inputElement1, {
+            mask: '{673}0000000',
+        });
+
+        let inputElement2 = document.getElementById('dlvPostalCode');
+        var patternMask = IMask(inputElement2, {
+            mask: '{aa}0000',
+            prepare: function (value, masked) {
+                if (value.length <= 2) {
+                    return value.toUpperCase();
+                }
+                return value;
+            },
+        });
+
+        let inputElement3 = document.getElementById('dlvAwbNum');
+        var patternMask = IMask(inputElement3, {
+            mask: '000{-}00000000',
+        });
     </script>
 </body>
 
