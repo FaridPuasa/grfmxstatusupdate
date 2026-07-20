@@ -194,12 +194,6 @@
             color: white;
         }
 
-        .logo {
-            height: 40px;
-            width: auto;
-            max-height: 40px;
-        }
-
         /* Checkbox column */
         .checkbox-column {
             width: 40px;
@@ -255,12 +249,6 @@
             background: #BC1F2D;
         }
 
-        @media (max-width: 768px) {
-            .logo {
-                height: 30px;
-                max-height: 30px;
-            }
-        }
     </style>
     <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
 </head>
@@ -293,7 +281,7 @@
                             </button>
                         </div>
 
-                        <form action="/generate-user-ids" method="post" onsubmit="return confirm('Generate missing User IDs for all users? This will assign GRxxxxxx format IDs.');">
+                        <form action="/generate-user-ids" method="post" onsubmit="handleGenerateUserIdsSubmit(event)">
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-arrow-repeat"></i> Generate Missing User IDs
                             </button>
@@ -403,9 +391,28 @@
         let dataTable;
         let selectionMode = false;
 
+        // Confirm before generating missing User IDs. The inline onsubmit can no longer
+        // just "return" the result of a confirm() call since showConfirm() is async and a
+        // Promise is always truthy - so we preventDefault up front and submit manually once
+        // the user confirms.
+        async function handleGenerateUserIdsSubmit(event) {
+            event.preventDefault();
+            const ok = await showConfirm('Generate missing User IDs for all users? This will assign GRxxxxxx format IDs.', {
+                title: 'Please Confirm',
+                okText: 'Generate',
+                okClass: 'btn-primary'
+            });
+            if (ok) {
+                event.target.submit();
+            }
+        }
+
         $(document).ready(function() {
             dataTable = $('#userTable').DataTable({
                 pageLength: 10,
+                columnDefs: [
+                    { targets: 0, visible: false, orderable: false, searchable: false }
+                ],
                 language: {
                     search: "Search:",
                     lengthMenu: "Show _MENU_ entries",
@@ -414,81 +421,75 @@
             });
         });
 
+        // All row nodes across every page, not just the currently rendered page
+        function allRows() {
+            return $(dataTable.rows().nodes());
+        }
+
         // Enable selection mode (show checkboxes)
         function enableSelectionMode() {
             selectionMode = true;
-            
-            // Show checkbox column
-            $('#checkboxHeader').show();
-            $('.checkbox-column').show();
-            
+
+            // Use the DataTable column API so visibility is re-applied on every page,
+            // not just the page currently in the DOM
+            dataTable.column(0).visible(true);
+
             // Hide normal print button, show selection buttons
             $('#printButton').hide();
             $('#selectionButtons').show();
-            
-            // Update DataTable column visibility
-            if (dataTable) {
-                dataTable.columns.adjust().draw();
-            }
         }
 
         // Cancel selection mode
         function cancelSelection() {
             selectionMode = false;
-            
-            // Uncheck all checkboxes
-            $('.user-checkbox').prop('checked', false);
+
+            // Uncheck all checkboxes across every page
+            allRows().find('.user-checkbox').prop('checked', false);
             $('#selectAllCheckbox').prop('checked', false);
-            
+
             // Hide checkbox column
-            $('#checkboxHeader').hide();
-            $('.checkbox-column').hide();
-            
+            dataTable.column(0).visible(false);
+
             // Hide selection buttons, show normal print button
             $('#selectionButtons').hide();
             $('#printButton').show();
-            
+
             // Update selected count
             updateSelectedCount();
-            
-            // Update DataTable column visibility
-            if (dataTable) {
-                dataTable.columns.adjust().draw();
-            }
         }
 
-        // Toggle select all checkboxes
+        // Toggle select all checkboxes (across every page)
         function toggleSelectAll() {
             const isChecked = $('#selectAllCheckbox').is(':checked');
-            $('.user-checkbox').prop('checked', isChecked);
+            allRows().find('.user-checkbox').prop('checked', isChecked);
             updateSelectedCount();
         }
 
-        // Update selected count display
+        // Update selected count display (across every page)
         function updateSelectedCount() {
-            const selectedCount = $('.user-checkbox:checked').length;
+            const selectedCount = allRows().find('.user-checkbox:checked').length;
             $('#selectedCount').text(selectedCount);
         }
 
         // Listen for checkbox changes
         $(document).on('change', '.user-checkbox', function() {
             updateSelectedCount();
-            
-            // Update select all checkbox state
-            const totalCheckboxes = $('.user-checkbox').length;
-            const checkedCheckboxes = $('.user-checkbox:checked').length;
+
+            // Update select all checkbox state (across every page)
+            const totalCheckboxes = allRows().find('.user-checkbox').length;
+            const checkedCheckboxes = allRows().find('.user-checkbox:checked').length;
             $('#selectAllCheckbox').prop('checked', checkedCheckboxes === totalCheckboxes);
         });
 
         // Confirm print - get selected users and redirect to print page
         function confirmPrint() {
             const selectedUsers = [];
-            $('.user-checkbox:checked').each(function() {
+            allRows().find('.user-checkbox:checked').each(function() {
                 selectedUsers.push($(this).val());
             });
             
             if (selectedUsers.length === 0) {
-                alert('Please select at least one user to print.');
+                showToast('Please select at least one user to print.', 'warning');
                 return;
             }
             
@@ -496,27 +497,32 @@
             window.location.href = '/print-multiple?users=' + selectedUsers.join(',');
         }
 
-        function deleteUser(identifier) {
-            if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-                fetch(`/deleteUser/${identifier}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error deleting user: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error deleting user');
-                });
-            }
+        async function deleteUser(identifier) {
+            const ok = await showConfirm('Are you sure you want to delete this user? This action cannot be undone.', {
+                title: 'Please Confirm',
+                okText: 'Delete',
+                okClass: 'btn-danger'
+            });
+            if (!ok) return;
+
+            fetch(`/deleteUser/${identifier}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    showToast('Error deleting user: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error deleting user', 'error');
+            });
         }
 
         function showQRCode(qrCodeBase64, userName) {

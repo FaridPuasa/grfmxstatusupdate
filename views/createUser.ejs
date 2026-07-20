@@ -23,22 +23,13 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
         .navbar {
-            background-color: transparent;
             backdrop-filter: blur(10px);
             box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
         }
 
         .container-bg {
             background: linear-gradient(135deg, #2078BE 0%, #BC1F2D 100%);
-        }
-
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
         }
 
         .card {
@@ -159,12 +150,6 @@
             margin-top: 10px;
         }
 
-        .logo {
-            height: 40px;
-            width: auto;
-            max-height: 40px;
-        }
-
         /* Cropper Modal Styles */
         .cropper-modal {
             display: none;
@@ -217,12 +202,6 @@
             color: white;
         }
 
-        @media (max-width: 768px) {
-            .logo {
-                height: 30px;
-                max-height: 30px;
-            }
-        }
     </style>
     <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
 </head>
@@ -256,21 +235,22 @@
                                     aria-label="Close"></button>
                             </div>
                             <% } %>
+                                <% const fd = (typeof formData !=='undefined' && formData) ? formData : {} %>
 
                                 <form action="/createUser" method="post" id="userForm">
                                     <div class="form-group">
                                         <label class="form-label">Role <span class="text-danger">*</span></label>
                                         <select name="role" id="role" class="form-select" required>
                                             <option value="">Select Role</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="supervisor">Supervisor</option>
-                                            <option value="manager">Manager</option>
-                                            <option value="cs">CS</option>
-                                            <option value="warehouse">Warehouse</option>
-                                            <option value="finance">Finance</option>
-                                            <option value="moh">MOH</option>
-                                            <option value="dispatcher">Dispatcher</option>
-                                            <option value="freelancer">Freelancer</option>
+                                            <option value="admin" <%=fd.role==='admin' ? 'selected' : '' %>>Admin</option>
+                                            <option value="supervisor" <%=fd.role==='supervisor' ? 'selected' : '' %>>Supervisor</option>
+                                            <option value="manager" <%=fd.role==='manager' ? 'selected' : '' %>>Manager</option>
+                                            <option value="cs" <%=fd.role==='cs' ? 'selected' : '' %>>CS</option>
+                                            <option value="warehouse" <%=fd.role==='warehouse' ? 'selected' : '' %>>Warehouse</option>
+                                            <option value="finance" <%=fd.role==='finance' ? 'selected' : '' %>>Finance</option>
+                                            <option value="moh" <%=fd.role==='moh' ? 'selected' : '' %>>MOH</option>
+                                            <option value="dispatcher" <%=fd.role==='dispatcher' ? 'selected' : '' %>>Dispatcher</option>
+                                            <option value="freelancer" <%=fd.role==='freelancer' ? 'selected' : '' %>>Freelancer</option>
                                         </select>
                                     </div>
 
@@ -278,21 +258,21 @@
                                         <div class="form-group">
                                             <label class="form-label">Full Name</label>
                                             <input type="text" name="fullName" class="form-control"
-                                                placeholder="Enter full name">
+                                                value="<%= fd.fullName || '' %>" placeholder="Enter full name">
                                         </div>
 
                                         <div class="form-group">
                                             <label class="form-label">Nickname <span
                                                     class="text-danger">*</span></label>
                                             <input type="text" name="name" class="form-control" required
-                                                placeholder="Enter nickname">
+                                                value="<%= fd.name || '' %>" placeholder="Enter nickname">
                                         </div>
 
                                         <div class="form-group">
                                             <label class="form-label">Email <span class="text-danger"
                                                     id="emailRequired">*</span></label>
                                             <input type="email" name="email" class="form-control" id="email"
-                                                placeholder="Enter email address">
+                                                value="<%= fd.email || '' %>" placeholder="Enter email address">
                                             <small class="text-muted" id="emailHint" style="display: none;">Email is
                                                 optional for Freelancer/Dispatcher roles</small>
                                         </div>
@@ -309,17 +289,16 @@
                                         <div class="form-group">
                                             <label class="form-label">IC No</label>
                                             <input type="text" name="icNum" class="form-control"
-                                                placeholder="Enter IC number">
+                                                value="<%= fd.icNum || '' %>" placeholder="Enter IC number">
                                         </div>
 
-                                        <!-- NEW COMPANY FIELD -->
                                         <div class="form-group">
                                             <label class="form-label">Company</label>
                                             <select name="company" class="form-select">
-                                                <option value="Gorush">Go Rush</option>
-                                                <option value="Globex">Globex</option>
-                                                <option value="Rbskyshop">RBSkyshop</option>
-                                                <option value="Others">Others</option>
+                                                <option value="Gorush" <%=fd.company==='Gorush' ? 'selected' : '' %>>Go Rush</option>
+                                                <option value="Globex" <%=fd.company==='Globex' ? 'selected' : '' %>>Globex</option>
+                                                <option value="Rbskyshop" <%=fd.company==='Rbskyshop' ? 'selected' : '' %>>RBSkyshop</option>
+                                                <option value="Others" <%=fd.company==='Others' ? 'selected' : '' %>>Others</option>
                                             </select>
                                             <small class="text-muted">Select the company this user belongs to
                                                 (optional)</small>
@@ -329,14 +308,14 @@
                                             <label class="form-label">Job Position <span
                                                     class="text-danger">*</span></label>
                                             <input type="text" name="jobPosition" class="form-control" required
-                                                placeholder="Enter job position">
+                                                value="<%= fd.jobPosition || '' %>" placeholder="Enter job position">
                                         </div>
 
                                         <div class="form-group">
                                             <label class="form-label">Status <span class="text-danger">*</span></label>
                                             <select name="status" class="form-select" required>
-                                                <option value="Active">Active</option>
-                                                <option value="Inactive">Inactive</option>
+                                                <option value="Active" <%=fd.status==='Active' || !fd.status ? 'selected' : '' %>>Active</option>
+                                                <option value="Inactive" <%=fd.status==='Inactive' ? 'selected' : '' %>>Inactive</option>
                                             </select>
                                         </div>
 

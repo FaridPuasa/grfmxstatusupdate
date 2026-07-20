@@ -218,7 +218,7 @@
                     <div class="col-md-3">
                         <div class="card text-white bg-warning">
                             <div class="card-body text-center">
-                                <h5 class="card-title">Queued (5 min)</h5>
+                                <h5 class="card-title">Queued (30 min)</h5>
                                 <p class="card-text display-4" id="delayedCount">0</p>
                             </div>
                         </div>
@@ -929,7 +929,7 @@
             const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
 
             if (updateCode === 'IIW' && !warehouse) {
-                alert('Please select a warehouse location');
+                showToast('Please select a warehouse location', 'warning');
                 return;
             }
 
@@ -962,7 +962,8 @@
                         'MAWB-required products (PDU, MGLOBAL, EWE, GDEX, GDEXT) will be rejected.\n' +
                         'Continue anyway?';
 
-                    if (!confirm(warnMessage)) {
+                    const proceedWithoutMAWB = await showConfirm(warnMessage, { okText: 'Continue', okClass: 'btn-warning' });
+                    if (!proceedWithoutMAWB) {
                         return;
                     }
                 }
@@ -985,7 +986,7 @@
                 const mawbNum = mawbSelect ? mawbSelect.value.trim() : '';
 
                 if (!mawbNum) {
-                    alert('Please select a MAWB Number first');
+                    showToast('Please select a MAWB Number first', 'warning');
                     this.focus();
                     return;
                 }
@@ -1018,17 +1019,22 @@
 
                     const result = await response.json();
 
-                    if (result.success) {
+                    if (result.successful && result.successful.length > 0) {
                         scanResults.successful.push({
                             trackingNumber: trackingNumber,
-                            result: `Manifest seal scanned successfully for MAWB ${mawbNum}`
+                            result: result.successful[0].message || `Manifest seal scanned successfully for MAWB ${mawbNum}`
                         });
                         scanResults.updatedCount++;
                         flashSuccess(this);
+                    } else if (result.duplicate && result.duplicate.length > 0) {
+                        scanResults.duplicateCount = (scanResults.duplicateCount || 0) + 1;
+                        showScanAlert(`⚠️ Duplicate manifest seal: ${trackingNumber} (already scanned)`, 'info');
+                        flashWarning(this);
                     } else {
+                        const failMessage = (result.failed && result.failed[0] && result.failed[0].message) || result.message || 'Failed to scan manifest seal';
                         scanResults.failed.push({
                             trackingNumber: trackingNumber,
-                            result: result.message || 'Failed to scan manifest seal'
+                            result: failMessage
                         });
                         scanResults.notUpdatedCount++;
                         flashError(this);
@@ -1093,20 +1099,20 @@
 
             // Validation for different update codes
             if (updateCode === 'UAN' && !mawbNum) {
-                alert('Please enter MAWB Number');
+                showToast('Please enter MAWB Number', 'warning');
                 this.focus();
                 return;
             }
 
             if (updateCode === 'IIW' && !warehouse) {
-                alert('Please select a warehouse location');
+                showToast('Please select a warehouse location', 'warning');
                 this.focus();
                 return;
             }
 
             // FOQJ validation - only need warehouse
             if (updateCode === 'FOQJ' && !warehouse) {
-                alert('Please select a warehouse location');
+                showToast('Please select a warehouse location', 'warning');
                 this.focus();
                 return;
             }
@@ -1415,12 +1421,12 @@
                 console.log('SBR Form Submit - MAWB:', mawbNum, 'Method:', updateMethod);
 
                 if (!mawbNum) {
-                    alert('Please select a MAWB Number');
+                    showToast('Please select a MAWB Number', 'warning');
                     return;
                 }
 
                 if (!updateMethod) {
-                    alert('Please select an update method (Bulk or One by One)');
+                    showToast('Please select an update method (Bulk or One by One)', 'warning');
                     return;
                 }
 
@@ -1431,7 +1437,7 @@
                     manifestSeals = trackingNumBulk.split('\n').map(num => num.trim()).filter(num => num !== '');
 
                     if (manifestSeals.length === 0) {
-                        alert('Please enter manifest seal numbers (one per line)');
+                        showToast('Please enter manifest seal numbers (one per line)', 'warning');
                         return;
                     }
 
@@ -1477,7 +1483,7 @@
                     } catch (error) {
                         console.error('Error:', error);
                         document.getElementById('loading').style.display = 'none';
-                        alert('An error occurred: ' + error.message);
+                        showToast('An error occurred: ' + error.message, 'error');
                     }
 
                 } else if (updateMethod === 'onebyone') {
@@ -1494,14 +1500,14 @@
                 // GDEX Hold requires update method selection
                 const updateMethod = document.getElementById('updateMethod').value;
                 if (!updateMethod) {
-                    alert('Please select an update method for GDEX Hold');
+                    showToast('Please select an update method for GDEX Hold', 'warning');
                     return;
                 }
             }
 
             // ========== ADD THIS CHECK FOR UAN ==========
             if (updateCode === 'UAN') {
-                alert('Please use the "Upload Excel/CSV File" button for UAN updates');
+                showToast('Please use the "Upload Excel/CSV File" button for UAN updates', 'warning');
                 return;
             }
             // ========== END OF UAN CHECK ==========
@@ -1532,7 +1538,7 @@
 
             // Check if tracking numbers are entered
             if (trackingNumbers.length === 0 && updateMethod === 'bulk') {
-                alert('Please enter tracking numbers');
+                showToast('Please enter tracking numbers', 'warning');
                 return;
             }
 
@@ -1544,10 +1550,11 @@
 
                 // Validate that we're not scanning more than unscanned jobs
                 if (trackingNumbers.length > unscannedJobs) {
-                    const proceed = confirm(
+                    const proceed = await showConfirm(
                         `Warning: You are trying to scan ${trackingNumbers.length} parcels, ` +
                         `but only ${unscannedJobs} are unscanned for MAWB ${mawbNum}.\n\n` +
-                        `Do you want to continue? Some scans may fail if jobs are already scanned.`
+                        `Do you want to continue? Some scans may fail if jobs are already scanned.`,
+                        { okText: 'Continue', okClass: 'btn-warning' }
                     );
 
                     if (!proceed) {
@@ -1573,12 +1580,12 @@
             // Validation for different update codes
             if (updateCode === 'UMN') {
                 if (!mawbNum || mawbNum === '') {
-                    alert('Please enter MAWB Number');
+                    showToast('Please enter MAWB Number', 'warning');
                     return;
                 }
             } else if (updateCode === 'IIW') {
                 if (!warehouse) {
-                    alert('Please select a warehouse location');
+                    showToast('Please select a warehouse location', 'warning');
                     return;
                 }
             }
@@ -1594,38 +1601,6 @@
                 processNormalBatch(trackingNumbers, updateCode, mawbNum, warehouse, updateMethod);
             }
         });
-
-        // Show MAWB stats for bulk processing
-        function showMAWBStatsForBulk(stats, enteredCount) {
-            const statsHtml = `
-        <div class="alert alert-info mb-3">
-            <h5><i class="bi bi-boxes"></i> MAWB Group: ${stats.mawbNum}</h5>
-            <div class="row">
-                <div class="col-md-4">
-                    <p><strong>Total Jobs in MAWB:</strong> ${stats.totalJobs}</p>
-                    <p><strong>Entered for Processing:</strong> ${enteredCount}</p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Already Scanned:</strong> ${stats.scannedJobs} <span class="badge bg-success">At Warehouse</span></p>
-                    <p><strong>Will Be Scanned:</strong> ${stats.unscannedJobs} <span class="badge bg-warning">To Be Updated</span></p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Already at Warehouse:</strong> ${stats.scannedJobs} jobs</p>
-                    <p><strong>Will be updated:</strong> Up to ${Math.min(stats.unscannedJobs, enteredCount)} jobs</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-            // Insert at the beginning of the active update section
-            const activeSection = document.getElementById('activeUpdateSection');
-            if (activeSection) {
-                const loadingDiv = document.getElementById('loading');
-                if (loadingDiv) {
-                    loadingDiv.insertAdjacentHTML('beforebegin', statsHtml);
-                }
-            }
-        }
 
         function displayBulkResults(result) {
             // ========== ADD SAFETY CHECK AT THE BEGINNING ==========
@@ -1703,7 +1678,7 @@
             if (result.successful && result.successful.length > 0) {
                 const successTable = document.createElement('div');
                 successTable.innerHTML = `
-            <h4 class="text-success mt-4">Successfully Processed Jobs (${result.successful.length})</h4>
+            <h4 class="text-success mt-4">Successfully Processed Jobs (${result.successful.length}) <span class="badge bg-success">Success</span></h4>
             <div class="table-responsive">
                 <table class="table table-success table-striped">
                     <thead>
@@ -1712,7 +1687,6 @@
                             <th>Type</th>
                             <th>MAWB</th>
                             <th>Result</th>
-                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1732,7 +1706,6 @@
                                     </td>
                                     <td>${mawb}</td>
                                     <td>${message}</td>
-                                    <td><span class="badge bg-success">Success</span></td>
                                 </tr>
                             `;
                 }).join('')}
@@ -1748,7 +1721,7 @@
             if (result.duplicate && result.duplicate.length > 0) {
                 const duplicateTable = document.createElement('div');
                 duplicateTable.innerHTML = `
-            <h4 class="text-info mt-4">Duplicate Jobs (Ignored) (${result.duplicate.length})</h4>
+            <h4 class="text-info mt-4">Duplicate Jobs (Ignored) (${result.duplicate.length}) <span class="badge bg-info">Ignored</span></h4>
             <div class="alert alert-info">
                 <i class="bi bi-info-circle-fill"></i> Duplicate tracking numbers were ignored and not processed again.
             </div>
@@ -1758,7 +1731,6 @@
                         <tr>
                             <th>Tracking Number</th>
                             <th>Duplicate Count</th>
-                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1769,7 +1741,6 @@
                                 <tr>
                                     <td>${tracking}</td>
                                     <td>${count}</td>
-                                    <td><span class="badge bg-info">Ignored</span></td>
                                 </tr>
                             `;
                 }).join('')}
@@ -1785,10 +1756,12 @@
             // Update delayed table in displayBulkResults
             if (result.delayed && result.delayed.length > 0) {
                 const delayedTable = document.createElement('div');
+                const commonScheduled = commonValue(result.delayed, item => item.scheduledTime || '30 minutes delay');
                 delayedTable.innerHTML = `
-            <h4 class="text-warning mt-4">Delayed Jobs (5-minute wait for testing) (${result.delayed.length})</h4>
+            <h4 class="text-warning mt-4">Delayed Jobs (30-minute wait) (${result.delayed.length}) <span class="badge bg-warning">Scheduled</span></h4>
             <div class="alert alert-warning">
-                <strong>Note:</strong> These jobs have received immediate Detrack updates and will automatically update to "At Warehouse" and "In Sorting Area" after 5 minutes (testing mode).
+                <strong>Note:</strong> These jobs have received immediate Detrack updates and will automatically update to "At Warehouse" and "In Sorting Area" after 30 minutes.
+                ${commonScheduled ? `<br><strong>Scheduled update time:</strong> ${escapeHtml(commonScheduled)}` : ''}
             </div>
             <div class="table-responsive">
                 <table class="table table-warning table-striped">
@@ -1797,8 +1770,7 @@
                             <th>Tracking Number</th>
                             <th>Product</th>
                             <th>Immediate Updates Applied</th>
-                            <th>Scheduled Time</th>
-                            <th>Status</th>
+                            ${commonScheduled ? '' : '<th>Scheduled Time</th>'}
                         </tr>
                     </thead>
                     <tbody id="delayedTableBody">
@@ -1807,8 +1779,7 @@
                                 <td>${item.trackingNumber || 'N/A'}</td>
                                 <td>${item.product || 'Unknown'}</td>
                                 <td>${item.delayedInfo?.immediateUpdates?.join(', ') || 'None'}</td>
-                                <td>${item.scheduledTime || '5 minutes delay for testing'}</td>
-                                <td><span class="badge bg-warning">Scheduled</span></td>
+                                ${commonScheduled ? '' : `<td>${item.scheduledTime || '30 minutes delay'}</td>`}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1823,14 +1794,13 @@
             if (result.failed && result.failed.length > 0) {
                 const failedTable = document.createElement('div');
                 failedTable.innerHTML = `
-            <h4 class="text-danger mt-4">Failed Jobs (${result.failed.length})</h4>
+            <h4 class="text-danger mt-4">Failed Jobs (${result.failed.length}) <span class="badge bg-danger">Failed</span></h4>
             <div class="table-responsive">
                 <table class="table table-danger table-striped">
                     <thead>
                         <tr>
                             <th>Tracking Number</th>
                             <th>Result</th>
-                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="failedTableBody">
@@ -1838,7 +1808,6 @@
                             <tr>
                                 <td>${item.trackingNumber || 'N/A'}</td>
                                 <td>${item.result || 'Failed'}</td>
-                                <td><span class="badge bg-danger">Failed</span></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1870,11 +1839,11 @@
                     </thead>
                     <tbody>
                         ${result.groupedByCustomer.map((group, index) => `
-                            <tr>
+                            <tr class="${group.count > 1 ? 'table-warning' : ''}">
                                 <td>${index + 1}</td>
-                                <td><strong>${group.customerName || 'N/A'}</strong></td>
+                                <td><strong>${group.customerName || 'N/A'}</strong>${group.count > 1 ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="Multiple parcels for this customer"></i>' : ''}</td>
                                 <td><span class="badge bg-secondary">${group.area || 'N/A'}</span></td>
-                                <td><span class="badge bg-primary">${group.count}</span></td>
+                                <td><span class="badge ${group.count > 1 ? 'bg-danger' : 'bg-primary'}">${group.count}</span></td>
                                 <td>
                                     <small>
                                         ${group.trackingNumbers.slice(0, 3).map(tn =>
@@ -2115,7 +2084,7 @@
                 displayBulkResults(chunkedResults);
 
                 setTimeout(() => {
-                    alert(`✅ Large batch processing completed!\n\nSuccessfully updated: ${chunkedResults.updatedCount}\nFailed: ${chunkedResults.notUpdatedCount}\nProcessed in ${chunks.length} chunks`);
+                    showToast(`✅ Large batch processing completed!\n\nSuccessfully updated: ${chunkedResults.updatedCount}\nFailed: ${chunkedResults.notUpdatedCount}\nProcessed in ${chunks.length} chunks`, 'success');
                 }, 500);
             }
 
@@ -2203,7 +2172,7 @@
         function cancelChunkedProcessing() {
             if (window.chunkedProcessing) {
                 window.chunkedProcessing.isCancelled = true;
-                alert('Processing cancelled. Partial results will be shown.');
+                showToast('Processing cancelled. Partial results will be shown.', 'info');
 
                 // Show partial results
                 setTimeout(() => {
@@ -2286,7 +2255,7 @@
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('loading').style.display = 'none';
-                alert('An error occurred while starting the job: ' + error.message);
+                showToast('An error occurred while starting the job: ' + error.message, 'error');
             }
         }
 
@@ -2437,13 +2406,13 @@
                         setTimeout(() => {
                             const updatedCount = jobStatus ? (jobStatus.updatedCount || 0) : 0;
                             const failedCount = jobStatus ? (jobStatus.failedCount || 0) : 0;
-                            alert(`✅ Processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${updatedCount}\nFailed: ${failedCount}`);
+                            showToast(`✅ Processing completed in ${totalSeconds} seconds!\n\nSuccessfully updated: ${updatedCount}\nFailed: ${failedCount}`, 'success');
                         }, 500);
                     } else if (jobStatus.status === 'failed') {
                         clearInterval(pollInterval);
                         const loading = document.getElementById('loading');
                         if (loading) loading.style.display = 'none';
-                        alert('❌ Excel processing failed: ' + (jobStatus.error || 'Unknown error'));
+                        showToast('❌ Excel processing failed: ' + (jobStatus.error || 'Unknown error'), 'error');
                     }
 
                 } catch (error) {
@@ -2459,7 +2428,7 @@
                         clearInterval(pollInterval);
                         const loading = document.getElementById('loading');
                         if (loading) loading.style.display = 'none';
-                        alert('❌ Connection error. Please check the results manually.');
+                        showToast('❌ Connection error. Please check the results manually.', 'error');
                     }
                 }
             }, 2000);
@@ -2696,7 +2665,7 @@
                             product: value.delayedInfo?.product,
                             scheduledTime: value.delayedInfo?.scheduledTime,
                             currentStatus: value.delayedInfo?.currentStatus,
-                            status: "Queued (5 min)"
+                            status: "Queued (30 min)"
                         });
                         results.delayedCount++;
                     } else if (value.success) {
@@ -2800,12 +2769,13 @@
                 cancelButton.className = 'btn btn-warning me-2';
                 cancelButton.textContent = 'Cancel Job';
                 cancelButton.onclick = async () => {
-                    if (confirm('Are you sure you want to cancel this job?')) {
+                    const confirmed = await showConfirm('Are you sure you want to cancel this job?', { okText: 'Cancel Job', okClass: 'btn-danger' });
+                    if (confirmed) {
                         clearInterval(pollInterval);
                         pollInterval = null;
                         currentJobId = null;
                         document.getElementById('loading').style.display = 'none';
-                        alert('Job cancelled');
+                        showToast('Job cancelled', 'success');
                     }
                 };
 
@@ -2822,7 +2792,7 @@
             const mawbNum = mawbInput ? mawbInput.value.trim() : '';
 
             if (!mawbNum) {
-                alert('Please enter MAWB Number first');
+                showToast('Please enter MAWB Number first', 'warning');
                 return;
             }
 
@@ -2909,12 +2879,12 @@
             const file = fileInput.files[0];
 
             if (!file) {
-                alert('Please select a file');
+                showToast('Please select a file', 'warning');
                 return;
             }
 
             if (!mawbNum || mawbNum.trim() === '') {
-                alert('MAWB Number is required');
+                showToast('MAWB Number is required', 'warning');
                 return;
             }
 
@@ -3009,7 +2979,7 @@
                 uploadProgressBar.textContent = 'Error';
 
                 // Show detailed error to user
-                alert(`Upload failed:\n\n${error.message}\n\nCheck console for details.`);
+                showToast(`Upload failed:\n\n${error.message}\n\nCheck console for details.`, 'error');
             }
         }
 
@@ -3036,7 +3006,7 @@
 
             } catch (error) {
                 console.error(`❌ Error generating ${format} template:`, error);
-                alert(`Error generating template: ${error.message}\n\nTry the CSV template instead.`);
+                showToast(`Error generating template: ${error.message}\n\nTry the CSV template instead.`, 'error');
             }
         }
 
@@ -3378,7 +3348,7 @@ EXAMPLE004\tBE9012\t
                 }
             } catch (error) {
                 console.error(`❌ Error generating ${format} template:`, error);
-                alert(`Error generating template: ${error.message}`);
+                showToast(`Error generating template: ${error.message}`, 'error');
             }
         }
 
@@ -3430,7 +3400,7 @@ EXAMPLE004\t\t
             const file = fileInput.files[0];
 
             if (!file) {
-                alert('Please select a file');
+                showToast('Please select a file', 'warning');
                 return;
             }
 
@@ -3517,7 +3487,7 @@ EXAMPLE004\t\t
                 uploadStatus.textContent = `Error: ${error.message}`;
                 uploadProgressBar.className = 'progress-bar progress-bar-striped bg-danger';
                 uploadProgressBar.textContent = 'Error';
-                alert(`Upload failed:\n\n${error.message}\n\nCheck console for details.`);
+                showToast(`Upload failed:\n\n${error.message}\n\nCheck console for details.`, 'error');
             }
         }
 
@@ -3579,10 +3549,12 @@ EXAMPLE004\t\t
             // ==================================================
             if (result.duplicate && result.duplicate.length > 0) {
                 const duplicateTable = document.createElement('div');
+                const duplicateCommonMessage = commonValue(result.duplicate, item => item.message || 'Already scanned');
                 duplicateTable.innerHTML = `
-            <h4 class="text-info mt-4">Duplicate Seals (${result.duplicate.length})</h4>
+            <h4 class="text-info mt-4">Duplicate Seals (${result.duplicate.length}) <span class="badge bg-info">Duplicate</span></h4>
             <div class="alert alert-info">
                 <i class="bi bi-info-circle-fill"></i> These manifest seals were already scanned in the GDEX system.
+                ${duplicateCommonMessage ? `<br>${escapeHtml(duplicateCommonMessage)}` : ''}
             </div>
             <div class="table-responsive">
                 <table class="table table-info table-striped">
@@ -3590,8 +3562,7 @@ EXAMPLE004\t\t
                         <tr>
                             <th>#</th>
                             <th>Manifest Seal Number</th>
-                            <th>Status</th>
-                            <th>Message</th>
+                            ${duplicateCommonMessage ? '' : '<th>Message</th>'}
                         </tr>
                     </thead>
                     <tbody>
@@ -3599,8 +3570,7 @@ EXAMPLE004\t\t
                             <tr>
                                 <td>${index + 1}</td>
                                 <td><code>${escapeHtml(item.sealNumber)}</code></td>
-                                <td><span class="badge bg-info">Duplicate</span></td>
-                                <td>${escapeHtml(item.message || 'Already scanned')}</td>
+                                ${duplicateCommonMessage ? '' : `<td>${escapeHtml(item.message || 'Already scanned')}</td>`}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3616,16 +3586,17 @@ EXAMPLE004\t\t
             // ==================================================
             if (result.successful && result.successful.length > 0) {
                 const successTable = document.createElement('div');
+                const successCommonMessage = commonValue(result.successful, item => item.message || 'Scanned successfully');
                 successTable.innerHTML = `
-            <h4 class="text-success mt-4">Successfully Scanned (${result.successful.length})</h4>
+            <h4 class="text-success mt-4">Successfully Scanned (${result.successful.length}) <span class="badge bg-success">Success</span></h4>
+            ${successCommonMessage ? `<div class="alert alert-success py-2">${escapeHtml(successCommonMessage)}</div>` : ''}
             <div class="table-responsive">
                 <table class="table table-success table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Manifest Seal Number</th>
-                            <th>Status</th>
-                            <th>Message</th>
+                            ${successCommonMessage ? '' : '<th>Message</th>'}
                         </tr>
                     </thead>
                     <tbody>
@@ -3633,8 +3604,7 @@ EXAMPLE004\t\t
                             <tr>
                                 <td>${index + 1}</td>
                                 <td><code>${escapeHtml(item.sealNumber)}</code></td>
-                                <td><span class="badge bg-success">Success</span></td>
-                                <td>${escapeHtml(item.message || 'Scanned successfully')}</td>
+                                ${successCommonMessage ? '' : `<td>${escapeHtml(item.message || 'Scanned successfully')}</td>`}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3651,14 +3621,13 @@ EXAMPLE004\t\t
             if (result.failed && result.failed.length > 0) {
                 const failedTable = document.createElement('div');
                 failedTable.innerHTML = `
-            <h4 class="text-danger mt-4">Failed Scans (${result.failed.length})</h4>
+            <h4 class="text-danger mt-4">Failed Scans (${result.failed.length}) <span class="badge bg-danger">Failed</span></h4>
             <div class="table-responsive">
                 <table class="table table-danger table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Manifest Seal Number</th>
-                            <th>Status</th>
                             <th>Error Message</th>
                         </tr>
                     </thead>
@@ -3667,7 +3636,6 @@ EXAMPLE004\t\t
                             <tr>
                                 <td>${index + 1}</td>
                                 <td><code>${escapeHtml(item.sealNumber)}</code></td>
-                                <td><span class="badge bg-danger">Failed</span></td>
                                 <td>${escapeHtml(item.message || 'Unknown error')}</td>
                             </tr>
                         `).join('')}
@@ -3749,6 +3717,15 @@ EXAMPLE004\t\t
                 .replace(/\n/g, '<br>');
         }
 
+        // If every item shares the same value for a field, return that value so callers
+        // can show it once above a table instead of repeating it in every row. Returns
+        // null if the value varies (or the list is empty), meaning the column is still needed.
+        function commonValue(items, getter) {
+            if (!items || items.length === 0) return null;
+            const first = getter(items[0]);
+            return items.every(item => getter(item) === first) ? first : null;
+        }
+
         // ==================================================
         // 📊 UPDATE BULK STYLE RESULTS (for one-by-one SBR)
         // ==================================================
@@ -3770,7 +3747,7 @@ EXAMPLE004\t\t
                     failedCountElem.textContent = scanResults.notUpdatedCount || 0;
                 }
                 if (totalCountElem) {
-                    const total = (scanResults.updatedCount || 0) + (scanResults.notUpdatedCount || 0) + (scanResults.duplicateCount || 0);
+                    const total = (scanResults.updatedCount || 0) + (scanResults.notUpdatedCount || 0) + (scanResults.duplicateCount || 0) + (scanResults.delayedCount || 0);
                     totalCountElem.textContent = total;
                 }
                 if (duplicateCountElem) {
@@ -3780,6 +3757,33 @@ EXAMPLE004\t\t
                     delayedCountElem.textContent = scanResults.delayedCount || 0;
                 }
             }
+        }
+
+        // Groups IIW scan results by customer name + area, so parcels for the same
+        // customer are easy to spot and sort together while scanning one by one.
+        // Mirrors groupIIWResultsByCustomer() server-side (used for bulk IIW).
+        function groupScanResultsByCustomer(items) {
+            const grouped = {};
+
+            items.forEach(item => {
+                if (item.customerName && item.area) {
+                    const key = `${item.customerName}|${item.area}`;
+
+                    if (!grouped[key]) {
+                        grouped[key] = {
+                            customerName: item.customerName,
+                            area: item.area,
+                            trackingNumbers: [],
+                            count: 0
+                        };
+                    }
+
+                    grouped[key].trackingNumbers.push(item.trackingNumber);
+                    grouped[key].count++;
+                }
+            });
+
+            return Object.values(grouped).sort((a, b) => b.count - a.count);
         }
 
         // ==================================================
@@ -3855,25 +3859,62 @@ EXAMPLE004\t\t
 
                 html += `
             <div class="alert ${alertClass} alert-dismissible fade show">
-                <strong>${icon} ${status}:</strong> 
+                <strong>${icon} ${status}:</strong>
                 ${escapeHtml(latestResult.trackingNumber || latestResult.sealNumber || 'N/A')} - ${escapeHtml(latestResult.result || latestResult.message || 'No result message')}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `;
             }
 
+            // For IIW, group scanned parcels by customer so multiple parcels for the
+            // same customer/area are easy to spot and sort while still scanning.
+            const currentUpdateCodeEl = document.getElementById('updateCode');
+            if (currentUpdateCodeEl && currentUpdateCodeEl.value === 'IIW') {
+                const groupedByCustomer = groupScanResultsByCustomer([
+                    ...(scanResults.successful || []),
+                    ...(scanResults.delayed || [])
+                ]);
+
+                if (groupedByCustomer.length > 0) {
+                    html += `
+            <h4 class="text-info mt-3">Grouped by Customer (${groupedByCustomer.length})</h4>
+            <div class="table-responsive mb-3">
+                <table class="table table-info table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Customer Name</th>
+                            <th>Area</th>
+                            <th>Parcel Count</th>
+                            <th>Tracking Numbers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${groupedByCustomer.map(group => `
+                            <tr class="${group.count > 1 ? 'table-warning' : ''}">
+                                <td><strong>${escapeHtml(group.customerName)}</strong>${group.count > 1 ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="Multiple parcels for this customer"></i>' : ''}</td>
+                                <td><span class="badge bg-secondary">${escapeHtml(group.area)}</span></td>
+                                <td><span class="badge ${group.count > 1 ? 'bg-danger' : 'bg-primary'}">${group.count}</span></td>
+                                <td><small>${group.trackingNumbers.map(tn => escapeHtml(tn)).join(', ')}</small></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+                }
+            }
+
             // Add successful jobs table if any
             if (scanResults.successful && scanResults.successful.length > 0) {
                 const recentSuccessful = scanResults.successful.slice(-10).reverse();
                 html += `
-            <h4 class="text-success">Recently Updated</h4>
+            <h4 class="text-success">Recently Updated <span class="badge bg-success">Success</span></h4>
             <div class="table-responsive mb-3">
                 <table class="table table-success table-striped table-sm">
                     <thead>
                         <tr>
                             <th>Tracking/Seal Number</th>
                             <th>Result</th>
-                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -3881,7 +3922,6 @@ EXAMPLE004\t\t
                             <tr>
                                 <td><small>${escapeHtml(item.trackingNumber || item.sealNumber || 'N/A')}</small></td>
                                 <td><small>${escapeHtml(item.result || item.message || 'Updated')}</small></td>
-                                <td><small><span class="badge bg-success">Success</span></small></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3903,23 +3943,23 @@ EXAMPLE004\t\t
             // Add delayed jobs table if any
             if (scanResults.delayed && scanResults.delayed.length > 0) {
                 const recentDelayed = scanResults.delayed.slice(-10).reverse();
+                const recentDelayedCommonScheduled = commonValue(recentDelayed, item => item.scheduledTime || '30 mins delay');
                 html += `
-            <h4 class="text-warning">Recently Delayed</h4>
+            <h4 class="text-warning">Recently Delayed <span class="badge bg-warning">Scheduled</span></h4>
+            ${recentDelayedCommonScheduled ? `<div class="alert alert-warning py-2"><strong>Scheduled update time:</strong> ${escapeHtml(recentDelayedCommonScheduled)}</div>` : ''}
             <div class="table-responsive mb-3">
                 <table class="table table-warning table-striped table-sm">
                     <thead>
                         <tr>
                             <th>Tracking Number</th>
-                            <th>Scheduled Time</th>
-                            <th>Status</th>
+                            ${recentDelayedCommonScheduled ? '' : '<th>Scheduled Time</th>'}
                         </tr>
                     </thead>
                     <tbody>
                         ${recentDelayed.map(item => `
                             <tr>
                                 <td><small>${escapeHtml(item.trackingNumber || 'N/A')}</small></td>
-                                <td><small>${escapeHtml(item.scheduledTime || '30 mins delay')}</small></td>
-                                <td><small><span class="badge bg-warning">Scheduled</span></small></td>
+                                ${recentDelayedCommonScheduled ? '' : `<td><small>${escapeHtml(item.scheduledTime || '30 mins delay')}</small></td>`}
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3932,14 +3972,13 @@ EXAMPLE004\t\t
             if (scanResults.failed && scanResults.failed.length > 0) {
                 const recentFailed = scanResults.failed.slice(-10).reverse();
                 html += `
-            <h4 class="text-danger">Recent Failures</h4>
+            <h4 class="text-danger">Recent Failures <span class="badge bg-danger">Failed</span></h4>
             <div class="table-responsive">
                 <table class="table table-danger table-striped table-sm">
                     <thead>
                         <tr>
                             <th>Tracking/Seal Number</th>
                             <th>Result</th>
-                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -3947,7 +3986,6 @@ EXAMPLE004\t\t
                             <tr>
                                 <td><small>${escapeHtml(item.trackingNumber || item.sealNumber || 'N/A')}</small></td>
                                 <td><small>${escapeHtml(item.result || item.message || 'Failed')}</small></td>
-                                <td><small><span class="badge bg-danger">Failed</span></small></td>
                             </tr>
                         `).join('')}
                     </tbody>

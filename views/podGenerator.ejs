@@ -15,42 +15,6 @@
       box-sizing: border-box;
     }
 
-    .navbar-nav.flex-row {
-      flex-direction: row !important;
-    }
-
-    .navbar {
-      background-color: transparent;
-    }
-
-    .container-bg {
-      background-color: #333;
-    }
-
-    .navbar-nav.flex-row .nav-item {
-      margin-right: 10px;
-    }
-
-    .logo {
-      height: 40px;
-      width: auto;
-      max-height: 40px;
-    }
-
-    @media (max-width: 768px) {
-      .logo {
-        height: 30px;
-        max-height: 30px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .logo {
-        height: 25px;
-        max-height: 25px;
-      }
-    }
-
     .full-width-container {
       width: 100%;
       margin-left: calc(-50vw + 50%);
@@ -407,18 +371,18 @@
     document.getElementById('confirmDetailsBtn').addEventListener('click', function () {
       const deliveryDate = document.getElementById('deliveryDate').value;
       if (!deliveryDate) {
-        alert('Please select a delivery date');
+        showToast('Please select a delivery date', 'warning');
         return;
       }
 
       if (selectedAreas.length === 0) {
-        alert('Please select at least one area');
+        showToast('Please select at least one area', 'warning');
         return;
       }
 
       const dispatcher = dispatchersField.value;
       if (!dispatcher) {
-        alert('Please select a dispatcher');
+        showToast('Please select a dispatcher', 'warning');
         return;
       }
 
@@ -760,11 +724,12 @@
 
     document.getElementById('saveButton').addEventListener('click', async function () {
       if (podData.trackingNumbers.length === 0) {
-        alert('No tracking numbers to save!');
+        showToast('No tracking numbers to save!', 'warning');
         return;
       }
 
-      if (confirm('Save this POD?')) {
+      const ok = await showConfirm('Save this POD?', { okText: 'Save', okClass: 'btn-primary' });
+      if (ok) {
         const saveBtn = document.getElementById('saveButton');
         const printBtn = document.getElementById('printButton');
         const originalText = saveBtn.textContent;
@@ -818,12 +783,12 @@
           });
 
           if (response.ok) {
-            alert('POD saved successfully!');
+            showToast('POD saved successfully!', 'success');
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saved!';
             printBtn.disabled = false;
           } else {
-            alert('Failed to save POD');
+            showToast('Failed to save POD', 'error');
             podData.isSaved = false;
             document.getElementById('scanInput').disabled = false;
             saveBtn.disabled = false;
@@ -831,7 +796,7 @@
           }
         } catch (error) {
           console.error('Save error:', error);
-          alert('Error saving POD: ' + error.message);
+          showToast('Error saving POD: ' + error.message, 'error');
           podData.isSaved = false;
           document.getElementById('scanInput').disabled = false;
           saveBtn.disabled = false;

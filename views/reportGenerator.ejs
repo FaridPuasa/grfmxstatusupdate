@@ -62,41 +62,6 @@
       padding: 2px 6px;
     }
 
-    .navbar-nav.flex-row {
-      flex-direction: row !important;
-    }
-
-    .navbar {
-      background-color: transparent;
-    }
-
-    .container-bg {
-      background-color: #333;
-    }
-
-    .navbar-nav.flex-row .nav-item {
-      margin-right: 10px;
-    }
-
-    .logo {
-      height: 40px;
-      width: auto;
-      max-height: 40px;
-    }
-
-    @media (max-width: 768px) {
-      .logo {
-        height: 30px;
-        max-height: 30px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .logo {
-        height: 25px;
-        max-height: 25px;
-      }
-    }
 
     .removeWarehouseRowBtn {
       cursor: pointer;
@@ -464,7 +429,7 @@
         }
         dateInputElement.addEventListener('change', function () {
           if (this.value > todayFormatted) {
-            alert('Cannot select a future date. Date has been set to today.');
+            showToast('Cannot select a future date. Date has been set to today.', 'warning');
             this.value = todayFormatted;
           }
         });
@@ -667,7 +632,7 @@
       freelancerGenerateBtn.addEventListener('click', async () => {
         const reportDate = document.getElementById('freelancerReportDate').value;
         if (!reportDate) {
-          alert('Please pick a date');
+          showToast('Please pick a date', 'warning');
           return;
         }
         showLoading();
@@ -676,7 +641,7 @@
           const res = await fetch(`/api/freelancer-delivery-result-report?date=${reportDate}`);
           const data = await res.json();
           if (!data.results || data.results.length === 0) {
-            alert('No completed jobs found for freelancers on this date');
+            showToast('No completed jobs found for freelancers on this date', 'warning');
             freelancerGenerateBtn.style.display = "block";
             hideLoading();
             return;
@@ -731,10 +696,10 @@
           freelancerResetBtn.classList.remove("hidden");
           freelancerPrintBtn.classList.add("hidden");
           freelancerSaveBtn.removeAttribute("disabled");
-          alert(`Freelancer report generated with ${data.results.length} freelancers`);
+          showToast(`Freelancer report generated with ${data.results.length} freelancers`, 'success');
         } catch (err) {
           console.error('Error generating freelancer report:', err);
-          alert('Error fetching report data: ' + err.message);
+          showToast('Error fetching report data: ' + err.message, 'error');
         } finally {
           hideLoading();
           freelancerGenerateBtn.style.display = "block";
@@ -744,7 +709,7 @@
       freelancerSaveBtn.addEventListener('click', async () => {
         const reportDate = document.getElementById('freelancerReportDate').value;
         if (!reportDate) {
-          alert('Please select a date first.');
+          showToast('Please select a date first.', 'warning');
           return;
         }
         showLoading();
@@ -761,18 +726,18 @@
             });
             const result = await res.json();
             if (result.success) {
-              alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+              showToast(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!', 'success');
               freelancerSaveBtn.classList.add('hidden');
               freelancerPrintBtn.classList.remove('hidden');
             } else if (result.duplicate) {
-              const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+              const confirmReplace = await showConfirm('A report with this name already exists. Do you want to replace it?');
               if (confirmReplace) await saveReport(true);
             } else {
-              alert('Failed to save report: ' + result.message);
+              showToast('Failed to save report: ' + result.message, 'error');
             }
           } catch (err) {
             console.error(err);
-            alert('Error saving report');
+            showToast('Error saving report', 'error');
           } finally {
             hideLoading();
           }
@@ -812,8 +777,8 @@
         };
       });
 
-      freelancerResetBtn.addEventListener('click', () => {
-        if (confirm("Are you sure you want to reset the report?")) {
+      freelancerResetBtn.addEventListener('click', async () => {
+        if (await showConfirm("Are you sure you want to reset the report?")) {
           location.reload();
         }
       });
@@ -823,11 +788,11 @@
         const startDate = freelancerJobCountStartDate.value;
         const endDate = freelancerJobCountEndDate.value;
         if (!startDate || !endDate) {
-          alert('Please pick both start and end dates');
+          showToast('Please pick both start and end dates', 'warning');
           return;
         }
         if (startDate > endDate) {
-          alert('Start date cannot be after end date');
+          showToast('Start date cannot be after end date', 'error');
           return;
         }
         showLoading();
@@ -837,7 +802,7 @@
           const data = await res.json();
 
           if (!data.results || data.results.length === 0) {
-            alert('No completed jobs found for freelancers in this date range');
+            showToast('No completed jobs found for freelancers in this date range', 'warning');
             freelancerJobCountGenerateBtn.style.display = "block";
             hideLoading();
             return;
@@ -897,7 +862,7 @@
           freelancerJobCountSaveBtn.removeAttribute('disabled');
         } catch (err) {
           console.error('Error generating freelancer job completed count report:', err);
-          alert('Error fetching report data: ' + err.message);
+          showToast('Error fetching report data: ' + err.message, 'error');
         } finally {
           hideLoading();
           freelancerJobCountGenerateBtn.style.display = "block";
@@ -908,7 +873,7 @@
         const startDate = freelancerJobCountStartDate.value;
         const endDate = freelancerJobCountEndDate.value;
         if (!startDate || !endDate) {
-          alert('Please select a date range first.');
+          showToast('Please select a date range first.', 'warning');
           return;
         }
         showLoading();
@@ -925,18 +890,18 @@
             });
             const result = await res.json();
             if (result.success) {
-              alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+              showToast(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!', 'success');
               freelancerJobCountSaveBtn.classList.add('hidden');
               freelancerJobCountPrintBtn.classList.remove('hidden');
             } else if (result.duplicate) {
-              const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+              const confirmReplace = await showConfirm('A report with this name already exists. Do you want to replace it?');
               if (confirmReplace) await saveReport(true);
             } else {
-              alert('Failed to save report: ' + result.message);
+              showToast('Failed to save report: ' + result.message, 'error');
             }
           } catch (err) {
             console.error(err);
-            alert('Error saving report');
+            showToast('Error saving report', 'error');
           } finally {
             hideLoading();
           }
@@ -990,8 +955,8 @@
         };
       });
 
-      freelancerJobCountResetBtn.addEventListener('click', () => {
-        if (confirm("Are you sure you want to reset the report?")) {
+      freelancerJobCountResetBtn.addEventListener('click', async () => {
+        if (await showConfirm("Are you sure you want to reset the report?")) {
           location.reload();
         }
       });
@@ -1031,7 +996,7 @@
       freelancerOpeningGenerateBtn.addEventListener('click', async () => {
         const date = freelancerOpeningDate.value;
         const freelancer = freelancerOpeningName.value;
-        if (!date || !freelancer) { alert('Please pick a date and freelancer'); return; }
+        if (!date || !freelancer) { showToast('Please pick a date and freelancer', 'warning'); return; }
         freelancerOpeningDate.setAttribute('disabled', 'true');
         showLoading();
         try {
@@ -1055,7 +1020,7 @@
           const areaContent = data.totalOrders > 0 ? (data.areas.join(',') || '') : '';
           const totalJobsCount = data.totalOrders || 0;
           if (!assignedJobContent && totalJobsCount === 0) {
-            alert('No assigned jobs found for this freelancer on this date');
+            showToast('No assigned jobs found for this freelancer on this date', 'warning');
             freelancerOpeningDate.removeAttribute('disabled');
             hideLoading();
             return;
@@ -1082,13 +1047,13 @@
           freelancerOpeningPrintBtn.classList.add('hidden');
         } catch (err) {
           console.error(err);
-          alert('Failed to fetch job summary');
+          showToast('Failed to fetch job summary', 'error');
         } finally { hideLoading(); }
       });
 
       freelancerOpeningSaveBtn.addEventListener('click', async () => {
         if (freelancerOpeningBody.children.length === 0) {
-          alert('No report to save');
+          showToast('No report to save', 'warning');
           return;
         }
         showLoading();
@@ -1115,18 +1080,18 @@
             });
             const result = await res.json();
             if (result.success) {
-              alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+              showToast(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!', 'success');
               freelancerOpeningSaveBtn.classList.add('hidden');
               freelancerOpeningPrintBtn.classList.remove('hidden');
             } else if (result.duplicate) {
-              const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+              const confirmReplace = await showConfirm('A report with this name already exists. Do you want to replace it?');
               if (confirmReplace) await saveReport(true);
             } else {
-              alert('Failed to save report: ' + result.message);
+              showToast('Failed to save report: ' + result.message, 'error');
             }
           } catch (err) {
             console.error(err);
-            alert('Error saving report');
+            showToast('Error saving report', 'error');
           } finally {
             hideLoading();
           }
@@ -1169,8 +1134,8 @@
         };
       });
 
-      freelancerOpeningResetBtn.addEventListener('click', () => {
-        if (confirm("Are you sure you want to reset the report?")) {
+      freelancerOpeningResetBtn.addEventListener('click', async () => {
+        if (await showConfirm("Are you sure you want to reset the report?")) {
           location.reload();
         }
       });
@@ -1182,7 +1147,7 @@
         const vehicle = document.getElementById('vehicle').value || 'N/A';
         const dispatcher = document.getElementById('dispatcher').value;
         const assignedJob = document.getElementById('assignedJob').value;
-        if (!date || !dispatcher) { alert('Please pick a date and dispatcher'); return; }
+        if (!date || !dispatcher) { showToast('Please pick a date and dispatcher', 'warning'); return; }
         reportDateEl.setAttribute('disabled', 'true');
         showLoading();
         try {
@@ -1265,13 +1230,13 @@
           printBtn.classList.add('hidden');
         } catch (err) {
           console.error(err);
-          alert('Failed to fetch job summary');
+          showToast('Failed to fetch job summary', 'error');
         } finally { hideLoading(); }
       });
 
       saveBtn.addEventListener('click', async () => {
         if (dispatcherJobsBody.children.length === 0) {
-          alert('No report to save');
+          showToast('No report to save', 'warning');
           return;
         }
         showLoading();
@@ -1316,17 +1281,17 @@
             });
             const result = await res.json();
             if (result.success) {
-              alert(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!');
+              showToast(forceReplace ? 'Report replaced successfully!' : 'Report saved successfully!', 'success');
               printBtn.classList.remove('hidden');
             } else if (result.duplicate) {
-              const confirmReplace = confirm('A report with this name already exists. Do you want to replace it?');
+              const confirmReplace = await showConfirm('A report with this name already exists. Do you want to replace it?');
               if (confirmReplace) await saveReport(true);
             } else {
-              alert('Failed to save report: ' + result.message);
+              showToast('Failed to save report: ' + result.message, 'error');
             }
           } catch (err) {
             console.error(err);
-            alert('Error saving report');
+            showToast('Error saving report', 'error');
           } finally {
             isReportSaved = true;
             generateBtn.classList.add('hidden');
@@ -1376,8 +1341,8 @@
         printWindow.onload = function () { printWindow.focus(); printWindow.print(); hideLoading(); };
       });
 
-      resetBtn.addEventListener('click', () => {
-        if (confirm("Are you sure you want to reset the report?")) {
+      resetBtn.addEventListener('click', async () => {
+        if (await showConfirm("Are you sure you want to reset the report?")) {
           location.reload();
         }
       });
@@ -1391,8 +1356,8 @@
       const endStaffJobsTable = document.getElementById('endStaffJobsTable');
       const endStaffJobsHeader = document.getElementById('endStaffJobsHeader');
 
-      endResetBtn.addEventListener('click', () => {
-        if (confirm("Are you sure you want to reset the report?")) {
+      endResetBtn.addEventListener('click', async () => {
+        if (await showConfirm("Are you sure you want to reset the report?")) {
           location.reload();
         }
       });
@@ -1866,13 +1831,13 @@
 
       endGenerateBtn.addEventListener('click', async () => {
         const endReportDate = document.getElementById('endReportDate').value;
-        if (!endReportDate) { alert('Please pick a date'); return; }
+        if (!endReportDate) { showToast('Please pick a date', 'warning'); return; }
         endGenerateBtn.style.display = "none";
         showLoading();
         try {
           const res = await fetch('/api/getEndOfDaySummary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: endReportDate }) });
           const data = await res.json();
-          if (!data.success) { alert('Failed to fetch report'); hideLoading(); endGenerateBtn.style.display = "block"; return; }
+          if (!data.success) { showToast('Failed to fetch report', 'error'); hideLoading(); endGenerateBtn.style.display = "block"; return; }
           const formattedDate = new Date(endReportDate).toLocaleDateString('en-GB').replace(/\//g, '.');
           const reportTitle = `Operation End of Day Report ${formattedDate}`;
           endReportLogoHeader.innerHTML = `<img src="https://portal.gorushbn.com/images/logo.png" alt="Logo" style="width:300px; height:auto;"><h2>${reportTitle}</h2>`;
@@ -1946,7 +1911,7 @@
             const vehicleContainerDiv = vehicleContainerElem.closest('div');
             if (vehicleContainerDiv) vehicleContainerDiv.appendChild(vehicleReportCheckedBy);
           }
-          alert("End of Day Report generated successfully.");
+          showToast("End of Day Report generated successfully.", 'success');
           hideLoading();
           endSaveBtn.classList.remove("hidden");
           endResetBtn.classList.remove("hidden");
@@ -1954,7 +1919,7 @@
           endSaveBtn.removeAttribute("disabled");
         } catch (err) {
           console.error(err);
-          alert('Error fetching report');
+          showToast('Error fetching report', 'error');
           hideLoading();
           endGenerateBtn.style.display = "block";
         }
@@ -1970,18 +1935,19 @@
           return await res.json();
         }
         async function handleSave() {
-          if (!reportDate) return alert("Please select a date first.");
+          if (!reportDate) { showToast("Please select a date first.", 'warning'); return; }
           let response = await saveReportToServer({ reportType: "Operation End of Day Report", reportName: `Operation End of Day Report ${formattedDate}`, reportContent });
           if (response.duplicate) {
-            if (confirm(`A Operation End of Day Report already exists for ${formattedDate}. Replace it?`)) {
+            if (await showConfirm(`A Operation End of Day Report already exists for ${formattedDate}. Replace it?`)) {
               response = await saveReportToServer({ reportType: "Operation End of Day Report", reportName: `Operation End of Day Report ${formattedDate}`, reportContent, forceReplace: true });
-              if (response.success) alert("Report replaced successfully.");
-              else alert(response.message || "Failed to replace report.");
+              if (response.success) showToast("Report replaced successfully.", 'success');
+              else showToast(response.message || "Failed to replace report.", 'error');
             } else return;
           } else if (response.success) {
-            alert("Report saved successfully.");
+            showToast("Report saved successfully.", 'success');
           } else {
-            return alert(response.message || "Failed to save report.");
+            showToast(response.message || "Failed to save report.", 'error');
+            return;
           }
           endSaveBtn.classList.add("hidden");
           endPrintBtn.classList.remove("hidden");

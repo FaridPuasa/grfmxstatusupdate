@@ -10,22 +10,6 @@
     <link rel="stylesheet" href="/css/mobile-center.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <style>
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        .navbar {
-            background-color: transparent;
-        }
-
-        .container-bg {
-            background-color: #333;
-        }
-
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
-
         th {
             background-color: #f2f2f2;
             font-size: 15px;
@@ -488,7 +472,7 @@
                 })
                 .catch(function (err) {
                     console.error(err);
-                    alert('Failed to load report.');
+                    showToast('Failed to load report.', 'error');
                 });
         }
 
@@ -524,10 +508,10 @@
             printWindow.document.close();
         };
 
-        function confirmDeleteReport(id) {
-            if (confirm("Are you sure you want to delete this report? This action cannot be undone.")) {
-                window.location.href = "/deleteReport/" + id;
-            }
+        async function confirmDeleteReport(id) {
+            const ok = await showConfirm("Are you sure you want to delete this report? This action cannot be undone.");
+            if (!ok) return;
+            window.location.href = "/deleteReport/" + id;
         }
     </script>
 </body>

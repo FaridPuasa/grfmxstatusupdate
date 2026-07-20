@@ -10,42 +10,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/mobile-center.css">
     <style>
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        .navbar {
-            background-color: transparent;
-        }
-
-        .container-bg {
-            background-color: #333;
-        }
-
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
-
-        .bg-red {
-            background-color: rgb(255, 110, 110) !important;
-        }
-
-        .bg-yellow {
-            background-color: yellow !important;
-        }
-
-        .bg-blue {
-            background-color: rgb(152, 184, 255) !important;
-        }
-
-        .bg-green {
-            background-color: rgb(137, 253, 126) !important;
-        }
-
-        .btn-submit {
-            margin-top: 10px;
-        }
-
         th,
         td {
             font-size: 15px;
@@ -60,26 +24,6 @@
         .card {
             margin-bottom: 20px;
         }
-
-        .logo {
-  height: 40px;
-  width: auto;
-  max-height: 40px;
-}
-
-@media (max-width: 768px) {
-  .logo {
-    height: 30px;
-    max-height: 30px;
-  }
-}
-
-@media (max-width: 480px) {
-  .logo {
-    height: 25px;
-    max-height: 25px;
-  }
-}
 
 /* ===== Dashboard redesign ===== */
 :root {
@@ -1908,7 +1852,7 @@ document.getElementById('grWebsiteDate').addEventListener('change', e => {
 // Copy a list of tracking numbers to the clipboard
 async function copyTrackingNumbers(trackingNumbers, sectionName) {
     if (!trackingNumbers || trackingNumbers.length === 0) {
-        alert(`No tracking numbers found to copy from ${sectionName}.`);
+        showToast(`No tracking numbers found to copy from ${sectionName}.`, 'warning');
         return;
     }
 
@@ -1927,7 +1871,7 @@ async function copyTrackingNumbers(trackingNumbers, sectionName) {
         document.body.removeChild(textarea);
     }
 
-    alert(`✅ Copied ${trackingNumbers.length} tracking number(s) from ${sectionName}!\n\n${textToCopy.substring(0, 200)}${textToCopy.length > 200 ? '...' : ''}`);
+    showToast(`✅ Copied ${trackingNumbers.length} tracking number(s) from ${sectionName}!\n\n${textToCopy.substring(0, 200)}${textToCopy.length > 200 ? '...' : ''}`, 'success');
 }
 
 // Generic: collect every tracking number (td.track-no) inside a section and copy them
@@ -1950,7 +1894,7 @@ function exportSectionToExcel(targetSelector, sectionName) {
 
     const tables = container.querySelectorAll('table');
     if (!tables.length) {
-        alert(`No data found to export from ${sectionName}.`);
+        showToast(`No data found to export from ${sectionName}.`, 'warning');
         return;
     }
 

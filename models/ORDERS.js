@@ -132,4 +132,9 @@ orderSchema.index({ jobDate: 1 });
 orderSchema.index({ creationDate: 1 });
 orderSchema.index({ 'history.statusHistory': 1, 'history.dateUpdated': 1 });
 
+// Covers the /updateJob/recentMAWBs and /updateJob/gdexMAWBs aggregations, which
+// $match on product + a lastUpdateDateTime range — without this, lastUpdateDateTime
+// had no index at all and every dropdown load did a full collection scan.
+orderSchema.index({ product: 1, lastUpdateDateTime: -1 });
+
 module.exports = orderSchema; // schema only

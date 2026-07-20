@@ -21,26 +21,6 @@
 <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
 
 <style>
-  /* Custom CSS for your page */
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        /* Make the navbar background transparent */
-        .navbar {
-            background-color: transparent;
-        }
-
-        /* Add background color to the container */
-        .container-bg {
-            background-color: #333;
-            /* You can use your desired background color here */
-        }
-
-        /* Add margin to the navigation links */
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
 th, td { text-align: center; font-size: 14px; }
 .filters-container { background-color: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
 table.dataTable { width: 100% !important; }
@@ -66,25 +46,6 @@ table.dataTable { width: 100% !important; }
   background-color: #d1ecf1 !important;
 }
 
-.logo {
-  height: 40px;
-  width: auto;
-  max-height: 40px;
-}
-
-@media (max-width: 768px) {
-  .logo {
-    height: 30px;
-    max-height: 30px;
-  }
-}
-
-@media (max-width: 480px) {
-  .logo {
-    height: 25px;
-    max-height: 25px;
-  }
-}
 </style>
 </head>
 
@@ -254,6 +215,7 @@ table.dataTable { width: 100% !important; }
         <select class="form-control select2" name="currentStatus[]" multiple>
           <option value="Info Received">Info Received</option>
           <option value="On Hold">On Hold</option>
+          <option value="Queued for Warehouse">Queued for Warehouse (30 min delay)</option>
           <option value="At Warehouse">At Warehouse</option>
           <option value="Out for Delivery">Out for Delivery</option>
           <option value="Self Collect">Self Collect</option>
@@ -772,6 +734,15 @@ $(document).ready(function() {
         if (data === 'Return') return 'RTS';
         return 'UNDEL';
       }
+      // Flag jobs sitting in the 30-min delayed-warehouse queue, with the time
+      // they'll flip to "At Warehouse", so they're easy to spot at a glance.
+      if (data === 'Queued for Warehouse' && row.queueScheduledTime) {
+        const unlockTime = new Date(row.queueScheduledTime);
+        if (!isNaN(unlockTime.getTime())) {
+          const timeStr = unlockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `<span class="badge bg-warning text-dark">Queued for Warehouse</span><br><small class="text-muted">30 min delay &middot; until ${timeStr}</small>`;
+        }
+      }
     }
     return data || '';
   }
@@ -926,7 +897,7 @@ $(document).ready(function() {
         const msg = xhr.responseJSON && xhr.responseJSON.error
           ? xhr.responseJSON.error
           : 'Error fetching jobs';
-        alert(msg);
+        showToast(msg, 'error');
       },
       complete: function() { $('#loadingOverlay').hide(); }
     });
@@ -991,12 +962,12 @@ $(document).ready(function() {
         body: JSON.stringify({ trackingNumber, jobMethod, paymentMethod, remarks })
       });
       const result = await response.json();
-      if (result.success) alert('Order is submitted');
-      else alert('Order submission failed: ' + result.message);
+      if (result.success) showToast('Order is submitted', 'success');
+      else showToast('Order submission failed: ' + result.message, 'error');
       $('#reorderModal').modal('hide');
     } catch(err) {
       console.error(err);
-      alert('Error submitting reorder');
+      showToast('Error submitting reorder', 'error');
     }
   });
 });

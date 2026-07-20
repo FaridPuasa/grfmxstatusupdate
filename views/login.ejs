@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -10,66 +10,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/mobile-center.css">
     <style>
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        .navbar {
-            background-color: transparent;
-        }
-
-        .container-bg {
-            background-color: #333;
-        }
-
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
-
-        .btn-submit {
-            margin-top: 10px;
-        }
-
-        th,
-        td {
-            font-size: 15px;
-            text-align: center;
-        }
-
-        table {
-            width: 100%;
-            margin: 0 auto;
-        }
-
         .card {
             margin-bottom: 20px;
         }
 
-        .logo {
-  height: 40px;
-  width: auto;
-  max-height: 40px;
-}
-
-@media (max-width: 768px) {
-  .logo {
-    height: 30px;
-    max-height: 30px;
-  }
-}
-
-@media (max-width: 480px) {
-  .logo {
-    height: 25px;
-    max-height: 25px;
-  }
-}
-
         .login-logo {
-    height: 40px; 
-    width: auto; 
-    vertical-align: middle; /* aligns logo with text */
-}
+            vertical-align: middle; /* aligns logo with text */
+        }
     </style>
 
     <!-- Favicon -->
@@ -82,36 +29,7 @@
 <body class="bg-light">
     <div class="container-bg">
         <div class="container">
-            <!-- Logged-out navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark">
-  <div class="container d-flex align-items-center">
-
-    <!-- Mobile logo -->
-    <a class="navbar-brand d-lg-none" href="/">
-      <img src="/images/logoportalwhite.png" alt="Go Rush Logo" class="logo img-fluid">
-    </a>
-
-    <!-- Desktop logo centered -->
-<a class="navbar-brand me-auto d-none d-lg-block" href="/">
-  <img src="/images/logoportalwhite.png" alt="Go Rush Logo" class="logo img-fluid">
-</a>
-
-    <!-- Desktop login (right) -->
-    <ul class="navbar-nav ms-auto d-none d-lg-flex">
-      <li class="nav-item">
-        <a class="nav-link" href="/login">Login</a>
-      </li>
-    </ul>
-
-    <!-- Mobile login (right, no burger) -->
-    <ul class="navbar-nav d-lg-none ms-auto">
-      <li class="nav-item">
-        <a class="nav-link" href="/login">Login</a>
-      </li>
-    </ul>
-
-  </div>
-</nav>
+            <%- include('partials/navbar') %>
         </div>
     </div>
 
@@ -121,7 +39,7 @@
                 <div class="card">
                     <div class="card-body">
                         <h1 class="card-title text-center">
-    Log in to <img src="/images/logoportalblack.png" alt="Go Rush Logo" class="login-logo"></h1>
+    Log in to <img src="/images/logoportalblack.png" alt="Go Rush Logo" class="logo login-logo"></h1>
                         <% if (typeof errors !== 'undefined' && errors && errors.length > 0) { %>
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                 <% errors.forEach(function(error) { %>
@@ -161,7 +79,7 @@
     flex-direction: column;
 ">
     <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
-        <span class="visually-hidden"></span>
+        <span class="visually-hidden">Logging in...</span>
     </div>
     <p style="margin-top: 1rem; font-weight: 500; font-size: 1.2rem; color: #333;">
         Logging in, please wait...

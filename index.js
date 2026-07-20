@@ -44,7 +44,6 @@ const gdexManifestConfig = GDEX_MANIFEST_CONFIG[GDEX_ENV];
 // 📦 Core Packages
 // ==================================================
 const express = require('express');
-const expressLayouts = require('express-ejs-layouts');
 const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
 const bodyParser = require('body-parser');
@@ -83,6 +82,7 @@ const codBtCache = new NodeCache({ stdTTL: 600 });  // 10 min
 const grWebsiteCache = new NodeCache({ stdTTL: 60 });   // 1 min
 const completedJobsCache = new NodeCache({ stdTTL: 60 }); // 1 min
 const searchJobsCache = new NodeCache({ stdTTL: 300 }); // 5 min
+const mawbListCache = new NodeCache({ stdTTL: 60 }); // 1 min - backs the updateJob MAWB dropdowns (recentMAWBs, gdexMAWBs)
 
 // Add these new caches for warehouse report
 // stdTTL: 0 = entries never auto-expire from node-cache. Freshness is governed
@@ -3236,7 +3236,7 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
             receiverPhoneNumber: 1, additionalPhoneNumber: 1, creationDate: 1,
             remarks: 1, grRemark: 1, mawbNo: 1, parcelTrackingNum: 1, icPassNum: 1,
             patientNumber: 1, screenshotInvoice: 1, cargoPrice: 1, items: 1,
-            parcelWeight: 1, attempt: 1
+            parcelWeight: 1, attempt: 1, queueScheduledTime: 1
         };
         // No .sort() here on purpose: sorting by _id forces Mongo to fetch every
         // matching document before it can apply a limit (confirmed ~17x slower
@@ -3364,6 +3364,7 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
                 handlingCharge: handlingCharge,
                 attempt: o.attempt || '',
                 warehouseEntryDateTime: o.warehouseEntryDateTime || '',
+                queueScheduledTime: o.queueScheduledTime || '',
             };
         });
 
@@ -3651,12 +3652,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Optional: refresh route to clear urgent cache
-app.get('/refresh-urgent', ensureAuthenticated, (req, res) => {
-    urgentCache.del('urgentMap');
-    res.redirect('/');
-});
-
 app.get('/login', ensureNotAuthenticated, (req, res) => {
     res.render('login', {
         errors: req.flash('error'),
@@ -3720,7 +3715,7 @@ app.post('/session/heartbeat', ensureAuthenticated, (req, res) => {
 
 // Restricting routes to "admin" role
 app.get('/createUser', ensureAuthenticated, ensureAdmin, (req, res) => {
-    res.render('createUser', { user: req.user });
+    res.render('createUser', { user: req.user, errors: [], formData: {} });
 });
 
 // ==================================================
@@ -3834,12 +3829,38 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
 });
 
 app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
+    const identifier = req.params.identifier;
+    const {
+        role, fullName, name, email, password, icNum, jobPosition, status,
+        profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode, company
+    } = req.body;
+
+    // Find existing user up front so any validation error below can re-render
+    // the form with the submitted values instead of discarding them.
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+    let existingUser;
     try {
-        const identifier = req.params.identifier;
-        const {
-            role, fullName, name, email, password, icNum, jobPosition, status,
-            profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode, company
-        } = req.body;
+        existingUser = isObjectId
+            ? await USERS.findById(identifier)
+            : await USERS.findOne({ userId: identifier });
+    } catch (err) {
+        console.error(err);
+        req.flash('error_msg', 'Error loading user: ' + err.message);
+        return res.redirect('/listUser');
+    }
+
+    if (!existingUser) {
+        req.flash('error_msg', 'User not found');
+        return res.redirect('/listUser');
+    }
+
+    const renderWithErrors = (errors) => res.render('updateUser', {
+        editUser: { ...existingUser.toObject(), ...req.body },
+        user: req.user,
+        errors
+    });
+
+    try {
         let errors = [];
 
         // Validation
@@ -3858,23 +3879,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
         }
 
         if (errors.length > 0) {
-            req.flash('error', errors);
-            return res.redirect(`/updateUser/${identifier}`);
-        }
-
-        // Find existing user
-        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-        let existingUser;
-
-        if (isObjectId) {
-            existingUser = await USERS.findById(identifier);
-        } else {
-            existingUser = await USERS.findOne({ userId: identifier });
-        }
-
-        if (!existingUser) {
-            req.flash('error_msg', 'User not found');
-            return res.redirect('/listUser');
+            return renderWithErrors(errors);
         }
 
         // Check if role has changed - if so, generate new userId
@@ -3909,8 +3914,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                 const userIdPattern = /^(GRF|GRD|GRW|MOH|GRO)\d{3}$/;
                 if (!userIdPattern.test(userId)) {
                     errors.push({ msg: 'User ID must be in format GRFxxx, GRDxxx, GRWxxx, MOHxxx, or GROxxx' });
-                    req.flash('error', errors);
-                    return res.redirect(`/updateUser/${identifier}`);
+                    return renderWithErrors(errors);
                 }
 
                 // Check if userId already exists
@@ -3921,8 +3925,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
 
                 if (userIdExists) {
                     errors.push({ msg: 'User ID already exists. Please choose a different one.' });
-                    req.flash('error', errors);
-                    return res.redirect(`/updateUser/${identifier}`);
+                    return renderWithErrors(errors);
                 }
 
                 finalUserId = userId;
@@ -3964,14 +3967,12 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                 });
                 if (emailExists) {
                     errors.push({ msg: 'Email already exists' });
-                    req.flash('error', errors);
-                    return res.redirect(`/updateUser/${identifier}`);
+                    return renderWithErrors(errors);
                 }
                 updateData.email = email;
             } else {
                 errors.push({ msg: 'Email is required for this role' });
-                req.flash('error', errors);
-                return res.redirect(`/updateUser/${identifier}`);
+                return renderWithErrors(errors);
             }
         } else if (role === 'freelancer' || role === 'dispatcher') {
             updateData.$unset = { email: 1 };
@@ -3984,8 +3985,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
                 });
                 if (emailExists) {
                     errors.push({ msg: 'Email already exists' });
-                    req.flash('error', errors);
-                    return res.redirect(`/updateUser/${identifier}`);
+                    return renderWithErrors(errors);
                 }
                 updateData.email = email;
             }
@@ -4009,8 +4009,12 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
 
     } catch (err) {
         console.error(err);
-        req.flash('error_msg', 'Error updating user: ' + err.message);
-        res.redirect(`/updateUser/${req.params.identifier}`);
+        let msg = 'Error updating user: ' + err.message;
+        if (err.code === 11000) {
+            if (err.keyPattern && err.keyPattern.email) msg = 'Email already exists';
+            else if (err.keyPattern && err.keyPattern.userId) msg = 'User ID conflict. Please try again.';
+        }
+        renderWithErrors([{ msg }]);
     }
 });
 
@@ -4274,7 +4278,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     }
 
     if (errors.length > 0) {
-        return res.render('createUser', { errors, user: req.user });
+        return res.render('createUser', { errors, user: req.user, formData: req.body });
     }
 
     try {
@@ -4300,7 +4304,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
-                return res.render('createUser', { errors, user: req.user });
+                return res.render('createUser', { errors, user: req.user, formData: req.body });
             }
 
             // Add password for regular roles
@@ -4320,7 +4324,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
-                return res.render('createUser', { errors, user: req.user });
+                return res.render('createUser', { errors, user: req.user, formData: req.body });
             }
 
             if (password && password.length >= 6) {
@@ -4357,7 +4361,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             errors.push({ msg: 'Server error creating user: ' + err.message });
         }
 
-        res.render('createUser', { errors, user: req.user });
+        res.render('createUser', { errors, user: req.user, formData: req.body });
     }
 });
 
@@ -4462,60 +4466,6 @@ app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req
 
         // Render the EJS template with the filtered and sorted orders
         res.render('listofWargaEmasOrders', { waorders, totalRecords, moment: moment, user: req.user });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Failed to fetch orders');
-    }
-});
-
-app.get('/listofpharmacyMOHOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
-    try {
-        // Query the database to find orders with "product" value "fmx" and currentStatus not equal to "complete"
-        const orders = await ORDERS.find({
-            product: "pharmacymoh"
-        })
-            .select([
-                '_id',
-                'product',
-                'doTrackingNumber',
-                'receiverName',
-                'receiverAddress',
-                'area',
-                'patientNumber',
-                'icPassNum',
-                'appointmentPlace',
-                'receiverPhoneNumber',
-                'additionalPhoneNumber',
-                'deliveryTypeCode',
-                'remarks',
-                'paymentMethod',
-                'dateTimeSubmission',
-                'membership',
-                'pharmacyFormCreated',
-                'sendOrderTo',
-                'latestReason',
-                'history',
-                'lastUpdateDateTime',
-                'jobDate',
-                'currentStatus',
-                'warehouseEntry',
-                'warehouseEntryDateTime',
-                'assignedTo',
-                'attempt',
-                'paymentAmount',
-                'lastUpdatedBy',
-                'lastAssignedTo',
-                'deliveryType',
-                'jobType',
-                'jobMethod'
-            ])
-            .sort({ _id: -1 })
-            .limit(5000);
-
-        const totalRecords = orders.length;
-
-        // Render the EJS template with the filtered and sorted orders
-        res.render('listofpharmacyMOHOrders', { orders, totalRecords, moment: moment, user: req.user });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Failed to fetch orders');
@@ -4936,164 +4886,6 @@ app.get('/deletePharmacyFormBatch/:id', ensureAuthenticated, ensureMOHForm, asyn
 });
 
 
-// Add this route to handle the saving of the PharmacyFORM and updating ORDERS collection
-app.post('/save-form', ensureAuthenticated, ensureMOHForm, (req, res) => {
-    const { formName, formDate, batchNo, startNo, endNo, htmlContent, mohForm, numberOfForms } = req.body;
-
-    const userNameCaps = req.user.name.toUpperCase()
-
-    // Create a new document and save it to the MongoDB collection
-    const newForm = new PharmacyFORM({
-        formName: formName,
-        formDate: formDate,
-        batchNo: batchNo,
-        startNo: startNo,
-        endNo: endNo,
-        htmlContent: htmlContent,
-        creationDate: moment().format(),
-        mohForm: mohForm,
-        numberOfForms: numberOfForms,
-        formCreator: userNameCaps,
-    });
-
-    newForm.save()
-        .then(() => {
-            // Use the trackingNumbers array here
-            const trackingNumbers = req.body.trackingNumbers;
-
-            // Update the ORDERS collection for each tracking number
-            updateOrdersCollection(trackingNumbers)
-                .then(() => {
-                    res.status(200).send('Form data saved successfully');
-                })
-                .catch((err) => {
-                    console.error('Error:', err);
-                    res.status(500).send('Failed to save Form data');
-                });
-        })
-        .catch((err) => {
-            console.error('Error:', err);
-            res.status(500).send('Failed to save Form data');
-        });
-});
-
-function updateOrdersCollection(trackingNumbers) {
-    // Implement the logic to update the ORDERS collection for each tracking number
-    // You can use Mongoose or your MongoDB driver to update the documents.
-    // Iterate through the trackingNumbers array and update the matching documents.
-    // Here's a simplified example using Mongoose:
-
-    const promises = trackingNumbers.map((trackingNumber) => {
-        return ORDERS.updateOne({ doTrackingNumber: trackingNumber }, { $set: { pharmacyFormCreated: 'Yes' } });
-    });
-
-    // Return a Promise that resolves when all updates are complete.
-    return Promise.all(promises);
-}
-
-app.post('/generatePOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const { product, deliveryDate, areas, dispatchers, trackingNumbers, freelancerName } = req.body;
-
-        let finalDispatcherName = (dispatchers.startsWith("FL"))
-            ? `${dispatchers.toUpperCase()} ${freelancerName.toUpperCase()}`
-            : dispatchers.toUpperCase();
-
-        const userNameCaps = req.user.name.toUpperCase();
-
-        let areasArray = [];
-        if (typeof areas === 'string') {
-            areasArray = areas.split(',').map((area) => area.trim());
-        } else if (Array.isArray(areas)) {
-            areasArray = areas.map((area) => area.trim());
-        }
-
-        const areasJoined = areasArray.join(', ');
-
-        const trackingNumbersArray = trackingNumbers
-            .trim()
-            .split('\n')
-            .map((id) => id.trim().toUpperCase());
-
-        const uniqueTrackingNumbers = [...new Set(trackingNumbersArray)];
-
-        const runSheetData = [];
-
-        for (const trackingNumber of uniqueTrackingNumbers) {
-            try {
-                /* if (product === "MOH/JPMC/PHC Pharmacy") {
-                    // Fetch from MongoDB
-                    const order = await ORDERS.findOne({ doTrackingNumber: trackingNumber });
-
-                    if (!order) {
-                        console.warn(`Tracking number not found in DB: ${trackingNumber}`);
-                        continue;
-                    }
-
-                    runSheetData.push({
-                        trackingNumber,
-                        deliverToCollectFrom: order.receiverName,
-                        address: order.receiverAddress,
-                        phoneNumber: order.receiverPhoneNumber,
-                        jobType: order.jobType || '',
-                        totalPrice: order.totalPrice || '',
-                        paymentMode: order.paymentMethod || '',
-                        remarks: order.remarks || '',
-                    });
-
-                } else { */
-                // Fetch from Detrack API
-                const apiKey = process.env.API_KEY;
-                const response = await axios.get(
-                    `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-API-KEY': apiKey,
-                        },
-                    }
-                );
-
-                const data = response.data.data;
-
-                if (!data) {
-                    console.warn(`No data returned from Detrack for: ${trackingNumber}`);
-                    continue;
-                }
-
-                runSheetData.push({
-                    trackingNumber,
-                    deliverToCollectFrom: data.deliver_to_collect_from,
-                    address: data.address,
-                    phoneNumber: data.phone_number,
-                    jobType: data.job_type || '',
-                    totalPrice: data.total_price || '',
-                    paymentMode: data.payment_mode || '',
-                    remarks: data.remarks || '',
-                });
-                /* } */
-            } catch (err) {
-                console.error(`Error for tracking number ${trackingNumber}:`, err);
-                // Continue with next tracking number
-            }
-        }
-
-        res.render('podGeneratorSuccess', {
-            podCreatedBy: userNameCaps,
-            product,
-            deliveryDate: moment(deliveryDate).format('DD.MM.YY'),
-            areas: areasJoined,
-            dispatchers: finalDispatcherName,
-            trackingNumbers: runSheetData,
-            podCreatedDate: moment().format('DD.MM.YY'),
-            user: req.user
-        });
-
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
 
 app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
     const customerAddresses = req.body.customerAddresses.split('\n');
@@ -6654,84 +6446,6 @@ async function updateGDEXClearJob(consignmentID, detrackData, token, returnflag 
         return false;
     }
 }
-
-app.get('/api/pod/:trackingNumber/:imageIndex?', ensureAuthenticated, async (req, res) => {
-    try {
-        const order = await ORDERS.findOne({
-            doTrackingNumber: req.params.trackingNumber.toUpperCase()
-        });
-
-        if (!order) {
-            return res.status(404).send('Order not found');
-        }
-
-        const imageIndex = req.params.imageIndex ? parseInt(req.params.imageIndex) : 1;
-        let base64Image = null;
-
-        // Select which image to return
-        if (imageIndex === 1 && order.podBase64) {
-            base64Image = order.podBase64;
-        } else if (imageIndex === 2 && order.podBase64_2) {
-            base64Image = order.podBase64_2;
-        } else if (imageIndex === 3 && order.podBase64_3) {
-            base64Image = order.podBase64_3;
-        } else {
-            return res.status(404).send(`POD image ${imageIndex} not found`);
-        }
-
-        // Convert Base64 back to image
-        const imgBuffer = Buffer.from(base64Image, 'base64');
-
-        // Set appropriate content type
-        res.set('Content-Type', 'image/jpeg');
-        res.set('Content-Length', imgBuffer.length);
-        res.send(imgBuffer);
-
-    } catch (error) {
-        console.error('POD viewer error:', error);
-        res.status(500).send('Server error');
-    }
-});
-
-// Secure POD image viewer
-app.get('/admin/pod/:trackingNumber', ensureAuthenticated, async (req, res) => {
-    try {
-        const order = await ORDERS.findOne({
-            doTrackingNumber: req.params.trackingNumber.toUpperCase()
-        });
-
-        if (!order) {
-            return res.status(404).send('Order not found');
-        }
-
-        if (!order.podImg1) {
-            return res.status(404).send('POD image not available');
-        }
-
-        // Check user permissions
-        if (!['cs', 'manager', 'admin', 'finance'].includes(req.user.role)) {
-            return res.status(403).send('Access denied');
-        }
-
-        // Serve the Base64 image
-        const matches = order.podImg1.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-            res.set('Content-Type', matches[1]);
-            res.send(Buffer.from(matches[2], 'base64'));
-        } else {
-            // Fallback: redirect to Cloudinary URL if available
-            if (order.podUrl) {
-                res.redirect(order.podUrl);
-            } else {
-                res.status(404).send('POD format error');
-            }
-        }
-
-    } catch (error) {
-        console.error('POD viewer error:', error);
-        res.status(500).send('Server error');
-    }
-});
 
 // Periodic cleanup of expired Detrack URLs
 setInterval(async () => {
@@ -13700,79 +13414,6 @@ async function sendWhatsAppMessageTemu(finalPhoneNum, name) {
     }
 }
 
-// New WhatsApp sending function for Return Temu
-async function sendWhatsAppMessageTemplate(formattedPhoneNum, name, messageTemplate) {
-    try {
-        await axios.post(
-            'https://hook.eu1.make.com/wg47enwth61lf3ch4x6ihdr53b8treql',
-            {
-                phone: formattedPhoneNum,
-                name: name,
-                messageTemplate: messageTemplate
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-make-apikey': '2969421:27114c524def4cc4c85530d8b8018f9b'
-                }
-            }
-        );
-        console.log(`Sent WhatsApp message to ${name} (${formattedPhoneNum})`);
-    } catch (error) {
-        console.error('Error sending WhatsApp message:', error.response?.data || error.message);
-    }
-}
-
-// Render EJS page for broadcast
-app.get('/broadcast', ensureAuthenticated, (req, res) => {
-    res.render('sendWAMessageTemplate');
-});
-
-// Upload route using memoryStorage multer
-app.post('/upload', upload.single('file'), async (req, res) => {
-    const messageTemplate = req.body.messageTemplate;
-
-    try {
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const data = xlsx.utils.sheet_to_json(sheet);
-
-        for (const row of data) {
-            let excelPhone = row['Customer Phone Number'];
-            const name = row['Customer Name'];
-
-            // Clean up phone number (remove spaces, dashes, etc.)
-            if (excelPhone) {
-                excelPhone = excelPhone.toString().replace(/\D/g, ''); // keep only digits
-            }
-
-            let formattedPhoneNum;
-
-            // Apply original logic
-            if (excelPhone) {
-                if (excelPhone.length === 7) {
-                    formattedPhoneNum = "+673" + excelPhone;
-                } else if (excelPhone.length === 10) {
-                    formattedPhoneNum = "+" + excelPhone;
-                } else {
-                    formattedPhoneNum = excelPhone;
-                }
-            } else {
-                formattedPhoneNum = "No phone number provided";
-            }
-
-            if (formattedPhoneNum !== "No phone number provided" && name) {
-                await sendWhatsAppMessageTemplate(formattedPhoneNum, name, messageTemplate);
-            }
-        }
-
-        res.send('WhatsApp messages sent successfully.');
-    } catch (err) {
-        res.status(500).send('Error processing file: ' + err.message);
-    }
-});
-
 // ==================================================
 // 🎂 BIRTHDAY GREETING SYSTEM - PRODUCTION
 // ==================================================
@@ -15451,7 +15092,9 @@ app.post('/updateJob', async (req, res) => {
                         trackingNumber: trackingNumber,
                         result: result.message,
                         status: result.success ? "Updated" : "Failed",
-                        code: result.code
+                        code: result.code,
+                        customerName: result.customerName,
+                        area: result.area
                     }] : [],
                     failed: !result.success && !result.delayed ? [{
                         trackingNumber: trackingNumber,
@@ -15465,7 +15108,9 @@ app.post('/updateJob', async (req, res) => {
                         product: result.delayedInfo?.product,
                         scheduledTime: result.delayedInfo?.scheduledTime,
                         currentStatus: result.delayedInfo?.currentStatus,
-                        status: "Queued (30 min)"
+                        status: "Queued (30 min)",
+                        customerName: result.customerName,
+                        area: result.area
                     }] : [],
                     updatedCount: result.success && !result.delayed ? 1 : 0,
                     failedCount: !result.success && !result.delayed ? 1 : 0,
@@ -15567,245 +15212,6 @@ app.get('/updateJob/status/:jobId', (req, res) => {
     res.json(job);
 });
 
-// ==================================================
-// ⚡ SIMPLE OPTIMIZED IIW PROCESSING
-// ==================================================
-
-// Simple cache for job details
-const simpleJobCache = new Map();
-
-// Optimized batch processing for IIW
-async function processSimpleIIWBatch(trackingNumbers, warehouse, req, mawbNum = null) {
-    console.log(`⚡ Processing ${trackingNumbers.length} items in optimized batch`);
-
-    const results = {
-        successful: [],
-        failed: [],
-        delayed: [],
-        duplicate: [],
-        updatedCount: 0,
-        failedCount: 0,
-        delayedCount: 0,
-        duplicateCount: 0
-    };
-
-    try {
-        // Process items in batches of 5 (for API limits)
-        const BATCH_SIZE = 5;
-
-        for (let i = 0; i < trackingNumbers.length; i += BATCH_SIZE) {
-            const batch = trackingNumbers.slice(i, i + BATCH_SIZE);
-            console.log(`🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(trackingNumbers.length / BATCH_SIZE)}`);
-
-            // Process batch items in parallel
-            const batchPromises = batch.map(trackingNumber =>
-                processSingleIIWItem(trackingNumber, warehouse, req, mawbNum)
-            );
-
-            const batchResults = await Promise.allSettled(batchPromises);
-
-            // Process batch results
-            batchResults.forEach((result, index) => {
-                const trackingNumber = batch[index];
-
-                if (result.status === 'fulfilled' && result.value) {
-                    const itemResult = result.value;
-
-                    if (itemResult.success) {
-                        results.successful.push({
-                            trackingNumber: trackingNumber,
-                            result: itemResult.message,
-                            customerName: itemResult.customerName || 'Unknown',
-                            area: itemResult.area || 'N/A',
-                            warehouse: warehouse,
-                            product: itemResult.product || 'Unknown',
-                            status: "Updated"
-                        });
-                        results.updatedCount++;
-                    } else if (itemResult.delayed) {
-                        results.delayed.push({
-                            trackingNumber: trackingNumber,
-                            result: itemResult.message,
-                            status: "Delayed"
-                        });
-                        results.delayedCount++;
-                    } else {
-                        results.failed.push({
-                            trackingNumber: trackingNumber,
-                            result: itemResult.message || 'Failed',
-                            status: "Failed"
-                        });
-                        results.failedCount++;
-                    }
-                } else {
-                    results.failed.push({
-                        trackingNumber: trackingNumber,
-                        result: 'Processing error',
-                        status: "Error"
-                    });
-                    results.failedCount++;
-                }
-            });
-
-            // Small delay between batches
-            if (i + BATCH_SIZE < trackingNumbers.length) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-        }
-
-        // Simple grouping by customer name
-        if (results.successful.length > 0) {
-            results.groupedByCustomer = groupByCustomerSimple(results.successful);
-        }
-
-        console.log(`✅ Batch complete: ${results.updatedCount} updated, ${results.failedCount} failed`);
-
-    } catch (error) {
-        console.error('Batch processing error:', error);
-        results.error = error.message;
-    }
-
-    return results;
-}
-
-// Process single IIW item (optimized)
-async function processSingleIIWItem(trackingNumber, warehouse, req, mawbNum = null) {
-    try {
-        // Check cache first
-        const cacheKey = `job_${trackingNumber}`;
-        let jobData = simpleJobCache.get(cacheKey);
-
-        if (!jobData) {
-            jobData = await getJobDetails(trackingNumber);
-            if (jobData) {
-                // Cache for 10 seconds
-                simpleJobCache.set(cacheKey, jobData);
-                setTimeout(() => simpleJobCache.delete(cacheKey), 10000);
-            }
-        }
-
-        if (!jobData) {
-            return { success: false, message: 'Job not found' };
-        }
-
-        // Call existing processing logic but skip initial fetch
-        const result = await processItemInWarehouseUpdate(trackingNumber, warehouse, req, mawbNum);
-        return result;
-
-    } catch (error) {
-        console.error(`Error processing ${trackingNumber}:`, error.message);
-        return { success: false, message: 'Error: ' + error.message };
-    }
-}
-
-// Simple customer grouping
-function groupByCustomerSimple(items) {
-    const groups = {};
-
-    items.forEach(item => {
-        const customerName = item.customerName || 'Unknown';
-
-        if (!groups[customerName]) {
-            groups[customerName] = {
-                customerName: customerName,
-                trackingNumbers: [],
-                count: 0,
-                areas: new Set(),
-                products: new Set()
-            };
-        }
-
-        groups[customerName].trackingNumbers.push(item.trackingNumber);
-        groups[customerName].count++;
-        if (item.area) groups[customerName].areas.add(item.area);
-        if (item.product) groups[customerName].products.add(item.product);
-    });
-
-    // Convert to array and format
-    return Object.values(groups).map(group => ({
-        customerName: group.customerName,
-        trackingNumbers: group.trackingNumbers,
-        count: group.count,
-        areas: Array.from(group.areas),
-        products: Array.from(group.products),
-        areasString: Array.from(group.areas).join(', '),
-        productsString: Array.from(group.products).join(', ')
-    }));
-}
-
-// New endpoint for optimized processing
-app.post('/updateJob/optimizedIIW', ensureAuthenticated, async (req, res) => {
-    try {
-        const { warehouse, trackingNumbers, mawbNum } = req.body;
-
-        if (!warehouse) {
-            return res.status(400).json({ error: 'Warehouse is required' });
-        }
-
-        if (!trackingNumbers || trackingNumbers.length === 0) {
-            return res.status(400).json({ error: 'Tracking numbers are required' });
-        }
-
-        // Clean input
-        const cleanTrackingNumbers = trackingNumbers
-            .map(num => num.trim())
-            .filter(num => num !== '');
-
-        const uniqueTrackingNumbers = [...new Set(cleanTrackingNumbers)];
-
-        if (uniqueTrackingNumbers.length === 0) {
-            return res.status(400).json({ error: 'No valid tracking numbers' });
-        }
-
-        // Generate job ID
-        const jobId = generateJobId();
-
-        // Store job
-        backgroundJobs.set(jobId, {
-            status: 'queued',
-            total: uniqueTrackingNumbers.length,
-            processed: 0,
-            startTime: Date.now()
-        });
-
-        // Immediate response
-        res.json({
-            jobId: jobId,
-            status: 'queued',
-            message: `Processing ${uniqueTrackingNumbers.length} items`,
-            total: uniqueTrackingNumbers.length
-        });
-
-        // Process in background
-        setTimeout(async () => {
-            try {
-                const results = await processSimpleIIWBatch(uniqueTrackingNumbers, warehouse, req, mawbNum);
-
-                // Update job
-                backgroundJobs.set(jobId, {
-                    ...results,
-                    status: 'completed',
-                    completedAt: Date.now()
-                });
-
-            } catch (error) {
-                console.error(`Job ${jobId} error:`, error);
-                backgroundJobs.set(jobId, {
-                    status: 'failed',
-                    error: error.message,
-                    failedAt: Date.now()
-                });
-            }
-        }, 100);
-
-    } catch (error) {
-        console.error('Optimized IIW error:', error);
-        if (!res.headersSent) {
-            res.status(500).json({ error: 'Server error', message: error.message });
-        }
-    }
-});
-
 function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isIIW = false) {
     // Calculate common fields
     const finalArea = getAreaFromAddress(jobData.address);
@@ -15884,10 +15290,6 @@ function createDetrackUpdateData(trackingNumber, mawbNum, product, jobData, isII
 // ==================================================
 
 // Serve the Excel upload page
-app.get('/updateJob/excelUpload', ensureAuthenticated, (req, res) => {
-    res.render('updateJobExcel', { user: req.user });
-});
-
 app.post('/updateJob/excelUpload', ensureAuthenticated, upload.single('excelFile'), async (req, res) => {
     try {
         console.log('📥 Excel upload request received');
@@ -17211,52 +16613,17 @@ app.post('/updateJob/validateMAWB', ensureAuthenticated, async (req, res) => {
     }
 });
 
-// Check if tracking number belongs to a specific MAWB
-app.post('/updateJob/checkTrackingForMAWB', ensureAuthenticated, async (req, res) => {
-    try {
-        const { trackingNumber, mawbNum } = req.body;
-
-        if (!trackingNumber || !mawbNum) {
-            return res.status(400).json({
-                error: 'Tracking number and MAWB number are required'
-            });
-        }
-
-        const order = await ORDERS.findOne({
-            doTrackingNumber: trackingNumber.trim(),
-            mawbNo: mawbNum.trim().toUpperCase()
-        }).select('warehouseEntry currentStatus product mawbNo');
-
-        if (!order) {
-            return res.json({
-                belongsToMAWB: false,
-                message: 'Tracking number does not belong to this MAWB group'
-            });
-        }
-
-        res.json({
-            belongsToMAWB: true,
-            warehouseEntry: order.warehouseEntry || 'No',
-            currentStatus: order.currentStatus || 'Unknown',
-            product: order.product || 'Unknown',
-            mawbNo: order.mawbNo
-        });
-
-    } catch (error) {
-        console.error('Error checking tracking for MAWB:', error);
-        res.status(500).json({
-            error: 'Check failed',
-            message: error.message
-        });
-    }
-});
-
 // ==================================================
 // 🔍 Get MAWBs with Unscanned Counts (Only if unscanned > 0)
 // ==================================================
 
 app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
     try {
+        const cacheKey = 'recentMAWBs';
+        if (mawbListCache.has(cacheKey)) {
+            return res.json(mawbListCache.get(cacheKey));
+        }
+
         console.log('🔍 Fetching MAWBs with unscanned counts...');
 
         // Get date 30 days ago
@@ -17451,7 +16818,7 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
             }
         }));
 
-        res.json({
+        const responseBody = {
             success: true,
             count: formattedMAWBs.length,
             mawbs: formattedMAWBs,
@@ -17461,7 +16828,10 @@ app.get('/updateJob/recentMAWBs', ensureAuthenticated, async (req, res) => {
                 totalScannedJobs: formattedMAWBs.reduce((sum, m) => sum + m.scannedJobs, 0),
                 totalAllJobs: formattedMAWBs.reduce((sum, m) => sum + m.totalJobs, 0)
             }
-        });
+        };
+
+        mawbListCache.set(cacheKey, responseBody);
+        res.json(responseBody);
 
     } catch (error) {
         console.error('❌ Error getting MAWBs:', error);
@@ -18744,7 +18114,7 @@ async function handleDelayedWarehouseUpdate(trackingNumber, warehouse, jobData, 
             area: getAreaFromAddress(jobData.address),
             delayedInfo: {
                 product: product,
-                scheduledTime: moment().add(30, 'minutes').format('HH:mm'),
+                scheduledTime: moment().tz('Asia/Brunei').add(30, 'minutes').format('HH:mm'),
                 jobId: delayedJobId,
                 currentStatus: mapDetrackStatus(jobData.status),
                 immediateUpdates: sequence.immediate || [],
@@ -20171,7 +19541,7 @@ function groupIIWResultsByCustomer(results) {
         }
     });
 
-    return Object.values(grouped);
+    return Object.values(grouped).sort((a, b) => b.count - a.count);
 }
 
 // ==================================================
@@ -20577,7 +19947,9 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
                     product: value.delayedInfo?.product,
                     scheduledTime: value.delayedInfo?.scheduledTime,
                     currentStatus: value.delayedInfo?.currentStatus,
-                    status: "Queued (5 min)"
+                    status: "Queued (30 min)",
+                    customerName: value.customerName,
+                    area: value.area
                 });
                 results.delayedCount++;
             } else if (value.success) {
@@ -20592,7 +19964,9 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
                 results.successful.push({
                     trackingNumber: value.trackingNumber || trackingNumber,
                     result: value.message,
-                    status: "Updated"
+                    status: "Updated",
+                    customerName: value.customerName,
+                    area: value.area
                 });
                 results.updatedCount++;
             } else {
@@ -20626,32 +20000,6 @@ async function processBatch(batch, updateCode, mawbNum, warehouse, req) {
 
     return results;
 }
-
-// Add route to check delayed jobs
-app.get('/updateJob/delayed/status', ensureAuthenticated, (req, res) => {
-    try {
-        const delayedJobsArray = Array.from(delayedJobs.values())
-            .filter(job => job.reqUser && job.reqUser.id === req.user._id)
-            .map(job => ({
-                jobId: job.jobId,
-                trackingNumber: job.trackingNumber,
-                product: job.product,
-                status: job.status,
-                scheduledTime: new Date(job.scheduledTime).toLocaleString(),
-                createdAt: new Date(job.createdAt).toLocaleString(),
-                completedAt: job.completedAt ? new Date(job.completedAt).toLocaleString() : null,
-                error: job.error
-            }));
-
-        res.json({
-            count: delayedJobsArray.length,
-            jobs: delayedJobsArray
-        });
-    } catch (error) {
-        console.error('Error getting delayed jobs status:', error);
-        res.status(500).json({ error: 'Failed to get delayed jobs status' });
-    }
-});
 
 // Add cleanup for completed delayed jobs
 setInterval(() => {
@@ -20716,10 +20064,15 @@ async function processJobsInBackground(jobId, jobData, options = {}) {
             results.duplicateCount += (batchResults.duplicateCount || 0); // This line is critical
             results.processed = start + batch.length;
 
-            // Merge grouped results for IIW
-            if (updateCode === 'IIW' && batchResults.groupedByCustomer) {
-                results.groupedByCustomer = results.groupedByCustomer || [];
-                results.groupedByCustomer.push(...batchResults.groupedByCustomer);
+            // Recompute grouping for IIW from the full accumulated results so far,
+            // rather than concatenating each batch's own groups - otherwise the same
+            // customer spanning multiple batches (batchSize is only 10) would show up
+            // as separate duplicate group rows instead of one merged group.
+            if (updateCode === 'IIW') {
+                results.groupedByCustomer = groupIIWResultsByCustomer([
+                    ...results.successful,
+                    ...results.delayed
+                ]);
             }
 
             // Update job progress
@@ -20755,393 +20108,6 @@ async function processJobsInBackground(jobId, jobData, options = {}) {
         results.status = 'failed';
         results.error = error.message;
         backgroundJobs.set(jobId, results);
-    }
-}
-
-// Test route for POD download testing
-app.get('/testPOD', ensureAuthenticated, (req, res) => {
-    res.render('testPOD', {
-        title: 'Test POD Download',
-        user: req.user
-    });
-});
-
-// API endpoint for testing POD download
-app.post('/api/test/pod-download', ensureAuthenticated, async (req, res) => {
-    try {
-        const { trackingNumber } = req.body;
-
-        if (!trackingNumber) {
-            return res.status(400).json({
-                success: false,
-                error: 'Tracking number required'
-            });
-        }
-
-        console.log(`=== TEST POD Download for: ${trackingNumber} ===`);
-
-        // Step 1: Get Detrack data
-        const detrackResponse = await axios.get(
-            `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': apiKey
-                },
-                timeout: 10000
-            }
-        );
-
-        const detrackData = detrackResponse.data.data;
-
-        if (!detrackData) {
-            return res.status(404).json({
-                success: false,
-                error: 'Tracking number not found in Detrack'
-            });
-        }
-
-        const result = {
-            trackingNumber,
-            product: detrackData.group_name,
-            status: detrackData.status,
-            hasPhoto: !!detrackData.photo_1_file_url,
-            photoUrl: detrackData.photo_1_file_url || null,
-            attempts: [],
-            base64Data: null,
-            base64Length: 0,
-            downloadSuccess: false
-        };
-
-        // Step 2: Test download if photo exists
-        if (detrackData.photo_1_file_url) {
-            console.log(`📸 Photo URL found, attempting download...`);
-
-            // Try immediate download
-            const downloadResult = await testDownloadImage(
-                detrackData.photo_1_file_url,
-                trackingNumber
-            );
-
-            result.attempts = downloadResult.attempts;
-            result.base64Data = downloadResult.base64;
-            result.base64Length = downloadResult.base64Length;
-            result.downloadSuccess = downloadResult.success;
-
-            // Log Base64 preview (first 100 chars)
-            if (downloadResult.base64) {
-                console.log(`✅ Base64 preview: ${downloadResult.base64.substring(0, 100)}...`);
-            }
-        } else {
-            console.log(`⚠️ No photo URL available for ${trackingNumber}`);
-        }
-
-        console.log(`📊 Test completed for ${trackingNumber}`);
-
-        return res.json({
-            success: true,
-            data: result
-        });
-
-    } catch (error) {
-        console.error(`❌ Test error for ${req.body.trackingNumber}:`, error.message);
-
-        return res.status(500).json({
-            success: false,
-            error: error.message,
-            trackingNumber: req.body.trackingNumber
-        });
-    }
-});
-
-// Helper function for testing download only
-async function testDownloadImage(imageUrl, consignmentID) {
-    const result = {
-        originalUrl: imageUrl,
-        attempts: [],
-        base64: null,
-        base64Length: 0,
-        success: false
-    };
-
-    // Attempt 1: Try original URL
-    try {
-        console.log(`   Attempt 1: Original URL`);
-        const response = await axios.get(imageUrl, {
-            responseType: 'arraybuffer',
-            headers: {
-                'X-API-KEY': apiKey,
-                'Accept': 'image/*'
-            },
-            timeout: 8000
-        });
-
-        result.attempts.push({
-            number: 1,
-            type: 'original_url',
-            status: 'success',
-            bytes: response.data.length,
-            message: `Downloaded ${response.data.length} bytes`
-        });
-
-        // Convert to Base64
-        const base64Image = response.data.toString('base64');
-        result.base64 = base64Image;
-        result.base64Length = base64Image.length;
-        result.success = true;
-
-        console.log(`   ✅ Success on first attempt: ${base64Image.length} chars`);
-        return result;
-
-    } catch (error1) {
-        console.log(`   ❌ Attempt 1 failed: ${error1.message}`);
-        result.attempts.push({
-            number: 1,
-            type: 'original_url',
-            status: 'failed',
-            error: error1.message,
-            statusCode: error1.response?.status
-        });
-
-        // Attempt 2: Refresh URL and try again
-        try {
-            console.log(`   Attempt 2: Refreshing URL...`);
-
-            const refreshResponse = await axios.get(
-                `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${consignmentID}`,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-KEY': apiKey
-                    },
-                    timeout: 5000
-                }
-            );
-
-            if (refreshResponse.data.data?.photo_1_file_url) {
-                console.log(`   Got fresh URL, attempting download...`);
-
-                const retryResponse = await axios.get(
-                    refreshResponse.data.data.photo_1_file_url,
-                    {
-                        responseType: 'arraybuffer',
-                        headers: {
-                            'X-API-KEY': apiKey,
-                            'Accept': 'image/*'
-                        },
-                        timeout: 8000
-                    }
-                );
-
-                result.attempts.push({
-                    number: 2,
-                    type: 'refreshed_url',
-                    status: 'success',
-                    bytes: retryResponse.data.length,
-                    message: `Downloaded ${retryResponse.data.length} bytes from refreshed URL`
-                });
-
-                // Convert to Base64
-                const base64Image = retryResponse.data.toString('base64');
-                result.base64 = base64Image;
-                result.base64Length = base64Image.length;
-                result.success = true;
-
-                console.log(`   ✅ Success on second attempt: ${base64Image.length} chars`);
-                return result;
-
-            } else {
-                result.attempts.push({
-                    number: 2,
-                    type: 'refreshed_url',
-                    status: 'failed',
-                    error: 'No photo URL in refreshed data'
-                });
-            }
-
-        } catch (error2) {
-            console.log(`   ❌ Attempt 2 failed: ${error2.message}`);
-            result.attempts.push({
-                number: 2,
-                type: 'refreshed_url',
-                status: 'failed',
-                error: error2.message
-            });
-        }
-    }
-
-    return result;
-}
-
-// ==================================================
-// 🐛 Debug Route for MAWB Data
-// ==================================================
-
-app.get('/updateJob/debug/mawbs', ensureAuthenticated, async (req, res) => {
-    try {
-        const sevenDaysAgo = moment().subtract(7, 'days').toDate();
-
-        // Get raw data for debugging
-        const debugData = await ORDERS.aggregate([
-            {
-                $match: {
-                    lastUpdateDateTime: { $gte: sevenDaysAgo },
-                    mawbNo: { $exists: true, $ne: '' }
-                }
-            },
-            {
-                $group: {
-                    _id: '$mawbNo',
-                    total: { $sum: 1 },
-                    scanned: {
-                        $sum: {
-                            $cond: [{ $eq: ['$warehouseEntry', 'Yes'] }, 1, 0]
-                        }
-                    },
-                    products: { $addToSet: '$product' },
-                    latestUpdate: { $max: '$lastUpdateDateTime' },
-                    sampleTracking: { $first: '$doTrackingNumber' }
-                }
-            },
-            {
-                $project: {
-                    mawbNo: '$_id',
-                    total: 1,
-                    scanned: 1,
-                    unscanned: { $subtract: ['$total', '$scanned'] },
-                    products: 1,
-                    latestUpdate: 1,
-                    sampleTracking: 1,
-                    allScanned: { $eq: ['$scanned', '$total'] }
-                }
-            },
-            { $sort: { latestUpdate: -1 } },
-            { $limit: 100 }
-        ]);
-
-        // Get total counts
-        const totalCount = await ORDERS.countDocuments({
-            lastUpdateDateTime: { $gte: sevenDaysAgo },
-            mawbNo: { $exists: true, $ne: '' }
-        });
-
-        const withMAWBScanned = await ORDERS.countDocuments({
-            lastUpdateDateTime: { $gte: sevenDaysAgo },
-            mawbNo: { $exists: true, $ne: '' },
-            warehouseEntry: 'Yes'
-        });
-
-        const withMAWBUnscanned = await ORDERS.countDocuments({
-            lastUpdateDateTime: { $gte: sevenDaysAgo },
-            mawbNo: { $exists: true, $ne: '' },
-            warehouseEntry: { $ne: 'Yes' }
-        });
-
-        res.json({
-            success: true,
-            stats: {
-                totalOrdersWithMAWB: totalCount,
-                scanned: withMAWBScanned,
-                unscanned: withMAWBUnscanned,
-                uniqueMAWBs: debugData.length
-            },
-            mawbs: debugData,
-            queryInfo: {
-                dateRange: `Last 7 days (from ${sevenDaysAgo.toISOString()})`,
-                currentTime: new Date().toISOString()
-            }
-        });
-
-    } catch (error) {
-        console.error('Debug route error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// ==================================================
-// 📁 Excel Template Generation
-// ==================================================
-
-app.get('/templates/UAN_template.xlsx', ensureAuthenticated, (req, res) => {
-    try {
-        console.log('📋 Generating UAN Excel template...');
-
-        // Create simple data array
-        const data = [
-            ['Tracking Number', 'MAWB Number', 'Postal Code', 'Parcel Weight (kg)'],
-            ['EXAMPLE001', 'MAWB123456', 'BE1234', '1.5'],
-            ['EXAMPLE002', 'MAWB123456', 'BE5678', '2.0'],
-            ['EXAMPLE003', 'MAWB789012', '', '0.8'],
-            ['EXAMPLE004', 'MAWB789012', 'BE9012', ''],
-            ['', '', '', ''],
-            ['=== INSTRUCTIONS ===', '', '', ''],
-            ['1. Tracking Number and MAWB Number are REQUIRED', '', '', ''],
-            ['2. Postal Code and Parcel Weight are OPTIONAL', '', '', ''],
-            ['3. Do NOT modify column headers', '', '', ''],
-            ['4. Save as .xlsx, .xls, or .csv file', '', '', ''],
-            ['5. Only jobs with "Info Received" status will be processed', '', '', ''],
-            ['6. Maximum 3000 records per file', '', '', ''],
-            ['7. Remove sample data before uploading', '', '', '']
-        ];
-
-        // Create workbook
-        const XLSX = require('xlsx');
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.aoa_to_sheet(data);
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'UAN Template');
-
-        // Generate buffer
-        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-
-        // Set headers and send
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename="UAN_template.xlsx"');
-        res.send(buffer);
-
-        console.log('✅ Excel template sent successfully');
-
-    } catch (error) {
-        console.error('❌ Error generating Excel template:', error);
-        // Fallback to CSV if Excel fails
-        sendCSVTemplate(res);
-    }
-});
-
-app.get('/templates/UAN_template.csv', ensureAuthenticated, (req, res) => {
-    sendCSVTemplate(res);
-});
-
-function sendCSVTemplate(res) {
-    try {
-        console.log('📋 Generating CSV template...');
-
-        const csvContent = `Tracking Number,MAWB Number,Postal Code,Parcel Weight (kg)
-EXAMPLE001,MAWB123456,BE1234,1.5
-EXAMPLE002,MAWB123456,BE5678,2.0
-EXAMPLE003,MAWB789012,,0.8
-EXAMPLE004,MAWB789012,BE9012,
-
-=== INSTRUCTIONS ===
-1. Tracking Number and MAWB Number are REQUIRED
-2. Postal Code and Parcel Weight are OPTIONAL
-3. Do NOT modify column headers
-4. Save as .csv file
-5. Only jobs with "Info Received" status will be processed
-6. Maximum 3000 records per file
-7. Remove sample data before uploading`;
-
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="UAN_template.csv"');
-        res.send(csvContent);
-
-        console.log('✅ CSV template sent successfully');
-
-    } catch (error) {
-        console.error('❌ Error generating CSV template:', error);
-        res.status(500).send('Error generating template file');
     }
 }
 
@@ -21770,44 +20736,6 @@ async function sendDetrackUpdateWithRetry(trackingNumber, updateData, mawbNum, m
     return false;
 }
 
-// Add this route to check existing orders
-app.post('/updateJob/checkExistingOrders', ensureAuthenticated, async (req, res) => {
-    try {
-        const { trackingNumbers, mawbNum } = req.body;
-
-        const existingOrders = await ORDERS.find({
-            doTrackingNumber: { $in: trackingNumbers }
-        }).select('doTrackingNumber mawbNo currentStatus warehouseEntry product');
-
-        // Filter to show only orders that might cause issues
-        const problematicOrders = existingOrders.filter(order => {
-            return order.warehouseEntry === "Yes" ||
-                order.currentStatus !== "Info Received" ||
-                (order.mawbNo && order.mawbNo !== mawbNum);
-        });
-
-        res.json({
-            totalChecked: trackingNumbers.length,
-            existingOrders: existingOrders.length,
-            problematicOrders: problematicOrders.length,
-            details: problematicOrders.map(order => ({
-                trackingNumber: order.doTrackingNumber,
-                currentMAWB: order.mawbNo,
-                status: order.currentStatus,
-                warehouseEntry: order.warehouseEntry,
-                product: order.product,
-                issue: order.warehouseEntry === "Yes" ? "Already at warehouse" :
-                    order.currentStatus !== "Info Received" ? `Wrong status: ${order.currentStatus}` :
-                        order.mawbNo !== mawbNum ? `Different MAWB: ${order.mawbNo}` : "Unknown"
-            }))
-        });
-
-    } catch (error) {
-        console.error('Error checking existing orders:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
 // ==================================================
 // 📁 Excel Upload Route for UWP (Update Weight/Postal Code)
 // ==================================================
@@ -22271,36 +21199,6 @@ async function downloadAvailablePODsForGDEXFailed(consignmentID, detrackData, ex
 // 📦 New Unified POD Routes
 // ==================================================
 
-// API endpoint to get job details from Detrack
-app.get('/api/job-details/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
-    try {
-        const trackingNumber = req.params.trackingNumber.toUpperCase();
-        const apiKey = process.env.API_KEY;
-
-        const response = await axios.get(
-            `https://app.detrack.com/api/v2/dn/jobs/show/?do_number=${trackingNumber}`,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': apiKey,
-                },
-            }
-        );
-
-        // Log the response to see what fields are available
-        console.log('Detrack API response for', trackingNumber, ':', {
-            other_phone_numbers: response.data.data?.other_phone_numbers,
-            phone_number: response.data.data?.phone_number,
-            deliver_to_collect_from: response.data.data?.deliver_to_collect_from
-        });
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Error fetching job details:', error);
-        res.status(404).json({ error: 'Tracking number not found' });
-    }
-});
-
 // Render the list POD page
 app.get('/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
     try {
@@ -22413,12 +21311,6 @@ app.get('/api/view-pod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
         console.error('❌ Error fetching POD:', error);
         res.status(500).json({ error: 'Failed to fetch POD: ' + error.message });
     }
-});
-
-// Test route to verify the API is working
-app.get('/api/test-view', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    console.log('🔥 /api/test-view route was called');
-    res.json({ message: 'Test view route is working', user: req.user?.name });
 });
 
 // Delete POD route
@@ -23340,46 +22232,6 @@ app.get('/email-health', async (req, res) => {
 // Start the scheduled email jobs (7am AND 5pm)
 scheduleDailyEmails();
 
-// Print ID page (Admin only) - Handles both MongoDB _id and userId (GR/FL format)
-app.get('/print/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
-    try {
-        const identifier = req.params.identifier;
-        console.log('Print route called for identifier:', identifier);
-
-        let user;
-
-        // Check if identifier is MongoDB ObjectId format (24 hex chars)
-        const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-
-        if (isObjectId) {
-            // Search by MongoDB _id
-            console.log('Searching by MongoDB _id');
-            user = await USERS.findById(identifier);
-        } else {
-            // Search by userId (GR000001 or FL000001 format)
-            console.log('Searching by userId');
-            user = await USERS.findOne({ userId: identifier });
-        }
-
-        if (!user) {
-            console.log('User not found for identifier:', identifier);
-            req.flash('error_msg', 'User not found');
-            return res.redirect('/listUser');
-        }
-
-        console.log('User found:', user.name, user.userId);
-
-        res.render('printUser', {
-            user: user,
-            loggedUser: req.user
-        });
-    } catch (err) {
-        console.error('Error in print route:', err);
-        req.flash('error_msg', 'Error loading print page: ' + err.message);
-        res.redirect('/listUser');
-    }
-});
-
 // Print multiple IDs page (Admin only)
 app.get('/print-multiple', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
@@ -23429,6 +22281,11 @@ app.get('/print-multiple', ensureAuthenticated, ensureAdmin, async (req, res) =>
 // Get MAWBs for GDEX/GDEXT products only (for SBR) - Last 30 days
 app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
     try {
+        const cacheKey = 'gdexMAWBs';
+        if (mawbListCache.has(cacheKey)) {
+            return res.json(mawbListCache.get(cacheKey));
+        }
+
         console.log('🔍 Fetching GDEX/GDEXT MAWBs for SBR (last 30 days)...');
 
         // Calculate date 30 days ago
@@ -23488,7 +22345,7 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
             lastUpdated: formatDateForDisplay(mawb.latestUpdate)
         }));
 
-        res.json({
+        const responseBody = {
             success: true,
             count: formattedMAWBs.length,
             mawbs: formattedMAWBs,
@@ -23497,7 +22354,10 @@ app.get('/updateJob/gdexMAWBs', ensureAuthenticated, async (req, res) => {
                 totalJobs: formattedMAWBs.reduce((sum, m) => sum + m.totalJobs, 0),
                 dateRange: `Last 30 days (from ${thirtyDaysAgo.toISOString().split('T')[0]})`
             }
-        });
+        };
+
+        mawbListCache.set(cacheKey, responseBody);
+        res.json(responseBody);
 
     } catch (error) {
         console.error('❌ Error getting GDEX MAWBs:', error);

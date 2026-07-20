@@ -12,22 +12,6 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <style>
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        .navbar {
-            background-color: transparent;
-        }
-
-        .container-bg {
-            background-color: #333;
-        }
-
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
-
         th {
             background-color: #f2f2f2;
             font-size: 15px;
@@ -43,26 +27,6 @@
             width: 80%;
             margin: 0 auto;
             vertical-align: middle;
-        }
-
-        .logo {
-            height: 40px;
-            width: auto;
-            max-height: 40px;
-        }
-
-        @media (max-width: 768px) {
-            .logo {
-                height: 30px;
-                max-height: 30px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logo {
-                height: 25px;
-                max-height: 25px;
-            }
         }
 
         /* Custom Modal Styles - No Bootstrap JS dependency */
@@ -463,7 +427,7 @@ $(document).ready(function () {
             const podId = $(this).data('id');
 
             if (!podId || podId.length !== 24) {
-                alert('Invalid POD ID format');
+                showToast('Invalid POD ID format', 'error');
                 return;
             }
 
@@ -477,7 +441,7 @@ $(document).ready(function () {
 
             } catch (error) {
                 console.error('Error fetching POD:', error);
-                alert('Failed to load POD details: ' + (error.response?.data?.error || error.message));
+                showToast('Failed to load POD details: ' + (error.response?.data?.error || error.message), 'error');
                 $('#podTable').DataTable().ajax.reload();
             }
         });
@@ -501,7 +465,7 @@ $(document).ready(function () {
                 const trackingNumbers = Array.from(trackingElements).map(el => el.textContent.trim());
 
                 if (trackingNumbers.length === 0) {
-                    alert('No tracking numbers found in this POD');
+                    showToast('No tracking numbers found in this POD', 'warning');
                     return;
                 }
 
@@ -512,18 +476,19 @@ $(document).ready(function () {
                 await navigator.clipboard.writeText(trackingText);
 
                 // Show success message
-                alert(`✅ ${trackingNumbers.length} tracking number(s) copied to clipboard!\n\n${trackingNumbers.join('\n')}`);
+                showToast(`✅ ${trackingNumbers.length} tracking number(s) copied to clipboard!\n\n${trackingNumbers.join('\n')}`, 'success');
 
             } catch (error) {
                 console.error('Error copying tracking numbers:', error);
-                alert('Failed to copy tracking numbers. Please try again.');
+                showToast('Failed to copy tracking numbers. Please try again.', 'error');
             }
         });
 
         // Delete button handler
-        $(document).on('click', '.delete-btn', function () {
+        $(document).on('click', '.delete-btn', async function () {
             const podId = $(this).data('id');
-            if (confirm("Are you sure you want to delete this POD? This action cannot be undone.")) {
+            const ok = await showConfirm("Are you sure you want to delete this POD? This action cannot be undone.");
+            if (ok) {
                 window.location.href = "/deletePOD/" + podId;
             }
         });
@@ -532,7 +497,7 @@ $(document).ready(function () {
         $(document).on('click', '.assign-jobs-btn', async function() {
             // Extra runtime permission check
             if (!canAssignJobs) {
-                alert("You do not have permission to assign jobs. Only CS, Manager, and Admin roles can perform this action.");
+                showToast("You do not have permission to assign jobs. Only CS, Manager, and Admin roles can perform this action.", 'error');
                 return;
             }
             
@@ -554,7 +519,7 @@ $(document).ready(function () {
             const normalizedDeliveryDate = normalizeDeliveryDate(deliveryDate);
             
             if (!normalizedDeliveryDate) {
-                alert(`❌ Cannot parse Delivery Date: "${deliveryDate}". Expected format like "15.04.26"\n\nPlease check the POD data.`);
+                showToast(`❌ Cannot parse Delivery Date: "${deliveryDate}". Expected format like "15.04.26"\n\nPlease check the POD data.`, 'error');
                 return;
             }
             
@@ -575,9 +540,9 @@ $(document).ready(function () {
                 todayObj.setHours(0, 0, 0, 0);
                 
                 if (deliveryDateObj < todayObj) {
-                    alert(`❌ Cannot assign jobs: Delivery Date (${displayDeliveryDate}) has already passed.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date (Brunei): ${displayTodayDate}\n\nNote: Only same-day deliveries can be assigned.`);
+                    showToast(`❌ Cannot assign jobs: Delivery Date (${displayDeliveryDate}) has already passed.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date (Brunei): ${displayTodayDate}\n\nNote: Only same-day deliveries can be assigned.`, 'error');
                 } else {
-                    alert(`❌ Cannot assign jobs: Delivery Date (${displayDeliveryDate}) is in the future.\n\nPlease wait until ${displayDeliveryDate} (Brunei time) to assign these jobs.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date (Brunei): ${displayTodayDate}`);
+                    showToast(`❌ Cannot assign jobs: Delivery Date (${displayDeliveryDate}) is in the future.\n\nPlease wait until ${displayDeliveryDate} (Brunei time) to assign these jobs.\n\nPOD Delivery Date: ${deliveryDate}\nToday's Date (Brunei): ${displayTodayDate}`, 'error');
                 }
                 return;
             }
@@ -594,7 +559,8 @@ $(document).ready(function () {
                 `• Send GDEX webhook for GDEX/GDEXT products\n\n` +
                 `Proceed?`;
             
-            if (!confirm(confirmMessage)) {
+            const confirmedAssign = await showConfirm(confirmMessage, { okText: 'Proceed', okClass: 'btn-primary' });
+            if (!confirmedAssign) {
                 return;
             }
             
@@ -616,7 +582,7 @@ $(document).ready(function () {
                 const trackingNumbers = Array.from(trackingElements).map(el => el.textContent.trim());
                 
                 if (trackingNumbers.length === 0) {
-                    alert('No tracking numbers found in this POD');
+                    showToast('No tracking numbers found in this POD', 'warning');
                     hideAssignJobsModal();
                     return;
                 }
@@ -663,14 +629,14 @@ $(document).ready(function () {
                     }
                 }
 
-                alert(message);
+                showToast(message, job.status === 'failed' ? 'error' : 'success');
 
                 // Refresh the DataTable
                 $('#podTable').DataTable().ajax.reload();
 
             } catch (error) {
                 console.error('Error assigning jobs:', error);
-                alert('Failed to assign jobs: ' + (error.response?.data?.error || error.message));
+                showToast('Failed to assign jobs: ' + (error.response?.data?.error || error.message), 'error');
             } finally {
                 hideAssignJobsModal();
             }

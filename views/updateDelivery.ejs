@@ -10,63 +10,14 @@
     <link rel="stylesheet" href="/css/mobile-center.css">
     <script src="https://unpkg.com/imask"></script>
     <style>
-        /* Custom CSS for your page */
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        /* Make the navbar background transparent */
-        .navbar {
-            background-color: transparent;
-        }
-
-        /* Add background color to the container */
-        .container-bg {
-            background-color: #333;
-            /* You can use your desired background color here */
-        }
-
-        /* Add margin to the navigation links */
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
-
-        /* Add margin to the submit button */
-        .btn-submit {
-            margin-top: 10px;
-            /* Adjust the margin-top as needed */
-        }
-
         /* Increase the margin-bottom for the h1 element */
         h1 {
             margin-bottom: 20px;
-            /* Adjust the value as needed */
         }
 
         /* Custom CSS for reducing line height */
         .delivery-flow-box p {
             margin: 5px 0;
-            /* Adjust the margin to control line spacing */
-        }
-
-        .logo {
-            height: 40px;
-            width: auto;
-            max-height: 40px;
-        }
-
-        @media (max-width: 768px) {
-            .logo {
-                height: 30px;
-                max-height: 30px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logo {
-                height: 25px;
-                max-height: 25px;
-            }
         }
     </style>
 
@@ -623,7 +574,7 @@
                             clearInterval(pollTimer);
                             loadingDiv.style.display = 'none';
                             renderResults(job.processingResults);
-                            alert('Update job failed: ' + (job.error || 'Unknown error'));
+                            showToast('Update job failed: ' + (job.error || 'Unknown error'), 'error');
                         }
                     } catch (error) {
                         console.error('Error polling job status:', error);
@@ -631,8 +582,31 @@
                 }, 2000);
             }
 
+            const DANGER_ZONE_ACTIONS = {
+                'CD': 'Cancel',
+                'AJ': 'Reactivate (Cancelled -> Active)',
+                '47': 'Dispose'
+            };
+
             document.querySelector('form').addEventListener('submit', async function (event) {
                 event.preventDefault();
+
+                const dangerAction = DANGER_ZONE_ACTIONS[statusCodeSelect.value];
+                if (dangerAction) {
+                    const trackingNumbers = document.getElementById('consignmentID').value
+                        .split('\n')
+                        .map(v => v.trim())
+                        .filter(Boolean);
+                    const preview = trackingNumbers.slice(0, 15).join(', ') +
+                        (trackingNumbers.length > 15 ? `, ... (+${trackingNumbers.length - 15} more)` : '');
+                    const confirmed = await showConfirm(
+                        `You are about to ${dangerAction} ${trackingNumbers.length} job(s):\n\n${preview}\n\n` +
+                        `This action cannot be undone. Continue?`,
+                        { title: 'Please Confirm', okText: 'Continue', okClass: 'btn-danger' }
+                    );
+                    if (!confirmed) return;
+                }
+
                 submitButton.disabled = true;
                 loadingDiv.style.display = 'block';
                 progressBar.style.width = '0%';
@@ -663,7 +637,7 @@
                     console.error('Error submitting update:', error);
                     loadingDiv.style.display = 'none';
                     submitButton.disabled = false;
-                    alert('Error starting update job: ' + error.message);
+                    showToast('Error starting update job: ' + error.message, 'error');
                 }
             });
 
@@ -1053,7 +1027,7 @@
             ucdrCheckButton.addEventListener('click', async function () {
                 const trackingNumber = ucdrTrackingNumberField.value.trim().toUpperCase();
                 if (!trackingNumber) {
-                    alert('Please enter a tracking number.');
+                    showToast('Please enter a tracking number.', 'warning');
                     return;
                 }
 

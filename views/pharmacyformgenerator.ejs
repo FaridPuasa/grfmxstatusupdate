@@ -35,41 +35,6 @@
             font-weight: bold;
         }
 
-        .navbar-nav.flex-row {
-            flex-direction: row !important;
-        }
-
-        .navbar {
-            background-color: transparent;
-        }
-
-        .container-bg {
-            background-color: #333;
-        }
-
-        .navbar-nav.flex-row .nav-item {
-            margin-right: 10px;
-        }
-
-        .logo {
-            height: 40px;
-            width: auto;
-            max-height: 40px;
-        }
-
-        @media (max-width: 768px) {
-            .logo {
-                height: 30px;
-                max-height: 30px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logo {
-                height: 25px;
-                max-height: 25px;
-            }
-        }
     </style>
 
     <!-- Favicon -->
@@ -185,8 +150,9 @@
         <script>
             const formPayload = <%- JSON.stringify(results) %>;
 
-            document.getElementById('saveButton').addEventListener('click', function () {
-                if (!confirm('Are you sure you want to save this list?')) {
+            document.getElementById('saveButton').addEventListener('click', async function () {
+                const ok = await showConfirm('Are you sure you want to save this list?', { okText: 'Save', okClass: 'btn-primary' });
+                if (!ok) {
                     return;
                 }
 
@@ -202,18 +168,18 @@
                             document.getElementById('saveButton').style.display = 'none';
                             document.getElementById('exportExcelButton').style.display = 'inline-block';
                             document.getElementById('downloadTemplateLink').style.display = 'inline-block';
-                            alert('Form data saved successfully!');
+                            showToast('Form data saved successfully!', 'success');
                         } else {
                             response.json().then(function (data) {
-                                alert('Failed to save Form data: ' + (data.message || ''));
+                                showToast('Failed to save Form data: ' + (data.message || ''), 'error');
                             }).catch(function () {
-                                alert('Failed to save Form data.');
+                                showToast('Failed to save Form data.', 'error');
                             });
                         }
                     })
                     .catch(function (error) {
                         console.error('Error:', error);
-                        alert('Failed to save Form data.');
+                        showToast('Failed to save Form data.', 'error');
                     });
             });
 
@@ -245,8 +211,9 @@
                 XLSX.writeFile(wb, formPayload.formName + '.xlsx');
             });
 
-            document.getElementById('resetButton').addEventListener('click', function () {
-                if (!confirm('Are you sure you want to reset? Any unsaved list will be lost.')) {
+            document.getElementById('resetButton').addEventListener('click', async function () {
+                const ok = await showConfirm('Are you sure you want to reset? Any unsaved list will be lost.', { okText: 'Reset', okClass: 'btn-danger' });
+                if (!ok) {
                     return;
                 }
                 window.location.href = '/pharmacyformgenerator';

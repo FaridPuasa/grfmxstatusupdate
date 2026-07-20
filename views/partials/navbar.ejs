@@ -91,11 +91,11 @@
             <li class="nav-item">
               <a class="nav-link" href="/">Dashboard</a>
             </li>
-            <% if (['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopOperationDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
-                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                <div class="dropdown-menu" aria-labelledby="desktopOperationDropdown">
                   <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
                   <% } %>
@@ -125,23 +125,16 @@
                 </div>
               </li>
             <% } %>
-            <% if (['moh','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['moh','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopMohDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
-                <div class="dropdown-menu" aria-labelledby="mohDropdown">
+                <div class="dropdown-menu" aria-labelledby="desktopMohDropdown">
                   <% if (['moh'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
                   <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
-                    <!--
-                    <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
-                    -->
                     <a class="dropdown-item" href="/pharmacyformgenerator">Form Generator</a>
                     <a class="dropdown-item" href="/pharmacyformlist">Forms (New)</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms (Old)</a>
@@ -152,7 +145,7 @@
                 </div>
               </li>
             <% } %>
-            <% if (['manager','admin'].includes(user.role) || ['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+            <% if (user && (['manager','admin'].includes(user.role) || ['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email))) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopOthersDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Others</a>
@@ -204,11 +197,11 @@
             <li class="nav-item">
               <a class="nav-link" href="/">Dashboard</a>
             </li>
-            <% if (['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileOperationDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
-                <div class="dropdown-menu" aria-labelledby="allOrdersDropdown">
+                <div class="dropdown-menu" aria-labelledby="mobileOperationDropdown">
                   <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
                   <% } %>
@@ -238,23 +231,16 @@
                 </div>
               </li>
             <% } %>
-            <% if (['moh','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['moh','cs','manager','admin'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileMohDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
-                <div class="dropdown-menu" aria-labelledby="mohDropdown">
+                <div class="dropdown-menu" aria-labelledby="mobileMohDropdown">
                   <% if (['moh'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
                   <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
-                    <!--
-                    <a class="dropdown-item" href="/listofpharmacyMOHSTDOrders">STD</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHEXPOrders">EXP</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHIMMOrders">IMM</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHTTGOrders">TTG</a>
-                    <a class="dropdown-item" href="/listofpharmacyMOHKBOrders">KB</a>
-                    -->
                     <a class="dropdown-item" href="/pharmacyformgenerator">Form Generator</a>
                     <a class="dropdown-item" href="/pharmacyformlist">Forms (New)</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms (Old)</a>
@@ -265,7 +251,7 @@
                 </div>
               </li>
             <% } %>
-            <% if (['manager','admin'].includes(user.role) || ['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+            <% if (user && (['manager','admin'].includes(user.role) || ['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email))) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileOthersDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Others</a>
@@ -307,6 +293,27 @@
     </nav>
   </div>
 </div>
+
+<!-- Shared toast container + confirm modal for showToast()/showConfirm() (see /js/ui-helpers.js) -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11000;" id="uiToastContainer"></div>
+
+<div class="modal fade" id="uiConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="uiConfirmModalTitle">Please Confirm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="uiConfirmModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="uiConfirmModalOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/ui-helpers.js"></script>
 
 <% if (user) { %>
   <script src="/js/sessionActivity.js"></script>
