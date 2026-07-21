@@ -8,6 +8,8 @@
   }
   .container-bg {
     background-color: #333;
+    position: relative;
+    z-index: 1030;
   }
   .navbar-nav.flex-row .nav-item {
     margin-right: 10px;
@@ -91,44 +93,42 @@
             <li class="nav-item">
               <a class="nav-link" href="/">Dashboard</a>
             </li>
-            <% if (user && ['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['finance','warehouse','cs','manager','admin','supervisor'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopOperationDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
                 <div class="dropdown-menu" aria-labelledby="desktopOperationDropdown">
-                  <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                  <% if (['admin', 'cs', 'warehouse', 'manager'].includes(user.role) || ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'].includes(user.email)) { %>
+                    <a class="dropdown-item" href="/updateJobDelivery">Update Status &amp; Details</a>
                   <% } %>
-                  <% if (['cs','warehouse', 'manager', 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
-                  <% } %>
-                  <% if (['admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/updateJobDelivery">Update Job/Delivery (Combined)</a>
-                  <% } %>
-                  <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin', 'supervisor' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                   <% } %>
-                  <% if (['manager' , 'finance', 'admin'].includes(user.role)) { %>
+                  <% if (['admin','supervisor','finance'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">Report</div>
+                    <% if (['admin','finance'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
+                    <% } %>
+                    <% if (['admin','supervisor','finance'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/reportList">Report List</a>
+                    <% } %>
                   <% } %>
-                  <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                  <% if (['admin','cs','warehouse','finance','manager'].includes(user.role) || ['operation2@globex.com.bn','operation3@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD</div>
-                    <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <% if (['admin','cs','warehouse'].includes(user.role) || ['warehouse@globex.com.bn','operation2@globex.com.bn','operation3@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/podGenerator">POD Generator</a>
                   <% } %>
-                  <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                  <% if (['admin','cs','warehouse','finance','manager'].includes(user.role) || ['operation2@globex.com.bn','operation3@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/listPOD">Saved POD</a>
                     <% } %>
                   <% } %>
                 </div>
               </li>
             <% } %>
-            <% if (user && ['moh','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['moh','cs','manager','admin','warehouse'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopMohDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
@@ -136,11 +136,13 @@
                   <% if (['moh'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
-                  <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['cs' , 'manager' , 'admin', 'warehouse' ].includes(user.role) || ['warehouse@globex.com.bn','operation2@globex.com.bn','operation3@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
                     <a class="dropdown-item" href="/pharmacyformgenerator">Form Generator</a>
                     <a class="dropdown-item" href="/pharmacyformlist">Forms (New)</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms (Old)</a>
+                  <% } %>
+                  <% if (['admin','cs'].includes(user.role) || ['operation2@globex.com.bn','operation3@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">Warga Emas</div>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
@@ -148,18 +150,18 @@
                 </div>
               </li>
             <% } %>
-            <% if (user && (['manager','admin'].includes(user.role) || ['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email))) { %>
+            <% if (user && (['manager','admin'].includes(user.role) || ['danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email))) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="desktopOthersDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Others</a>
                 <div class="dropdown-menu" aria-labelledby="desktopOthersDropdown">
-                  <% if (['manager','admin'].includes(user.role)) { %>
+                  <% if (['admin','manager'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/inventory">Inventory</a>
                   <% } %>
-                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+                  <% if (['admin'].includes(user.role) || ['danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="https://www.vehicle.gorushbn.com/">Fleet System</a>
                   <% } %>
-                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn'].includes(user.email)) { %>
+                  <% if (['admin'].includes(user.role) || ['danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="https://analyticsdispatch.gorushbn.com/">Dispatch Analytics</a>
                   <% } %>
                 </div>
@@ -200,44 +202,42 @@
             <li class="nav-item">
               <a class="nav-link" href="/">Dashboard</a>
             </li>
-            <% if (user && ['finance','warehouse','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['finance','warehouse','cs','manager','admin','supervisor'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileOperationDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Operation</a>
                 <div class="dropdown-menu" aria-labelledby="mobileOperationDropdown">
-                  <% if (['warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/updateDelivery">Update Delivery</a>
+                  <% if (['admin', 'cs', 'warehouse', 'manager'].includes(user.role) || ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'].includes(user.email)) { %>
+                    <a class="dropdown-item" href="/updateJobDelivery">Update Status &amp; Details</a>
                   <% } %>
-                  <% if (['cs' ,'warehouse', 'manager' , 'admin' ].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/updateJob">Scan Parcel In Warehouse</a>
-                  <% } %>
-                  <% if (['admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/updateJobDelivery">Update Job/Delivery (Combined)</a>
-                  <% } %>
-                  <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['finance', 'warehouse', 'cs', 'manager' , 'admin', 'supervisor' ].includes(user.role)) { %>
                     <a class="dropdown-item" href="/addressAreaCheck">Address Area Checker</a>
                     <a class="dropdown-item" href="/searchJobs">Search Jobs</a>
                     <% } %>
-                    <% if (['manager' , 'finance', 'admin'].includes(user.role)) { %>
+                    <% if (['admin','supervisor','finance'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">Report</div>
+                    <% if (['admin','finance'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/reportGenerator">Generate Report</a>
+                    <% } %>
+                    <% if (['admin','supervisor','finance'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/reportList">Report List</a>
+                    <% } %>
                   <% } %>
-                  <% if (['cs', 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                  <% if (['admin','cs','warehouse','finance','manager'].includes(user.role) || ['operation2@globex.com.bn','operation3@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">POD</div>
-                    <% if (['cs' , 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <% if (['admin','cs','warehouse'].includes(user.role) || ['warehouse@globex.com.bn','operation2@globex.com.bn','operation3@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/podGenerator">POD Generator</a>
-                    <% if (['cs' , 'finance', 'warehouse' , 'manager' , 'admin'].includes(user.role)) { %>
+                    <% } %>
+                    <% if (['admin','cs','warehouse','finance','manager'].includes(user.role) || ['operation2@globex.com.bn','operation3@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                   <a class="dropdown-item" href="/listPOD">Saved POD</a>
-                  <% } %>
                   <% } %>
                   <% } %>
                 </div>
               </li>
             <% } %>
-            <% if (user && ['moh','cs','manager','admin'].includes(user.role)) { %>
+            <% if (user && ['moh','cs','manager','admin','warehouse'].includes(user.role)) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileMohDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">MOH</a>
@@ -245,11 +245,13 @@
                   <% if (['moh'].includes(user.role)) { %>
                     <a class="dropdown-item" href="/mohsearch">Search</a>
                   <% } %>
-                  <% if (['cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                  <% if (['cs' , 'manager' , 'admin', 'warehouse' ].includes(user.role) || ['warehouse@globex.com.bn','operation2@globex.com.bn','operation3@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-header">Pharmacy Form</div>
                     <a class="dropdown-item" href="/pharmacyformgenerator">Form Generator</a>
                     <a class="dropdown-item" href="/pharmacyformlist">Forms (New)</a>
                     <a class="dropdown-item" href="/listofpharmacyMOHForms">Forms (Old)</a>
+                  <% } %>
+                  <% if (['admin','cs'].includes(user.role) || ['operation2@globex.com.bn','operation3@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-header">Warga Emas</div>
                     <a class="dropdown-item" href="/listofWargaEmasOrders">All Warga Emas Orders</a>
@@ -257,18 +259,18 @@
                 </div>
               </li>
             <% } %>
-            <% if (user && (['manager','admin'].includes(user.role) || ['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email))) { %>
+            <% if (user && (['manager','admin'].includes(user.role) || ['danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email))) { %>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="mobileOthersDropdown" role="button"
                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Others</a>
                 <div class="dropdown-menu" aria-labelledby="mobileOthersDropdown">
-                  <% if (['manager','admin'].includes(user.role)) { %>
+                  <% if (['admin','manager'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="/inventory">Inventory</a>
                   <% } %>
-                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
+                  <% if (['admin'].includes(user.role) || ['danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'warehouse@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="https://www.vehicle.gorushbn.com/">Fleet System</a>
                   <% } %>
-                  <% if (['syahmi.ghafar@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn', 'danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn'].includes(user.email)) { %>
+                  <% if (['admin'].includes(user.role) || ['danny.chua@globex.com.bn', 'lovelyna.magdalin@globex.com.bn', 'operation2@globex.com.bn', 'dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <a class="dropdown-item" href="https://analyticsdispatch.gorushbn.com/">Dispatch Analytics</a>
                   <% } %>
                 </div>

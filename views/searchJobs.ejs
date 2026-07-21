@@ -403,6 +403,13 @@ table.dataTable { width: 100% !important; }
 <script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.colVis.min.js"></script>
 <script src="https://cdn.datatables.net/colreorder/1.5.6/js/dataTables.colReorder.min.js"></script>
 <script>
+// --- Get user role/email from server-side injected variables (Reorder button gating) ---
+const currentUserRole = '<%= user ? user.role : "" %>';
+const currentUserEmail = '<%= user ? user.email : "" %>';
+const allowedRolesForReorder = ['admin', 'cs'];
+const allowedEmailsForReorder = ['operation2@globex.com.bn', 'operation3@globex.com.bn'];
+const canReorder = allowedRolesForReorder.includes(currentUserRole) || allowedEmailsForReorder.includes(currentUserEmail);
+
 $(document).ready(function() {
   // Initialize Select2
   $('.select2').select2({ width: '100%' });
@@ -697,7 +704,7 @@ $(document).ready(function() {
         orderable: false, 
         className: 'no-export',
         render: function(data, type, row) {
-          if (row && row.product && ['pharmacymoh','pharmacyjpmc','pharmacyphc'].includes(row.product.toLowerCase())) {
+          if (canReorder && row && row.product && ['pharmacymoh','pharmacyjpmc','pharmacyphc'].includes(row.product.toLowerCase())) {
             return `<button class="btn btn-sm btn-primary reorder-btn"
                       data-tracking="${row.doTrackingNumber || ''}"
                       data-address="${row.receiverAddress || ''}"

@@ -127,10 +127,12 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
     <script>
-        // --- Get user role from server-side injected variable ---
+        // --- Get user role/email from server-side injected variables ---
         const currentUserRole = '<%= user ? user.role : "" %>';
-        const allowedRolesForAssign = ['cs', 'manager', 'admin'];
-        const canAssignJobs = allowedRolesForAssign.includes(currentUserRole);
+        const currentUserEmail = '<%= user ? user.email : "" %>';
+        const allowedRolesForAssign = ['admin', 'cs', 'manager'];
+        const allowedEmailsForAssign = ['warehouse@globex.com.bn', 'operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'];
+        const canAssignJobs = allowedRolesForAssign.includes(currentUserRole) || allowedEmailsForAssign.includes(currentUserEmail);
 
         // --- Helper function to get current date in Brunei timezone (UTC+8) ---
         function getBruneiCurrentDate() {

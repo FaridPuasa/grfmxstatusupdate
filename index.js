@@ -311,8 +311,59 @@ function ensureAdmin(req, res, next) {
     res.redirect('/');
 }
 
-function ensureGeneratePODandUpdateDelivery(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'warehouse' || req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'dispatcher' || req.user.role === 'manager' || req.user.role === 'admin')) {
+// Address Area Checker only.
+function ensureAddressAreaCheckAccess(req, res, next) {
+    const allowedRoles = ['admin', 'supervisor', 'cs', 'warehouse', 'manager', 'finance'];
+    if (req.isAuthenticated() && allowedRoles.includes(req.user.role)) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// POD Generator only.
+function ensurePodGeneratorAccess(req, res, next) {
+    const allowedRoles = ['admin', 'cs', 'warehouse'];
+    const allowedEmails = ['warehouse@globex.com.bn', 'operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// Saved POD list + assign-jobs flow.
+function ensureListPODAccess(req, res, next) {
+    const allowedRoles = ['admin', 'cs', 'warehouse', 'finance', 'manager'];
+    const allowedEmails = ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// Access gate for the combined "Update Status & Details" page (and its
+// write-path routes: POST /updateDelivery, /updateDelivery/checkRemarks,
+// /checkOrderDetails, /checkOrdersBulk). MOH, Supervisor, Dispatcher,
+// Freelancer and Finance are blocked outright. Everyone else needs to match
+// at least one role/email used by that page's action groups - each
+// group/option then applies its own narrower check on top of this (a user
+// can land on the page and still see few or no actions).
+function ensureUpdateStatusDetailsAccess(req, res, next) {
+    const bannedRoles = ['moh', 'supervisor', 'dispatcher', 'freelancer', 'finance'];
+    const allowedRoles = ['admin', 'cs', 'warehouse', 'manager'];
+    const allowedEmails = ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'];
+
+    if (!req.isAuthenticated()) {
+        req.flash('error_msg', 'Please log in to view that resource');
+        return res.redirect('/login');
+    }
+    if (bannedRoles.includes(req.user.role)) {
+        req.flash('error_msg', 'You are not authorized to view that resource');
+        return res.redirect('/');
+    }
+    if (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email)) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -327,8 +378,21 @@ function ensureViewPOD(req, res, next) {
     res.redirect('/');
 }
 
+// Search Jobs only.
 function ensureViewJob(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'warehouse' || req.user.role === 'finance' || req.user.role === 'cs' || req.user.role === 'manager' || req.user.role === 'admin')) {
+    const allowedRoles = ['admin', 'supervisor', 'cs', 'warehouse', 'manager', 'finance'];
+    if (req.isAuthenticated() && allowedRoles.includes(req.user.role)) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// All Warga Emas Orders only.
+function ensureWargaEmasAccess(req, res, next) {
+    const allowedRoles = ['admin', 'cs'];
+    const allowedEmails = ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -343,8 +407,11 @@ function ensureViewMOHJob(req, res, next) {
     res.redirect('/');
 }
 
+// Pharmacy form pages: listofpharmacyMOHForms, pharmacyformgenerator, pharmacyformlist.
 function ensureMOHForm(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'cs' || req.user.role === 'manager' || req.user.role === 'admin')) {
+    const allowedRoles = ['admin', 'manager', 'cs', 'warehouse'];
+    const allowedEmails = ['warehouse@globex.com.bn', 'operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -352,7 +419,7 @@ function ensureMOHForm(req, res, next) {
 }
 
 function ensureSearchMOHJob(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'moh' || req.user.role === 'cs' || req.user.role === 'manager' || req.user.role === 'admin')) {
+    if (req.isAuthenticated() && req.user.role === 'moh') {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -360,7 +427,43 @@ function ensureSearchMOHJob(req, res, next) {
 }
 
 function ensureInventory(req, res, next) {
-    if (req.isAuthenticated() && (req.user.role === 'manager' || req.user.role === 'admin')) {
+    const allowedRoles = ['admin', 'manager'];
+    const allowedEmails = ['operation2@globex.com.bn', 'warehouse@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// Report Generator only.
+function ensureReportGeneratorAccess(req, res, next) {
+    const allowedRoles = ['admin', 'finance'];
+    const allowedEmails = ['operation2@globex.com.bn', 'warehouse@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// Report List (view only - see ensureReportDeleteAccess for delete).
+function ensureReportListAccess(req, res, next) {
+    const allowedRoles = ['admin', 'supervisor', 'finance'];
+    const allowedEmails = ['operation2@globex.com.bn', 'warehouse@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
+        return next();
+    }
+    req.flash('error_msg', 'You are not authorized to view that resource');
+    res.redirect('/');
+}
+
+// Same as ensureReportListAccess but excludes supervisor - supervisor can view
+// reports but not delete them.
+function ensureReportDeleteAccess(req, res, next) {
+    const allowedRoles = ['admin', 'finance'];
+    const allowedEmails = ['operation2@globex.com.bn', 'warehouse@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (req.isAuthenticated() && (allowedRoles.includes(req.user.role) || allowedEmails.includes(req.user.email))) {
         return next();
     }
     req.flash('error_msg', 'You are not authorized to view that resource');
@@ -1026,12 +1129,18 @@ app.post('/api/getEndOfDaySummary', async (req, res) => {
     }
 });
 
-app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
+app.post('/api/saveReport', ensureAuthenticated, ensureReportGeneratorAccess, async (req, res) => {
     try {
         let { reportType, reportName, reportContent, assignedDispatchers, assignedFreelancers, forceReplace } = req.body;
 
         if (!reportType || !reportContent || !reportName) {
             return res.json({ success: false, message: 'Missing data' });
+        }
+
+        // Finance can only generate/save the Freelancer Job Completed Count
+        // Report - mirrors the reportType dropdown restriction in reportGenerator.ejs.
+        if (req.user.role === 'finance' && reportType !== 'Freelancer Job Completed Count Report') {
+            return res.status(403).json({ success: false, message: 'You are not authorized to save this report type' });
         }
 
         // --- Filter out "Grand Total" or invalid rows before saving ---
@@ -1117,7 +1226,7 @@ app.post('/api/saveReport', ensureAuthenticated, async (req, res) => {
 });
 
 // Report Generator page
-app.get('/reportGenerator', ensureAuthenticated, async (req, res) => {
+app.get('/reportGenerator', ensureAuthenticated, ensureReportGeneratorAccess, async (req, res) => {
     try {
         const activeVehicles = await VEHICLE.find({ status: 'active' }).exec();
         res.render('reportGenerator', { user: req.user, vehicles: activeVehicles });
@@ -1135,7 +1244,7 @@ function extractReportDateDisplay(reportName) {
 }
 
 // Report List page
-app.get('/reportList', ensureAuthenticated, async (req, res) => {
+app.get('/reportList', ensureAuthenticated, ensureReportListAccess, async (req, res) => {
     try {
         const reports = await REPORTS.find({}).sort({ datetimeUpdated: -1 }).lean();
         const rows = reports.map(report => ({
@@ -1151,7 +1260,7 @@ app.get('/reportList', ensureAuthenticated, async (req, res) => {
     }
 });
 
-app.get('/api/reportList/view/:id', ensureAuthenticated, async (req, res) => {
+app.get('/api/reportList/view/:id', ensureAuthenticated, ensureReportListAccess, async (req, res) => {
     try {
         const report = await REPORTS.findById(req.params.id).lean();
         if (!report) return res.status(404).json({ error: 'Report not found' });
@@ -1167,7 +1276,7 @@ app.get('/api/reportList/view/:id', ensureAuthenticated, async (req, res) => {
     }
 });
 
-app.get('/deleteReport/:id', ensureAuthenticated, async (req, res) => {
+app.get('/deleteReport/:id', ensureAuthenticated, ensureReportDeleteAccess, async (req, res) => {
     try {
         const deletedReport = await REPORTS.findByIdAndDelete(req.params.id);
         if (deletedReport) {
@@ -4423,14 +4532,15 @@ app.post('/mohsearch', ensureAuthenticated, ensureSearchMOHJob, async (req, res)
     }
 });
 
-// Render the scanFMX page
-app.get('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    res.render('updateDelivery', { user: req.user });
+// The standalone Update Delivery page has been superseded by the combined
+// "Update Status & Details" page - redirect anyone with an old link/bookmark.
+app.get('/updateDelivery', ensureUpdateStatusDetailsAccess, (req, res) => {
+    res.redirect('/updateJobDelivery');
 });
 
 // Looks up a single tracking number for the "Update Customer/Instructions Remark" flow
 // so the form can show the existing remarks before the user overwrites them.
-app.get('/updateDelivery/checkRemarks/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/updateDelivery/checkRemarks/:trackingNumber', ensureUpdateStatusDetailsAccess, async (req, res) => {
     try {
         const trackingNumber = (req.params.trackingNumber || '').trim().toUpperCase();
         if (!trackingNumber) {
@@ -4449,16 +4559,104 @@ app.get('/updateDelivery/checkRemarks/:trackingNumber', ensureAuthenticated, ens
     }
 });
 
-app.get('/podGenerator', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+// Read-only lookup shared by the "check current value before updating" preview
+// for Go Rush Remark, Job Method, Job Price, Customer Address/Area/Phone/Name/
+// Postal Code and Weight (CBSL). Returns every relevant field in one shot;
+// the front end only reads whichever one is relevant to the active action.
+// Does not touch anything the actual POST /updateDelivery write path uses.
+app.get('/updateDelivery/checkOrderDetails/:trackingNumber', ensureUpdateStatusDetailsAccess, async (req, res) => {
+    try {
+        const trackingNumber = (req.params.trackingNumber || '').trim().toUpperCase();
+        if (!trackingNumber) {
+            return res.status(400).json({ error: 'Tracking number is required' });
+        }
+
+        const existingOrder = await ORDERS.findOne({ doTrackingNumber: trackingNumber }, {
+            doTrackingNumber: 1,
+            grRemark: 1,
+            jobMethod: 1,
+            totalPrice: 1,
+            paymentMethod: 1,
+            receiverAddress: 1,
+            area: 1,
+            receiverPhoneNumber: 1,
+            receiverName: 1,
+            receiverPostalCode: 1,
+            parcelWeight: 1
+        });
+        if (!existingOrder) {
+            return res.json({ exists: false });
+        }
+
+        res.json({
+            exists: true,
+            grRemark: existingOrder.grRemark || '',
+            jobMethod: existingOrder.jobMethod || '',
+            totalPrice: existingOrder.totalPrice != null ? existingOrder.totalPrice : '',
+            paymentMethod: existingOrder.paymentMethod || '',
+            receiverAddress: existingOrder.receiverAddress || '',
+            area: existingOrder.area || '',
+            receiverPhoneNumber: existingOrder.receiverPhoneNumber || '',
+            receiverName: existingOrder.receiverName || '',
+            receiverPostalCode: existingOrder.receiverPostalCode || '',
+            parcelWeight: existingOrder.parcelWeight != null ? existingOrder.parcelWeight : ''
+        });
+    } catch (error) {
+        console.error('Error checking order details:', error);
+        res.status(500).json({ error: 'Failed to check tracking number' });
+    }
+});
+
+// Read-only bulk lookup shared by the "check current value before updating"
+// preview for Swap Dispatchers, Warehouse Location, and MAWB No. Body:
+// {trackingNumbers: [...]}. Does not touch anything the actual
+// POST /updateDelivery write path uses.
+app.post('/updateDelivery/checkOrdersBulk', ensureUpdateStatusDetailsAccess, async (req, res) => {
+    try {
+        const trackingNumbers = Array.isArray(req.body.trackingNumbers)
+            ? req.body.trackingNumbers.map(t => (t || '').trim().toUpperCase()).filter(Boolean)
+            : [];
+        if (trackingNumbers.length === 0) {
+            return res.status(400).json({ error: 'At least one tracking number is required' });
+        }
+
+        const existingOrders = await ORDERS.find(
+            { doTrackingNumber: { $in: trackingNumbers } },
+            { doTrackingNumber: 1, assignedTo: 1, latestLocation: 1, mawbNo: 1 }
+        );
+        const byTrackingNumber = new Map(existingOrders.map(o => [o.doTrackingNumber, o]));
+
+        const results = trackingNumbers.map(trackingNumber => {
+            const order = byTrackingNumber.get(trackingNumber);
+            if (!order) {
+                return { trackingNumber, exists: false };
+            }
+            return {
+                trackingNumber,
+                exists: true,
+                assignedTo: order.assignedTo || '',
+                latestLocation: order.latestLocation || '',
+                mawbNo: order.mawbNo || ''
+            };
+        });
+
+        res.json({ results });
+    } catch (error) {
+        console.error('Error checking orders in bulk:', error);
+        res.status(500).json({ error: 'Failed to check tracking numbers' });
+    }
+});
+
+app.get('/podGenerator', ensureAuthenticated, ensurePodGeneratorAccess, (req, res) => {
     // Render the form page with EJS
     res.render('podGenerator', { user: req.user });
 });
 
-app.get('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
-    res.render('addressAreaCheck', { user: req.user });
+app.get('/addressAreaCheck', ensureAuthenticated, ensureAddressAreaCheckAccess, (req, res) => {
+    res.render('addressAreaCheck', { user: req.user, result: null, totalCount: 0 });
 });
 
-app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureViewJob, async (req, res) => {
+app.get('/listofWargaEmasOrders', ensureAuthenticated, ensureWargaEmasAccess, async (req, res) => {
     try {
         const waorders = await WAORDERS.find({})
             .select([
@@ -4896,7 +5094,7 @@ app.get('/deletePharmacyFormBatch/:id', ensureAuthenticated, ensureMOHForm, asyn
 
 
 
-app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, (req, res) => {
+app.post('/addressAreaCheck', ensureAuthenticated, ensureAddressAreaCheckAccess, (req, res) => {
     const customerAddresses = req.body.customerAddresses.split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
@@ -5275,7 +5473,7 @@ app.post('/addressAreaCheck', ensureAuthenticated, ensureGeneratePODandUpdateDel
     // Keep results in the same order the addresses were pasted in, so the
     // areas can be copied back line-by-line next to the original addresses
     // in Excel.
-    res.render('successAddressArea', { result, totalCount: result.length, user: req.user });
+    res.render('addressAreaCheck', { result, totalCount: result.length, user: req.user });
 });
 
 // Add token cache object at the top with your other caches
@@ -6735,7 +6933,7 @@ async function runFixGdexJobAll(jobId, uniqueConsignmentIDs, startDateTime, endD
 }
 
 // Handle form submission
-app.post('/updateDelivery', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) => {
     if (req.body.statusCode === 'FGA') {
         const consignmentIDs = (req.body.consignmentIDs || '').trim().split('\n').map((id) => id.trim().toUpperCase()).filter(Boolean);
         const uniqueConsignmentIDs = Array.from(new Set(consignmentIDs));
@@ -12750,6 +12948,15 @@ app.get('/updateDelivery/status/:jobId', ensureAuthenticated, (req, res) => {
 
 app.post('/reorder', ensureAuthenticated, async (req, res) => {
     try {
+        // Mirrors searchJobs.ejs's canReorder check - the Reorder button is
+        // hidden for roles/emails outside this list, so reject the request
+        // here too in case it's called directly.
+        const allowedRolesForReorder = ['admin', 'cs'];
+        const allowedEmailsForReorder = ['operation2@globex.com.bn', 'operation3@globex.com.bn'];
+        if (!allowedRolesForReorder.includes(req.user.role) && !allowedEmailsForReorder.includes(req.user.email)) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to reorder this job' });
+        }
+
         const { trackingNumber, jobMethod, paymentMethod, remarks } = req.body;
 
         if ((jobMethod == "Standard") || (jobMethod == "Self Collect")) {
@@ -15000,15 +15207,17 @@ function patchJob(jobsMap, jobId, patch) {
     jobsMap.set(jobId, { ...jobsMap.get(jobId), ...patch });
 }
 
-// Serve the update job page
+// The standalone Update Job page has been superseded by the combined
+// "Update Status & Details" page - redirect anyone with an old link/bookmark.
 app.get('/updateJob', ensureAuthenticated, (req, res) => {
-    res.render('updateJob', { user: req.user });
+    res.redirect('/updateJobDelivery');
 });
 
-// Serve the combined Update Job/Delivery page (render-only - it posts to the
-// existing /updateJob and /updateDelivery endpoints, no new business logic).
-// Restricted to admin only for now while this page is being rolled out.
-app.get('/updateJobDelivery', ensureAuthenticated, ensureAdmin, (req, res) => {
+// Serve the combined "Update Status & Details" page (render-only - it posts
+// to the existing /updateJob and /updateDelivery endpoints, no new business
+// logic). Access is gated by ensureUpdateStatusDetailsAccess; the page itself
+// further narrows which action groups/options each role/email can see.
+app.get('/updateJobDelivery', ensureUpdateStatusDetailsAccess, (req, res) => {
     res.render('updateJobDelivery', { user: req.user });
 });
 
@@ -21221,7 +21430,7 @@ async function downloadAvailablePODsForGDEXFailed(consignmentID, detrackData, ex
 // ==================================================
 
 // Render the list POD page
-app.get('/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/listPOD', ensureAuthenticated, ensureListPODAccess, async (req, res) => {
     try {
         res.render('listPOD', { user: req.user });
     } catch (error) {
@@ -21231,7 +21440,7 @@ app.get('/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, asy
 });
 
 // API endpoint for unified POD list with server-side processing
-app.get('/api/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/api/listPOD', ensureAuthenticated, ensureListPODAccess, async (req, res) => {
     try {
         const draw = parseInt(req.query.draw) || 0;
         const start = parseInt(req.query.start) || 0;
@@ -21303,7 +21512,7 @@ app.get('/api/listPOD', ensureAuthenticated, ensureGeneratePODandUpdateDelivery,
 // 📦 POD VIEW ROUTE - Add this BEFORE any other routes with :podId
 // ==================================================
 
-app.get('/api/view-pod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/api/view-pod/:podId', ensureAuthenticated, ensureListPODAccess, async (req, res) => {
     console.log('🔥🔥🔥 /api/view-pod/:podId route was called! 🔥🔥🔥');
     console.log('Pod ID received:', req.params.podId);
 
@@ -21335,7 +21544,7 @@ app.get('/api/view-pod/:podId', ensureAuthenticated, ensureGeneratePODandUpdateD
 });
 
 // Delete POD route
-app.get('/deletePOD/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/deletePOD/:podId', ensureAuthenticated, ensureListPODAccess, async (req, res) => {
     try {
         const podId = req.params.podId;
         console.log('Deleting POD with ID:', podId);
@@ -21355,7 +21564,7 @@ app.get('/deletePOD/:podId', ensureAuthenticated, ensureGeneratePODandUpdateDeli
 });
 
 // Save POD route - handle DD.MM.YY format
-app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.post('/save-pod', ensureAuthenticated, ensurePodGeneratorAccess, async (req, res) => {
     try {
         const { podName, product, podDate, podCreator, deliveryDate, area, dispatcher, htmlContent, rowCount } = req.body;
 
@@ -21429,7 +21638,7 @@ app.post('/save-pod', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, a
 });
 
 // API endpoint to get order details from MongoDB
-app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensurePodGeneratorAccess, async (req, res) => {
     try {
         const trackingNumber = req.params.trackingNumber.toUpperCase();
         console.log('Searching for order with tracking number:', trackingNumber);
@@ -21474,8 +21683,17 @@ app.get('/api/order-details/:trackingNumber', ensureAuthenticated, ensureGenerat
 // 📦 ASSIGN POD JOBS TO OUT FOR DELIVERY
 // ==================================================
 
-app.post('/api/assign-pod-jobs', ensureAuthenticated, ensureGeneratePODandUpdateDelivery, async (req, res) => {
+app.post('/api/assign-pod-jobs', ensureAuthenticated, ensureListPODAccess, async (req, res) => {
     const { podName, trackingNumbers, dispatcher, assignDate } = req.body;
+
+    // Mirrors listPOD.ejs's canAssignJobs check - the Assign Job(s) button is
+    // hidden for roles/emails outside this list, so reject the request here
+    // too in case it's called directly.
+    const allowedRolesForAssign = ['admin', 'cs', 'manager'];
+    const allowedEmailsForAssign = ['warehouse@globex.com.bn', 'operation2@globex.com.bn', 'operation3@globex.com.bn', 'dylan.chua@globex.com.bn'];
+    if (!allowedRolesForAssign.includes(req.user.role) && !allowedEmailsForAssign.includes(req.user.email)) {
+        return res.status(403).json({ error: 'You are not authorized to assign jobs' });
+    }
 
     if (!Array.isArray(trackingNumbers) || trackingNumbers.length === 0) {
         return res.status(400).json({ error: 'No tracking numbers provided' });

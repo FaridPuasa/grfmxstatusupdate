@@ -35,7 +35,7 @@
                     <div class="mb-3">
                         <label for="customerAddresses" class="form-label">Customer Address(es) — one per line</label>
                         <textarea name="customerAddresses" id="customerAddresses" rows="10" class="form-control"
-                            placeholder="Enter one customer address per line" required></textarea>
+                            placeholder="Enter one customer address per line" required><%= (typeof result !== 'undefined' && result) ? result.map(entry => entry.customerAddress).join('\n') : '' %></textarea>
                         <small class="text-muted" id="addressCountHint">0 addresses entered</small>
                     </div>
                     <button type="submit" id="submitButton" class="btn btn-primary"><i class="bi bi-search"></i> Submit</button>
@@ -50,6 +50,46 @@
                 </div>
             </div>
         </div>
+
+        <% if (typeof result !== 'undefined' && result) { %>
+            <div class="card my-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Check Result</h5>
+                    <span class="badge bg-light text-dark"><%= totalCount %> address<%= totalCount === 1 ? '' : 'es' %> checked</span>
+                </div>
+                <div class="card-body">
+                    <% if (totalCount === 0) { %>
+                        <p class="text-center text-muted">No addresses were submitted.</p>
+                    <% } else { %>
+                        <div class="d-flex justify-content-end mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="copyAreasBtn">
+                                <i class="bi bi-clipboard"></i> Copy Areas
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 3rem;">#</th>
+                                        <th>Address</th>
+                                        <th style="width: 8rem;">Area</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% result.forEach((entry, i) => { %>
+                                        <tr class="<%= entry.area === 'N/A' ? 'table-danger' : '' %>">
+                                            <td><%= i + 1 %></td>
+                                            <td><%= entry.customerAddress %></td>
+                                            <td><%= entry.area %></td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        <% } %>
     </main>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -89,6 +129,31 @@
 
         // Attach the disableSubmitButton function to the "submit" event of the form
         addressAreaForm.addEventListener('submit', disableSubmitButton);
+
+        <% if (typeof result !== 'undefined' && result) { %>
+        const checkedResult = <%- JSON.stringify(result).replace(/</g, '\\u003c') %>;
+
+        async function copyToClipboard(text, successMessage) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(successMessage, 'success');
+            } catch (err) {
+                console.error('Clipboard copy failed:', err);
+                showToast('Failed to copy to clipboard.', 'error');
+            }
+        }
+
+        const copyAreasBtn = document.getElementById('copyAreasBtn');
+        if (copyAreasBtn) {
+            copyAreasBtn.addEventListener('click', () => {
+                // Areas only, one per line, in the same order the addresses
+                // were pasted in - so they can be pasted straight back next
+                // to the address column in Excel.
+                const areas = checkedResult.map(entry => entry.area);
+                copyToClipboard(areas.join('\n'), `Copied ${areas.length} area(s) to clipboard.`);
+            });
+        }
+        <% } %>
     </script>
 
 </body>

@@ -301,7 +301,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                     record</button></a><br><br>
             <% } %>
 
-                <% if (['warehouse' , 'finance' , 'cs' , 'manager' , 'admin' ].includes(user.role)) { %>
+                <% if (['admin','supervisor','cs','finance','warehouse'].includes(user.role) || ['operation2@globex.com.bn','warehouse@globex.com.bn','dylan.chua@globex.com.bn'].includes(user.email)) { %>
                     <div class="card my-4" id="section-warehouse">
   <div class="card-header bg-dark text-white">
     <h5 class="mb-0">Warehouse</h5>
@@ -427,11 +427,13 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                 Active Jobs
             </button>
         </li>
+        <% if (user.role !== 'warehouse') { %>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="codbt-tab" data-bs-toggle="tab" data-bs-target="#codbt-content" type="button" role="tab" aria-controls="codbt-content" aria-selected="false">
                 COD/BT Collected
             </button>
         </li>
+        <% } %>
         <li class="nav-item" role="presentation">
     <button class="nav-link" id="completed-jobs-tab" data-bs-toggle="tab" data-bs-target="#completed-jobs" type="button" role="tab" aria-controls="completed-jobs" aria-selected="false">
         Completed Jobs
@@ -446,6 +448,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
 <%- include('partials/activeJobsTabContent') %>
 
         <!-- COD/BT Collected Tab -->
+        <% if (user.role !== 'warehouse') { %>
         <div class="tab-pane fade" id="codbt-content" role="tabpanel" aria-labelledby="codbt-tab">
             <div class="row mt-3 align-items-center">
                 <div class="col-md-4">
@@ -484,6 +487,7 @@ i.bi-caret-down-fill[aria-expanded="true"] {
                 </div>
             </div>
         </div>
+        <% } %>
         <div class="tab-pane fade" id="completed-jobs" role="tabpanel" aria-labelledby="completed-jobs-tab">
     <div class="d-flex align-items-center flex-wrap my-2 gap-2">
         <input type="date" id="completed-jobs-date-picker" class="form-control me-2" style="max-width: 200px;">
@@ -519,7 +523,9 @@ i.bi-caret-down-fill[aria-expanded="true"] {
     </div>
     </div>
   </div>
+                    <% } %>
 
+                <% if (['admin','supervisor','cs','manager','finance'].includes(user.role)) { %>
     <div class="card my-4" id="section-neworders">
   <div class="card-header bg-primary text-white">
     <h5 class="mb-0">New Orders</h5>
@@ -1180,30 +1186,36 @@ async function loadCodBtData() {
     }
 }
 
-    // Event listeners
-    document.getElementById('codbt-date-picker').addEventListener('change', () => {
-    document.getElementById('refresh-codbt-btn').disabled = false;
-    loadCodBtData();
-});
+    // Event listeners - COD/BT tab isn't rendered for the warehouse role,
+    // so guard against the elements not existing.
+    const codbtDatePicker = document.getElementById('codbt-date-picker');
+    const codbtTab = document.getElementById('codbt-tab');
+    const refreshCodbtBtn = document.getElementById('refresh-codbt-btn');
+    if (codbtDatePicker && codbtTab && refreshCodbtBtn) {
+        codbtDatePicker.addEventListener('change', () => {
+            refreshCodbtBtn.disabled = false;
+            loadCodBtData();
+        });
 
-    // Only load COD/BT data when tab is shown, once
-document.getElementById('codbt-tab').addEventListener('shown.bs.tab', () => {
-    if (!codBtLoaded) {
-        // Initialize date picker to today if empty
-        if (!document.getElementById('codbt-date-picker').value) {
-            document.getElementById('codbt-date-picker').value = moment().format('YYYY-MM-DD');
-        }
-        loadCodBtData();
+        // Only load COD/BT data when tab is shown, once
+        codbtTab.addEventListener('shown.bs.tab', () => {
+            if (!codBtLoaded) {
+                // Initialize date picker to today if empty
+                if (!codbtDatePicker.value) {
+                    codbtDatePicker.value = moment().format('YYYY-MM-DD');
+                }
+                loadCodBtData();
+            }
+        });
+
+        // Load on refresh button click and date change as usual
+        codbtDatePicker.addEventListener('change', () => {
+            if (codBtLoaded) loadCodBtData();
+        });
+        refreshCodbtBtn.addEventListener('click', () => {
+            loadCodBtData();
+        });
     }
-});
-
-    // Load on refresh button click and date change as usual
-document.getElementById('codbt-date-picker').addEventListener('change', () => {
-    if (codBtLoaded) loadCodBtData();
-});
-document.getElementById('refresh-codbt-btn').addEventListener('click', () => {
-    loadCodBtData();
-});
 </script>
 
 <script>
