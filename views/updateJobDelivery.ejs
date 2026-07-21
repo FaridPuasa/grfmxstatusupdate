@@ -76,12 +76,12 @@
                     <select id="actionCode" name="actionCode" class="form-select" required>
                         <option value="" selected>Please select an action</option>
 
-                        <% if (canAccess(['admin', 'cs'], ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn'])) { %>
+                        <% if (canAccess(['admin'], ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn'])) { %>
                         <optgroup label="🛃 Customs Clearing (EWE/MGLOBAL/PDU/GDEX)">
-                            <% if (canAccess(['admin', 'cs'], ['operation2@globex.com.bn', 'operation3@globex.com.bn'])) { %>
+                            <% if (canAccess(['admin'], ['operation2@globex.com.bn', 'operation3@globex.com.bn'])) { %>
                             <option value="UAN" data-flow="job">MAWB No. / Postal Code / Weight</option>
                             <% } %>
-                            <% if (canAccess(['admin', 'cs'], ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn'])) { %>
+                            <% if (canAccess(['admin'], ['operation2@globex.com.bn', 'operation3@globex.com.bn', 'warehouse@globex.com.bn'])) { %>
                             <option value="CCH" data-flow="job">On Hold (EWE/MGLOBAL/PDU)</option>
                             <option value="__GDEX_HOLD__" data-flow="job" data-reason-target="gdexHold">On Hold (GDEX)</option>
                             <% } %>
