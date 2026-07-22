@@ -184,7 +184,6 @@
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="desktopAccountDropdown">
                   <% if (['admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/createUser">Create User</a>
                     <a class="dropdown-item" href="/listUser">User List</a>
                   <% } %>
                   <a class="dropdown-item" href="/logout">Logout</a>
@@ -284,7 +283,6 @@
                 </a>
                 <div class="dropdown-menu" aria-labelledby="mobileAccountDropdown">
                   <% if (['admin'].includes(user.role)) { %>
-                    <a class="dropdown-item" href="/createUser">Create User</a>
                     <a class="dropdown-item" href="/listUser">User List</a>
                   <% } %>
                   <a class="dropdown-item" href="/logout">Logout</a>

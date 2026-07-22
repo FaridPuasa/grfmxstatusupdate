@@ -3831,11 +3831,6 @@ app.post('/session/heartbeat', ensureAuthenticated, (req, res) => {
     res.sendStatus(204);
 });
 
-// Restricting routes to "admin" role
-app.get('/createUser', ensureAuthenticated, ensureAdmin, (req, res) => {
-    res.render('createUser', { user: req.user, errors: [], formData: {} });
-});
-
 // ==================================================
 // 👥 User Management Routes
 // ==================================================
@@ -3897,11 +3892,10 @@ app.get('/listUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     }
 });
 
-// GET route for update user - Handle both userId and MongoDB _id
-app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
+// JSON API to fetch a single user's data - used to populate the Edit User modal on listUser.ejs
+app.get('/api/users/:identifier', ensureAuthenticated, ensureAdmin, async (req, res) => {
     try {
         const identifier = req.params.identifier;
-        console.log('Editing user with identifier:', identifier);
 
         let userToEdit;
 
@@ -3917,8 +3911,7 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
         }
 
         if (!userToEdit) {
-            req.flash('error_msg', 'User not found');
-            return res.redirect('/listUser');
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
         // Generate userId if it doesn't exist
@@ -3931,18 +3924,12 @@ app.get('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req,
             }
             userToEdit.userId = `GR${String(lastNum + 1).padStart(6, '0')}`;
             await userToEdit.save();
-            console.log(`Generated userId ${userToEdit.userId} for user ${userToEdit.name}`);
         }
 
-        res.render('updateUser', {
-            editUser: userToEdit,
-            user: req.user,
-            errors: req.flash('error')
-        });
+        res.json({ success: true, user: userToEdit });
     } catch (err) {
         console.error(err);
-        req.flash('error_msg', 'Error loading user: ' + err.message);
-        res.redirect('/listUser');
+        res.status(500).json({ success: false, message: 'Error loading user: ' + err.message });
     }
 });
 
@@ -3950,11 +3937,9 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
     const identifier = req.params.identifier;
     const {
         role, fullName, name, email, password, icNum, jobPosition, status,
-        profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode, company
+        profilePicture, qrcodeVerify, userId, removeProfilePicture, removeQrcode, company, detrackAppUser
     } = req.body;
 
-    // Find existing user up front so any validation error below can re-render
-    // the form with the submitted values instead of discarding them.
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
     let existingUser;
     try {
@@ -3963,20 +3948,14 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             : await USERS.findOne({ userId: identifier });
     } catch (err) {
         console.error(err);
-        req.flash('error_msg', 'Error loading user: ' + err.message);
-        return res.redirect('/listUser');
+        return res.status(500).json({ success: false, message: 'Error loading user: ' + err.message });
     }
 
     if (!existingUser) {
-        req.flash('error_msg', 'User not found');
-        return res.redirect('/listUser');
+        return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const renderWithErrors = (errors) => res.render('updateUser', {
-        editUser: { ...existingUser.toObject(), ...req.body },
-        user: req.user,
-        errors
-    });
+    const renderWithErrors = (errors) => res.status(400).json({ success: false, errors });
 
     try {
         let errors = [];
@@ -3984,6 +3963,9 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
         // Validation
         if (!name || !role || !jobPosition || !status) {
             errors.push({ msg: 'Please fill all required fields' });
+        }
+        if (!detrackAppUser || !['Yes', 'No'].includes(detrackAppUser)) {
+            errors.push({ msg: 'Detrack App User must be Yes or No' });
         }
 
         const regularRoles = ['admin', 'manager', 'finance', 'cs', 'supervisor'];
@@ -4059,7 +4041,8 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             jobPosition,
             status,
             userId: finalUserId,
-            company: company || 'Gorush'
+            company: company || 'Gorush',
+            detrackAppUser
         };
 
         // Handle profile picture
@@ -4122,8 +4105,7 @@ app.post('/updateUser/:identifier', ensureAuthenticated, ensureAdmin, async (req
             await USERS.findOneAndUpdate({ userId: identifier }, updateData);
         }
 
-        req.flash('success_msg', 'User updated successfully');
-        res.redirect('/listUser');
+        res.json({ success: true, message: 'User updated successfully', userId: finalUserId });
 
     } catch (err) {
         console.error(err);
@@ -4364,7 +4346,7 @@ app.get('/verify/:userId', async (req, res) => {
 });
 
 app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
-    const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture, company } = req.body;
+    const { role, fullName, name, email, password, icNum, jobPosition, status, profilePicture, company, detrackAppUser } = req.body;
     let errors = [];
 
     console.log('Create User Request Body:', req.body);
@@ -4372,6 +4354,9 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     // Validation
     if (!name || !role || !jobPosition || !status) {
         errors.push({ msg: 'Please enter all required fields' });
+    }
+    if (!detrackAppUser || !['Yes', 'No'].includes(detrackAppUser)) {
+        errors.push({ msg: 'Detrack App User must be Yes or No' });
     }
 
     // Regular roles (admin, manager, finance, cs, supervisor) require email and password
@@ -4396,7 +4381,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
     }
 
     if (errors.length > 0) {
-        return res.render('createUser', { errors, user: req.user, formData: req.body });
+        return res.status(400).json({ success: false, errors });
     }
 
     try {
@@ -4410,7 +4395,8 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             status: status,
             profilePicture: profilePicture || '',
             qrcodeVerify: '',
-            company: company || 'Gorush'
+            company: company || 'Gorush',
+            detrackAppUser: detrackAppUser
         };
 
         // Handle email and password based on role
@@ -4422,7 +4408,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
-                return res.render('createUser', { errors, user: req.user, formData: req.body });
+                return res.status(400).json({ success: false, errors });
             }
 
             // Add password for regular roles
@@ -4442,7 +4428,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             let existingUser = await USERS.findOne({ email: email });
             if (existingUser) {
                 errors.push({ msg: 'Email already exists' });
-                return res.render('createUser', { errors, user: req.user, formData: req.body });
+                return res.status(400).json({ success: false, errors });
             }
 
             if (password && password.length >= 6) {
@@ -4457,8 +4443,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
         await newUser.save();
 
         console.log('User created successfully:', newUser.userId);
-        req.flash('success_msg', `User created successfully! User ID: ${newUser.userId}`);
-        res.redirect('/listUser');
+        res.json({ success: true, message: `User created successfully! User ID: ${newUser.userId}`, userId: newUser.userId });
 
     } catch (err) {
         console.error('Detailed error creating user:', err);
@@ -4479,7 +4464,7 @@ app.post('/createUser', ensureAuthenticated, ensureAdmin, async (req, res) => {
             errors.push({ msg: 'Server error creating user: ' + err.message });
         }
 
-        res.render('createUser', { errors, user: req.user, formData: req.body });
+        res.status(400).json({ success: false, errors });
     }
 });
 

@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema({
     qrcodeVerify: { type: String, default: '' },
     userId: { type: String, unique: true, sparse: true },
     company: { type: String, enum: ['Globex', 'Gorush', 'Rbskyshop', 'Others'], default: 'Gorush' },
+    detrackAppUser: { type: String, enum: ['Yes', 'No'], required: true, default: 'No' },
 
     // Last page visited while logged in - used to resume there on next login
     // if re-logging in soon after an unplanned logout (idle timeout/day rollover)

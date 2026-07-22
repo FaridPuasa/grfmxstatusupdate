@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/mobile-center.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <link rel="stylesheet" href="/css/userForm.css">
     <style>
         .card {
             border: 1px solid #e5e7eb;
@@ -240,6 +242,24 @@
             background: #BC1F2D;
         }
 
+        .qrcode-preview {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            border: 2px solid #2078BE;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        #userModal .card,
+        #userModal .card-header,
+        #userModal .card-body {
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            background: transparent;
+        }
+
     </style>
     <link rel="icon" type="image/png" href="/images/smallgorushlogo.png">
 </head>
@@ -253,6 +273,11 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h2><i class="bi bi-people"></i> User List</h2>
                     <div class="print-actions">
+                        <!-- Add User Button -->
+                        <button id="addUserButton" class="btn btn-primary" onclick="openCreateUserModal()">
+                            <i class="bi bi-person-plus"></i> Add User
+                        </button>
+
                         <!-- Normal Print Button -->
                         <button id="printButton" class="btn-print-main" onclick="enableSelectionMode()">
                             <i class="bi bi-printer"></i> Print
@@ -268,11 +293,13 @@
                             </button>
                         </div>
 
-                        <form action="/generate-user-ids" method="post" onsubmit="handleGenerateUserIdsSubmit(event)">
-                            <button type="submit" class="btn btn-warning">
-                                <i class="bi bi-arrow-repeat"></i> Generate Missing User IDs
-                            </button>
-                        </form>
+                        <!-- Export Buttons -->
+                        <button id="exportUsersButton" class="btn btn-success" onclick="exportUsersToExcel()">
+                            <i class="bi bi-file-earmark-excel"></i> Export Users
+                        </button>
+                        <button id="exportDetrackUsersButton" class="btn btn-info text-white" onclick="exportDetrackUsersToExcel()">
+                            <i class="bi bi-file-earmark-excel"></i> Export Detrack Users
+                        </button>
                     </div>
                 </div>
             </div>
@@ -291,6 +318,50 @@
                     </div>
                 <% } %>
 
+                <div class="row g-2 mb-3" id="userFilters">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label mb-1">Company</label>
+                        <select id="filterCompany" class="form-select form-select-sm">
+                            <option value="">All</option>
+                            <option value="Gorush">Go Rush</option>
+                            <option value="Globex">Globex</option>
+                            <option value="Rbskyshop">RBSkyshop</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label mb-1">Role</label>
+                        <select id="filterRole" class="form-select form-select-sm">
+                            <option value="">All</option>
+                            <option value="admin">Admin</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="manager">Manager</option>
+                            <option value="cs">CS</option>
+                            <option value="warehouse">Warehouse</option>
+                            <option value="finance">Finance</option>
+                            <option value="moh">MOH</option>
+                            <option value="dispatcher">Dispatcher</option>
+                            <option value="freelancer">Freelancer</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label mb-1">User Status</label>
+                        <select id="filterStatus" class="form-select form-select-sm">
+                            <option value="">All</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label mb-1">Detrack User</label>
+                        <select id="filterDetrack" class="form-select form-select-sm">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table id="userTable" class="table table-hover">
                         <thead>
@@ -302,13 +373,17 @@
                                 <th>Job Position</th>
                                 <th>Company</th>
                                 <th>Role</th>
-                                <th>Status</th>
+                                <th>User Status</th>
+                                <th>Detrack User</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <% users.forEach(function(user, index) { %>
-                                <tr data-user-id="<%= user.userId || user._id %>" data-user-name="<%= user.name %>">
+                                <tr data-user-id="<%= user.userId || user._id %>" data-user-name="<%= user.name %>"
+                                    data-job-position="<%= user.jobPosition || '' %>" data-company="<%= user.company || '' %>"
+                                    data-role="<%= user.role %>" data-status="<%= user.status %>"
+                                    data-detrack="<%= user.detrackAppUser || 'No' %>">
                                     <td class="checkbox-column"><input type="checkbox" class="user-checkbox" value="<%= user.userId || user._id %>"></td>
                                     <td><%= index + 1 %></td>
                                     <td><%= user.name %></td>
@@ -334,6 +409,11 @@
                                         </span>
                                     </td>
                                     <td>
+                                        <span class="badge <%= user.detrackAppUser === 'Yes' ? 'badge-active' : 'badge-inactive' %>">
+                                            <%= user.detrackAppUser || 'No' %>
+                                        </span>
+                                    </td>
+                                    <td>
                                         <% if (user.userId) { %>
                                             <a href="/verify/<%= user.userId %>" target="_blank" class="btn-digital-id btn-sm">
                                                 <i class="bi bi-person-vcard"></i> Digital ID
@@ -344,9 +424,9 @@
                                                 </button>
                                             <% } %>
                                         <% } %>
-                                        <a href="/updateUser/<%= user.userId || user._id %>" class="btn-edit btn-sm">
+                                        <button onclick="openEditUserModal('<%= user.userId || user._id %>')" class="btn-edit btn-sm">
                                             <i class="bi bi-pencil"></i> Edit
-                                        </a>
+                                        </button>
                                         <button onclick="deleteUser('<%= user.userId || user._id %>')" class="btn-delete btn-sm">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
@@ -369,30 +449,163 @@
         </div>
     </div>
 
+    <!-- Create / Edit User Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalTitle"><i class="bi bi-person-plus"></i> Create New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="userModalErrors" class="alert alert-danger" style="display: none;"></div>
+
+                    <form id="userModalForm">
+                        <input type="hidden" id="um_mode" value="create">
+                        <input type="hidden" id="um_identifier" value="">
+
+                        <div class="form-group">
+                            <label class="form-label">Role <span class="text-danger">*</span></label>
+                            <select name="role" id="um_role" class="form-select" required>
+                                <option value="" id="um_roleBlank">Select Role</option>
+                                <option value="admin">Admin</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="manager">Manager</option>
+                                <option value="cs">CS</option>
+                                <option value="warehouse">Warehouse</option>
+                                <option value="finance">Finance</option>
+                                <option value="moh">MOH</option>
+                                <option value="dispatcher">Dispatcher</option>
+                                <option value="freelancer">Freelancer</option>
+                            </select>
+                        </div>
+
+                        <div id="um_regularFields" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" name="fullName" id="um_fullName" class="form-control" placeholder="Enter full name">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Nickname <span class="text-danger">*</span></label>
+                                <input type="text" name="name" id="um_name" class="form-control" required placeholder="Enter nickname">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Email <span class="text-danger" id="um_emailRequired">*</span></label>
+                                <input type="email" name="email" id="um_email" class="form-control" placeholder="Enter email address">
+                                <small class="text-muted" id="um_emailHint" style="display: none;">Email is optional for Freelancer/Dispatcher roles</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Password <span class="text-danger" id="um_passwordRequired">*</span></label>
+                                <input type="password" name="password" id="um_password" class="form-control" placeholder="Enter password (min 6 characters)">
+                                <small class="text-muted" id="um_passwordHint" style="display: none;">Password is optional for Freelancer/Dispatcher roles</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">IC No</label>
+                                <input type="text" name="icNum" id="um_icNum" class="form-control" placeholder="Enter IC number">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Company</label>
+                                <select name="company" id="um_company" class="form-select">
+                                    <option value="Gorush">Go Rush</option>
+                                    <option value="Globex">Globex</option>
+                                    <option value="Rbskyshop">RBSkyshop</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                                <small class="text-muted">Select the company this user belongs to (optional)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Job Position <span class="text-danger">*</span></label>
+                                <input type="text" name="jobPosition" id="um_jobPosition" class="form-control" required placeholder="Enter job position">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Status <span class="text-danger">*</span></label>
+                                <select name="status" id="um_status" class="form-select" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Detrack App User <span class="text-danger">*</span></label>
+                                <select name="detrackAppUser" id="um_detrackAppUser" class="form-select" required>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="um_userIdGroup" style="display: none;">
+                                <label class="form-label">User ID (Unique Identifier)</label>
+                                <input type="text" name="userId" id="um_userId" class="form-control" placeholder="Enter User ID (e.g., GR000001 or FL000001)">
+                                <small class="text-muted">User ID must be unique. Format: GRxxxxxx or FLxxxxxx</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Profile Picture</label>
+                                <div class="image-upload-area" onclick="document.getElementById('um_profilePictureInput').click()">
+                                    <i class="bi bi-cloud-arrow-up" style="color: #2078BE; font-size: 2rem;"></i>
+                                    <p class="mt-2">Click to upload profile picture</p>
+                                    <small class="text-muted">Supported formats: JPG, PNG, GIF (Click to crop)</small>
+                                </div>
+                                <input type="file" id="um_profilePictureInput" accept="image/*" style="display: none;">
+                                <input type="hidden" name="profilePicture" id="profilePicture">
+                                <input type="hidden" name="removeProfilePicture" id="removeProfilePicture" value="0">
+                                <div id="profileImageContainer"></div>
+                            </div>
+
+                            <div class="form-group" id="um_qrGroup" style="display: none;">
+                                <label class="form-label">QR Code Image (for verification)</label>
+                                <div class="image-upload-area" onclick="document.getElementById('um_qrcodeInput').click()">
+                                    <i class="bi bi-qr-code" style="color: #2078BE; font-size: 2rem;"></i>
+                                    <p class="mt-2">Click to upload QR code image</p>
+                                    <small class="text-muted">Supported formats: JPG, PNG, GIF</small>
+                                </div>
+                                <input type="file" id="um_qrcodeInput" accept="image/*" style="display: none;">
+                                <input type="hidden" name="qrcodeVerify" id="qrcodeVerify">
+                                <input type="hidden" name="removeQrcode" id="removeQrcode" value="0">
+                                <div id="qrcodeImageContainer"></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-submit" style="width: auto;" id="um_submitBtn" onclick="submitUserModal()">
+                        <i class="bi bi-save"></i> <span id="um_submitBtnText">Create User</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cropper Modal (for Profile Picture) -->
+    <div id="cropperModal" class="cropper-modal">
+        <div class="cropper-container-box">
+            <img id="cropperImage" class="cropper-image" alt="Crop Image">
+            <div class="cropper-buttons">
+                <button class="btn-crop" onclick="cropImage()">Crop &amp; Save</button>
+                <button class="btn-cancel" onclick="closeCropper()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="/js/userFormCropper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <script>
         let dataTable;
         let selectionMode = false;
-
-        // Confirm before generating missing User IDs. The inline onsubmit can no longer
-        // just "return" the result of a confirm() call since showConfirm() is async and a
-        // Promise is always truthy - so we preventDefault up front and submit manually once
-        // the user confirms.
-        async function handleGenerateUserIdsSubmit(event) {
-            event.preventDefault();
-            const ok = await showConfirm('Generate missing User IDs for all users? This will assign GRxxxxxx format IDs.', {
-                title: 'Please Confirm',
-                okText: 'Generate',
-                okClass: 'btn-primary'
-            });
-            if (ok) {
-                event.target.submit();
-            }
-        }
 
         $(document).ready(function() {
             dataTable = $('#userTable').DataTable({
@@ -406,6 +619,31 @@
                     info: "Showing _START_ to _END_ of _TOTAL_ entries"
                 }
             });
+
+            $('#filterCompany, #filterRole, #filterStatus, #filterDetrack').on('change', function() {
+                dataTable.draw();
+            });
+        });
+
+        // Custom DataTables filter driven by the Company / Role / User Status / Detrack User dropdowns.
+        // Builds its own Api instance from `settings` instead of using the outer `dataTable` variable,
+        // since DataTables runs an initial draw synchronously inside the DataTable() constructor call -
+        // before `dataTable = $('#userTable').DataTable(...)` has finished assigning.
+        $.fn.dataTable.ext.search.push(function(settings, searchData, index) {
+            if (settings.nTable.id !== 'userTable') return true;
+
+            const $row = $(new $.fn.dataTable.Api(settings).row(index).node());
+            const companyFilter = $('#filterCompany').val();
+            const roleFilter = $('#filterRole').val();
+            const statusFilter = $('#filterStatus').val();
+            const detrackFilter = $('#filterDetrack').val();
+
+            if (companyFilter && $row.attr('data-company') !== companyFilter) return false;
+            if (roleFilter && $row.attr('data-role') !== roleFilter) return false;
+            if (statusFilter && $row.attr('data-status') !== statusFilter) return false;
+            if (detrackFilter && $row.attr('data-detrack') !== detrackFilter) return false;
+
+            return true;
         });
 
         // All row nodes across every page, not just the currently rendered page
@@ -484,6 +722,58 @@
             window.location.href = '/print-multiple?users=' + selectedUsers.join(',');
         }
 
+        // Export the currently shown/filtered rows (search box + Company/Role/User Status/Detrack
+        // User dropdowns all apply) to an Excel file with just No., Name, Job Position.
+        function exportUsersToExcel() {
+            const rows = dataTable.rows({ search: 'applied' }).nodes();
+            const data = [['No.', 'Name', 'Job Position']];
+
+            $(rows).each(function(i) {
+                const $row = $(this);
+                data.push([i + 1, $row.attr('data-user-name'), $row.attr('data-job-position')]);
+            });
+
+            if (data.length === 1) {
+                showToast('No users to export for the current filter.', 'warning');
+                return;
+            }
+
+            const worksheet = XLSX.utils.aoa_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
+            XLSX.writeFile(workbook, `Users_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        // Export users with detrackAppUser = Yes, dispatchers first then freelancers (any other
+        // roles marked Yes follow), plus a manually-appended "Selfcollect" / "CS" line that isn't
+        // in the database. Ignores the current table filter - always covers every Detrack user.
+        function exportDetrackUsersToExcel() {
+            const dispatchers = [];
+            const freelancers = [];
+            const others = [];
+
+            allRows().each(function() {
+                const $row = $(this);
+                if ($row.attr('data-detrack') !== 'Yes') return;
+
+                const entry = { name: $row.attr('data-user-name'), jobPosition: $row.attr('data-job-position') };
+                const role = $row.attr('data-role');
+                if (role === 'dispatcher') dispatchers.push(entry);
+                else if (role === 'freelancer') freelancers.push(entry);
+                else others.push(entry);
+            });
+
+            const ordered = [...dispatchers, ...freelancers, ...others, { name: 'Selfcollect', jobPosition: 'CS' }];
+
+            const data = [['No.', 'Name', 'Job Position']];
+            ordered.forEach((u, i) => data.push([i + 1, u.name, u.jobPosition]));
+
+            const worksheet = XLSX.utils.aoa_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Detrack Users');
+            XLSX.writeFile(workbook, `Detrack_Users_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
         async function deleteUser(identifier) {
             const ok = await showConfirm('Are you sure you want to delete this user? This action cannot be undone.', {
                 title: 'Please Confirm',
@@ -532,6 +822,227 @@
             const modal = document.getElementById('qrModal');
             if (event.target === modal) {
                 modal.style.display = 'none';
+            }
+        }
+    </script>
+
+    <script>
+        // ============ Create / Edit User Modal ============
+        const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+
+        function resetUserModalForm() {
+            document.getElementById('userModalForm').reset();
+            document.getElementById('userModalErrors').style.display = 'none';
+            document.getElementById('userModalErrors').innerHTML = '';
+            document.getElementById('profilePicture').value = '';
+            document.getElementById('removeProfilePicture').value = '0';
+            document.getElementById('profileImageContainer').innerHTML = '';
+            document.getElementById('qrcodeVerify').value = '';
+            document.getElementById('removeQrcode').value = '0';
+            document.getElementById('qrcodeImageContainer').innerHTML = '';
+            document.getElementById('um_regularFields').style.display = 'none';
+        }
+
+        function openCreateUserModal() {
+            resetUserModalForm();
+            document.getElementById('um_mode').value = 'create';
+            document.getElementById('um_identifier').value = '';
+            document.getElementById('userModalTitle').innerHTML = '<i class="bi bi-person-plus"></i> Create New User';
+            document.getElementById('um_submitBtnText').textContent = 'Create User';
+            document.getElementById('um_roleBlank').style.display = '';
+            document.getElementById('um_role').value = '';
+            document.getElementById('um_userIdGroup').style.display = 'none';
+            document.getElementById('um_qrGroup').style.display = 'none';
+            document.getElementById('um_password').placeholder = 'Enter password (min 6 characters)';
+            updateUserModalFieldRequirements();
+            userModal.show();
+        }
+
+        async function openEditUserModal(identifier) {
+            resetUserModalForm();
+            document.getElementById('um_mode').value = 'edit';
+            document.getElementById('um_identifier').value = identifier;
+            document.getElementById('userModalTitle').innerHTML = '<i class="bi bi-person-gear"></i> Edit User';
+            document.getElementById('um_submitBtnText').textContent = 'Update User';
+            document.getElementById('um_roleBlank').style.display = 'none';
+            document.getElementById('um_userIdGroup').style.display = 'block';
+            document.getElementById('um_qrGroup').style.display = 'block';
+            document.getElementById('um_password').placeholder = 'Leave blank to keep current password';
+
+            try {
+                const res = await fetch(`/api/users/${identifier}`);
+                const data = await res.json();
+                if (!data.success) {
+                    showToast(data.message || 'Failed to load user', 'error');
+                    return;
+                }
+                const u = data.user;
+                document.getElementById('um_role').value = u.role || '';
+                document.getElementById('um_fullName').value = u.fullName || '';
+                document.getElementById('um_name').value = u.name || '';
+                document.getElementById('um_email').value = u.email || '';
+                document.getElementById('um_icNum').value = u.icNum || '';
+                document.getElementById('um_company').value = u.company || 'Gorush';
+                document.getElementById('um_jobPosition').value = u.jobPosition || '';
+                document.getElementById('um_status').value = u.status || 'Active';
+                document.getElementById('um_detrackAppUser').value = u.detrackAppUser || 'No';
+                document.getElementById('um_userId').value = u.userId || '';
+                document.getElementById('profilePicture').value = u.profilePicture || '';
+                document.getElementById('qrcodeVerify').value = u.qrcodeVerify || '';
+                document.getElementById('um_regularFields').style.display = 'block';
+
+                if (u.profilePicture) {
+                    document.getElementById('profileImageContainer').innerHTML =
+                        '<div class="image-container">' +
+                        '<img class="profile-preview" src="' + u.profilePicture + '" alt="Profile Preview">' +
+                        '<button type="button" class="remove-image-btn" onclick="removeProfilePicture()">Remove</button>' +
+                        '</div>';
+                }
+                if (u.qrcodeVerify) {
+                    document.getElementById('qrcodeImageContainer').innerHTML =
+                        '<div class="image-container">' +
+                        '<img class="qrcode-preview" src="' + u.qrcodeVerify + '" alt="QR Code Preview">' +
+                        '<button type="button" class="remove-image-btn" onclick="removeQrcode()">Remove</button>' +
+                        '</div>';
+                }
+
+                updateUserModalFieldRequirements();
+                userModal.show();
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to load user data', 'error');
+            }
+        }
+
+        // Show/hide fields and toggle required-ness based on role + mode (create vs edit)
+        function updateUserModalFieldRequirements() {
+            const role = document.getElementById('um_role').value;
+            const mode = document.getElementById('um_mode').value;
+            const regularFields = document.getElementById('um_regularFields');
+            const emailField = document.getElementById('um_email');
+            const passwordField = document.getElementById('um_password');
+            const emailRequired = document.getElementById('um_emailRequired');
+            const passwordRequired = document.getElementById('um_passwordRequired');
+            const emailHint = document.getElementById('um_emailHint');
+            const passwordHint = document.getElementById('um_passwordHint');
+
+            if (!role) {
+                regularFields.style.display = 'none';
+                return;
+            }
+            regularFields.style.display = 'block';
+
+            if (role === 'freelancer' || role === 'dispatcher') {
+                emailField.removeAttribute('required');
+                passwordField.removeAttribute('required');
+                emailRequired.style.display = 'none';
+                passwordRequired.style.display = 'none';
+                emailHint.style.display = 'block';
+                passwordHint.style.display = 'block';
+                emailField.placeholder = 'Email (optional for Freelancer/Dispatcher)';
+                if (mode === 'create') passwordField.placeholder = 'Password (optional for Freelancer/Dispatcher)';
+            } else {
+                emailField.setAttribute('required', 'required');
+                if (mode === 'create') {
+                    passwordField.setAttribute('required', 'required');
+                } else {
+                    passwordField.removeAttribute('required');
+                }
+                emailRequired.style.display = 'inline';
+                passwordRequired.style.display = mode === 'create' ? 'inline' : 'none';
+                emailHint.style.display = 'none';
+                passwordHint.style.display = 'none';
+                emailField.placeholder = 'Enter email address';
+                if (mode === 'create') passwordField.placeholder = 'Enter password (min 6 characters)';
+            }
+        }
+
+        document.getElementById('um_role').addEventListener('change', updateUserModalFieldRequirements);
+
+        // Profile Picture upload with cropper (openCropper/cropImage/closeCropper come from userFormCropper.js)
+        document.getElementById('um_profilePictureInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                openCropper(file);
+                this.value = '';
+            }
+        });
+
+        // QR Code upload and compression (no cropper needed for QR)
+        document.getElementById('um_qrcodeInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 300;
+                    canvas.height = 300;
+                    ctx.drawImage(img, 0, 0, 300, 300);
+
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    document.getElementById('qrcodeVerify').value = compressedBase64;
+                    document.getElementById('removeQrcode').value = '0';
+
+                    document.getElementById('qrcodeImageContainer').innerHTML =
+                        '<div class="image-container">' +
+                        '<img class="qrcode-preview" src="' + compressedBase64 + '" alt="QR Code Preview">' +
+                        '<button type="button" class="remove-image-btn" onclick="removeQrcode()">Remove</button>' +
+                        '</div>';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function removeQrcode() {
+            document.getElementById('qrcodeVerify').value = '';
+            document.getElementById('removeQrcode').value = '1';
+            document.getElementById('qrcodeImageContainer').innerHTML = '';
+        }
+
+        async function submitUserModal() {
+            const form = document.getElementById('userModalForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const mode = document.getElementById('um_mode').value;
+            const identifier = document.getElementById('um_identifier').value;
+            const url = mode === 'create' ? '/createUser' : `/updateUser/${identifier}`;
+
+            const payload = {};
+            new FormData(form).forEach((value, key) => { payload[key] = value; });
+
+            const submitBtn = document.getElementById('um_submitBtn');
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    userModal.hide();
+                    showToast(data.message || 'Success', 'success');
+                    location.reload();
+                } else {
+                    const errBox = document.getElementById('userModalErrors');
+                    const errors = data.errors || [{ msg: data.message || 'An error occurred' }];
+                    errBox.innerHTML = errors.map(e => `<div>${e.msg}</div>`).join('');
+                    errBox.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error submitting form', 'error');
+            } finally {
+                submitBtn.disabled = false;
             }
         }
     </script>

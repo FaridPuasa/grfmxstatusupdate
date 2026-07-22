@@ -1382,7 +1382,7 @@ function renderNewOrdersSummary(data) {
 }
 
 // Initial load
-const today = new Date().toISOString().split('T')[0];
+const today = moment().format('YYYY-MM-DD');
 document.getElementById('grWebsiteDate').value = today;
 fetchGRWebsiteOrders(today);
 
