@@ -108,7 +108,6 @@
                         <optgroup label="✅ Failed/Completed">
                             <% if (canAccess(['admin', 'cs'], ['operation2@globex.com.bn'])) { %>
                             <option value="__MGLOBAL_FAIL__" data-flow="delivery" data-reason-target="mglobalFail">Fail (MGLOBAL)</option>
-                            <option value="__GDEX_FAIL__" data-flow="delivery" data-reason-target="gdexFail">Fail (GDEX)</option>
                             <% } %>
                             <option value="SFJ" data-flow="delivery">Clear Job</option>
                         </optgroup>
@@ -179,13 +178,6 @@
                             <option value="FCC" data-flow="delivery">Fail (MGLOBAL) - Customer not available / cannot be contacted</option>
                             <option value="FIA" data-flow="delivery">Fail (MGLOBAL) - Incorrect Address</option>
                             <option value="FSC" data-flow="delivery">Fail (MGLOBAL) - Reschedule to self collect requested by customer</option>
-                            <option value="FGBK" data-flow="delivery">Fail (GDEX) - Reschedule delivery requested by customer</option>
-                            <option value="FGAG" data-flow="delivery">Fail (GDEX) - Reschedule to self collect requested by customer</option>
-                            <option value="FGAR" data-flow="delivery">Fail (GDEX) - Customer not available / cannot be contacted</option>
-                            <option value="FGUL" data-flow="delivery">Fail (GDEX) - Unable to Locate Address</option>
-                            <option value="FGIA" data-flow="delivery">Fail (GDEX) - Incorrect Address</option>
-                            <option value="FGAZ" data-flow="delivery">Fail (GDEX) - Receiver Not Present - Sorry Card Dropped</option>
-                            <option value="FGBL" data-flow="delivery">Fail (GDEX) - Consignee request for postponed delivery</option>
                         </optgroup>
                     </select>
                 </div>
@@ -2371,13 +2363,6 @@
                 'FCC': 'Customer Not Available Update',
                 'FIA': 'Incorrect Address Update',
                 'FSC': 'Reschedule to Self Collect Update',
-                'FGBK': 'Fail (GDEX) - Reschedule Delivery Update',
-                'FGAG': 'Fail (GDEX) - Reschedule to Self Collect Update',
-                'FGAR': 'Fail (GDEX) - Customer Not Available Update',
-                'FGUL': 'Fail (GDEX) - Unable to Locate Address Update',
-                'FGIA': 'Fail (GDEX) - Incorrect Address Update',
-                'FGAZ': 'Fail (GDEX) - Card Dropped Update',
-                'FGBL': 'Fail (GDEX) - Postponed Delivery Update',
                 'SFJ': 'Clear Job Update',
                 'OSD': 'Swap Dispatchers Update',
                 'UWL': 'Update Warehouse',
@@ -5637,17 +5622,6 @@ EXAMPLE004\t\t
                     { value: 'FCC', label: 'Customer not available / cannot be contacted' },
                     { value: 'FIA', label: 'Incorrect Address' },
                     { value: 'FSC', label: 'Reschedule to self collect requested by customer' }
-                ]
-            },
-            gdexFail: {
-                reasons: [
-                    { value: 'FGBK', label: 'Reschedule delivery requested by customer' },
-                    { value: 'FGAG', label: 'Reschedule to self collect requested by customer' },
-                    { value: 'FGAR', label: 'Customer not available / cannot be contacted' },
-                    { value: 'FGUL', label: 'Unable to Locate Address' },
-                    { value: 'FGIA', label: 'Incorrect Address' },
-                    { value: 'FGAZ', label: 'Receiver Not Present - Sorry Card Dropped' },
-                    { value: 'FGBL', label: 'Consignee request for postponed delivery' }
                 ]
             }
         };
