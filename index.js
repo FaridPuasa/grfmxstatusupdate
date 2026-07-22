@@ -7287,6 +7287,34 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                 appliedStatus = "Update Fail due to Shipper/HQ Instruction to Cancel Delivery"
                 failReasonDescription = "Shipper/HQ Instruction to Cancel Delivery"
                 gdexFailReason = "BA";
+            } else if (req.body.statusCode == 'FGBK') {
+                appliedStatus = "Update Fail due to Reschedule delivery requested by customer"
+                failReasonDescription = "Reschedule delivery requested by customer"
+                gdexFailReason = "BK";
+            } else if (req.body.statusCode == 'FGAG') {
+                appliedStatus = "Update Fail due to Reschedule to self collect requested by customer"
+                failReasonDescription = "Reschedule to self collect requested by customer"
+                gdexFailReason = "AG";
+            } else if (req.body.statusCode == 'FGAR') {
+                appliedStatus = "Update Fail due to Customer not available / cannot be contacted"
+                failReasonDescription = "Customer not available / cannot be contacted"
+                gdexFailReason = "AR";
+            } else if (req.body.statusCode == 'FGUL') {
+                appliedStatus = "Update Fail due to Unable to Locate Address"
+                failReasonDescription = "Unable to Locate Address"
+                gdexFailReason = "BM";
+            } else if (req.body.statusCode == 'FGIA') {
+                appliedStatus = "Update Fail due to Incorrect Address"
+                failReasonDescription = "Incorrect Address"
+                gdexFailReason = "BM";
+            } else if (req.body.statusCode == 'FGAZ') {
+                appliedStatus = "Update Fail due to Receiver Not Present - Sorry Card Dropped"
+                failReasonDescription = "Receiver Not Present - Sorry Card Dropped"
+                gdexFailReason = "AZ";
+            } else if (req.body.statusCode == 'FGBL') {
+                appliedStatus = "Update Fail due to Consignee request for postponed delivery"
+                failReasonDescription = "Consignee request for postponed delivery"
+                gdexFailReason = "BL";
             } else if (req.body.statusCode == 'RSAL2') {
                 appliedStatus = "Return to Shipper"
             }
@@ -7354,6 +7382,8 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                 || (req.body.statusCode == 'FCC') || (req.body.statusCode == 'FSC') || (req.body.statusCode == 'FIA')
                 || (req.body.statusCode == 'FH10') || (req.body.statusCode == 'FBA') || (req.body.statusCode == 'FH3')
                 || (req.body.statusCode == 'FAB') || (req.body.statusCode == 'FAF') || (req.body.statusCode == 'FAG') || (req.body.statusCode == 'FAN')
+                || (req.body.statusCode == 'FGBK') || (req.body.statusCode == 'FGAG') || (req.body.statusCode == 'FGAR')
+                || (req.body.statusCode == 'FGUL') || (req.body.statusCode == 'FGIA') || (req.body.statusCode == 'FGAZ') || (req.body.statusCode == 'FGBL')
                 || (req.body.statusCode == 'RSAL2') || (req.body.statusCode == 'H3') || (req.body.statusCode == 'H10')
                 || (req.body.statusCode == 'H17') || (req.body.statusCode == 'H32') || (req.body.statusCode == 'SFJA')
                 || (req.body.statusCode == 'FAR') || (req.body.statusCode == 'FSJ')
@@ -12133,6 +12163,84 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                 }
             }
 
+            // Fail (GDEX) - mirrors the Fail (MGLOBAL) Detrack/MongoDB flow (Selfcollect,
+            // marked failed then immediately returned to at_warehouse), plus an additional
+            // GDEX webhook (AL2 Self Collect location, then DF with the mapped reason code).
+            if ((req.body.statusCode == 'FGBK') || (req.body.statusCode == 'FGAG') || (req.body.statusCode == 'FGAR')
+                || (req.body.statusCode == 'FGUL') || (req.body.statusCode == 'FGIA') || (req.body.statusCode == 'FGAZ')
+                || (req.body.statusCode == 'FGBL')) {
+
+                if ((product == 'GDEX') || (product == 'GDEXT')) {
+                    if ((data.data.status == 'at_warehouse') || (data.data.status == 'in_sorting_area')) {
+                        update = {
+                            currentStatus: "At Warehouse",
+                            lastUpdateDateTime: moment().format(),
+                            latestReason: failReasonDescription,
+                            grRemark: failReasonDescription,
+                            lastUpdatedBy: req.user.name,
+                            $push: {
+                                history: {
+                                    $each: [
+                                        {
+                                            statusHistory: "Failed Delivery",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                            reason: failReasonDescription
+                                        },
+                                        {
+                                            statusHistory: "At Warehouse",
+                                            dateUpdated: moment().format(),
+                                            updatedBy: req.user.name,
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+
+                        var detrackUpdateData = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "failed",
+                                assign_to: "Selfcollect",
+                                reason: failReasonDescription,
+                                pod_time: moment().format("hh:mm A")
+                            }
+                        };
+
+                        var detrackUpdateData2 = {
+                            do_number: consignmentID,
+                            data: {
+                                status: "at_warehouse",
+                                assign_to: ""
+                            }
+                        };
+
+                        portalUpdate = "Detrack and Portal updated for Fail due to " + failReasonDescription;
+
+                        // Use GDEXAPIrun = 10 for GDEX fail with AL2 (Self Collect location) first
+                        GDEXAPIrun = 10;
+
+                        mongoDBrun = 2;
+                        DetrackAPIrun = 6;
+                        completeRun = 1;
+                    } else {
+                        // Job not in correct status
+                        processingResults.push({
+                            consignmentID,
+                            status: `Error: GDEX job must be "at_warehouse" or "in_sorting_area" to mark as failed. Current status: ${data.data.status}`,
+                        });
+                        return;
+                    }
+                } else {
+                    // Not GDEX/GDEXT product
+                    processingResults.push({
+                        consignmentID,
+                        status: `Error: Fail (GDEX) reason updates only available for GDEX/GDEXT products. This is ${product}`,
+                    });
+                    return;
+                }
+            }
+
             if (completeRun == 0) {
                 ceCheck = 1;
             }
@@ -12659,6 +12767,97 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                 }
 
                 console.log(`=== Completed GDEX Fail Processing for: ${consignmentID} ===\n`);
+            }
+
+            if (GDEXAPIrun == 10) {
+                console.log(`\n🔄 === Processing GDEX Fail (Self Collect) with AL2 First: ${consignmentID} ===`);
+                console.log(`   Reason: ${failReasonDescription} (Code: ${gdexFailReason})`);
+
+                try {
+                    // Step 1: Get GDEX token
+                    const token = await getGDEXToken();
+                    if (!token) {
+                        console.error(`❌ Failed to get GDEX token for ${consignmentID}`);
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += " Error: Failed to get GDEX token.";
+                        }
+                        return;
+                    }
+
+                    // Step 2: Send AL2 (Out for Delivery) first - same location as Self Collect (Go Rush Office)
+                    console.log(`📤 Step 1: Sending AL2 (Out for Delivery) to GDEX`);
+
+                    const al2Success = await sendGDEXTrackingWebhook(
+                        consignmentID,
+                        "AL2",
+                        "Out for Delivery",
+                        "Go Rush Office",
+                        token,
+                        "",
+                        "",
+                        false
+                    );
+
+                    if (!al2Success) {
+                        console.error(`❌ Step 1 Failed: Could not send AL2 to GDEX`);
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += " Error: Failed to send AL2 to GDEX.";
+                        }
+                        return;
+                    }
+
+                    console.log(`✅ Step 1 Success: AL2 sent to GDEX`);
+                    console.log(`⏳ Waiting 2 seconds before sending fail status...`);
+
+                    // Step 3: Wait 2 seconds before sending fail status
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Step 4: Send the DF (Failed) status with specific reason code
+                    console.log(`📤 Step 2: Sending DF (Failed) with reason code ${gdexFailReason}`);
+
+                    const failDetrackData = {
+                        status: 'failed',
+                        reason: failReasonDescription,
+                        address: data.data.address,
+                        updated_at: data.data.updated_at,
+                        gdexFailReason: gdexFailReason  // BK, AG, AR, BM, or AZ, BL
+                    };
+
+                    // Use updateGDEXClearJob which will send DF with the specific reason code
+                    const failSuccess = await updateGDEXClearJob(consignmentID, failDetrackData, token, false);
+
+                    if (failSuccess) {
+                        console.log(`✅ Step 2 Success: DF with reason ${gdexFailReason} sent to GDEX`);
+                        console.log(`🎉 GDEX fail (self collect) update completed successfully!`);
+
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += " GDEX: AL2 → DF sent successfully.";
+                        }
+                    } else {
+                        console.error(`❌ Step 2 Failed: Could not send DF status to GDEX`);
+                        const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                        if (existingIndex !== -1) {
+                            processingResults[existingIndex].status += " Error: Failed to send fail status to GDEX.";
+                        }
+                    }
+
+                } catch (error) {
+                    console.error(`🔥 Error in GDEX fail (self collect) with AL2 first for ${consignmentID}:`, error.message);
+                    const existingIndex = processingResults.findIndex(r => r.consignmentID === consignmentID);
+                    if (existingIndex !== -1) {
+                        processingResults[existingIndex].status += ` GDEX Error: ${error.message}`;
+                    } else {
+                        processingResults.push({
+                            consignmentID,
+                            status: `GDEX Error: ${error.message}`,
+                        });
+                    }
+                }
+
+                console.log(`=== Completed GDEX Fail (Self Collect) Processing for: ${consignmentID} ===\n`);
             }
 
             if (waOrderFailedDelivery == 5) {
