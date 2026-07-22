@@ -695,7 +695,17 @@ $(document).ready(function() {
   extend: 'excelHtml5',
   text: '<i class="bi bi-file-earmark-excel"></i> Export Excel',
   exportOptions: {
-    columns: ':visible',
+    columns: function(idx) {
+      if (idx === 1) return false; // Action column: buttons don't belong in a spreadsheet
+      if (!table.column(idx).visible()) return false; // respect Show/Hide Columns + GDEX/Manifest views
+      if (idx === 0) return true; // S/N has no bound data field, so the emptiness check below doesn't apply
+
+      // Skip columns where every currently filtered row has no data, to keep the export compact
+      const columnData = table.column(idx, { search: 'applied' }).data().toArray();
+      return columnData.some(function(val) {
+        return val !== null && val !== undefined && String(val).trim() !== '';
+      });
+    },
     orthogonal: 'export', // This tells DataTables to use the 'export' type from render functions
     format: {
       body: function (data, row, column, node) {
@@ -889,7 +899,7 @@ $(document).ready(function() {
         className: 'no-export',
         render: function(data, type, row) {
           let html = '<div class="d-flex flex-column gap-1">';
-          html += `<button type="button" class="btn btn-sm btn-outline-secondary history-btn" data-tracking="${row && row.doTrackingNumber ? row.doTrackingNumber : ''}"><i class="bi bi-clock-history"></i> History</button>`;
+          html += `<button type="button" class="btn btn-sm btn-secondary history-btn" data-tracking="${row && row.doTrackingNumber ? row.doTrackingNumber : ''}"><i class="bi bi-clock-history"></i> History</button>`;
           if (canReorder && row && row.product && ['pharmacymoh','pharmacyjpmc','pharmacyphc'].includes(row.product.toLowerCase())) {
             html += `<button class="btn btn-sm btn-primary reorder-btn"
                       data-tracking="${row.doTrackingNumber || ''}"
