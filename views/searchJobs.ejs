@@ -46,6 +46,51 @@ table.dataTable { width: 100% !important; }
   background-color: #d1ecf1 !important;
 }
 
+/* Tracking history timeline */
+.tracker-timeline { position: relative; padding-left: 48px; margin-top: 10px; }
+.tracker-item { position: relative; padding-bottom: 26px; text-align: left; }
+.tracker-item:last-child { padding-bottom: 0; }
+.tracker-item::before {
+  content: '';
+  position: absolute;
+  left: -33px;
+  top: 32px;
+  bottom: -6px;
+  width: 3px;
+  background: #dee2e6;
+}
+.tracker-item:last-child::before { display: none; }
+.tracker-icon {
+  position: absolute;
+  left: -48px;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 5px #dee2e6;
+  z-index: 1;
+}
+.tracker-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.tracker-item.current .tracker-card {
+  border-color: #0d6efd;
+  box-shadow: 0 2px 10px rgba(13,110,253,0.18);
+}
+.tracker-status { font-weight: 700; font-size: 15px; text-align: left; }
+.tracker-meta { font-size: 13px; color: #6c757d; margin-top: 4px; text-align: left; }
+.tracker-meta .bi { width: 16px; text-align: center; margin-right: 2px; }
+.current-badge { font-size: 11px; }
+
 </style>
 </head>
 
@@ -386,6 +431,28 @@ table.dataTable { width: 100% !important; }
   </div>
 </div>
 
+<!-- History / Tracking Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-clock-history"></i> Tracking History
+          <span id="historyTrackingNo" class="text-muted"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="historyLoading" class="text-center py-4 d-none">
+          <div class="spinner-border text-primary" role="status"><span class="visually-hidden"></span></div>
+        </div>
+        <div id="historyError" class="alert alert-danger d-none"></div>
+        <div id="historyTimeline" class="tracker-timeline"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="loadingOverlay" style="display:none;">
   <div class="spinner-border text-primary" role="status">
     <span class="visually-hidden"></span>
@@ -409,6 +476,109 @@ const currentUserEmail = '<%= user ? user.email : "" %>';
 const allowedRolesForReorder = ['admin', 'cs'];
 const allowedEmailsForReorder = ['operation2@globex.com.bn', 'operation3@globex.com.bn'];
 const canReorder = allowedRolesForReorder.includes(currentUserRole) || allowedEmailsForReorder.includes(currentUserEmail);
+
+// --- Brunei date/time formatting (DD.MM.YYYY, 12-hour AM/PM) ---
+// Source data is inconsistent: some strings are date-only ("2026-07-22"), some
+// carry an explicit UTC offset/Z (genuine instants that need converting to
+// Brunei time, UTC+8, no DST), and some are naive datetimes with no offset at
+// all (already recorded as Brunei wall-clock time). Detect which case we're in
+// from the raw string rather than assuming one format everywhere.
+function formatBruneiDateTime(raw) {
+  if (raw === null || raw === undefined) return '';
+  const str = String(raw).trim();
+  if (!str) return '';
+
+  // Date-only, no time component
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const d = moment(str, 'YYYY-MM-DD', true);
+    return d.isValid() ? d.format('DD.MM.YYYY') : str;
+  }
+
+  const hasOffset = /(Z|[+-]\d{2}:?\d{2})$/.test(str);
+  let d;
+  if (hasOffset) {
+    d = moment.parseZone(str).utcOffset(8);
+  } else {
+    d = moment(str, [moment.ISO_8601, 'YYYY-MM-DD HH:mm:ss', 'DD/MM/YYYY HH:mm:ss', 'MM/DD/YYYY HH:mm:ss'], true);
+    if (!d.isValid()) d = moment(str); // last-resort loose parse
+  }
+
+  if (!d || !d.isValid()) return str; // unparseable -> show the raw value rather than hide it
+  return d.format('DD.MM.YYYY hh:mm A');
+}
+
+function escapeHtml(str) {
+  return $('<div>').text(str === null || str === undefined ? '' : str).html();
+}
+
+// --- Tracking history timeline (History button / modal) ---
+const STATUS_META = {
+  'info received': { icon: 'bi-info-circle-fill', color: '#0d6efd' },
+  'on hold': { icon: 'bi-pause-circle-fill', color: '#ffc107' },
+  'queued for warehouse': { icon: 'bi-hourglass-split', color: '#fd7e14' },
+  'at warehouse': { icon: 'bi-building', color: '#6610f2' },
+  'in sorting area': { icon: 'bi-diagram-3-fill', color: '#6f42c1' },
+  'out for delivery': { icon: 'bi-truck', color: '#0dcaf0' },
+  'self collect': { icon: 'bi-person-check-fill', color: '#20c997' },
+  'completed': { icon: 'bi-check-circle-fill', color: '#198754' },
+  'return to warehouse': { icon: 'bi-arrow-return-left', color: '#fd7e14' },
+  'failed delivery': { icon: 'bi-x-circle-fill', color: '#dc3545' },
+  'cancelled': { icon: 'bi-slash-circle-fill', color: '#dc3545' },
+  'disposed': { icon: 'bi-trash-fill', color: '#6c757d' },
+  'return': { icon: 'bi-arrow-repeat', color: '#a52a2a' },
+  'pod resent to gdex': { icon: 'bi-send-fill', color: '#0d6efd' },
+  'custom clearing': { icon: 'bi-shield-check', color: '#6610f2' }
+};
+function getStatusMeta(status) {
+  const key = (status || '').toLowerCase().trim();
+  return STATUS_META[key] || { icon: 'bi-record-circle', color: '#6c757d' };
+}
+
+function renderHistoryTimeline(history, currentStatus) {
+  const $container = $('#historyTimeline');
+  $container.empty();
+
+  if (!history || !history.length) {
+    $container.html('<p class="text-muted text-center py-3 mb-0">No tracking history available for this job.</p>');
+    return;
+  }
+
+  // Data is stored oldest -> newest; show newest first, like a courier tracker.
+  const entries = history.slice().reverse();
+
+  entries.forEach(function(entry, idx) {
+    const meta = getStatusMeta(entry.statusHistory);
+    const isCurrent = idx === 0;
+    const dateStr = formatBruneiDateTime(entry.dateUpdated);
+
+    let detailsHtml = '';
+    if (entry.updatedBy) {
+      detailsHtml += `<div class="tracker-meta"><i class="bi bi-person-fill"></i> ${escapeHtml(entry.updatedBy)}</div>`;
+    }
+    if (entry.reason) {
+      detailsHtml += `<div class="tracker-meta"><i class="bi bi-chat-left-text-fill"></i> ${escapeHtml(entry.reason)}</div>`;
+    }
+    if (entry.lastLocation) {
+      detailsHtml += `<div class="tracker-meta"><i class="bi bi-geo-alt-fill"></i> ${escapeHtml(entry.lastLocation)}</div>`;
+    }
+
+    const itemHtml = `
+      <div class="tracker-item${isCurrent ? ' current' : ''}">
+        <div class="tracker-icon" style="background:${meta.color};">
+          <i class="bi ${meta.icon}"></i>
+        </div>
+        <div class="tracker-card">
+          <div class="d-flex justify-content-between align-items-start flex-wrap">
+            <span class="tracker-status" style="color:${meta.color};">${escapeHtml(entry.statusHistory || 'Unknown')}</span>
+            ${isCurrent ? '<span class="badge bg-primary current-badge">Current</span>' : ''}
+          </div>
+          <div class="tracker-meta"><i class="bi bi-calendar-event"></i> ${dateStr || '&mdash;'}</div>
+          ${detailsHtml}
+        </div>
+      </div>`;
+    $container.append(itemHtml);
+  });
+}
 
 $(document).ready(function() {
   // Initialize Select2
@@ -699,18 +869,21 @@ $(document).ready(function() {
           return meta.row + 1;
         }
       },
-      { 
-        data: null, 
-        orderable: false, 
+      {
+        data: null,
+        orderable: false,
         className: 'no-export',
         render: function(data, type, row) {
+          let html = '<div class="d-flex flex-column gap-1">';
+          html += `<button type="button" class="btn btn-sm btn-outline-secondary history-btn" data-tracking="${row && row.doTrackingNumber ? row.doTrackingNumber : ''}"><i class="bi bi-clock-history"></i> History</button>`;
           if (canReorder && row && row.product && ['pharmacymoh','pharmacyjpmc','pharmacyphc'].includes(row.product.toLowerCase())) {
-            return `<button class="btn btn-sm btn-primary reorder-btn"
+            html += `<button class="btn btn-sm btn-primary reorder-btn"
                       data-tracking="${row.doTrackingNumber || ''}"
                       data-address="${row.receiverAddress || ''}"
                       data-product="${row.product || ''}"><i class="bi bi-arrow-repeat"></i> Reorder</button>`;
           }
-          return '';
+          html += '</div>';
+          return html;
         }
       },
       { data: 'grRemark', defaultContent: '' },
@@ -763,7 +936,16 @@ $(document).ready(function() {
       { data: 'receiverAddress', defaultContent: '' },
       { data: 'receiverPostalCode', defaultContent: '' },
       { data: 'area', defaultContent: '' },
-      { data: 'creationDate', defaultContent: '' },
+      {
+        data: 'creationDate',
+        defaultContent: '',
+        render: function(data, type, row) {
+          if (type === 'display' || type === 'export' || type === 'excel') {
+            return formatBruneiDateTime(data);
+          }
+          return data || '';
+        }
+      },
       { data: 'mawbNo', defaultContent: '' },
       { data: 'icPassNum', defaultContent: '' },
       { data: 'patientNumber', defaultContent: '' },
@@ -907,6 +1089,32 @@ $(document).ready(function() {
 
   table.on('draw', function() {
     $('#loadingOverlay').hide();
+  });
+
+  // History button click
+  $(document).on('click', '.history-btn', function() {
+    const trackingNumber = $(this).data('tracking');
+    if (!trackingNumber) return;
+
+    $('#historyTrackingNo').text(`(${trackingNumber})`);
+    $('#historyTimeline').empty();
+    $('#historyError').addClass('d-none').text('');
+    $('#historyLoading').removeClass('d-none');
+    $('#historyModal').modal('show');
+
+    $.ajax({
+      url: '/searchJobs/' + encodeURIComponent(trackingNumber) + '/history',
+      type: 'GET',
+      success: function(res) {
+        $('#historyLoading').addClass('d-none');
+        renderHistoryTimeline(res.history || [], res.currentStatus || '');
+      },
+      error: function(xhr) {
+        $('#historyLoading').addClass('d-none');
+        const msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Failed to load job history';
+        $('#historyError').removeClass('d-none').text(msg);
+      }
+    });
   });
 
   // Reorder button click

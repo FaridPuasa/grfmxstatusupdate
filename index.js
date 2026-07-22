@@ -3490,6 +3490,32 @@ app.post('/searchJobs', ensureAuthenticated, ensureViewJob, async (req, res) => 
     }
 });
 
+// GET /searchJobs/:trackingNumber/history — on-demand history lookup for the
+// "History" button in searchJobs.ejs. history is intentionally excluded from
+// the main /searchJobs projection (see SEARCH_RESULT_PROJECTION above) since
+// it's large and only needed for the small fraction of rows a user drills into.
+app.get('/searchJobs/:trackingNumber/history', ensureAuthenticated, ensureViewJob, async (req, res) => {
+    try {
+        const order = await ORDERS.findOne(
+            { doTrackingNumber: req.params.trackingNumber },
+            { doTrackingNumber: 1, currentStatus: 1, history: 1 }
+        ).lean();
+
+        if (!order) {
+            return res.status(404).json({ error: 'Job not found' });
+        }
+
+        res.json({
+            doTrackingNumber: order.doTrackingNumber || '',
+            currentStatus: order.currentStatus || '',
+            history: Array.isArray(order.history) ? order.history : []
+        });
+    } catch (err) {
+        console.error('Fetch job history error:', err);
+        res.status(500).json({ error: 'Failed to fetch job history' });
+    }
+});
+
 // Computes the warehouse/active-jobs dashboard data. Shared by the main '/'
 // route (initial page load) and /api/dashboard/warehouse-refresh (re-render
 // without a full page reload) so both stay in sync from one code path.
