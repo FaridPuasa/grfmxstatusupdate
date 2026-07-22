@@ -483,15 +483,15 @@ const canReorder = allowedRolesForReorder.includes(currentUserRole) || allowedEm
 // Brunei time, UTC+8, no DST), and some are naive datetimes with no offset at
 // all (already recorded as Brunei wall-clock time). Detect which case we're in
 // from the raw string rather than assuming one format everywhere.
-function formatBruneiDateTime(raw) {
-  if (raw === null || raw === undefined) return '';
+function parseFlexibleDate(raw) {
+  if (raw === null || raw === undefined) return null;
   const str = String(raw).trim();
-  if (!str) return '';
+  if (!str) return null;
 
   // Date-only, no time component
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
     const d = moment(str, 'YYYY-MM-DD', true);
-    return d.isValid() ? d.format('DD.MM.YYYY') : str;
+    return d.isValid() ? { moment: d, hasTime: false } : null;
   }
 
   const hasOffset = /(Z|[+-]\d{2}:?\d{2})$/.test(str);
@@ -503,8 +503,19 @@ function formatBruneiDateTime(raw) {
     if (!d.isValid()) d = moment(str); // last-resort loose parse
   }
 
-  if (!d || !d.isValid()) return str; // unparseable -> show the raw value rather than hide it
-  return d.format('DD.MM.YYYY hh:mm A');
+  return (d && d.isValid()) ? { moment: d, hasTime: true } : null;
+}
+
+function formatBruneiDateTime(raw) {
+  const parsed = parseFlexibleDate(raw);
+  if (!parsed) return raw === null || raw === undefined ? '' : String(raw).trim(); // unparseable -> show the raw value rather than hide it
+  return parsed.hasTime ? parsed.moment.format('DD.MM.YYYY hh:mm A') : parsed.moment.format('DD.MM.YYYY');
+}
+
+function formatBruneiDate(raw) {
+  const parsed = parseFlexibleDate(raw);
+  if (!parsed) return raw === null || raw === undefined ? '' : String(raw).trim();
+  return parsed.moment.format('DD.MM.YYYY');
 }
 
 function escapeHtml(str) {
@@ -553,7 +564,10 @@ function renderHistoryTimeline(history, currentStatus) {
 
     let detailsHtml = '';
     if (entry.updatedBy) {
-      detailsHtml += `<div class="tracker-meta"><i class="bi bi-person-fill"></i> ${escapeHtml(entry.updatedBy)}</div>`;
+      detailsHtml += `<div class="tracker-meta"><i class="bi bi-person-fill"></i> Updated by: ${escapeHtml(entry.updatedBy)}</div>`;
+    }
+    if (entry.lastAssignedTo) {
+      detailsHtml += `<div class="tracker-meta"><i class="bi bi-person-badge-fill"></i> Assigned to: ${escapeHtml(entry.lastAssignedTo)}</div>`;
     }
     if (entry.reason) {
       detailsHtml += `<div class="tracker-meta"><i class="bi bi-chat-left-text-fill"></i> ${escapeHtml(entry.reason)}</div>`;
@@ -925,7 +939,16 @@ $(document).ready(function() {
       { data: 'latestLocation', defaultContent: '' },
       { data: 'age', defaultContent: '' },
       { data: 'jobMethod', defaultContent: '' },
-      { data: 'jobDate', defaultContent: '' },
+      {
+        data: 'jobDate',
+        defaultContent: '',
+        render: function(data, type, row) {
+          if (type === 'display' || type === 'export' || type === 'excel') {
+            return formatBruneiDate(data);
+          }
+          return data || '';
+        }
+      },
       { data: 'assignedTo', defaultContent: '' },
       { data: 'attempt', defaultContent: '' },
       { data: 'paymentMethod', defaultContent: '' },
@@ -973,17 +996,8 @@ $(document).ready(function() {
         data: 'warehouseEntryDateTime',
         defaultContent: '',
         render: function(data, type, row) {
-          if (type === 'display' || type === 'export') {
-            if (data) {
-              const date = new Date(data);
-              if (!isNaN(date.getTime())) {
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const year = date.getFullYear();
-                return `${day}/${month}/${year}`;
-              }
-            }
-            return '';
+          if (type === 'display' || type === 'export' || type === 'excel') {
+            return formatBruneiDate(data);
           }
           return data || '';
         }
