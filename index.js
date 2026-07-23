@@ -2724,15 +2724,11 @@ app.get('/api/new-orders/gr-website', async (req, res) => {
     }
 });
 
-app.get('/api/completed-jobs', async (req, res) => {
-    try {
+// Computes the /api/completed-jobs payload for one date and caches it. Shared by the route (on-demand,
+// cache-miss path) and the background refresher below (keeps today's entry warm so users essentially
+// never pay the DB round-trip cost for the common case of viewing today's summary).
+async function computeCompletedJobsData(dateParam) {
         const moment = require('moment');
-        const dateParam = req.query.date;
-        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
-
-        const cached = completedJobsCache.get(dateParam);
-        if (cached) return res.json(cached);
-
         const startOfDay = moment(dateParam).startOf('day');
         const endOfDay = moment(dateParam).endOf('day');
 
@@ -2844,7 +2840,18 @@ app.get('/api/completed-jobs', async (req, res) => {
         });
 
         completedJobsCache.set(dateParam, result);
+        return result;
+}
 
+app.get('/api/completed-jobs', async (req, res) => {
+    try {
+        const dateParam = req.query.date;
+        if (!dateParam) return res.status(400).json({ error: 'Missing date parameter' });
+
+        const cached = completedJobsCache.get(dateParam);
+        if (cached) return res.json(cached);
+
+        const result = await computeCompletedJobsData(dateParam);
         return res.json(result);
 
     } catch (error) {
@@ -2852,6 +2859,16 @@ app.get('/api/completed-jobs', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch completed jobs.' });
     }
 });
+
+// Keeps today's completed-jobs summary pre-warmed in the cache so the common case (a user loading the
+// dashboard and viewing today, which is the date picker's default) essentially never pays the DB
+// round-trip cost live - it's already sitting in cache by the time anyone asks. Runs just under the
+// cache's own 60s TTL so the entry never actually goes cold under normal traffic. Past-date lookups
+// (someone picking a specific earlier day) are unaffected and still computed on demand as before.
+setInterval(() => {
+    const today = require('moment')().format('YYYY-MM-DD');
+    computeCompletedJobsData(today).catch(err => console.error('Background completed-jobs refresh failed:', err));
+}, 50000);
 
 // 🔹 Helper: fetch & group orders for a given date
 async function fetchGrWebsiteOrders(dateParam) {
