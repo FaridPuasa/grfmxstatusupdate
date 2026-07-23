@@ -3523,6 +3523,7 @@ app.get('/searchJobs/:trackingNumber/history', ensureAuthenticated, ensureViewJo
 async function computeWarehouseDashboardData() {
         const moment = require('moment');
         const now = moment();
+        const __t0 = Date.now();
 
         function generateLocation(order) {
             const { latestLocation, room, rackRowNum, area, jobMethod } = order;
@@ -3562,6 +3563,8 @@ async function computeWarehouseDashboardData() {
                 { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
             ).lean()
         ]);
+        const __tFetch = Date.now();
+        console.log(`[dashboard] DB fetch: ${__tFetch - __t0}ms | allOrders=${allOrders.length} deliveryOrders=${deliveryOrders.length}`);
 
         // Precompute age once per order — categorize() below runs 5x over allOrders (urgent/overdue/archived/
         // maxAttempt/plannedSelfCollect) and groupByCurrentLocation runs once more; without this each order's
@@ -3774,12 +3777,16 @@ async function computeWarehouseDashboardData() {
             return map;
         })();
 
+        console.log(`[dashboard] JS processing: ${Date.now() - __tFetch}ms | total compute: ${Date.now() - __t0}ms`);
+
     return { currentMap, urgentMap, overdueMap, archivedMap, maxAttemptMap, plannedSelfCollectMap, deliveriesMap };
 }
 
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
+        const __tRouteStart = Date.now();
         const { currentMap, urgentMap, overdueMap, archivedMap, maxAttemptMap, plannedSelfCollectMap, deliveriesMap } = await computeWarehouseDashboardData();
+        const __tComputeDone = Date.now();
 
         res.render('dashboard', {
             currentMap,
@@ -3794,6 +3801,13 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             moment,
             user: req.user,
             orders: []
+        }, (err, html) => {
+            if (err) {
+                console.error('Dashboard render error:', err);
+                return res.status(500).send('Failed to render dashboard');
+            }
+            console.log(`[dashboard] EJS render: ${Date.now() - __tComputeDone}ms | route total: ${Date.now() - __tRouteStart}ms`);
+            res.send(html);
         });
 
     } catch (error) {
