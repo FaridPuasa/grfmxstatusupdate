@@ -2742,15 +2742,29 @@ app.get('/api/completed-jobs', async (req, res) => {
         const roughLowerBound = moment(dateParam).subtract(1, 'day').format('YYYY-MM-DD');
         const roughUpperBound = moment(dateParam).add(2, 'day').format('YYYY-MM-DD');
 
-        const orders = await ORDERS.find({
-            product: { $nin: [null, ""] },
-            history: {
-                $elemMatch: {
-                    statusHistory: { $in: ["Failed Delivery", "Failed Collection"] },
-                    dateUpdated: { $gte: roughLowerBound, $lt: roughUpperBound }
+        // These three queries don't depend on each other, so run them concurrently rather than
+        // waiting on each one's DB round-trip in turn.
+        const [orders, completedJobs, inProgressJobs] = await Promise.all([
+            ORDERS.find({
+                product: { $nin: [null, ""] },
+                history: {
+                    $elemMatch: {
+                        statusHistory: { $in: ["Failed Delivery", "Failed Collection"] },
+                        dateUpdated: { $gte: roughLowerBound, $lt: roughUpperBound }
+                    }
                 }
-            }
-        }).lean();
+            }).lean(),
+            ORDERS.find({
+                currentStatus: "Completed",
+                jobDate: dateParam,
+                product: { $nin: [null, ""] }
+            }).lean(),
+            ORDERS.find({
+                currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
+                jobDate: dateParam,
+                product: { $nin: [null, ""] }
+            }).lean()
+        ]);
 
         const failedJobs = [];
 
@@ -2786,19 +2800,6 @@ app.get('/api/completed-jobs', async (req, res) => {
                 }
             });
         });
-
-        // Completed and In Progress jobs still filtered by jobDate
-        const completedJobs = await ORDERS.find({
-            currentStatus: "Completed",
-            jobDate: dateParam,
-            product: { $nin: [null, ""] }
-        }).lean();
-
-        const inProgressJobs = await ORDERS.find({
-            currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
-            jobDate: dateParam,
-            product: { $nin: [null, ""] }
-        }).lean();
 
         const groupByDispatcher = (jobsArray) => {
             const map = {};
@@ -3547,15 +3548,20 @@ async function computeWarehouseDashboardData() {
             return parts.join(', ');
         }
 
-        const allOrders = await ORDERS.find(
-            { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
-        );
-
-        const deliveryOrders = await ORDERS.find(
-            { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
-            { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
-        );
+        // .lean() skips Mongoose document hydration (getters, casting, subdocument wrapping for the
+        // history array) - safe here because neither result is ever passed to the template directly,
+        // only read field-by-field to build the plain map objects below. Running both find()s together
+        // instead of sequentially halves the DB round-trip time since neither depends on the other.
+        const [allOrders, deliveryOrders] = await Promise.all([
+            ORDERS.find(
+                { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
+                { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
+            ).lean(),
+            ORDERS.find(
+                { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
+                { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
+            ).lean()
+        ]);
 
         // Precompute age once per order — categorize() below runs 5x over allOrders (urgent/overdue/archived/
         // maxAttempt/plannedSelfCollect) and groupByCurrentLocation runs once more; without this each order's
@@ -9893,6 +9899,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         parcelWeight: req.body.weight,
                         $push: {
                             history: {
+                                statusHistory: "Weight Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Weight updated from " + data.data.weight + " kg to " + req.body.weight + " kg.",
@@ -9905,6 +9912,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         parcelWeight: req.body.weight,
                         $push: {
                             history: {
+                                statusHistory: "Weight Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Weight updated to " + req.body.weight + " kg.",
@@ -9936,6 +9944,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         totalPrice: 0,
                         $push: {
                             history: {
+                                statusHistory: "Payment Method Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Payment method updated to " + req.body.paymentMethod + ".",
@@ -9960,6 +9969,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             totalPrice: req.body.price,
                             $push: {
                                 history: {
+                                    statusHistory: "Payment Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
@@ -9982,6 +9992,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             totalPrice: req.body.price,
                             $push: {
                                 history: {
+                                    statusHistory: "Payment Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Payment method updated to " + req.body.paymentMethod + ", price updated to $" + req.body.price,
@@ -10015,6 +10026,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         area: req.body.area,
                         $push: {
                             history: {
+                                statusHistory: "Area Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Area updated from " + data.data.zone + " to " + req.body.area + ".",
@@ -10027,6 +10039,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         area: req.body.area,
                         $push: {
                             history: {
+                                statusHistory: "Area Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Area updated to " + req.body.area + ".",
@@ -10057,6 +10070,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverAddress: req.body.address,
                         $push: {
                             history: {
+                                statusHistory: "Address Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Address updated from " + data.data.address + " to " + req.body.address + ".",
@@ -10069,6 +10083,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverAddress: req.body.address,
                         $push: {
                             history: {
+                                statusHistory: "Address Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Address updated to " + req.body.address + ".",
@@ -10099,6 +10114,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverPhoneNumber: req.body.phoneNum,
                         $push: {
                             history: {
+                                statusHistory: "Phone Number Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Phone number updated from " + data.data.phone_number + " to " + req.body.phoneNum + ".",
@@ -10111,6 +10127,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverPhoneNumber: req.body.phoneNum,
                         $push: {
                             history: {
+                                statusHistory: "Phone Number Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Phone number updated to " + req.body.phoneNum + ".",
@@ -10141,6 +10158,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverName: req.body.name,
                         $push: {
                             history: {
+                                statusHistory: "Customer Name Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Customer Name updated from " + data.data.deliver_to_collect_from + " to " + req.body.name + ".",
@@ -10153,6 +10171,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverName: req.body.name,
                         $push: {
                             history: {
+                                statusHistory: "Customer Name Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Customer Name updated to " + req.body.name + ".",
@@ -10183,6 +10202,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         jobDate: req.body.assignDate,
                         $push: {
                             history: {
+                                statusHistory: "Job Date Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Job Date updated from " + data.data.date + " to " + req.body.assignDate + ".",
@@ -10195,6 +10215,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         jobDate: req.body.assignDate,
                         $push: {
                             history: {
+                                statusHistory: "Job Date Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Job Date updated to " + req.body.assignDate + ".",
@@ -10225,6 +10246,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverPostalCode: req.body.postalCode,
                         $push: {
                             history: {
+                                statusHistory: "Postal Code Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Postal Code updated from " + data.data.postal_code + " to " + req.body.postalCode + ".",
@@ -10237,6 +10259,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                         receiverPostalCode: req.body.postalCode,
                         $push: {
                             history: {
+                                statusHistory: "Postal Code Updated",
                                 dateUpdated: moment().format(),
                                 updatedBy: req.user.name,
                                 reason: "Postal Code updated to " + req.body.postalCode + ".",
@@ -10297,6 +10320,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10352,6 +10376,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10405,6 +10430,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10461,6 +10487,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10502,6 +10529,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10559,6 +10587,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10614,6 +10643,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10668,6 +10698,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10723,6 +10754,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10778,6 +10810,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10823,6 +10856,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10884,6 +10918,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -10946,6 +10981,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11007,6 +11043,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11068,6 +11105,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11129,6 +11167,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11190,6 +11229,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11251,6 +11291,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11306,6 +11347,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11362,6 +11404,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11417,6 +11460,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             }],
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11469,6 +11513,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11526,6 +11571,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11581,6 +11627,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11635,6 +11682,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 }],
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11691,6 +11739,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             jobMethod: req.body.jobMethod,
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11718,6 +11767,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             jobMethod: req.body.jobMethod,
                             $push: {
                                 history: {
+                                    statusHistory: "Job Method Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11751,6 +11801,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 jobMethod: req.body.jobMethod,
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11778,6 +11829,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                                 jobMethod: req.body.jobMethod,
                                 $push: {
                                     history: {
+                                        statusHistory: "Job Method Updated",
                                         dateUpdated: moment().format(),
                                         updatedBy: req.user.name,
                                         reason: "Job Method updated from " + data.data.job_type + " to " + req.body.jobMethod + ".",
@@ -11817,6 +11869,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             rackRowNum: "N/A",
                             $push: {
                                 history: {
+                                    statusHistory: "Warehouse Location Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Warehouse location updated to " + req.body.warehouse + ".",
@@ -11839,6 +11892,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                             rackRowNum: req.body.k2row,
                             $push: {
                                 history: {
+                                    statusHistory: "Warehouse Location Updated",
                                     dateUpdated: moment().format(),
                                     updatedBy: req.user.name,
                                     reason: "Warehouse location updated to " + req.body.warehouse + ".",
@@ -11861,6 +11915,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                     grRemark: req.body.grRemark,
                     $push: {
                         history: {
+                            statusHistory: "Go Rush Remark Updated",
                             dateUpdated: moment().format(),
                             updatedBy: req.user.name,
                             reason: "Go Rush Remark updated as " + req.body.grRemark + ".",
@@ -11889,6 +11944,7 @@ app.post('/updateDelivery', ensureUpdateStatusDetailsAccess, async (req, res) =>
                     remarks: req.body.cdRemark,
                     $push: {
                         history: {
+                            statusHistory: "Remark Updated",
                             dateUpdated: moment().format(),
                             updatedBy: req.user.name,
                             reason: "Customer/Instructions Remark updated as " + req.body.cdRemark + ".",

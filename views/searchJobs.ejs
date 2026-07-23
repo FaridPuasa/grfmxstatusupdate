@@ -538,7 +538,19 @@ const STATUS_META = {
   'disposed': { icon: 'bi-trash-fill', color: '#6c757d' },
   'return': { icon: 'bi-arrow-repeat', color: '#a52a2a' },
   'pod resent to gdex': { icon: 'bi-send-fill', color: '#0d6efd' },
-  'custom clearing': { icon: 'bi-shield-check', color: '#6610f2' }
+  'custom clearing': { icon: 'bi-shield-check', color: '#6610f2' },
+  'address updated': { icon: 'bi-geo-alt', color: '#495057' },
+  'phone number updated': { icon: 'bi-telephone', color: '#495057' },
+  'customer name updated': { icon: 'bi-person-lines-fill', color: '#495057' },
+  'job date updated': { icon: 'bi-calendar2-week', color: '#495057' },
+  'postal code updated': { icon: 'bi-mailbox', color: '#495057' },
+  'job method updated': { icon: 'bi-signpost-split', color: '#495057' },
+  'warehouse location updated': { icon: 'bi-building-gear', color: '#495057' },
+  'area updated': { icon: 'bi-map', color: '#495057' },
+  'weight updated': { icon: 'bi-box-seam', color: '#495057' },
+  'payment method updated': { icon: 'bi-credit-card', color: '#495057' },
+  'go rush remark updated': { icon: 'bi-chat-square-text', color: '#495057' },
+  'remark updated': { icon: 'bi-chat-square-text', color: '#495057' }
 };
 function getStatusMeta(status) {
   const key = (status || '').toLowerCase().trim();
@@ -562,17 +574,22 @@ function renderHistoryTimeline(history, currentStatus) {
     const isCurrent = idx === 0;
     const dateStr = formatBruneiDateTime(entry.dateUpdated);
 
+    // Backend often stores the literal string "N/A" for fields that don't apply to a
+    // given history entry (e.g. reason on a plain "Out for Delivery" update) - treat
+    // that the same as empty so the timeline doesn't show a meaningless "N/A" line.
+    const isMeaningful = (val) => val !== null && val !== undefined && String(val).trim() !== '' && String(val).trim().toLowerCase() !== 'n/a';
+
     let detailsHtml = '';
-    if (entry.updatedBy) {
+    if (isMeaningful(entry.updatedBy)) {
       detailsHtml += `<div class="tracker-meta"><i class="bi bi-person-fill"></i> Updated by: ${escapeHtml(entry.updatedBy)}</div>`;
     }
-    if (entry.lastAssignedTo) {
+    if (isMeaningful(entry.lastAssignedTo)) {
       detailsHtml += `<div class="tracker-meta"><i class="bi bi-person-badge-fill"></i> Assigned to: ${escapeHtml(entry.lastAssignedTo)}</div>`;
     }
-    if (entry.reason) {
+    if (isMeaningful(entry.reason)) {
       detailsHtml += `<div class="tracker-meta"><i class="bi bi-chat-left-text-fill"></i> ${escapeHtml(entry.reason)}</div>`;
     }
-    if (entry.lastLocation) {
+    if (isMeaningful(entry.lastLocation)) {
       detailsHtml += `<div class="tracker-meta"><i class="bi bi-geo-alt-fill"></i> ${escapeHtml(entry.lastLocation)}</div>`;
     }
 
@@ -583,7 +600,7 @@ function renderHistoryTimeline(history, currentStatus) {
         </div>
         <div class="tracker-card">
           <div class="d-flex justify-content-between align-items-start flex-wrap">
-            <span class="tracker-status" style="color:${meta.color};">${escapeHtml(entry.statusHistory || 'Unknown')}</span>
+            <span class="tracker-status" style="color:${meta.color};">${escapeHtml(entry.statusHistory || 'Details Updated')}</span>
             ${isCurrent ? '<span class="badge bg-primary current-badge">Current</span>' : ''}
           </div>
           <div class="tracker-meta"><i class="bi bi-calendar-event"></i> ${dateStr || '&mdash;'}</div>
