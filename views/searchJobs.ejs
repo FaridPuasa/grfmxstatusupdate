@@ -387,6 +387,7 @@ table.dataTable { width: 100% !important; }
     <th>No. of Packages</th>
     <th>Handling Charge</th>
     <th>Shipment Received</th>
+    <th>Job Date Completed</th>
   </tr>
 </thead>
     <tbody></tbody>
@@ -645,7 +646,7 @@ $(document).ready(function() {
     'Postal Code', 'Area', 'Job Created Date', 'MAWB No.', 'IC/Passport No.',
     'Patient No.', 'Item Description', 'Quantity', 'Invoice/Item Screenshot',
     'Original Tracking No.', 'Item Original Price', 'Weight (KG)', 'No. of Packages',
-    'Handling Charge', 'Shipment Received'
+    'Handling Charge', 'Shipment Received', 'Job Date Completed'
   ];
 
   // Function to safely update column header
@@ -681,6 +682,7 @@ $(document).ready(function() {
       safeUpdateHeader(dt, 33, 'Shipment Received');
       safeUpdateHeader(dt, 22, 'MAWB');
       safeUpdateHeader(dt, 6, 'Latest Scan');
+      safeUpdateHeader(dt, 34, 'Job Date Completed');
     } catch (e) {
       console.log('Error setting GDEX headers', e);
     }
@@ -837,9 +839,9 @@ $(document).ready(function() {
         dt.columns().visible(false);
         
         // Reorder columns using colReorder to the exact order you want
-        // Original indices: [0, 4, 15, 30, 32, 33, 22, 6]
-        dt.colReorder.order([0, 4, 15, 30, 32, 33, 22, 6]);
-        
+        // Original indices: [0, 4, 15, 30, 32, 33, 22, 6, 34]
+        dt.colReorder.order([0, 4, 15, 30, 32, 33, 22, 6, 34]);
+
         // Now show the columns (they will appear in the reordered sequence)
         dt.column(0).visible(true);  // Bil (was S/N)
         dt.column(1).visible(true);  // Consignment Note (was Go Rush Tracking No.)
@@ -849,7 +851,8 @@ $(document).ready(function() {
         dt.column(5).visible(true);  // Shipment Received (was warehouseEntryDateTime)
         dt.column(6).visible(true);  // MAWB
         dt.column(7).visible(true);  // Latest Scan (was Job Status)
-        
+        dt.column(8).visible(true);  // Job Date Completed
+
         // Update column headers
         dt.column(0).header().innerHTML = 'Bil';
         dt.column(1).header().innerHTML = 'Consignment Note';
@@ -859,6 +862,7 @@ $(document).ready(function() {
         dt.column(5).header().innerHTML = 'Shipment Received';
         dt.column(6).header().innerHTML = 'MAWB';
         dt.column(7).header().innerHTML = 'Latest Scan';
+        dt.column(8).header().innerHTML = 'Job Date Completed';
         
         // Update status mapping for Latest Scan column (now at position 7)
         dt.rows().every(function() {
@@ -1046,6 +1050,22 @@ $(document).ready(function() {
           if (type === 'export' || type === 'excel') return formatExcelDate(data);
           if (type === 'display') return formatBruneiDate(data);
           return data || '';
+        }
+      },
+      {
+        // Job Date Completed (GDEX Billing): jobDate when the job is Completed, else blank.
+        // A plain function (not data: null) so column().data() - used by the Excel export's
+        // "hide column if every row is blank" check - sees the real value instead of null.
+        data: function(row, type) {
+          if (type === 'set') return;
+          return (row && row.currentStatus === 'Completed') ? (row.jobDate || '') : '';
+        },
+        defaultContent: '',
+        render: function(data, type, row) {
+          if (!data) return '';
+          if (type === 'export' || type === 'excel') return formatExcelDate(data);
+          if (type === 'display') return formatBruneiDate(data);
+          return data;
         }
       }
     ],
