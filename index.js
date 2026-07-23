@@ -143,10 +143,14 @@ app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit: 5000
 const dbURI = require('./config/keys').MongoURI;
 
 // --- Main DB (GR_DMS) ---
+// minPoolSize keeps a handful of authenticated sockets open at all times. Without it (default 0),
+// each burst of concurrent queries after any idle gap pays a fresh TCP+TLS+auth handshake before the
+// query even starts - measured at ~500ms per connection on this cluster, on top of actual query time.
 const mainConn = mongoose.createConnection(dbURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    dbName: 'GR_DMS'
+    dbName: 'GR_DMS',
+    minPoolSize: 5
 });
 mainConn.on('connected', async () => {
     console.log('Connected to GR_DMS');
@@ -159,7 +163,8 @@ mainConn.on('error', err => console.error('GR_DMS connection error:', err));
 const vehicleConn = mongoose.createConnection(dbURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    dbName: 'Vehicle'
+    dbName: 'Vehicle',
+    minPoolSize: 2
 });
 vehicleConn.on('connected', () => console.log('Connected to Vehicle DB'));
 vehicleConn.on('error', err => console.error('Vehicle DB connection error:', err));
