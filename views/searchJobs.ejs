@@ -518,6 +518,24 @@ function formatBruneiDate(raw) {
   return parsed.moment.format('DD.MM.YYYY');
 }
 
+// DataTables Buttons' Excel export (buttons.html5.js _excelSpecials) only
+// auto-converts a cell into a real, sortable Excel date when its text matches
+// exactly YYYY-MM-DD. formatBruneiDate/DateTime use DD.MM.YYYY for on-screen
+// display, which Excel treats as plain text, so exports get the ISO form instead.
+function formatExcelDate(raw) {
+  const parsed = parseFlexibleDate(raw);
+  if (!parsed) return raw === null || raw === undefined ? '' : String(raw).trim();
+  return parsed.moment.format('YYYY-MM-DD');
+}
+
+function formatExcelDateTime(raw) {
+  const parsed = parseFlexibleDate(raw);
+  if (!parsed) return raw === null || raw === undefined ? '' : String(raw).trim();
+  // Only bare dates get auto-detected as real Excel dates; values with a time
+  // component fall back to the readable text format (no built-in datetime support).
+  return parsed.hasTime ? parsed.moment.format('DD.MM.YYYY hh:mm A') : parsed.moment.format('YYYY-MM-DD');
+}
+
 function escapeHtml(str) {
   return $('<div>').text(str === null || str === undefined ? '' : str).html();
 }
@@ -974,9 +992,8 @@ $(document).ready(function() {
         data: 'jobDate',
         defaultContent: '',
         render: function(data, type, row) {
-          if (type === 'display' || type === 'export' || type === 'excel') {
-            return formatBruneiDate(data);
-          }
+          if (type === 'export' || type === 'excel') return formatExcelDate(data);
+          if (type === 'display') return formatBruneiDate(data);
           return data || '';
         }
       },
@@ -994,9 +1011,8 @@ $(document).ready(function() {
         data: 'creationDate',
         defaultContent: '',
         render: function(data, type, row) {
-          if (type === 'display' || type === 'export' || type === 'excel') {
-            return formatBruneiDateTime(data);
-          }
+          if (type === 'export' || type === 'excel') return formatExcelDateTime(data);
+          if (type === 'display') return formatBruneiDateTime(data);
           return data || '';
         }
       },
@@ -1023,13 +1039,12 @@ $(document).ready(function() {
       <% } else { %>
       { data: 'handlingCharge', visible: false, defaultContent: '' },
       <% } %>
-      { 
+      {
         data: 'warehouseEntryDateTime',
         defaultContent: '',
         render: function(data, type, row) {
-          if (type === 'display' || type === 'export' || type === 'excel') {
-            return formatBruneiDate(data);
-          }
+          if (type === 'export' || type === 'excel') return formatExcelDate(data);
+          if (type === 'display') return formatBruneiDate(data);
           return data || '';
         }
       }
