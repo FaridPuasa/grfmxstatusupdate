@@ -696,9 +696,13 @@ $(document).ready(function() {
   text: '<i class="bi bi-file-earmark-excel"></i> Export Excel',
   exportOptions: {
     columns: function(idx) {
-      if (idx === 1) return false; // Action column: buttons don't belong in a spreadsheet
       if (!table.column(idx).visible()) return false; // respect Show/Hide Columns + GDEX/Manifest views
       if (idx === 0) return true; // S/N has no bound data field, so the emptiness check below doesn't apply
+
+      // Action column (buttons) isn't always index 1 - GDEX Billing reorders columns via colReorder,
+      // so identify it by header text instead of a fixed index to avoid excluding a relocated column.
+      const headerText = $(table.column(idx).header()).text().trim();
+      if (headerText === 'Action') return false; // Action column: buttons don't belong in a spreadsheet
 
       // Skip columns where every currently filtered row has no data, to keep the export compact
       const columnData = table.column(idx, { search: 'applied' }).data().toArray();
