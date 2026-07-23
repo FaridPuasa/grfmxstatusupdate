@@ -3,7 +3,7 @@
     <div class="card-header" style="padding: 0.75rem 1rem;">
         <div class="d-flex align-items-center justify-content-between">
             <div class="toggle-header" style="cursor: pointer; flex-grow: 1;" data-bs-toggle="collapse" data-bs-target="#collapse-<%= idPrefix %>">
-                <strong><%= disp.name %> <span style="font-weight:normal;">(<%= disp.data.__areas ? disp.data.__areas.join(', ') : '' %>)</span></strong>
+                <strong><%= disp.name %> <span style="font-weight:normal;">(<%= disp.data.__areas ? disp.data.__areas.filter(a => a && a.trim().toUpperCase() !== 'N/A').join(', ') : '' %>)</span></strong>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-success"><%= disp.count %> jobs</span>

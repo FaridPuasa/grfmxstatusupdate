@@ -143,46 +143,13 @@ app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit: 5000
 const dbURI = require('./config/keys').MongoURI;
 
 // --- Main DB (GR_DMS) ---
-// minPoolSize keeps a handful of authenticated sockets open at all times. Without it (default 0),
-// each burst of concurrent queries after any idle gap pays a fresh TCP+TLS+auth handshake before the
-// query even starts - measured at ~500ms per connection on this cluster, on top of actual query time.
+// minPoolSize keeps a handful of sockets open at all times rather than opening them on demand.
 const mainConn = mongoose.createConnection(dbURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     dbName: 'GR_DMS',
-    minPoolSize: 5,
-    monitorCommands: true
+    minPoolSize: 5
 });
-
-// --- TEMP DIAGNOSTIC: ground-truth view of every find/getMore command actually sent to Mongo for the
-// ORDERS collection - shows exact round-trip count and per-command duration, instead of inferring it
-// from wall-clock gaps. Safe to remove once we've seen the numbers.
-const __cmdTimings = new Map();
-mainConn.on('connected', () => {
-    const client = mainConn.getClient();
-    client.on('commandStarted', (event) => {
-        if ((event.commandName === 'find' || event.commandName === 'getMore') &&
-            (event.command.find === 'orders' || event.command.collection === 'orders')) {
-            __cmdTimings.set(event.requestId, Date.now());
-        }
-    });
-    client.on('commandSucceeded', (event) => {
-        if (__cmdTimings.has(event.requestId)) {
-            const nReturned = event.reply && event.reply.cursor &&
-                ((event.reply.cursor.firstBatch && event.reply.cursor.firstBatch.length) ||
-                 (event.reply.cursor.nextBatch && event.reply.cursor.nextBatch.length));
-            console.log(`[dashboard][diag][cmd] ${event.commandName} requestId=${event.requestId} durationMs=${event.duration} nReturned=${nReturned}`);
-            __cmdTimings.delete(event.requestId);
-        }
-    });
-    client.on('commandFailed', (event) => {
-        if (__cmdTimings.has(event.requestId)) {
-            console.log(`[dashboard][diag][cmd] ${event.commandName} FAILED requestId=${event.requestId} durationMs=${event.duration}`);
-            __cmdTimings.delete(event.requestId);
-        }
-    });
-});
-
 mainConn.on('connected', async () => {
     console.log('Connected to GR_DMS');
     await preloadCodBtCache(7);
@@ -3561,7 +3528,6 @@ app.get('/searchJobs/:trackingNumber/history', ensureAuthenticated, ensureViewJo
 async function computeWarehouseDashboardData() {
         const moment = require('moment');
         const now = moment();
-        const __t0 = Date.now();
 
         function generateLocation(order) {
             const { latestLocation, room, rackRowNum, area, jobMethod } = order;
@@ -3591,56 +3557,16 @@ async function computeWarehouseDashboardData() {
         // history array) - safe here because neither result is ever passed to the template directly,
         // only read field-by-field to build the plain map objects below. Running both find()s together
         // instead of sequentially halves the DB round-trip time since neither depends on the other.
-        // batchSize() is set high enough to cover the whole result set in one round trip - measured RTT
-        // to the DB is ~500ms per round trip, so a query that would otherwise need 3-4 getMore batches
-        // pays that 500ms cost 3-4 times instead of once.
-        const __tBeforeQueries = Date.now();
         const [allOrders, deliveryOrders] = await Promise.all([
             ORDERS.find(
                 { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
                 { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
-            ).batchSize(10000).lean().then(r => { console.log(`[dashboard][diag] allOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; }),
+            ).batchSize(10000).lean(),
             ORDERS.find(
                 { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
                 { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
-            ).batchSize(10000).lean().then(r => { console.log(`[dashboard][diag] deliveryOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; })
+            ).batchSize(10000).lean()
         ]);
-        const __tFetch = Date.now();
-        console.log(`[dashboard] DB fetch: ${__tFetch - __t0}ms | allOrders=${allOrders.length} deliveryOrders=${deliveryOrders.length}`);
-
-        // --- TEMP DIAGNOSTIC: measure actual payload size + history array bloat. Read-only, does not
-        // affect the response. Safe to remove once we've seen the numbers.
-        try {
-            const allOrdersBytes = Buffer.byteLength(JSON.stringify(allOrders));
-            const deliveryOrdersBytes = Buffer.byteLength(JSON.stringify(deliveryOrders));
-            let maxHistoryLen = 0, totalHistoryLen = 0, maxHistoryDoc = null;
-            allOrders.forEach(o => {
-                const len = Array.isArray(o.history) ? o.history.length : 0;
-                totalHistoryLen += len;
-                if (len > maxHistoryLen) { maxHistoryLen = len; maxHistoryDoc = o.doTrackingNumber; }
-            });
-            console.log(`[dashboard][diag] payload bytes: allOrders=${allOrdersBytes} deliveryOrders=${deliveryOrdersBytes} | history entries: max=${maxHistoryLen} (${maxHistoryDoc}) total=${totalHistoryLen} avg=${(totalHistoryLen / allOrders.length).toFixed(1)}`);
-        } catch (e) {
-            console.log('[dashboard][diag] payload measurement failed:', e.message);
-        }
-
-        // --- TEMP DIAGNOSTIC (read-only, fire-and-forget - does not affect this request's response) ---
-        // Compares real wall-clock round-trip time against the server-reported executionTimeMillis to
-        // see whether the gap is query execution (server-side) or connection/network overhead (client-side).
-        // Safe to remove once we've seen the numbers.
-        const __tExplainStart = Date.now();
-        ORDERS.find(
-            { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
-            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
-        ).explain('executionStats').then(stats => {
-            const es = stats.executionStats;
-            const winStage = (es.executionStages && es.executionStages.stage) || 'unknown';
-            console.log(`[dashboard][diag] allOrders plan: stage=${winStage} nReturned=${es.nReturned} totalDocsExamined=${es.totalDocsExamined} totalKeysExamined=${es.totalKeysExamined} explainExecMs=${es.executionTimeMillis} explainWallMs=${Date.now() - __tExplainStart}`);
-        }).catch(e => console.log('[dashboard][diag] explain failed:', e.message));
-
-        ORDERS.estimatedDocumentCount().then(c => {
-            console.log(`[dashboard][diag] ORDERS total doc count (estimated): ${c}`);
-        }).catch(e => console.log('[dashboard][diag] count failed:', e.message));
 
         // Precompute age once per order — categorize() below runs 5x over allOrders (urgent/overdue/archived/
         // maxAttempt/plannedSelfCollect) and groupByCurrentLocation runs once more; without this each order's
@@ -3853,16 +3779,12 @@ async function computeWarehouseDashboardData() {
             return map;
         })();
 
-        console.log(`[dashboard] JS processing: ${Date.now() - __tFetch}ms | total compute: ${Date.now() - __t0}ms`);
-
     return { currentMap, urgentMap, overdueMap, archivedMap, maxAttemptMap, plannedSelfCollectMap, deliveriesMap };
 }
 
 app.get('/', ensureAuthenticated, async (req, res) => {
     try {
-        const __tRouteStart = Date.now();
         const { currentMap, urgentMap, overdueMap, archivedMap, maxAttemptMap, plannedSelfCollectMap, deliveriesMap } = await computeWarehouseDashboardData();
-        const __tComputeDone = Date.now();
 
         res.render('dashboard', {
             currentMap,
@@ -3877,13 +3799,6 @@ app.get('/', ensureAuthenticated, async (req, res) => {
             moment,
             user: req.user,
             orders: []
-        }, (err, html) => {
-            if (err) {
-                console.error('Dashboard render error:', err);
-                return res.status(500).send('Failed to render dashboard');
-            }
-            console.log(`[dashboard] EJS render: ${Date.now() - __tComputeDone}ms | route total: ${Date.now() - __tRouteStart}ms`);
-            res.send(html);
         });
 
     } catch (error) {

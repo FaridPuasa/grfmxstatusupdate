@@ -671,7 +671,7 @@ function renderDispatcherSummaryCards(data) {
         const completedCount = (d.completed || []).length;
         const failedCount = (d.failed || []).length;
         const totalCount = activeCount + completedCount + failedCount;
-        const areas = [...new Set(d.inProgress.map(job => job.area).filter(Boolean))];
+        const areas = [...new Set(d.inProgress.map(job => job.area).filter(a => a && a.trim().toUpperCase() !== 'N/A'))];
 
         container.insertAdjacentHTML('beforeend', `
             <div class="dispatcher-card type-${type}">
