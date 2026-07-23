@@ -3577,6 +3577,22 @@ async function computeWarehouseDashboardData() {
         const __tFetch = Date.now();
         console.log(`[dashboard] DB fetch: ${__tFetch - __t0}ms | allOrders=${allOrders.length} deliveryOrders=${deliveryOrders.length}`);
 
+        // --- TEMP DIAGNOSTIC: measure actual payload size + history array bloat. Read-only, does not
+        // affect the response. Safe to remove once we've seen the numbers.
+        try {
+            const allOrdersBytes = Buffer.byteLength(JSON.stringify(allOrders));
+            const deliveryOrdersBytes = Buffer.byteLength(JSON.stringify(deliveryOrders));
+            let maxHistoryLen = 0, totalHistoryLen = 0, maxHistoryDoc = null;
+            allOrders.forEach(o => {
+                const len = Array.isArray(o.history) ? o.history.length : 0;
+                totalHistoryLen += len;
+                if (len > maxHistoryLen) { maxHistoryLen = len; maxHistoryDoc = o.doTrackingNumber; }
+            });
+            console.log(`[dashboard][diag] payload bytes: allOrders=${allOrdersBytes} deliveryOrders=${deliveryOrdersBytes} | history entries: max=${maxHistoryLen} (${maxHistoryDoc}) total=${totalHistoryLen} avg=${(totalHistoryLen / allOrders.length).toFixed(1)}`);
+        } catch (e) {
+            console.log('[dashboard][diag] payload measurement failed:', e.message);
+        }
+
         // --- TEMP DIAGNOSTIC (read-only, fire-and-forget - does not affect this request's response) ---
         // Compares real wall-clock round-trip time against the server-reported executionTimeMillis to
         // see whether the gap is query execution (server-side) or connection/network overhead (client-side).
