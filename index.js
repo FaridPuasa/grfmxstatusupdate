@@ -2748,7 +2748,9 @@ app.get('/api/completed-jobs', async (req, res) => {
         const roughUpperBound = moment(dateParam).add(2, 'day').format('YYYY-MM-DD');
 
         // These three queries don't depend on each other, so run them concurrently rather than
-        // waiting on each one's DB round-trip in turn.
+        // waiting on each one's DB round-trip in turn. batchSize() fetches each result set in one
+        // round trip - see the matching comment in computeWarehouseDashboardData for why that matters
+        // on this cluster's measured ~500ms per-round-trip latency.
         const [orders, completedJobs, inProgressJobs] = await Promise.all([
             ORDERS.find({
                 product: { $nin: [null, ""] },
@@ -2758,17 +2760,17 @@ app.get('/api/completed-jobs', async (req, res) => {
                         dateUpdated: { $gte: roughLowerBound, $lt: roughUpperBound }
                     }
                 }
-            }).lean(),
+            }).batchSize(10000).lean(),
             ORDERS.find({
                 currentStatus: "Completed",
                 jobDate: dateParam,
                 product: { $nin: [null, ""] }
-            }).lean(),
+            }).batchSize(10000).lean(),
             ORDERS.find({
                 currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] },
                 jobDate: dateParam,
                 product: { $nin: [null, ""] }
-            }).lean()
+            }).batchSize(10000).lean()
         ]);
 
         const failedJobs = [];
@@ -3558,16 +3560,19 @@ async function computeWarehouseDashboardData() {
         // history array) - safe here because neither result is ever passed to the template directly,
         // only read field-by-field to build the plain map objects below. Running both find()s together
         // instead of sequentially halves the DB round-trip time since neither depends on the other.
+        // batchSize() is set high enough to cover the whole result set in one round trip - measured RTT
+        // to the DB is ~500ms per round trip, so a query that would otherwise need 3-4 getMore batches
+        // pays that 500ms cost 3-4 times instead of once.
         const __tBeforeQueries = Date.now();
         const [allOrders, deliveryOrders] = await Promise.all([
             ORDERS.find(
                 { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
                 { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
-            ).lean().then(r => { console.log(`[dashboard][diag] allOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; }),
+            ).batchSize(10000).lean().then(r => { console.log(`[dashboard][diag] allOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; }),
             ORDERS.find(
                 { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
                 { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
-            ).lean().then(r => { console.log(`[dashboard][diag] deliveryOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; })
+            ).batchSize(10000).lean().then(r => { console.log(`[dashboard][diag] deliveryOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; })
         ]);
         const __tFetch = Date.now();
         console.log(`[dashboard] DB fetch: ${__tFetch - __t0}ms | allOrders=${allOrders.length} deliveryOrders=${deliveryOrders.length}`);
