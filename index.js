@@ -150,8 +150,39 @@ const mainConn = mongoose.createConnection(dbURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     dbName: 'GR_DMS',
-    minPoolSize: 5
+    minPoolSize: 5,
+    monitorCommands: true
 });
+
+// --- TEMP DIAGNOSTIC: ground-truth view of every find/getMore command actually sent to Mongo for the
+// ORDERS collection - shows exact round-trip count and per-command duration, instead of inferring it
+// from wall-clock gaps. Safe to remove once we've seen the numbers.
+const __cmdTimings = new Map();
+mainConn.on('connected', () => {
+    const client = mainConn.getClient();
+    client.on('commandStarted', (event) => {
+        if ((event.commandName === 'find' || event.commandName === 'getMore') &&
+            (event.command.find === 'orders' || event.command.collection === 'orders')) {
+            __cmdTimings.set(event.requestId, Date.now());
+        }
+    });
+    client.on('commandSucceeded', (event) => {
+        if (__cmdTimings.has(event.requestId)) {
+            const nReturned = event.reply && event.reply.cursor &&
+                ((event.reply.cursor.firstBatch && event.reply.cursor.firstBatch.length) ||
+                 (event.reply.cursor.nextBatch && event.reply.cursor.nextBatch.length));
+            console.log(`[dashboard][diag][cmd] ${event.commandName} requestId=${event.requestId} durationMs=${event.duration} nReturned=${nReturned}`);
+            __cmdTimings.delete(event.requestId);
+        }
+    });
+    client.on('commandFailed', (event) => {
+        if (__cmdTimings.has(event.requestId)) {
+            console.log(`[dashboard][diag][cmd] ${event.commandName} FAILED requestId=${event.requestId} durationMs=${event.duration}`);
+            __cmdTimings.delete(event.requestId);
+        }
+    });
+});
+
 mainConn.on('connected', async () => {
     console.log('Connected to GR_DMS');
     await preloadCodBtCache(7);
