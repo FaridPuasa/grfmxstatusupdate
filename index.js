@@ -3566,6 +3566,23 @@ async function computeWarehouseDashboardData() {
         const __tFetch = Date.now();
         console.log(`[dashboard] DB fetch: ${__tFetch - __t0}ms | allOrders=${allOrders.length} deliveryOrders=${deliveryOrders.length}`);
 
+        // --- TEMP DIAGNOSTIC (read-only, fire-and-forget - does not affect this request's response) ---
+        // Figures out whether the 2s+ fetch above is an unindexed collection scan vs. a slow-but-indexed
+        // scan (currentStatus $nin can't do index range seeks, so it walks the whole index either way),
+        // and how big the collection actually is. Safe to remove once we've seen the numbers.
+        ORDERS.find(
+            { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
+            { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
+        ).explain('executionStats').then(stats => {
+            const es = stats.executionStats;
+            const winStage = (es.executionStages && es.executionStages.stage) || 'unknown';
+            console.log(`[dashboard][diag] allOrders plan: stage=${winStage} nReturned=${es.nReturned} totalDocsExamined=${es.totalDocsExamined} totalKeysExamined=${es.totalKeysExamined} explainExecMs=${es.executionTimeMillis}`);
+        }).catch(e => console.log('[dashboard][diag] explain failed:', e.message));
+
+        ORDERS.estimatedDocumentCount().then(c => {
+            console.log(`[dashboard][diag] ORDERS total doc count (estimated): ${c}`);
+        }).catch(e => console.log('[dashboard][diag] count failed:', e.message));
+
         // Precompute age once per order — categorize() below runs 5x over allOrders (urgent/overdue/archived/
         // maxAttempt/plannedSelfCollect) and groupByCurrentLocation runs once more; without this each order's
         // moment(refDate).diff() would be recomputed up to 6 times.
