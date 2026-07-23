@@ -3553,30 +3553,32 @@ async function computeWarehouseDashboardData() {
         // history array) - safe here because neither result is ever passed to the template directly,
         // only read field-by-field to build the plain map objects below. Running both find()s together
         // instead of sequentially halves the DB round-trip time since neither depends on the other.
+        const __tBeforeQueries = Date.now();
         const [allOrders, deliveryOrders] = await Promise.all([
             ORDERS.find(
                 { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
                 { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
-            ).lean(),
+            ).lean().then(r => { console.log(`[dashboard][diag] allOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; }),
             ORDERS.find(
                 { currentStatus: { $in: ["Out for Delivery", "Self Collect", "Drop Off"] } },
                 { product: 1, jobDate: 1, assignedTo: 1, doTrackingNumber: 1, attempt: 1, receiverName: 1, receiverPhoneNumber: 1, grRemark: 1, area: 1, currentStatus: 1 }
-            ).lean()
+            ).lean().then(r => { console.log(`[dashboard][diag] deliveryOrders query wall time: ${Date.now() - __tBeforeQueries}ms`); return r; })
         ]);
         const __tFetch = Date.now();
         console.log(`[dashboard] DB fetch: ${__tFetch - __t0}ms | allOrders=${allOrders.length} deliveryOrders=${deliveryOrders.length}`);
 
         // --- TEMP DIAGNOSTIC (read-only, fire-and-forget - does not affect this request's response) ---
-        // Figures out whether the 2s+ fetch above is an unindexed collection scan vs. a slow-but-indexed
-        // scan (currentStatus $nin can't do index range seeks, so it walks the whole index either way),
-        // and how big the collection actually is. Safe to remove once we've seen the numbers.
+        // Compares real wall-clock round-trip time against the server-reported executionTimeMillis to
+        // see whether the gap is query execution (server-side) or connection/network overhead (client-side).
+        // Safe to remove once we've seen the numbers.
+        const __tExplainStart = Date.now();
         ORDERS.find(
             { currentStatus: { $nin: ["Completed", "Cancelled", "Disposed", "Out for Delivery", "Self Collect"] } },
             { product: 1, currentStatus: 1, warehouseEntry: 1, jobMethod: 1, warehouseEntryDateTime: 1, creationDate: 1, doTrackingNumber: 1, attempt: 1, latestReason: 1, area: 1, receiverName: 1, receiverPhoneNumber: 1, additionalPhoneNumber: 1, latestLocation: 1, remarks: 1, grRemark: 1, room: 1, rackRowNum: 1, mawbNo: 1, history: 1 }
         ).explain('executionStats').then(stats => {
             const es = stats.executionStats;
             const winStage = (es.executionStages && es.executionStages.stage) || 'unknown';
-            console.log(`[dashboard][diag] allOrders plan: stage=${winStage} nReturned=${es.nReturned} totalDocsExamined=${es.totalDocsExamined} totalKeysExamined=${es.totalKeysExamined} explainExecMs=${es.executionTimeMillis}`);
+            console.log(`[dashboard][diag] allOrders plan: stage=${winStage} nReturned=${es.nReturned} totalDocsExamined=${es.totalDocsExamined} totalKeysExamined=${es.totalKeysExamined} explainExecMs=${es.executionTimeMillis} explainWallMs=${Date.now() - __tExplainStart}`);
         }).catch(e => console.log('[dashboard][diag] explain failed:', e.message));
 
         ORDERS.estimatedDocumentCount().then(c => {
